@@ -1,0 +1,31 @@
+astropy >= 2.0.0
+pymongo >= 3.2.2
+coloredlogs >= 5.0
+matplotlib >= 2.0.0
+pandas >= 0.18.0
+pytest >= 2.8.5
+scikit_image >= 0.12.3
+transitions >= 0.4.0
+python-dateutil >= 2.5.3
+numpy >= 1.12.1
+scipy >= 0.17.1
+pyserial >= 3.1.1
+PyYAML >= 3.11
+pyzmq >= 15.3.0
+pycodestyle
+wcsaxes
+readline
+gcloud
+ccdproc
+astroplan
+codecov
+ffmpy
+pygraphviz
+google-cloud-storage
+dateparser
+coveralls
+healpy
+astroquery
+photutils
+git+git://github.com/panoptes/POCS@develop#egg=pocs
+git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
