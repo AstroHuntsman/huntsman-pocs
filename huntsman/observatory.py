@@ -37,6 +37,10 @@ class HuntsmanObservatory(Observatory):
                 self._has_autoguider = False
                 self.logger.warning("Problem setting autoguider, continuing without: {}".format(e))
 
+##########################################################################
+# Properties
+##########################################################################
+
     @property
     def has_hdr_mode(self):
         """ Does camera support HDR mode
@@ -54,6 +58,18 @@ class HuntsmanObservatory(Observatory):
             bool: True if has autoguider
         """
         return self._has_autoguider
+
+##########################################################################
+# Methods
+##########################################################################
+
+    def initialize(self):
+        """Initialize the observatory and connected hardware """
+        super().initialize()
+
+        if self.has_autoguider:
+            self.logger.debug("Connecting to autoguider")
+            self.autoguider.connect()
 
     def make_hdr_observation(self, observation=None):
         self.logger.debug("Getting exposure times from imager array")
@@ -316,6 +332,10 @@ class HuntsmanObservatory(Observatory):
                 time.sleep(1)
 
             flat_obs.current_exp = i
+
+##########################################################################
+# Private Methods
+##########################################################################
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
