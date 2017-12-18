@@ -26,7 +26,8 @@ def on_enter(event_data):
         pocs.logger.debug("Pointing headers: {}".format(fits_headers))
 
         # Take pointing picture and wait for result
-        camera_event = primary_camera.take_observation(observation, fits_headers, exp_time=30., filename='pointing')
+        camera_event = primary_camera.take_observation(
+            observation, fits_headers, exp_time=30., filename='pointing')
 
         wait_time = 0.
         while not camera_event.is_set():
@@ -52,7 +53,7 @@ def on_enter(event_data):
         # separation = pointing_image.pointing_error.magnitude.value
 
         # if separation > point_config.get('pointing_threshold', 0.05):
-        #     pocs.say("I'm still a bit away from the field so I'm going to try and get a bit closer.")
+        #     pocs.say("I'm still a bit away from the field so I'm going to get a bit closer.")
 
         #     # Tell the mount we are at the field, which is the center
         #     pocs.say("Syncing with the latest image...")
@@ -70,4 +71,4 @@ def on_enter(event_data):
         pocs.next_state = 'tracking'
 
     except Exception as e:
-        pocs.say("Hmm, I had a problem checking the pointing error. Sending to parking. {}".format(e))
+        pocs.say("Hmm, I had a problem checking the pointing error. Sending to parking. {}", e)
