@@ -95,6 +95,20 @@ class HuntsmanObservatory(Observatory):
 
             self.logger.debug("New Dithered Observation: {}".format(observation))
 
+    def finish_observing(self):
+        """Performs various cleanup functions for observe
+        Extracts the most recent observation metadata from the mongo `current` collection
+        and increments the exposure count for the `current_observation`
+        """
+
+        # Lookup the current observation
+        image_info = self.db.get_current('observations')
+        image_id = image_info['data']['image_id']
+        file_path = image_info['data']['file_path']
+
+        # Add most recent exposure to list
+        self.current_observation.exposure_list[image_id] = file_path
+
     def slew_to_target(self):
         """ Slew to target and turn on guiding
 
