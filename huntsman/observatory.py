@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 from astropy import units as u
@@ -10,6 +11,7 @@ from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
+from pocs.utils import config as cfg
 from pocs.utils import images as img_utils
 
 from huntsman.guide.bisque import Guide
@@ -38,7 +40,13 @@ class HuntsmanObservatory(Observatory):
             *args: Description
             **kwargs: Description
         """        
-        super().__init__(*args, **kwargs)
+        # Load the config file
+        try:
+            assert os.getenv('HUNTSMAN_POCS')
+        except AssertionError:
+            sys.exit("Must set HUNTSMAN_POCS variable")
+
+        super().__init__(config=self._load_config(), *args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
@@ -439,3 +447,10 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(flat_obs))
 
         return flat_obs
+
+    def _load_config(self):
+        huntsman_config_dir = '{}/conf_files/'.format(os.getenv('HUNTSMAN_POCS'))
+        config = cfg.load_config(config_files=[
+            '{}/huntsman.yaml'.format(huntsman_config_dir)
+        ])
+        return config
