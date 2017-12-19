@@ -21,8 +21,15 @@
 -
   name: 47Tuc
   position: 00h24m05s -72d04m53s
-  priority: 300
+  priority: 100
   hdr_mode: True
   exp_time: 3
   min_nexp: 5
+  exp_set_size: 1
+-
+  name: Fornax
+  position: 03h38m00s -35d27m00s
+  priority: 300
+  exp_time: 60
+  min_nexp: 2
   exp_set_size: 1

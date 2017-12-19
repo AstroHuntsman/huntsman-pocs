@@ -14,7 +14,7 @@ def on_enter(event_data):
 
     try:
 
-        if pocs.observatory.take_flats:
+        if pocs.observatory.take_flat_fields:
 
             sun_pos = pocs.observatory.observer.altaz(current_time(), target=get_sun(current_time())).alt
 

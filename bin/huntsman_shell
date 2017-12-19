@@ -110,7 +110,7 @@ class HuntsmanShell(Cmd):
         try:
             observatory = Observatory(simulator=simulator)
 
-            self.pocs = POCS(observatory, messaging=True)
+            self.pocs = POCS(observatory, messaging=True, state_machine_file='{}/conf_files/state_machine.yaml'.format(os.getenv('HUNTSMAN_POCS')))
             self.pocs.initialize()
         except error.PanError:
             pass
