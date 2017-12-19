@@ -17,10 +17,29 @@ from pocs.utils import images as img_utils
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
 
+from gunagala import imager
+
 
 class HuntsmanObservatory(Observatory):
 
-    def __init__(self, hdr_mode=False, with_autoguider=True, *args, **kwargs):
+    def __init__(self,
+                 with_autoguider=True,
+                 hdr_mode=False,
+                 take_flats=False,
+                 *args, **kwargs
+                 ):
+        """Huntsman POCS Observatory
+
+        Args:
+            with_autoguider (bool, optional): If autoguider is attached,
+                defaults to True.
+            hdr_mode (bool, optional): If pics should be taken in HDR mode,
+                defaults to False.
+            take_flats (bool, optional): If flat field images should be take,
+                defaults to False.
+            *args: Description
+            **kwargs: Description
+        """        
         # Load the config file
         try:
             assert os.getenv('HUNTSMAN_POCS')
@@ -32,10 +51,12 @@ class HuntsmanObservatory(Observatory):
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
 
+        self.take_flat_fields = take_flats
+
         # Creating an imager array object
         if self.has_hdr_mode:
             self.logger.info('\tSetting up HDR imager array')
-            self.imager_array = utils.hdr.create_imager_array()
+            self.imager_array = imager.create_imagers()
 
         if self.has_autoguider:
             self.logger.info("\tSetting up autoguider")
@@ -44,6 +65,10 @@ class HuntsmanObservatory(Observatory):
             except Exception as e:
                 self._has_autoguider = False
                 self.logger.warning("Problem setting autoguider, continuing without: {}".format(e))
+
+##########################################################################
+# Properties
+##########################################################################
 
     @property
     def has_hdr_mode(self):
@@ -62,6 +87,18 @@ class HuntsmanObservatory(Observatory):
             bool: True if has autoguider
         """
         return self._has_autoguider
+
+##########################################################################
+# Methods
+##########################################################################
+
+    def initialize(self):
+        """Initialize the observatory and connected hardware """
+        super().initialize()
+
+        if self.has_autoguider:
+            self.logger.debug("Connecting to autoguider")
+            self.autoguider.connect()
 
     def make_hdr_observation(self, observation=None):
         self.logger.debug("Getting exposure times from imager array")
@@ -324,6 +361,10 @@ class HuntsmanObservatory(Observatory):
                 time.sleep(1)
 
             flat_obs.current_exp = i
+
+##########################################################################
+# Private Methods
+##########################################################################
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
