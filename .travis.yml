@@ -6,6 +6,19 @@ python:
 cache:
   - pip
 env:
+before_install:
+    - sudo mkdir /var/panoptes && sudo chmod 777 /var/panoptes
+    - cd /var/panoptes
+    - git clone https://github.com/panoptes/POCS.git
+    - cd POCS
+    - python setup.py install
+    - ln -s $TRAVIS_BUILD_DIR /var/panoptes/POCS
+    - cd /var/panoptes
+    - git clone https://github.com/AstroHuntsman/gunagala.git
+    - cd gunagala
+    - python setup.py install
+    - pip install coveralls
+    - pip install -U pip
 script:
   - coverage run setup.py test
   - coverage combine .coverage*
