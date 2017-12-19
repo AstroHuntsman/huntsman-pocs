@@ -1,0 +1,28 @@
+-
+  name: Betelguese
+  position: 05h55m10.30536s +7d24m25.4304s
+  priority: 100
+  hdr_mode: True
+-
+  name: Achernar
+  position: 01h37m43s -57d14m13s
+  priority: 100
+  hdr_mode: True
+  exp_time: 3
+  min_nexp: 5
+  exp_set_size: 1
+-
+  name: Fomalhaut
+  position: 22h57m40s -29d37m24s
+  priority: 100
+  hdr_mode: True
+  min_nexp: 5
+  exp_set_size: 1
+-
+  name: 47Tuc
+  position: 00h24m05s -72d04m53s
+  priority: 300
+  hdr_mode: True
+  exp_time: 3
+  min_nexp: 5
+  exp_set_size: 1
