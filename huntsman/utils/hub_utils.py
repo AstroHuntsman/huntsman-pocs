@@ -1,7 +1,9 @@
+#A Python interface for the acroname USB Hubs - tested and functional
+
 import brainstem
+import time
 from brainstem.result import Result
 from time import sleep
-import time
 
 
 def connect_to_hub(hub_serial, verbose = False, test = True):
