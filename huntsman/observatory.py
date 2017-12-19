@@ -20,11 +20,30 @@ from gunagala import imager
 
 class HuntsmanObservatory(Observatory):
 
-    def __init__(self, hdr_mode=False, with_autoguider=True, *args, **kwargs):
+    def __init__(self,
+                 with_autoguider=True,
+                 hdr_mode=False,
+                 take_flats=False,
+                 *args, **kwargs
+                 ):
+        """Huntsman POCS Observatory
+
+        Args:
+            with_autoguider (bool, optional): If autoguider is attached,
+                defaults to True.
+            hdr_mode (bool, optional): If pics should be taken in HDR mode,
+                defaults to False.
+            take_flats (bool, optional): If flat field images should be take,
+                defaults to False.
+            *args: Description
+            **kwargs: Description
+        """        
         super().__init__(*args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
+
+        self.take_flat_fields = take_flats
 
         # Creating an imager array object
         if self.has_hdr_mode:
