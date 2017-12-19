@@ -1,6 +1,8 @@
 dist: trusty
 sudo: required
 language: python
+services:
+  - mongodb
 python:
   - "3.6"
 cache:
