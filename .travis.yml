@@ -16,7 +16,6 @@ before_install:
     - ln -s $TRAVIS_BUILD_DIR /var/panoptes/POCS
     - cd /var/panoptes
     - git clone https://github.com/AstroHuntsman/gunagala.git
-    - pip install -r requirements.txt
     - cd gunagala
     - python setup.py install
     - pip install coveralls
