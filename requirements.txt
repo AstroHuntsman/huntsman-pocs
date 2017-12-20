@@ -20,8 +20,7 @@ ccdproc
 astroplan
 codecov
 ffmpy
-pygraphviz
-google-cloud-storage
+photutils
 dateparser
 coveralls
 healpy
