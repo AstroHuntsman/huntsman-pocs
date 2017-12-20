@@ -13,12 +13,12 @@ scheduler:
     type: dispatch
     fields_file: targets.yaml
 directories:
-    base: /var/panoptes
+    base: /var/huntsman
     images: images
     webcam: webcams
     data: data
     resources: POCS/resources/
-    targets: /var/panoptes/huntsman-pocs/conf_files
+    targets: /var/huntsman/huntsman-pocs/conf_files
     mounts: POCS/resources/mounts    
 dome:
     template_dir: resources/bisque
