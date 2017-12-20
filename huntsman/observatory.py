@@ -17,7 +17,7 @@ from pocs.utils import images as img_utils
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
 
-from gunagala import imager
+#from gunagala import imager
 
 
 class HuntsmanObservatory(Observatory):
@@ -55,8 +55,9 @@ class HuntsmanObservatory(Observatory):
 
         # Creating an imager array object
         if self.has_hdr_mode:
-            self.logger.info('\tSetting up HDR imager array')
-            self.imager_array = imager.create_imagers()
+            self.logger.error("HDR mode not support currently")
+            #self.logger.info('\tSetting up HDR imager array')
+            #self.imager_array = imager.create_imagers()
 
         if self.has_autoguider:
             self.logger.info("\tSetting up autoguider")
