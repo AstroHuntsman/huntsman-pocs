@@ -143,8 +143,8 @@ class HuntsmanObservatory(Observatory):
 
     def finish_observing(self):
         """Performs various cleanup functions for observe
-        Extracts the most recent observation metadata from the mongo `current` collection
-        and increments the exposure count for the `current_observation`
+        Extracts the most recent observation metadata from the mongo `current`
+        collection and increments the exposure count for the `current_observation`.
         """
 
         # Lookup the current observation
@@ -154,6 +154,9 @@ class HuntsmanObservatory(Observatory):
 
         # Add most recent exposure to list
         self.current_observation.exposure_list[image_id] = file_path
+
+        # Increment count
+        self.current_observation.current_exp += 1
 
     def slew_to_target(self):
         """ Slew to target and turn on guiding
