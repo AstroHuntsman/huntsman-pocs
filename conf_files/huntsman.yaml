@@ -40,7 +40,7 @@ cameras:
     hdr_mode: True
     auto_detect: False
     devices:
-        model: sbig
+    -   model: sbig
         port: 83F011791
         set_point: 0
         filter_type: r2_1
