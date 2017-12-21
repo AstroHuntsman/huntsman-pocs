@@ -81,11 +81,11 @@ def automatic_login_phillips_hue(hue_ip = "10.88.21.10", file_path = "hue_userna
             if verbose:
                print("Login with username", username, "successful")
             
-    b = Bridge(hue_ip, username)
+    bridge = Bridge(hue_ip, username)
     
-    return(b)
+    return(bridge)
     
-def find_hue_light_index(b):
+def find_hue_light_index(bridge):
     
     """
     Check the index of any hue light connected to the bridge 
@@ -100,7 +100,7 @@ def find_hue_light_index(b):
         
     """
     
-    lights = b.lights()
+    lights = bridge.lights()
     
     for num, info in lights.items():
     
@@ -108,7 +108,7 @@ def find_hue_light_index(b):
             
     return(info)
     
-def hue_observing_mode(b, led_index, desk_index, field_index, verbose = False):
+def hue_observing_mode(bridge, led_index, desk_index, verbose = False):
     
     """
     Function: Low red light for observing. Desk lamp off
@@ -124,15 +124,15 @@ def hue_observing_mode(b, led_index, desk_index, field_index, verbose = False):
     
     """
         
-    b.lights[led_index].state(on = True, bri=100, hue=50, sat = 250)
-    b.lights[desk_index].state(on = False)
+    bridge.lights[led_index].state(on = True, bri=100, hue=50, sat = 250)
+    bridge.lights[desk_index].state(on = False)
     #b.lights[field_index].state(on = False)
        
     if verbose:
        
        print("Observing Mode Selected")
        
-def hue_observing_bright_mode(b, led_index, desk_index, field_index, verbose = False):
+def hue_observing_bright_mode(bridge, led_index, desk_index, verbose = False):
     
     """
     Function: bright red light for observing and viewing. Desk lamp on
@@ -148,15 +148,15 @@ def hue_observing_bright_mode(b, led_index, desk_index, field_index, verbose = F
     
     """
         
-    b.lights[led_index].state(on = True, bri=250, hue=100, sat = 250)
-    b.lights[desk_index].state(on = True, bri=250, hue = 30000, sat = 20)
+    bridge.lights[led_index].state(on = True, bri=250, hue=100, sat = 250)
+    bridge.lights[desk_index].state(on = True, bri=250, hue = 30000, sat = 20)
     #b.lights[field_index].state(on = False)
        
     if verbose:
         
        print("Observing Bright Mode Selected")
        
-def hue_bright_mode(b, led_index, desk_index, field_index, verbose = False):
+def hue_bright_mode(bridge, led_index, desk_index, verbose = False):
     
     """
     Function: Bright mode for both LED and desk lamp for desk cam to monitor dome
@@ -172,15 +172,15 @@ def hue_bright_mode(b, led_index, desk_index, field_index, verbose = False):
     
     """
         
-    b.lights[led_index].state(on = True, bri = 250, hue = 30000, sat = 10)
-    b.lights[desk_index].state(on = True, bri = 250, hue = 30000, sat = 10)
+    bridge.lights[led_index].state(on = True, bri = 250, hue = 30000, sat = 10)
+    bridge.lights[desk_index].state(on = True, bri = 250, hue = 30000, sat = 10)
     #b.lights[field_index].state(on = False)
     
     if verbose:
         
        print("Bright Mode Selected")
        
-def hue_lights_off(b, led_index, desk_index, field_index, verbose = False):
+def hue_lights_off(bridge, led_index, desk_index, verbose = False):
     
     """
     Function: Turns all lights off in the dome
@@ -196,15 +196,15 @@ def hue_lights_off(b, led_index, desk_index, field_index, verbose = False):
     
     """
         
-    b.lights[led_index].state(on = False)
-    b.lights[desk_index].state(on = False)
-    #b.lights[field_index].state(on = False)
+    bridge.lights[led_index].state(on = False)
+    bridge.lights[desk_index].state(on = False)
+    #bridge.lights[field_index].state(on = False)
     
     if verbose:
         
        print("All Lights Off")
     
-def hue_flat_field(b, led_index, desk_index, field_index, verbose = False):
+def hue_flat_field(bridge, led_index, desk_index, field_index, verbose = False):
     
     """
     Function: Flat field function for a 3rd lamp, turns off other lights
@@ -223,9 +223,9 @@ def hue_flat_field(b, led_index, desk_index, field_index, verbose = False):
     
     """
     
-    b.lights[led_index].state(on = False)
-    b.lights[desk_index].state(on = False)
-    b.lights[field_index].state(on = True, bri = 250, hue = 30000, sat = 10) 
+    bridge.lights[led_index].state(on = False)
+    bridge.lights[desk_index].state(on = False)
+    bridge.lights[field_index].state(on = True, bri = 250, hue = 30000, sat = 10) 
        
     if verbose:   
        
