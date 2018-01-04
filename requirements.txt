@@ -27,5 +27,3 @@ healpy
 astroquery
 photutils
 git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
-brainstem >= 2.4
-yaml
