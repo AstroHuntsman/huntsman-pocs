@@ -38,28 +38,23 @@ def login(
         b: bridge connection
 
     """
-    
-    #If the path doesnt exist, then make one
 
     if not path.exists(file_path):
-
-        while True:
-            try:
-                username = create_new_username(hue_ip)
-                break
-            
-            #if the username can't be made raise an error to push the bridge button
-            except QhueException as err:
+        
+        try:
+            username = create_new_username(hue_ip)
+        
+        except QhueException as err:
                 print("Cannot create new username: {}".format(err))
                 
-                #if the username is created, then save it to a file 
+                
 
         with open(file_path, "w") as cred_file:
             cred_file.write(username)
 
             if verbose:
                 print("Your hue username", username, "was created")
-   # if a username already exists, then just read the username file and connect to the bridge
+
     else:
 
         with open(file_path, "r") as cred_file:
