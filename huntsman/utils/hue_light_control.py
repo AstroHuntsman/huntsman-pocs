@@ -9,11 +9,8 @@ def login(
         hue_ip="10.88.21.10",
         file_path="hue_username.txt",
         verbose=False):
-    """
-    Automatic connection to the hue bridge using a stored username.
-
-    Functions:
-
+    """Automatic connection to the hue bridge using a stored username.
+    
         Creates a text file with stored username upon first connection to the bridge, will
         prompt the user to press the hue bridge button to connect for the fist time and writes
         the file to the central directory.
@@ -24,15 +21,15 @@ def login(
         If a new username cannot be saved, and error message will be sent to the user. At this point
         manual login may be nessesary.
 
-    Inputs:
+    Args:
 
-        hue_ip: the ip address of the hue bridge. Set by default to "10.88.21.10"
+        hue_ip (int): the ip address of the hue bridge. Set by default to "10.88.21.10"
 
-        file_path: the file name of the text file that will be saved containing the current username
+        file_path (str): the file name of the text file that will be saved containing the current username
 
-    Outputs:
+    Returns:
 
-        b: bridge connection
+        bridge (string): bridge connection
 
     """
 
@@ -64,16 +61,15 @@ def login(
 
 
 def find_hue_light_index(bridge):
-    """
-    Check the index of any hue light connected to the bridge
+    """Check the index of any hue light connected to the bridge
 
-    Input:
+    Args:
 
-        b: bridge connection, i.e b = automatic_login_phillips_hue()
+        bridge (str): bridge connection, i.e bridge = automatic_login_phillips_hue()
 
     Returns:
 
-        info: Returns the index of each hue device connected to the bridge
+        info (int): Returns the index of each hue device connected to the bridge
 
     """
 
@@ -87,17 +83,16 @@ def find_hue_light_index(bridge):
 
 
 def hue_observing_mode(bridge, led_index, desk_index, verbose=False):
-    """
-    Function: Low red light for observing. Desk lamp off
+    """Low red light for observing. Desk lamp off
 
-    Inputs:
+    Args:
 
-        b: connection to the bridge, i.e b = automatic_login_phillips_hue()
+        bridge (str): connection to the bridge, i.e b = automatic_login_phillips_hue()
 
-        led_index: the unique index of the hue LED, enter as string e.g '1'
+        led_index (int): the unique index of the hue LED strip, enter as string e.g '1'
                    can be found using find_hue_index. At present, = 1
 
-        desk_index: index of desk lamp. At present, = 4
+        desk_index (int): index of desk lamp. At present, = 4
 
     """
 
@@ -111,17 +106,16 @@ def hue_observing_mode(bridge, led_index, desk_index, verbose=False):
 
 
 def hue_observing_bright_mode(bridge, led_index, desk_index, verbose=False):
-    """
-    Function: bright red light for observing and viewing. Desk lamp on
+    """Bright red light for observing and viewing. Desk lamp on
 
-    Inputs:
+    Args:
 
-        b: connection to the bridge, i.e b = automatic_login_phillips_hue()
+        bridge (str): Connection to the bridge, i.e bridge = automatic_login_phillips_hue()
 
-        led_index: the unique index of the hue LED, enter as string e.g '1'
+        led_index (int): the unique index of the hue LED strip, enter as string e.g '1'
                    can be found using find_hue_index. At present, = 1
 
-        desk_index: index of desk lamp. At present, = 4
+        desk_index (int): index of desk lamp. At present, = 4
 
     """
 
@@ -135,17 +129,16 @@ def hue_observing_bright_mode(bridge, led_index, desk_index, verbose=False):
 
 
 def hue_bright_mode(bridge, led_index, desk_index, verbose=False):
-    """
-    Function: Bright mode for both LED and desk lamp for desk cam to monitor dome
+    """Bright mode for both LED strip and desk lamp for desk cam to monitor dome
 
-    Inputs:
+    Args:
 
-        b: connection to the bridge, i.e b = automatic_login_phillips_hue()
+        bridge (str): connection to the bridge, i.e b = automatic_login_phillips_hue()
 
-        led_index: the unique index of the hue LED, enter as string e.g '1'
+        led_index (int): the unique index of the hue LED stip, enter as string e.g '1'
                    can be found using find_hue_index. At present, = 1
 
-        desk_index: index of desk lamp. At present, = 4
+        desk_index (int): index of desk lamp. At present, = 4
 
     """
 
@@ -159,17 +152,16 @@ def hue_bright_mode(bridge, led_index, desk_index, verbose=False):
 
 
 def hue_lights_off(bridge, led_index, desk_index, verbose=False):
-    """
-    Function: Turns all lights off in the dome
+    """Turns all lights off in the dome
 
     Inputs:
 
-        b: connection to the bridge, i.e b = automatic_login_phillips_hue()
+        bridge (str): connection to the bridge, i.e bridge = automatic_login_phillips_hue()
 
-        led_index: the unique index of the hue LED, enter as string e.g '1'
+        led_index (int): the unique index of the hue LED strip, enter as string e.g '1'
                    can be found using find_hue_index. At present, = 1
 
-        desk_index: index of desk lamp. At present, = 4
+        desk_index (int): index of desk lamp. At present, = 4
 
     """
 
@@ -183,19 +175,18 @@ def hue_lights_off(bridge, led_index, desk_index, verbose=False):
 
 
 def hue_flat_field(bridge, led_index, desk_index, field_index, verbose=False):
-    """
-    Function: Flat field function for a 3rd lamp, turns off other lights
+    """Flat field function for a 3rd lamp, turns off other lights
 
-    Inputs:
+    Args:
 
-        b: connection to the bridge, i.e b = automatic_login_phillips_hue()
+        bridge (str): connection to the bridge, i.e b = automatic_login_phillips_hue()
 
-        led_index: the unique index of the hue LED, enter as string e.g '1'
+        led_index (int): the unique index of the hue LED strip, enter as string e.g '1'
                    can be found using find_hue_index. At present, = 1
 
-        desk_index: index of desk lamp. At present, = 4
+        desk_index (int): index of desk lamp. At present, = 4
 
-        field_index: index of flat field lamp. To be added to the system.
+        field_index (int): index of flat field lamp. To be added to the system.
                      will be allocated index 5
 
     """
