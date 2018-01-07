@@ -5,9 +5,6 @@ from qhue import Bridge, QhueException, create_new_username
 # using currently
 
 
-# deal with error system - should errors be sent to pocs? how does pocs
-# handle error messages?
-
 def login(
         hue_ip="10.88.21.10",
         file_path="hue_username.txt",
@@ -40,14 +37,12 @@ def login(
     """
 
     if not path.exists(file_path):
-        
+
         try:
             username = create_new_username(hue_ip)
-        
+
         except QhueException as err:
-                print("Cannot create new username: {}".format(err))
-                
-                
+            print("Cannot create new username: {}".format(err))
 
         with open(file_path, "w") as cred_file:
             cred_file.write(username)
