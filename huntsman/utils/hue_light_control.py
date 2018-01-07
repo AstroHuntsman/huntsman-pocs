@@ -10,7 +10,7 @@ def login(
         file_path="hue_username.txt",
         verbose=False):
     """Automatic connection to the hue bridge using a stored username.
-    
+
         Creates a text file with stored username upon first connection to the bridge, will
         prompt the user to press the hue bridge button to connect for the fist time and writes
         the file to the central directory.
