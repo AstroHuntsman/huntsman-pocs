@@ -15,7 +15,6 @@ class Lights(IntEnum):
     OFF = 0
     ON = 1
 
-
 def connect_to_hub(hub_serial, verbose=False, toggle_leds=True):
     """Used to connect to the hub and create stem.
 
@@ -32,40 +31,23 @@ def connect_to_hub(hub_serial, verbose=False, toggle_leds=True):
 
     """
     if verbose:
-
         print('Connecting to hub', hub_serial)
-
     stem = brainstem.stem.USBHub3p()
-
     result = stem.discoverAndConnect(brainstem.link.Spec.USB, hub_serial)
-
     if result == (Result.NO_ERROR):
-
         result1 = stem.system.getSerialNumber()
-
         if verbose:
-
             print('Connected to USBStem with serial number:', result1)
-
         stem.system.setLED(Lights.ON)
-
         if toggle_leds:
-
             if verbose:
-
                 print('Flashing the user LED on device')
-
             for i in range(0, 101):
-
                 flash = stem.system.setLED(i % 2)
-
-            if flash != brainstem.result.Result.NO_ERROR:
-
+            if flash != brainstem.result.Result.NO_ERROR:                
                 sleep(0.1)
     else:
-
         if verbose:
-
             print('Could not find hub with serial number:', hub_serial)
 
     return(stem)
@@ -91,18 +73,13 @@ def yaml_import(
     """
 
     with open(yaml_file, 'r') as yml:
-
         try:
             newyml = (yaml.load(yml))
-
             hub_serial = newyml['cameras'][1]['devices'][no_camera]['USB_hub_serial_number']
-
             port = newyml['cameras'][1]['devices'][no_camera]['camera_into_serial_adaptor_port']
-
         except yaml.YAMLError as exc:
             print(exc)
     return(hub_serial, port)
-
 
 def disconnect_from_hub(stem, hub_serial, verbose=False):
     """Disconnects from the hub
@@ -116,11 +93,8 @@ def disconnect_from_hub(stem, hub_serial, verbose=False):
         port (int): The USB port number on the chosen hub, an integer between 0 - 7 for this model acroname
 
     """
-
     stem.disconnect()
-
     print('Disconnected from hub', hub_serial)
-
 
 def get_port_voltage(stem, port):
     """Returns a voltage reading for a specified port on the hub
@@ -140,9 +114,7 @@ def get_port_voltage(stem, port):
     """
 
     voltage = stem.usb.getPortVoltage(port)
-
     return(voltage)
-
 
 def get_port_current(stem, port):
     """Returns a current reading for a specified port on the hub
@@ -160,12 +132,9 @@ def get_port_current(stem, port):
         current (int): The current supplied to the chosen usb port
 
     """
-
     current = stem.usb.getPortCurrent(port)
-
     return(current)
-
-
+    
 def port_enable(stem, port, toggle_leds=False):
     """Enables a specified port
 
@@ -177,15 +146,10 @@ def port_enable(stem, port, toggle_leds=False):
 
         port (int): The USB port number on the chosen hub, an integer between 0 - 7 for this model acroname
     """
-
     stem.usb.setPortEnable(port)
-
     if toggle_leds:
-
         for i in range(1, 11):
-
             stem.system.setLED(i % 2)
-
 
 def port_disable(stem, port, toggle_leds=False):
     """Disables a specified port
@@ -200,9 +164,6 @@ def port_disable(stem, port, toggle_leds=False):
     """
 
     stem.usb.setPortDisable(port)
-
     if toggle_leds:
-
         for i in range(1, 11):
-
             stem.system.setLED(i % 2)
