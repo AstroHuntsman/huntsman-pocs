@@ -198,3 +198,73 @@ def hue_flat_field(bridge, led_index, desk_index, field_index, verbose=False):
     if verbose:
 
         print("Flat Field Mode Selected")
+           
+##################################################################################################        
+                     #      Trying above again, but using the class system 
+##################################################################################################        
+     
+        
+class Hue_Lights(bridge, led_index, desk_index):
+    
+    def hue_observing_mode(bridge, led_index, desk_index, verbose=False):
+        bridge.lights[led_index].state(on=True, bri = 100, hue=50, sat=250)
+        bridge.lights[desk_index].state(on=False)
+ 
+    
+    
+class Boo:
+    
+    def hello(x, y):
+        something = x + y 
+        return(something)
+        
+    
+    def __init__(self, bri, hue, sat, on):
+        self.brightness = bri
+        self.colour = hue
+        self.saturation = sat
+        self.setting = on
+        
+
+                
+                
+                
+        
+    def login(self, hue_ip="10.88.21.10", file_path="hue_username.txt", verbose=False):
+        
+        if not path.exists(file_path):
+                   
+            try:
+                username = create_new_username(hue_ip)
+                
+            except QhueException as err:
+                print("Cannot create new username: {}".format(err))
+                    
+            with open(file_path, "w") as cred_file:
+                
+                cred_file.write(username)
+                
+                if verbose:
+                    
+                    print("Your hue username", username, "was created")
+                    
+        else:
+                
+            with open(file_path, "r") as cred_file:
+                    username = cred_file.read()
+                    
+                    if verbose:
+                        print("Login with username", username, "successful")
+                        
+        bridge = Bridge(hue_ip, username)
+        
+        return(bridge, hue_ip, username)
+
+  
+    
+
+    
+
+     
+        
+        
