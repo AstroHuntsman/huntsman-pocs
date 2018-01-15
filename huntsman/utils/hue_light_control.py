@@ -211,13 +211,28 @@ class Hue_Lights(bridge, led_index, desk_index):
         bridge.lights[desk_index].state(on=False)
  
     
+   
+    
+    
+    
     
 class Boo:
     
     def hello(x, y):
         something = x + y 
-        return(something)
+        bob = x - y
+        return(something,bob)
         
+    def bye(c,d):
+        ron = c % d
+        carl = d + c
+        return(ron,carl)
+        
+    
+    
+    
+    
+    
     
     def __init__(self, bri, hue, sat, on):
         self.brightness = bri
