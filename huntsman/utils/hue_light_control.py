@@ -4,60 +4,68 @@ from qhue import Bridge, QhueException, create_new_username
 # note, light 5 can be 'uncommented' once installed, or causes problems
 # using currently
 
+class Lights:
+    
+    def __init(self, hue_ip, file_path, led_index, desk_index, flat_index, verbose = False):
+        
+        self.hue_ip = "10.88.21.10"
+        self.file_path = "hue_username.txt"
+        self.led_index = led_index
+        self.desk_index = desk_index
+        self.flat_index = flat_index
 
-def login(
-        hue_ip="10.88.21.10",
-        file_path="hue_username.txt",
-        verbose=False):
-    """Automatic connection to the hue bridge using a stored username.
+    def login(hue_ip, file_path):
+        
+        """
+            Automatic connection to the hue bridge using a stored username.
 
-        Creates a text file with stored username upon first connection to the bridge, will
-        prompt the user to press the hue bridge button to connect for the fist time and writes
-        the file to the central directory.
+            Creates a text file with stored username upon first connection to the bridge, will
+            prompt the user to press the hue bridge button to connect for the fist time and writes
+            the file to the central directory.
 
-        Should a username already exist, the stored username is read and used to log into the
-        bridge automatically.
+            Should a username already exist, the stored username is read and used to log into the
+            bridge automatically.
 
-        If a new username cannot be saved, and error message will be sent to the user. At this point
-        manual login may be nessesary.
+            If a new username cannot be saved, and error message will be sent to the user. At this point
+            manual login may be nessesary.
 
-    Args:
+            Args:
 
-        hue_ip (int): the ip address of the hue bridge. Set by default to "10.88.21.10"
+            hue_ip (int): the ip address of the hue bridge. Set by default to "10.88.21.10"
 
-        file_path (str): the file name of the text file that will be saved containing the current username
+            file_path (str): the file name of the text file that will be saved containing the current username
 
-    Returns:
+            Returns:
 
-        bridge (string): bridge connection
+            bridge (string): bridge connection
+            
+        """
 
-    """
+        if not path.exists(file_path):
 
-    if not path.exists(file_path):
+            try:
+                username = create_new_username(hue_ip)
 
-        try:
-            username = create_new_username(hue_ip)
+            except QhueException as err:
+                print("Cannot create new username: {}".format(err))
+                
+            with open(file_path, "w") as cred_file:
+                cred_file.write(username)
 
-        except QhueException as err:
-            print("Cannot create new username: {}".format(err))
+                if verbose:
+                    print("Your hue username", username, "was created")
 
-        with open(file_path, "w") as cred_file:
-            cred_file.write(username)
+        else:
 
-            if verbose:
-                print("Your hue username", username, "was created")
+            with open(file_path, "r") as cred_file:
+                username = cred_file.read()
 
-    else:
+                if verbose:
+                    print("Login with username", username, "successful")
 
-        with open(file_path, "r") as cred_file:
-            username = cred_file.read()
+        bridge = Bridge(hue_ip, username)
 
-            if verbose:
-                print("Login with username", username, "successful")
-
-    bridge = Bridge(hue_ip, username)
-
-    return(bridge)
+        return(bridge)
 
 
 def find_hue_light_index(bridge):
@@ -204,11 +212,18 @@ def hue_flat_field(bridge, led_index, desk_index, field_index, verbose=False):
 ##################################################################################################        
      
         
-class Hue_Lights(bridge, led_index, desk_index):
+class Hue_Lights:
     
-    def hue_observing_mode(bridge, led_index, desk_index, verbose=False):
+    hue_ip = 3
+    username = 4
+    
+    bridge = (hue_ip, username)
+    
+    def observing_mode(led_index, desk_index, bridge, verbose=False):
         bridge.lights[led_index].state(on=True, bri = 100, hue=50, sat=250)
         bridge.lights[desk_index].state(on=False)
+        
+    
  
     
    
@@ -218,14 +233,18 @@ class Hue_Lights(bridge, led_index, desk_index):
     
 class Boo:
     
-    def hello(x, y):
-        something = x + y 
-        bob = x - y
+    def __init__(self,sheep):
+        
+      
+    
+    def hello(x, y, sheep):
+        something = x + y - sheep
+        bob = x - y + sheep
         return(something,bob)
         
-    def bye(c,d):
-        ron = c % d
-        carl = d + c
+    def bye(c,d, bee):
+        ron = c % d - bee
+        carl = d + c + bee
         return(ron,carl)
         
     
