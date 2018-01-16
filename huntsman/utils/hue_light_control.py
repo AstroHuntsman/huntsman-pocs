@@ -1,9 +1,28 @@
+import yaml
+
 from os import path
 from qhue import Bridge, QhueException, create_new_username
 
 # note, light 5 can be 'uncommented' once installed, or causes problems
 # using currently
 
+def yaml_import():
+    
+    yamlf = "/Users/SC09015/Desktop/set_lights.yaml"
+
+    with open(yamlf , 'r') as yml:
+        try:
+            newyml = (yaml.load(yml))
+            hue_ip = newyml['hue_lights'][0]['hue_ip']
+            file_path = newyml['hue_lights'][1]['file_path']
+            led_index = newyml['hue_lights'][2]['index']['led_index']
+            desk_index = newyml['hue_lights'][2]['index']['desk_index']
+            flat_index = newyml['hue_lights'][2]['index']['flat_index']
+        except yaml.YAMLError as exc:
+            print(exc)
+    return(hue_ip, file_path, led_index, desk_index, flat_index)
+    
+    
 class Lights:
     
     def __init(self, hue_ip, file_path, led_index, desk_index, flat_index, verbose = False):
