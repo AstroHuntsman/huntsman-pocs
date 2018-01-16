@@ -1,128 +1,139 @@
-
-# coding: utf-8
-
-# In[1]:
-
-from __future__ import print_function
 import yaml
-from ipywidgets import interact, interactive, fixed, interact_manual
-import ipywidgets as widgets
-from IPython.display import display
 import os
 import datetime
+import ipywidgets as widgets
+from ipywidgets import interact, interactive, fixed, interact_manual
+from __future__ import print_function
+from IPython.display import display
 
-
-# In[2]:
-
-device_data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
+data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
                'camera_into_serial_port': [1, 2, 3, 4],
                'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
                'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-               'sbig_SN': ['83F011167', '83F011791', '83F011639', '83F010801', '83F010774', '83F011758', '83F010771', '83F011810'],
+               'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801', '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816'],
                'birger_SN': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
                'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
                'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10', 'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
                }
 
+loading_file = os.path.join("/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_yaml", 'huntsman.yaml')
+#loading general data from the previous .yaml file used
+with open(loading_file, 'r') as file:
+    data_list = yaml.load(file)
 
-# In[3]:
+if 'cameras' in data_list:
+    del data_list['cameras']
 
-with open('serial_management.yaml', 'w') as file:
-    yaml.dump(device_data)
-    file.write(yaml.dump(device_data))
+data_list.update({'cameras' : {'hdr_mode' : True, 'auto_detect' : False, 'devices' : [None]}})
 
-with open('serial_management.yaml', 'r') as file:
-    data = yaml.load(file)
+ddef birger_sn_widget(birger_serial_number):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
+    Args:
+        birger_serial_number (str) : the serial number of the birger device as selected from the widget.
 
-# In[4]:
+    Returns:
+        The result of the widget; the chosen device serial number
 
-def type_filename(type_filename_here):
-    return type_filename_here
-
-
-# In[5]:
-
-file_name = interactive(type_filename, type_filename_here="filename.yaml")
-
-
-# In[6]:
-
-data_list = {'name': 'HuntsmanSSO',
-             'log_file': 'huntsman',
-             'location': {'name': 'Siding Spring Observatory',
-                          'latitude': -31.27,  # degrees
-                          'longitude': 149.06,  # Degrees
-                          'elevation': 1000.0,  # Meters
-                          'utc_offset': 10.00,  # Hours
-                          'horizon': 30,  # Degrees
-                          'timezone': 'Australia/Sydney'
-                          },
-             'scheduler': {'type': 'dispatch',
-                           'fields_file': 'targets.yaml'},
-             'dome': {'template_dir': 'resources/bisque'},
-             'guider': {'template_dir': 'resources/bisque/guider',
-                        'image_path': '/tmp/guide_image.fits',
-                        'bin_size': 1},
-             'mount': {'brand': 'bisque',
-                       'model': 45,
-                       'driver': 'bisque',
-                       'template_dir': 'resources/bisque'},
-             'pointing': {'threshold': 0.05,
-                          'exp_time': 30,
-                          'max_iterations': 3},
-             'state_machine': 'huntsman',
-             'directories': {'base': '/var/huntsman', 'images': 'images',
-                              'webcam': 'webcams', 'data': 'data',
-                              'resources': 'POCS/resources/',
-                              'targets': '/var/huntsman/huntsman-pocs/conf_files',
-                              'mounts': 'POCS/resources/mounts'
-                             },
-             'cameras': {'hdr_mode': True,
-                         'auto_detect': False,
-                         'devices': [None]}}
-
-
-# In[7]:
-
-def a(birger_serial_number):
+    """
     return birger_serial_number
 
+def camera_sn_widget(camera_serial_number):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-def b(sbig_serial_number):
-    return sbig_serial_number
+    Args:
+        camera_serial_number (str) : the serial number of the camera device as selected from the widget.
 
+    Returns:
+        The result of the widget; the chosen device serial number
 
-def c(lens_serial_number):
+    """
+    return camera_serial_number
+
+def lens_sn_widget(lens_serial_number):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+    Args:
+        lens_serial_number (str) : the serial number of the lens device as selected from the widget.
+
+    Returns:
+        The result of the widget; the chosen device serial number
+
+    """
     return lens_serial_number
 
+def filter_ID_widget(filter_ID_code):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-def d(filter_ID_code):
+    Args:
+        filter_ID_code (str) : the ID number of the lens as selected from the widget.
+
+    Returns:
+        The result of the widget; the chosen device ID number
+
+    """
     return filter_ID_code
 
+def serial_to_usb_widget(serial_into_USBhub_port):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-def e(serial_into_USBhub_port):
+    Args:
+        serial_into_USBhub_port (str) : the port number of the USB Hub that the Serial Adaptor is plugged into as selected from the widget.
+
+    Returns:
+        The result of the widget; the chosen port number
+
+    """
     return serial_into_USBhub_port
 
+def camera_to_serial_widget(camera_into_serial_port):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-def f(camera_into_serial_port):
+    Args:
+        camera_into_serial_port (str) : the port number of the Serial Adaptor that the camera is plugged into as selected from the widget.
+
+    Returns:
+        The result of the widget; the chosen port number
+
+    """
     return camera_into_serial_port
 
+def usbhub_sn_widget(USBhub_SN):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-def j(USBhub_SN):
+    Args:
+        USBhub_SN (str) : the serial number of the USB Hub as selected from the widget.
+
+    Returns:
+        The result of the widget; the chosen device serial number
+
+    """
     return USBhub_SN
 
+def camera_to_usb_widget(camera_into_USBhub_port):
+    """Function used to create Jupyter widget.
+    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-def k(camera_into_USBhub_port):
+    Args:
+        camera_into_USBhub_port (str) : the port number of the USB Hub that the camera is plugged into as selected from the widget.
+
+    Returns:
+        The result of the widget; the chosen port number
+
+    """
     return camera_into_USBhub_port
-
-
-# In[8]:
 
 birger_sn = data['birger_SN']
 birger_serial_number = interactive(a, birger_serial_number=birger_sn)
-sbig_sn = data['sbig_SN']
-sbig_serial_number = interactive(b, sbig_serial_number=sbig_sn)
+camera_sn = data['camera_SN']
+camera_serial_number = interactive(b, camera_serial_number=camera_sn)
 lens_sn = data['lens_SN']
 lens_serial_number = interactive(c, lens_serial_number=lens_sn)
 filter_ID = data['filter_ID']
@@ -136,12 +147,19 @@ USBhub_SN = interactive(j, USBhub_SN=USBhub)
 camera_into_USBhub = data['camera_into_USBhub_port']
 camera_into_USBhub_port = interactive(k, camera_into_USBhub_port=camera_into_USBhub)
 
+def add_device_widget(add_device):
+    """Function to add the details selected using the drop-down menu widgets to the 'data_list' dictionary.
+    The function is called by the widget and is then run when the user clicks on the widget button.
 
-# In[9]:
+    Args:
+        add_device : on clicking the widget, a device set is saved to the dict.
 
-def h(add_device):
+    Returns:
+        Appends the data_list dict with the information chosen from the device information widgets
+
+    """
     birger_SN = birger_serial_number.result
-    sbig_SN = sbig_serial_number.result
+    camera_SN = camera_serial_number.result
     lens_SN = lens_serial_number.result
     filter_ID = filter_ID_code.result
     serial_to_USBhub_port = serial_into_USBhub_port.result
@@ -153,15 +171,25 @@ def h(add_device):
                       '3360000087': 'name3', '2850000067': 'name4',
                       '3150000110': 'name5', '5370000054': 'name6'}
 
-    additional_device = {'model': 'sbig',
-                         'port': sbig_SN,
+    lens_image_stabalisation = {'3360000099' : True, '3360000063' : True,
+                      '3360000087' : True, '2850000067' : True,
+                      '3150000110' : True, '5370000054' : False}
+
+    camera_dict = {'83F011167' : 'sbig', '83F011791' : 'sbig', '83F011639' : 'sbig',
+              '83F010801' : 'sbig', '83F010774' : 'sbig', '83F011758' : 'sbig',
+              '83F010771' : 'sbig', '83F011810' : 'sbig', 'ML5232816' : 'fli', 'ML1722016' : 'fli'}
+
+    additional_device = {'model': camera_dict[camera_SN],
+                         'port': camera_SN,
                          'filter_type': filter_ID,
                          'focuser': {'model': 'birger',
                                      'port': birger_SN
 
                                      },
                          'lens': {'model': 'canon',
-                                  'port': lens_SN},
+                                  'port': lens_SN,
+                                  'name' : lens_name_dict[lens_SN],
+                                  'image_stabalisataion' : lens_image_stabalisation[lens_SN]},
                          'USB_hub_serial_number': USB_hub_SN,
                          'camera_into_serial_adaptor_port': camera_to_serial_port,
                          'serial_adaptor_into_USBhub_port': serial_to_USBhub_port,
@@ -171,25 +199,30 @@ def h(add_device):
         data_list['cameras']['devices'] = [additional_device]
     else:
         data_list['cameras']['devices'].append(additional_device)
-    return (add_device)
-
-
-# In[10]:
 
 date_info = datetime.datetime.today()
 datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
 
 archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
 
+def save_file_widget(create_file):
+    """Function to write the 'data_list' dictionary to a .yaml text file.
+    The function is called by the widget and is run when the user clicks on the widget button.
 
-# In[11]:
+    Args:
+        create_file : on clicking the widget, the dict is saved to a .yaml file
 
-archive_filename
+    Returns:
+        Writes the information in the dict into a .yaml file in two locations;
+            '/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_yaml'
+                for the local file to be used by POCS
 
+                and
 
-# In[12]:
+            '/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_archive'
+                for the archive of all version of the config files, with the date created in the filename
 
-def g(create_file):
+    """
     strOutFile1 = os.path.join("/var/huntsman-pocs/conf_files", 'huntsman.yaml')
     objFile1 = open(strOutFile1, "w")
     yaml.dump(data_list, objFile1, default_flow_style=False, indent=4)
@@ -200,15 +233,8 @@ def g(create_file):
     yaml.dump(data_list, objFile, default_flow_style=False, indent=4)
     objFile.close()
 
-    return create_file
-
-
-# In[14]:
-
-# display(file_name)
-
 display(birger_serial_number)
-display(sbig_serial_number)
+display(camera_serial_number)
 display(lens_serial_number)
 display(filter_ID_code)
 display(serial_into_USBhub_port)
