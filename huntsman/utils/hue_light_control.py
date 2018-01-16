@@ -6,12 +6,14 @@ from qhue import Bridge, QhueException, create_new_username
 # note, light 5 can be 'uncommented' once installed, or causes problems
 # using currently
 
+
 class Hue_Lights(object):
 
-    def __init__(self, verbose = False):
+    def __init__(self, verbose=False):
 
         # Find the yaml file and load the config parameters
-
+        # How to deal with this? File paths need to be set up in some sort of
+        # config file?
         yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
         with open(yamlf, 'r') as yml:
 
@@ -80,7 +82,8 @@ class Hue_Lights(object):
 
     def observing_mode(self, verbose=False):
 
-        self.bridge.lights[self.led_index].state(on=True, bri=100, hue=50, sat=250)
+        self.bridge.lights[self.led_index].state(
+            on=True, bri=100, hue=50, sat=250)
         self.bridge.lights[self.desk_index].state(on=False)
         #self.bridge.lights[self.field_index].state(on = False)
         if verbose:
@@ -88,8 +91,10 @@ class Hue_Lights(object):
 
     def observing_bright_mode(self, verbose=False):
 
-        self.bridge.lights[self.led_index].state(on=True, bri=250, hue=100, sat=250)
-        self.bridge.lights[self.desk_index].state(on=True, bri=250, hue=30000, sat=20)
+        self.bridge.lights[self.led_index].state(
+            on=True, bri=250, hue=100, sat=250)
+        self.bridge.lights[self.desk_index].state(
+            on=True, bri=250, hue=30000, sat=20)
         #self.bridge.lights[self.field_index].state(on = False)
 
         if verbose:
@@ -98,8 +103,10 @@ class Hue_Lights(object):
 
     def bright_mode(self, verbose=False):
 
-        self.bridge.lights[self.led_index].state(on=True, bri=250, hue=30000, sat=10)
-        self.bridge.lights[self.desk_index].state(on=True, bri=250, hue=30000, sat=10)
+        self.bridge.lights[self.led_index].state(
+            on=True, bri=250, hue=30000, sat=10)
+        self.bridge.lights[self.desk_index].state(
+            on=True, bri=250, hue=30000, sat=10)
         #self.bridge.lights[self.field_index].state(on = False)
 
         if verbose:
@@ -120,7 +127,8 @@ class Hue_Lights(object):
 
         self.bridge.lights[self.led_index].state(on=False)
         self.bridge.lights[self.desk_index].state(on=False)
-        self.bridge.lights[self.field_index].state(on=True, bri=250, hue=30000, sat=10)
+        self.bridge.lights[self.field_index].state(
+            on=True, bri=250, hue=30000, sat=10)
 
         if verbose:
 
