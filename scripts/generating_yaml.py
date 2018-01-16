@@ -1,9 +1,10 @@
 def run():
     """This function runs all the code to generate the .yaml config files for the Huntsman-POCS system.
+    It displays the Jupyter widgets which the user can interact with to write and save the config files.
 
     Files are saved in two locations:
-        '/var/huntsman-pocs/conf_files' is where the local file 'huntsman.yaml' is saved.
-        '/var/huntsman-pocs/conf_files/huntsman_archive' is where the 'huntsman_YYYY_mm_dd_hh_MM.yaml' archive/version control files are saved.
+        '/var/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
+        '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive/version control file.
 
     Steps for the user to follow:
         Select from the dropdown menus the information for one device set.
@@ -16,6 +17,9 @@ def run():
     Returns:
         Jupyter widgets of drop-down menus to select the device sets.
             These widgets are used to generate and save the .yaml config files.
+
+    Output:
+        A .yaml config file for Huntsman
 
     """
 
@@ -30,10 +34,12 @@ def run():
             'camera_into_serial_port': [1, 2, 3, 4],
             'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
             'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-            'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801', '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816'],
+            'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
+                          '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
             'birger_SN': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
             'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
-            'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10', 'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
+            'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
+                          'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
             }
 
     loading_file = os.path.join(
@@ -55,7 +61,7 @@ def run():
             birger_serial_number (str) : the serial number of the birger device as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen device serial number
+            The result of the widget; the chosen focuser serial number
 
         """
         return birger_serial_number
@@ -68,7 +74,7 @@ def run():
             camera_serial_number (str) : the serial number of the camera device as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen device serial number
+            The result of the widget; the chosen camera serial number
 
         """
         return camera_serial_number
@@ -81,7 +87,7 @@ def run():
             lens_serial_number (str) : the serial number of the lens device as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen device serial number
+            The result of the widget; the chosen lens serial number
 
         """
         return lens_serial_number
@@ -94,7 +100,7 @@ def run():
             filter_ID_code (str) : the ID number of the lens as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen device ID number
+            The result of the widget; the chosen filter ID number
 
         """
         return filter_ID_code
@@ -107,7 +113,7 @@ def run():
             serial_into_USBhub_port (str) : the port number of the USB Hub that the Serial Adaptor is plugged into as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen port number
+            The result of the widget; the chosen USB port number
 
         """
         return serial_into_USBhub_port
@@ -120,7 +126,7 @@ def run():
             camera_into_serial_port (str) : the port number of the Serial Adaptor that the camera is plugged into as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen port number
+            The result of the widget; the chosen serial port number
 
         """
         return camera_into_serial_port
@@ -133,7 +139,7 @@ def run():
             USBhub_SN (str) : the serial number of the USB Hub as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen device serial number
+            The result of the widget; the chosen USB Hub serial number
 
         """
         return USBhub_SN
@@ -146,7 +152,7 @@ def run():
             camera_into_USBhub_port (str) : the port number of the USB Hub that the camera is plugged into as selected from the widget.
 
         Returns:
-            The result of the widget; the chosen port number
+            The result of the widget; the chosen USB port number
 
         """
         return camera_into_USBhub_port
@@ -194,6 +200,7 @@ def run():
         lens_name_dict = {'3360000099': 'name1', '3360000063': 'name2',
                           '3360000087': 'name3', '2850000067': 'name4',
                           '3150000110': 'name5', '5370000054': 'name6'}
+        # need to put the lens names in the above dict when they are finalised
 
         lens_image_stabalisation = {'3360000099': True, '3360000063': True,
                                     '3360000087': True, '2850000067': True,
@@ -226,11 +233,10 @@ def run():
 
     date_info = datetime.datetime.today()
     datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
-
     archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
 
     def save_file_widget(create_file):
-        """Function to write the 'data_list' dictionary to a .yaml text file.
+        """This function writes the 'data_list' dictionary to a .yaml text file.
         The function is called by the widget and is run when the user clicks on the widget button.
 
         Args:
@@ -238,13 +244,13 @@ def run():
 
         Returns:
             Writes the information in the dict into a .yaml file in two locations;
-                '/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_yaml'
-                    for the local file to be used by POCS
+                '/var/huntsman-pocs/conf_files/huntsman.yaml'
+                    for the local config file to be used by POCS
 
                     and
 
-                '/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_archive'
-                    for the archive of all version of the config files, with the date created in the filename
+                '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml'
+                    for the archive of all version of the config files, with the date it was created in the filename
 
         """
         strOutFile1 = os.path.join(
