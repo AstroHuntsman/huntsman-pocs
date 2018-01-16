@@ -16,17 +16,6 @@ def get_username(file_path):
         return(out)
             
 def find_hue_light_index(bridge):
-    """Check the index of any hue light connected to the bridge. This may be used to modify the yaml config file should a factory reset occur
-
-    Args:
-
-        bridge (str): bridge connection, i.e bridge = automatic_login_phillips_hue()
-
-    Returns:
-
-        info (int): Returns the index of each hue device connected to the bridge
-
-    """
 
     lights = bridge.lights()
 
@@ -35,22 +24,12 @@ def find_hue_light_index(bridge):
         info = print("{:10} {}".format(info['name'], num))
 
     return(info)
-
-def yaml_import():
+"""    
+Need to add some random functions to replace the real ones while huntsman 
+system is down and I can't connect to the bridge 
     
-    yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
-
-    with open(yamlf , 'r') as yml:
-        try:
-            newyml = (yaml.load(yml))
-            hue_ip = newyml['hue_lights'][0]['hue_ip']
-            file_path = newyml['hue_lights'][1]['file_path']
-            led_index = newyml['hue_lights'][2]['index']['led_index']
-            desk_index = newyml['hue_lights'][2]['index']['desk_index']
-            flat_index = newyml['hue_lights'][2]['index']['flat_index']
-        except yaml.YAMLError as exc:
-            print(exc)
-    return(hue_ip, file_path, led_index, desk_index, flat_index)    
+"""   
+   
        
 class Lights:
     
@@ -61,39 +40,30 @@ class Lights:
         self.led_index = led_index
         self.desk_index = desk_index
         self.flat_index = flat_index
-
-    def login(hue_ip, file_path, verbose = False):
         
-        """
-            Automatic connection to the hue bridge using a stored username.
-
-            Creates a text file with stored username upon first connection to the bridge, will
-            prompt the user to press the hue bridge button to connect for the fist time and writes
-            the file to the central directory.
-
-            Should a username already exist, the stored username is read and used to log into the
-            bridge automatically.
-
-            If a new username cannot be saved, and error message will be sent to the user. At this point
-            manual login may be nessesary.
-
-            Args:
-
-            hue_ip (int): the ip address of the hue bridge. Set by default to "10.88.21.10"
-
-            file_path (str): the file name of the text file that will be saved containing the current username
-
-            Returns:
-
-            bridge (string): bridge connection
+        #Find the yaml file and load the config parameters
+        
+        yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
+        with open(yamlf , 'r') as yml:
             
-        """
-
+            try:
+                newyml = (yaml.load(yml))
+                hue_ip = newyml['hue_lights'][0]['hue_ip']
+                file_path = newyml['hue_lights'][1]['file_path']
+                led_index = newyml['hue_lights'][2]['index']['led_index']
+                desk_index = newyml['hue_lights'][2]['index']['desk_index']
+                flat_index = newyml['hue_lights'][2]['index']['flat_index']
+                
+            except yaml.YAMLError as error:
+                print(error)
+          
+        #If the file_path doesn't exist for a username, then create a new one by pushing bridge button    
+                
         if not path.exists(file_path):
-
+            
             try:
                 username = create_new_username(hue_ip)
-
+            
             except QhueException as err:
                 print("Cannot create new username: {}".format(err))
                 
@@ -110,10 +80,23 @@ class Lights:
 
                 if verbose:
                     print("Login with username", username, "successful")
-
-        bridge = Bridge(hue_ip, username)
-
-        return(bridge)
+                 
+        #Bridge connection can be called at any time from here             
+        
+        self.bridge = Bridge(hue_ip, username)
+        
+    def get_username(file_path):
+        
+        with open(file_path , 'r') as user:
+            
+            try:
+                username = user.read()
+                
+            except:
+                print("Username cannot be found")
+                
+                out = print(username)
+        return(out)
         
 
 def hue_observing_mode(bridge, led_index, desk_index, verbose=False):
