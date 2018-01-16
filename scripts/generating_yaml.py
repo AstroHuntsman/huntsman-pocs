@@ -42,8 +42,8 @@ def run():
                           'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
             }
 
-    loading_file = os.path.join(
-        "/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_yaml", 'huntsman.yaml')
+    loading_file = os.path.join("/var/huntsman-pocs/conf_files/", 'huntsman.yaml')
+    # check that this is the correct file path for Huntsman-POCS
     # loading general data from the previous .yaml file used
     with open(loading_file, 'r') as file:
         data_list = yaml.load(file)
@@ -254,13 +254,15 @@ def run():
 
         """
         strOutFile1 = os.path.join(
-            "/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_yaml", 'huntsman.yaml')
+            "/var/huntsman-pocs/conf_files/", 'huntsman.yaml')
+        # check that this is the right file path for Huntsman_POCS
         objFile1 = open(strOutFile1, "w")
         yaml.dump(data_list, objFile1, default_flow_style=False, indent=4)
         objFile1.close()
 
         strOutFile = os.path.join(
-            "/Users/moniquec/Documents/Uni/Huntsman_project/huntsman_archive", archive_filename)
+            "/var/huntsman-pocs/conf_files/huntsman_archive", archive_filename)
+        # check that this is the right file path for Huntsman_POCS
         objFile = open(strOutFile, "w")
         yaml.dump(data_list, objFile, default_flow_style=False, indent=4)
         objFile.close()
