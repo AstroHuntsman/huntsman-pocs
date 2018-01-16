@@ -141,6 +141,11 @@ def h(add_device):
     camera_to_serial_port = camera_into_serial_port.result
     USB_hub_SN = USBhub_SN.result
     camera_to_USBhub_port = camera_into_USBhub_port.result
+
+    lens_name_dict = {'3360000099' : 'name1', '3360000063' : 'name2', 
+                      '3360000087' : 'name3', '2850000067' : 'name4',
+                      '3150000110' : 'name5', '5370000054' : 'name6'}
+
     additional_device = {'model' : 'sbig',
                                                     'port' : sbig_SN,
                                                    'filter_type' : filter_ID,
