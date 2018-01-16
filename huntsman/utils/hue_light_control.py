@@ -6,6 +6,9 @@ from qhue import Bridge, QhueException, create_new_username
 # note, light 5 can be 'uncommented' once installed, or causes problems
 # using currently
 
+# If you get "missing 1 required positional argument: 'self'" you are calling a method without
+# an instance!
+
 
 class Hue_Lights(object):
 
@@ -54,6 +57,9 @@ class Hue_Lights(object):
                     print("Login with username", username, "successful")
 
         # Bridge connection can be called at any time from here
+        # The problem here is, every time you attempt to create an instance of the class,
+        # you will get that the button needs to be pushed, if you are not already logged into
+        # the bridge. This is not good?
 
         self.bridge = Bridge(self.hue_ip, username)
 
