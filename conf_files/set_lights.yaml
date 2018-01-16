@@ -1,8 +1,0 @@
-hue_lights:
-- hue_ip: "10.88.21.10"
-- file_path: "hue_username.txt"  
-- index: 
-    led_index: 1 
-    desk_index: 3 
-    flat_index: 4
-  
