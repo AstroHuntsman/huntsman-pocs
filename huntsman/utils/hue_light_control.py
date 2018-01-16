@@ -6,14 +6,7 @@ from qhue import Bridge, QhueException, create_new_username
 # note, light 5 can be 'uncommented' once installed, or causes problems
 # using currently
 
-"""
-Need to add some random functions to replace the real ones while huntsman
-system is down and I can't connect to the bridge
-
-"""
-
-
-class Lights:
+class Hue_Lights:
 
     def __init__(
             self,
@@ -22,6 +15,7 @@ class Lights:
             led_index,
             desk_index,
             flat_index,
+            bridge,
             verbose=False):
 
         self.hue_ip = hue_ip
@@ -75,7 +69,7 @@ class Lights:
 
         self.bridge = Bridge(hue_ip, username)
 
-    def get_username(file_path):
+    def get_username(self):
 
         with open(file_path, 'r') as user:
 
@@ -88,7 +82,7 @@ class Lights:
                 out = print(username)
         return(out)
 
-    def get_index(bridge):
+    def get_index(self):
 
         lights = bridge.lights()
 
@@ -98,25 +92,25 @@ class Lights:
 
         return(info)
 
-    def observing_mode(bridge, led_index, desk_index, verbose=False):
+    def observing_mode(self, verbose=False):
 
         bridge.lights[led_index].state(on=True, bri=100, hue=50, sat=250)
         bridge.lights[desk_index].state(on=False)
-       #b.lights[field_index].state(on = False)
+        #b.lights[field_index].state(on = False)
         if verbose:
             print("Observing Mode Selected")
 
-    def observing_bright_mode(bridge, led_index, desk_index, verbose=False):
+    def observing_bright_mode(self, verbose=False):
 
         bridge.lights[led_index].state(on=True, bri=250, hue=100, sat=250)
         bridge.lights[desk_index].state(on=True, bri=250, hue=30000, sat=20)
-       #b.lights[field_index].state(on = False)
+        #b.lights[field_index].state(on = False)
 
         if verbose:
 
             print("Observing Bright Mode Selected")
 
-    def bright_mode(bridge, led_index, desk_index, verbose=False):
+    def bright_mode(self, verbose=False):
 
         bridge.lights[led_index].state(on=True, bri=250, hue=30000, sat=10)
         bridge.lights[desk_index].state(on=True, bri=250, hue=30000, sat=10)
@@ -126,7 +120,7 @@ class Lights:
 
             print("Bright Mode Selected")
 
-    def lights_off(bridge, led_index, desk_index, verbose=False):
+    def lights_off(self, verbose=False):
 
         bridge.lights[led_index].state(on=False)
         bridge.lights[desk_index].state(on=False)
@@ -136,7 +130,7 @@ class Lights:
 
             print("All Lights Off")
 
-    def flat_field(bridge, led_index, desk_index, field_index, verbose=False):
+    def flat_field(self, verbose=False):
 
         bridge.lights[led_index].state(on=False)
         bridge.lights[desk_index].state(on=False)
