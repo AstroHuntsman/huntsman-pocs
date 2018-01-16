@@ -6,9 +6,39 @@ from qhue import Bridge, QhueException, create_new_username
 # note, light 5 can be 'uncommented' once installed, or causes problems
 # using currently
 
+def get_username(file_path):
+    with open(file_path , 'r') as user:
+        try:
+            username = user.read()
+        except:
+            print("Username cannot be found")
+        out = print(username)
+        return(out)
+            
+def find_hue_light_index(bridge):
+    """Check the index of any hue light connected to the bridge. This may be used to modify the yaml config file should a factory reset occur
+
+    Args:
+
+        bridge (str): bridge connection, i.e bridge = automatic_login_phillips_hue()
+
+    Returns:
+
+        info (int): Returns the index of each hue device connected to the bridge
+
+    """
+
+    lights = bridge.lights()
+
+    for num, info in lights.items():
+
+        info = print("{:10} {}".format(info['name'], num))
+
+    return(info)
+
 def yaml_import():
     
-    yamlf = "/Users/SC09015/Desktop/set_lights.yaml"
+    yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
 
     with open(yamlf , 'r') as yml:
         try:
@@ -20,20 +50,19 @@ def yaml_import():
             flat_index = newyml['hue_lights'][2]['index']['flat_index']
         except yaml.YAMLError as exc:
             print(exc)
-    return(hue_ip, file_path, led_index, desk_index, flat_index)
-    
-    
+    return(hue_ip, file_path, led_index, desk_index, flat_index)    
+       
 class Lights:
     
-    def __init(self, hue_ip, file_path, led_index, desk_index, flat_index, verbose = False):
+    def __init__(self, hue_ip, file_path, led_index, desk_index, flat_index, verbose = False):
         
-        self.hue_ip = "10.88.21.10"
-        self.file_path = "hue_username.txt"
+        self.hue_ip = hue_ip
+        self.file_path = file_path
         self.led_index = led_index
         self.desk_index = desk_index
         self.flat_index = flat_index
 
-    def login(hue_ip, file_path):
+    def login(hue_ip, file_path, verbose = False):
         
         """
             Automatic connection to the hue bridge using a stored username.
@@ -85,29 +114,7 @@ class Lights:
         bridge = Bridge(hue_ip, username)
 
         return(bridge)
-
-
-def find_hue_light_index(bridge):
-    """Check the index of any hue light connected to the bridge
-
-    Args:
-
-        bridge (str): bridge connection, i.e bridge = automatic_login_phillips_hue()
-
-    Returns:
-
-        info (int): Returns the index of each hue device connected to the bridge
-
-    """
-
-    lights = bridge.lights()
-
-    for num, info in lights.items():
-
-        info = print("{:10} {}".format(info['name'], num))
-
-    return(info)
-
+        
 
 def hue_observing_mode(bridge, led_index, desk_index, verbose=False):
     """Low red light for observing. Desk lamp off
@@ -230,93 +237,6 @@ def hue_flat_field(bridge, led_index, desk_index, field_index, verbose=False):
                      #      Trying above again, but using the class system 
 ##################################################################################################        
      
-        
-class Hue_Lights:
-    
-    hue_ip = 3
-    username = 4
-    
-    bridge = (hue_ip, username)
-    
-    def observing_mode(led_index, desk_index, bridge, verbose=False):
-        bridge.lights[led_index].state(on=True, bri = 100, hue=50, sat=250)
-        bridge.lights[desk_index].state(on=False)
-        
-    
- 
-    
-   
-    
-    
-    
-    
-class Boo:
-    
-    def __init__(self,sheep):
-        
-      
-    
-    def hello(x, y, sheep):
-        something = x + y - sheep
-        bob = x - y + sheep
-        return(something,bob)
-        
-    def bye(c,d, bee):
-        ron = c % d - bee
-        carl = d + c + bee
-        return(ron,carl)
-        
-    
-    
-    
-    
-    
-    
-    def __init__(self, bri, hue, sat, on):
-        self.brightness = bri
-        self.colour = hue
-        self.saturation = sat
-        self.setting = on
-        
-
-                
-                
-                
-        
-    def login(self, hue_ip="10.88.21.10", file_path="hue_username.txt", verbose=False):
-        
-        if not path.exists(file_path):
-                   
-            try:
-                username = create_new_username(hue_ip)
-                
-            except QhueException as err:
-                print("Cannot create new username: {}".format(err))
-                    
-            with open(file_path, "w") as cred_file:
-                
-                cred_file.write(username)
-                
-                if verbose:
-                    
-                    print("Your hue username", username, "was created")
-                    
-        else:
-                
-            with open(file_path, "r") as cred_file:
-                    username = cred_file.read()
-                    
-                    if verbose:
-                        print("Login with username", username, "successful")
-                        
-        bridge = Bridge(hue_ip, username)
-        
-        return(bridge, hue_ip, username)
-
-  
-    
-
-    
 
      
         
