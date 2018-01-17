@@ -9,6 +9,23 @@ from qhue import Bridge, QhueException, create_new_username
 # If you get "missing 1 required positional argument: 'self'" you are calling a method without
 # an instance!
 
+#Probably good to keep this here for now to check. 
+
+def import_yaml():
+    yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
+    with open(yamlf, 'r') as yml:
+        try:
+            newyml = (yaml.load(yml))
+            hue_ip = newyml['hue_lights'][0]['hue_ip']
+            file_path = newyml['hue_lights'][1]['file_path']
+            led_index = newyml['hue_lights'][2]['index']['led_index']
+            desk_index = newyml['hue_lights'][2]['index']['desk_index']
+            flat_index = newyml['hue_lights'][2]['index']['flat_index']
+            
+        except yaml.YAMLError as error:
+            print(error)
+            
+    return(hue_ip, file_path, led_index, desk_index, flat_index)  
 
 class Hue_Lights(object):
 
@@ -32,6 +49,8 @@ class Hue_Lights(object):
         # If the file_path doesn't exist for a username, then create a new one
         # by pushing bridge button
 
+    def login(self, verbose = False):
+        
         if not path.exists(self.file_path):
             try:
                 username = create_new_username(self.hue_ip)
@@ -46,22 +65,21 @@ class Hue_Lights(object):
                 username = cred_file.read()
                 if verbose:
                     print("Login with username", username, "successful")
+                    
+        self.bridge = Bridge(self.hue_ip, username)
 
         # Bridge connection can be called at any time from here
         # The problem here is, every time you attempt to create an instance of the class,
         # you will get that the button needs to be pushed, if you are not already logged into
-        # the bridge. This is not good?
-
-        self.bridge = Bridge(self.hue_ip, username)
+        # the bridge. This is not good? - changed this
 
     def get_username(self):
         with open(self.file_path, 'r') as user:
-            try:
-                username = user.read()
-            except BaseException:
+            if not path.exists(self.file_path):
                 print("Username cannot be found")
-                out = print(username)
-        return(out)
+            else:
+                username = user.read()   
+        return(print(username))
 
     def get_index(self):
         lights = self.bridge.lights()
