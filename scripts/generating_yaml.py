@@ -110,125 +110,88 @@ def camera_to_usb_widget(camera_into_USBhub_port):
     return camera_into_USBhub_port
 
 
+def choose_dir(local_directory='/var/huntsman-pocs/conf_files', archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
+    """This function enables the user to choose where the .yaml config files will be saved.
 
-def create_yaml_file(local_directory='/var/huntsman-pocs/conf_files', archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
-    """This function runs all the code to generate the .yaml config files for the Huntsman-POCS system.
-    It displays the Jupyter widgets which the user can interact with to write and save the config files.
-
-    Files are saved in two locations, one for the local file that POCS will access, and the other is an archive of all previous config files which acts as a version control.
-    By default, these locations are:
-        '/var/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
-        '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive file.
-
-    Steps for the user to follow:
-        Select from the dropdown menus the information for one device set.
-        Click 'Add new device set'.
-        Select from the dropdown menus the information for the next device set.
-        Click 'Add new device set'.
-        Repeat until all device sets have been added.
-        Click 'Save File' to write the .yaml file.
+    Defult paths are:
+        local_directory='/var/huntsman-pocs/conf_files'
+        archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'
 
     Args:
-        local_directory : the path of the directory where the config file accessed by POCS will be saved.
-        archive_directory : the path of the directory where all the archived config files are.
+        local_directory (optional) : the dir where Huntsman-POCS accesses the config file to be used.
+        archive_directory (optional) : a dir of archived config files to act as a history/version control.
 
-    Displays:
-        Jupyter widgets of drop-down menus to select the device sets.
-            These widgets are used to generate and save the .yaml config files.
-
-    Output:
-        A .yaml config file for Huntsman
+    Returns:
+        The path of the local and archived files.
 
     """
+    local_dir = local_directory
+    archive_dir = archive_directory
 
-    data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-            'camera_into_serial_port': [1, 2, 3, 4],
-            'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
-            'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-            'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
-                          '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
-            'birger_SN': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
-            'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
-            'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
-                          'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
-            }
+    return local_dir
+    return archive_dir
 
-    previous_file = os.path.join(local_directory, 'huntsman.yaml')
-    # check that this is the correct file path for Huntsman-POCS
+
+# may need to split the choose_dir function into a local and archive one
+# similar to the one below such that local_dir and archive_dir can be used by other functions
+
+
+
+def load_previous_data():
+    """
+    Function to put the general data from the previous run into a dict
+
+
+
+    """
+    previous_file = os.path.join(local_dir, 'huntsman.yaml')
     # loading general data from the previous .yaml file used
     with open(previous_file, 'r') as file:
-        data_list = yaml.load(file)
+        data_dict = yaml.load(file)
 
-    if 'cameras' in data_list:
-        del data_list['cameras']
+    if 'cameras' in data_dict:
+        del data_dict['cameras']
 
-    data_list.update({'cameras': {'hdr_mode': True, 'auto_detect': False, 'devices': [None]}})
+    data_dict.update({'cameras': {'hdr_mode': True, 'auto_detect': False, 'devices': [None]}})
 
+    return data_dict
 
-    birger_sn = data['birger_SN']
-    birger_serial_number = interactive(birger_sn_widget, birger_serial_number=birger_sn)
-    camera_sn = data['camera_SN']
-    camera_serial_number = interactive(camera_sn_widget, camera_serial_number=camera_sn)
-    lens_sn = data['lens_SN']
-    lens_serial_number = interactive(lens_sn_widget, lens_serial_number=lens_sn)
-    filter_ID = data['filter_ID']
-    filter_ID_code = interactive(filter_ID_widget, filter_ID_code=filter_ID)
-    serial_into_USBhub = data['serial_into_USBhub_port']
-    serial_into_USBhub_port = interactive(
-        serial_to_usb_widget, serial_into_USBhub_port=serial_into_USBhub)
-    camera_into_serial = data['camera_into_serial_port']
-    camera_into_serial_port = interactive(
-        camera_to_serial_widget, camera_into_serial_port=camera_into_serial)
-    USBhub = data['USBhub_SN']
-    USBhub_SN = interactive(usbhub_sn_widget, USBhub_SN=USBhub)
-    camera_into_USBhub = data['camera_into_USBhub_port']
-    camera_into_USBhub_port = interactive(
-        camera_to_usb_widget, camera_into_USBhub_port=camera_into_USBhub)
+data_list = load_previous_data()
 
-    birger_SN = birger_serial_number.result
-    camera_SN = camera_serial_number.result
-    lens_SN = lens_serial_number.result
-    filter_ID = filter_ID_code.result
-    serial_to_USBhub_port = serial_into_USBhub_port.result
-    camera_to_serial_port = camera_into_serial_port.result
-    USB_hub_SN = USBhub_SN.result
-    camera_to_USBhub_port = camera_into_USBhub_port.result
+data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
+        'camera_into_serial_port': [1, 2, 3, 4],
+        'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
+        'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
+        'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
+                      '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
+        'birger_SN': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
+        'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
+        'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
+                      'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
+        }
 
 
-    date_info = datetime.datetime.today()
-    datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
-    archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
+birger_sn = data['birger_SN']
+birger_serial_number = interactive(birger_sn_widget, birger_serial_number=birger_sn)
+camera_sn = data['camera_SN']
+camera_serial_number = interactive(camera_sn_widget, camera_serial_number=camera_sn)
+lens_sn = data['lens_SN']
+lens_serial_number = interactive(lens_sn_widget, lens_serial_number=lens_sn)
+filter_ID = data['filter_ID']
+filter_ID_code = interactive(filter_ID_widget, filter_ID_code=filter_ID)
+serial_into_USBhub = data['serial_into_USBhub_port']
+serial_into_USBhub_port = interactive(
+    serial_to_usb_widget, serial_into_USBhub_port=serial_into_USBhub)
+camera_into_serial = data['camera_into_serial_port']
+camera_into_serial_port = interactive(
+    camera_to_serial_widget, camera_into_serial_port=camera_into_serial)
+USBhub = data['USBhub_SN']
+USBhub_SN = interactive(usbhub_sn_widget, USBhub_SN=USBhub)
+camera_into_USBhub = data['camera_into_USBhub_port']
+camera_into_USBhub_port = interactive(
+    camera_to_usb_widget, camera_into_USBhub_port=camera_into_USBhub)
 
 
-    display(birger_serial_number)
-    display(camera_serial_number)
-    display(lens_serial_number)
-    display(filter_ID_code)
-    display(serial_into_USBhub_port)
-    display(camera_into_serial_port)
-    display(USBhub_SN)
-    display(camera_into_USBhub_port)
-
-    button1 = widgets.Button(description="Add new device set")
-    display(button1)
-    button1.on_click(add_device_widget)
-
-    button = widgets.Button(description="Save File")
-    display(button)
-    button.on_click(save_file_widget)
-
-
-
-
-
-# birger_SN = birger_serial_number.result
-# camera_SN = camera_serial_number.result
-# lens_SN = lens_serial_number.result
-# filter_ID = filter_ID_code.result
-# serial_to_USBhub_port = serial_into_USBhub_port.result
-# camera_to_serial_port = camera_into_serial_port.result
-# USB_hub_SN = USBhub_SN.result
-# camera_to_USBhub_port = camera_into_USBhub_port.result
 
 def add_device_widget(add_device):
     """Function to add the details selected using the drop-down menu widgets to the 'data_list' dictionary.
@@ -241,6 +204,15 @@ def add_device_widget(add_device):
         Appends the data_list dict with the information chosen from the device information widgets
 
     """
+
+    birger_SN = birger_serial_number.result
+    camera_SN = camera_serial_number.result
+    lens_SN = lens_serial_number.result
+    filter_ID = filter_ID_code.result
+    serial_to_USBhub_port = serial_into_USBhub_port.result
+    camera_to_serial_port = camera_into_serial_port.result
+    USB_hub_SN = USBhub_SN.result
+    camera_to_USBhub_port = camera_into_USBhub_port.result
 
     lens_name_dict = {'3360000099': 'name1', '3360000063': 'name2',
                       '3360000087': 'name3', '2850000067': 'name4',
@@ -271,13 +243,14 @@ def add_device_widget(add_device):
                          'serial_adaptor_into_USBhub_port': serial_to_USBhub_port,
                          'camera_into_USBhub_port': camera_to_USBhub_port
                          }
+
     if data_list['cameras']['devices'] == [None]:
         data_list['cameras']['devices'] = [additional_device]
     else:
         data_list['cameras']['devices'].append(additional_device)
 
 
-def save_file_widget(create_file):
+def save_file_widget(save_file):
     """This function writes the 'data_list' dictionary to a .yaml text file.
     The function is called by the widget and is run when the user clicks on the widget button.
 
@@ -296,119 +269,65 @@ def save_file_widget(create_file):
 
     """
 
-    strOutFile1 = os.path.join(local_directory, 'huntsman.yaml')
+    strOutFile1 = os.path.join(local_dir, 'huntsman.yaml')
     objFile1 = open(strOutFile1, "w")
     yaml.dump(data_list, objFile1, default_flow_style=False, indent=4)
     objFile1.close()
 
-    strOutFile = os.path.join(archive_directory, archive_filename)
+    strOutFile = os.path.join(archive_dir, archive_filename)
     objFile = open(strOutFile, "w")
     yaml.dump(data_list, objFile, default_flow_style=False, indent=4)
     objFile.close()
 
 
-# def create_yaml_file(local_directory='/var/huntsman-pocs/conf_files', archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
-#     """This function runs all the code to generate the .yaml config files for the Huntsman-POCS system.
-#     It displays the Jupyter widgets which the user can interact with to write and save the config files.
-#
-#     Files are saved in two locations, one for the local file that POCS will access, and the other is an archive of all previous config files which acts as a version control.
-#     By default, these locations are:
-#         '/var/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
-#         '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive file.
-#
-#     Steps for the user to follow:
-#         Select from the dropdown menus the information for one device set.
-#         Click 'Add new device set'.
-#         Select from the dropdown menus the information for the next device set.
-#         Click 'Add new device set'.
-#         Repeat until all device sets have been added.
-#         Click 'Save File' to write the .yaml file.
-#
-#     Args:
-#         local_directory : the path of the directory where the config file accessed by POCS will be saved.
-#         archive_directory : the path of the directory where all the archived config files are.
-#
-#     Displays:
-#         Jupyter widgets of drop-down menus to select the device sets.
-#             These widgets are used to generate and save the .yaml config files.
-#
-#     Output:
-#         A .yaml config file for Huntsman
-#
-#     """
-#
-#     data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-#             'camera_into_serial_port': [1, 2, 3, 4],
-#             'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
-#             'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-#             'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
-#                           '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
-#             'birger_SN': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
-#             'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
-#             'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
-#                           'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
-#             }
-#
-#     previous_file = os.path.join(local_directory, 'huntsman.yaml')
-#     # check that this is the correct file path for Huntsman-POCS
-#     # loading general data from the previous .yaml file used
-#     with open(previous_file, 'r') as file:
-#         data_list = yaml.load(file)
-#
-#     if 'cameras' in data_list:
-#         del data_list['cameras']
-#
-#     data_list.update({'cameras': {'hdr_mode': True, 'auto_detect': False, 'devices': [None]}})
-#
-#
-#     birger_sn = data['birger_SN']
-#     birger_serial_number = interactive(birger_sn_widget, birger_serial_number=birger_sn)
-#     camera_sn = data['camera_SN']
-#     camera_serial_number = interactive(camera_sn_widget, camera_serial_number=camera_sn)
-#     lens_sn = data['lens_SN']
-#     lens_serial_number = interactive(lens_sn_widget, lens_serial_number=lens_sn)
-#     filter_ID = data['filter_ID']
-#     filter_ID_code = interactive(filter_ID_widget, filter_ID_code=filter_ID)
-#     serial_into_USBhub = data['serial_into_USBhub_port']
-#     serial_into_USBhub_port = interactive(
-#         serial_to_usb_widget, serial_into_USBhub_port=serial_into_USBhub)
-#     camera_into_serial = data['camera_into_serial_port']
-#     camera_into_serial_port = interactive(
-#         camera_to_serial_widget, camera_into_serial_port=camera_into_serial)
-#     USBhub = data['USBhub_SN']
-#     USBhub_SN = interactive(usbhub_sn_widget, USBhub_SN=USBhub)
-#     camera_into_USBhub = data['camera_into_USBhub_port']
-#     camera_into_USBhub_port = interactive(
-#         camera_to_usb_widget, camera_into_USBhub_port=camera_into_USBhub)
-#
-#     birger_SN = birger_serial_number.result
-#     camera_SN = camera_serial_number.result
-#     lens_SN = lens_serial_number.result
-#     filter_ID = filter_ID_code.result
-#     serial_to_USBhub_port = serial_into_USBhub_port.result
-#     camera_to_serial_port = camera_into_serial_port.result
-#     USB_hub_SN = USBhub_SN.result
-#     camera_to_USBhub_port = camera_into_USBhub_port.result
-#
-#
-#     date_info = datetime.datetime.today()
-#     datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
-#     archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
-#
-#
-#     display(birger_serial_number)
-#     display(camera_serial_number)
-#     display(lens_serial_number)
-#     display(filter_ID_code)
-#     display(serial_into_USBhub_port)
-#     display(camera_into_serial_port)
-#     display(USBhub_SN)
-#     display(camera_into_USBhub_port)
-#
-#     button1 = widgets.Button(description="Add new device set")
-#     display(button1)
-#     button1.on_click(add_device_widget)
-#
-#     button = widgets.Button(description="Save File")
-#     display(button)
-#     button.on_click(save_file_widget)
+def create_yaml_file():
+    """This function runs all the code to generate the .yaml config files for the Huntsman-POCS system.
+    It displays the Jupyter widgets which the user can interact with to write and save the config files.
+
+    Files are saved in two locations, one for the local file that POCS will access, and the other is an archive of all previous config files which acts as a version control.
+    By default, these locations are: (but can be changed using the choose_dir() function)
+        '/var/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
+        '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive file.
+
+    Steps for the user to follow:
+        Select from the dropdown menus the information for one device set.
+        Click 'Add new device set'.
+        Select from the dropdown menus the information for the next device set.
+        Click 'Add new device set'.
+        Repeat until all device sets have been added.
+        Click 'Save File' to write the .yaml file.
+
+    Args:
+        local_directory : the path of the directory where the config file accessed by POCS will be saved.
+        archive_directory : the path of the directory where all the archived config files are.
+
+    Displays:
+        Jupyter widgets of drop-down menus to select the device sets.
+            These widgets are used to generate and save the .yaml config files.
+
+    Output:
+        A .yaml config file for Huntsman
+
+    """
+
+    date_info = datetime.datetime.today()
+    datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
+    archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
+
+
+    display(birger_serial_number)
+    display(camera_serial_number)
+    display(lens_serial_number)
+    display(filter_ID_code)
+    display(serial_into_USBhub_port)
+    display(camera_into_serial_port)
+    display(USBhub_SN)
+    display(camera_into_USBhub_port)
+
+    button1 = widgets.Button(description="Add new device set")
+    display(button1)
+    button1.on_click(add_device_widget)
+
+    button = widgets.Button(description="Save File")
+    display(button)
+    button.on_click(save_file_widget)
