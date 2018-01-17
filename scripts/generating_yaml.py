@@ -5,143 +5,211 @@ import ipywidgets as widgets
 from ipywidgets import interact, interactive, fixed, interact_manual
 from IPython.display import display
 
-def birger_sn_widget(birger_serial_number):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
-    Args:
-        birger_serial_number (str) : the serial number of the birger device as selected from the widget.
+class writing_config_file(Object):
+    """
+    class description
+
+    """
+    def __init__(self):
+        self.data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
+                'camera_into_serial_port': [1, 2, 3, 4],
+                'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
+                'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
+                'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
+                              '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
+                'birger_sn': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
+                'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
+                'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
+                              'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
+                }
+
+        self.birger_sn = self.data['birger_sn']
+        self.birger_serial_number = interactive(birger_sn_widget, birger_serial_number=self.birger_sn)
+        self.camera_sn = self.data['camera_SN']
+        self.camera_serial_number = interactive(camera_sn_widget, camera_serial_number=self.camera_sn)
+        self.lens_sn = self.data['lens_SN']
+        self.lens_serial_number = interactive(lens_sn_widget, lens_serial_number=self.lens_sn)
+        self.filter_ID = self.data['filter_ID']
+        self.filter_ID_code = interactive(filter_ID_widget, filter_ID_code=self.filter_ID)
+        self.serial_into_USBhub = self.data['serial_into_USBhub_port']
+        self.serial_into_USBhub_port = interactive(
+            serial_to_usb_widget, serial_into_USBhub_port=self.serial_into_USBhub)
+        self.camera_into_serial = self.data['camera_into_serial_port']
+        self.camera_into_serial_port = interactive(
+            camera_to_serial_widget, camera_into_serial_port=camera_into_serial)
+        self.USBhub = self.data['USBhub_SN']
+        self.USBhub_SN = interactive(usbhub_sn_widget, USBhub_SN=USBhub)
+        self.camera_into_USBhub = self.data['camera_into_USBhub_port']
+        self.camera_into_USBhub_port = interactive(
+            camera_to_usb_widget, camera_into_USBhub_port=camera_into_USBhub)
+
+        self.birger_sn = self.birger_serial_number.result
+        self.camera_sn = self.camera_serial_number.result
+        self.lens_sn = self.lens_serial_number.result
+        self.filter_ID = self.filter_ID_code.result
+        self.serial_to_USBhub_port = self.serial_into_USBhub_port.result
+        self.camera_to_serial_port = self.camera_into_serial_port.result
+        self.USB_hub_SN = self.USBhub_SN.result
+        self.camera_to_USBhub_port = self.camera_into_USBhub_port.result
+
+        # self.local_dir = choose_local_dir()
+        # self.archive_dir = choose_archive_dir()
+
+
+    def birger_sn_widget(birger_serial_number):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            birger_serial_number (str) : the serial number of the birger device as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen focuser serial number
+
+        """
+        return birger_serial_number
+
+    def camera_sn_widget(camera_serial_number):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            camera_serial_number (str) : the serial number of the camera device as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen camera serial number
+
+        """
+        return camera_serial_number
+
+    def lens_sn_widget(lens_serial_number):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            lens_serial_number (str) : the serial number of the lens device as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen lens serial number
+
+        """
+        return lens_serial_number
+
+    def filter_ID_widget(filter_ID_code):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            filter_ID_code (str) : the ID number of the lens as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen filter ID number
+
+        """
+        return filter_ID_code
+
+    def serial_to_usb_widget(serial_into_USBhub_port):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            serial_into_USBhub_port (str) : the port number of the USB Hub that the Serial Adaptor is plugged into as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen USB port number
+
+        """
+        return serial_into_USBhub_port
+
+    def camera_to_serial_widget(camera_into_serial_port):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            camera_into_serial_port (str) : the port number of the Serial Adaptor that the camera is plugged into as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen serial port number
+
+        """
+        return camera_into_serial_port
+
+    def usbhub_sn_widget(USBhub_SN):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            USBhub_SN (str) : the serial number of the USB Hub as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen USB Hub serial number
+
+        """
+        return USBhub_SN
+
+    def camera_to_usb_widget(camera_into_USBhub_port):
+        """Function used to create Jupyter widget.
+        It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
+
+        Args:
+            camera_into_USBhub_port (str) : the port number of the USB Hub that the camera is plugged into as selected from the widget.
+
+        Returns:
+            The result of the widget; the chosen USB port number
+
+        """
+        return camera_into_USBhub_port
+
+
+    def choose_local_dir(local_directory='/var/huntsman-pocs/conf_files'):
+        """This function enables the user to choose where the .yaml config file will be saved.
+
+        Default path is:
+            local_directory='/var/huntsman-pocs/conf_files'
+
+        Args:
+            local_directory (optional) : the dir where Huntsman-POCS accesses the config file to be used.
+
+        Returns:
+            The path of the local file directory.
+
+        """
+        local_direct = local_directory
+        return local_direct
+
+
+    def choose_archive_dir(archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
+        """
+        This function enables the user to choose where the archive of the .yaml config files will be saved.
+
+        Default path is:
+            archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'
+
+        Args:
+            archive_directory (optional) : a dir of archived config files to act as a history/version control.
+
+        Returns:
+            The path of the archived files directory.
+
+        """
+        archive_direct = archive_directory
+        return archive_direct
+
+
+
+
+# this might not work because then when the person puts in the chosen dirs it might not overwrite this
+# so they are always the huntsman-pocs paths as this is the defult when no args are given
+
+
+def load_previous_data(local_dir):
+    """
+    Function to put the general data from the previous run into a dict.
+    It loads the previous .yaml config file and takes all information except the device data.
 
     Returns:
-        The result of the widget; the chosen focuser serial number
-
-    """
-    return birger_serial_number
-
-def camera_sn_widget(camera_serial_number):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        camera_serial_number (str) : the serial number of the camera device as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen camera serial number
-
-    """
-    return camera_serial_number
-
-def lens_sn_widget(lens_serial_number):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        lens_serial_number (str) : the serial number of the lens device as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen lens serial number
-
-    """
-    return lens_serial_number
-
-def filter_ID_widget(filter_ID_code):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        filter_ID_code (str) : the ID number of the lens as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen filter ID number
-
-    """
-    return filter_ID_code
-
-def serial_to_usb_widget(serial_into_USBhub_port):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        serial_into_USBhub_port (str) : the port number of the USB Hub that the Serial Adaptor is plugged into as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen USB port number
-
-    """
-    return serial_into_USBhub_port
-
-def camera_to_serial_widget(camera_into_serial_port):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        camera_into_serial_port (str) : the port number of the Serial Adaptor that the camera is plugged into as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen serial port number
-
-    """
-    return camera_into_serial_port
-
-def usbhub_sn_widget(USBhub_SN):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        USBhub_SN (str) : the serial number of the USB Hub as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen USB Hub serial number
-
-    """
-    return USBhub_SN
-
-def camera_to_usb_widget(camera_into_USBhub_port):
-    """Function used to create Jupyter widget.
-    It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
-
-    Args:
-        camera_into_USBhub_port (str) : the port number of the USB Hub that the camera is plugged into as selected from the widget.
-
-    Returns:
-        The result of the widget; the chosen USB port number
-
-    """
-    return camera_into_USBhub_port
-
-
-def choose_dir(local_directory='/var/huntsman-pocs/conf_files', archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
-    """This function enables the user to choose where the .yaml config files will be saved.
-
-    Defult paths are:
-        local_directory='/var/huntsman-pocs/conf_files'
-        archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'
-
-    Args:
-        local_directory (optional) : the dir where Huntsman-POCS accesses the config file to be used.
-        archive_directory (optional) : a dir of archived config files to act as a history/version control.
-
-    Returns:
-        The path of the local and archived files.
-
-    """
-    local_dir = local_directory
-    archive_dir = archive_directory
-
-    return local_dir
-    return archive_dir
-
-
-# may need to split the choose_dir function into a local and archive one
-# similar to the one below such that local_dir and archive_dir can be used by other functions
-
-
-
-def load_previous_data():
-    """
-    Function to put the general data from the previous run into a dict
-
-
+        The dictionary data_dict of all the general data
 
     """
     previous_file = os.path.join(local_dir, 'huntsman.yaml')
@@ -156,41 +224,7 @@ def load_previous_data():
 
     return data_dict
 
-data_list = load_previous_data()
-
-data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-        'camera_into_serial_port': [1, 2, 3, 4],
-        'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
-        'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-        'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
-                      '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
-        'birger_SN': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
-        'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
-        'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
-                      'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
-        }
-
-
-birger_sn = data['birger_SN']
-birger_serial_number = interactive(birger_sn_widget, birger_serial_number=birger_sn)
-camera_sn = data['camera_SN']
-camera_serial_number = interactive(camera_sn_widget, camera_serial_number=camera_sn)
-lens_sn = data['lens_SN']
-lens_serial_number = interactive(lens_sn_widget, lens_serial_number=lens_sn)
-filter_ID = data['filter_ID']
-filter_ID_code = interactive(filter_ID_widget, filter_ID_code=filter_ID)
-serial_into_USBhub = data['serial_into_USBhub_port']
-serial_into_USBhub_port = interactive(
-    serial_to_usb_widget, serial_into_USBhub_port=serial_into_USBhub)
-camera_into_serial = data['camera_into_serial_port']
-camera_into_serial_port = interactive(
-    camera_to_serial_widget, camera_into_serial_port=camera_into_serial)
-USBhub = data['USBhub_SN']
-USBhub_SN = interactive(usbhub_sn_widget, USBhub_SN=USBhub)
-camera_into_USBhub = data['camera_into_USBhub_port']
-camera_into_USBhub_port = interactive(
-    camera_to_usb_widget, camera_into_USBhub_port=camera_into_USBhub)
-
+data_list = load_previous_data(self.choose_local_dir)
 
 
 def add_device_widget(add_device):
@@ -205,15 +239,6 @@ def add_device_widget(add_device):
 
     """
 
-    birger_SN = birger_serial_number.result
-    camera_SN = camera_serial_number.result
-    lens_SN = lens_serial_number.result
-    filter_ID = filter_ID_code.result
-    serial_to_USBhub_port = serial_into_USBhub_port.result
-    camera_to_serial_port = camera_into_serial_port.result
-    USB_hub_SN = USBhub_SN.result
-    camera_to_USBhub_port = camera_into_USBhub_port.result
-
     lens_name_dict = {'3360000099': 'name1', '3360000063': 'name2',
                       '3360000087': 'name3', '2850000067': 'name4',
                       '3150000110': 'name5', '5370000054': 'name6'}
@@ -227,21 +252,21 @@ def add_device_widget(add_device):
                    '83F010801': 'sbig', '83F010774': 'sbig', '83F011758': 'sbig',
                    '83F010771': 'sbig', '83F011810': 'sbig', 'ML5232816': 'fli', 'ML1722016': 'fli'}
 
-    additional_device = {'model': camera_dict[camera_SN],
-                         'port': camera_SN,
-                         'filter_type': filter_ID,
+    additional_device = {'model': camera_dict[self.camera_sn],
+                         'port': self.camera_sn,
+                         'filter_type': self.filter_ID,
                          'focuser': {'model': 'birger',
-                                     'port': birger_SN
+                                     'port': self.birger_sn
 
                                      },
                          'lens': {'model': 'canon',
-                                  'port': lens_SN,
-                                  'name': lens_name_dict[lens_SN],
-                                  'image_stabalisataion': lens_image_stabalisation[lens_SN]},
-                         'USB_hub_serial_number': USB_hub_SN,
-                         'camera_into_serial_adaptor_port': camera_to_serial_port,
-                         'serial_adaptor_into_USBhub_port': serial_to_USBhub_port,
-                         'camera_into_USBhub_port': camera_to_USBhub_port
+                                  'port': self.lens_sn,
+                                  'name': lens_name_dict[self.lens_sn],
+                                  'image_stabalisataion': lens_image_stabalisation[self.lens_sn]},
+                         'USB_hub_serial_number': self.USB_hub_SN,
+                         'camera_into_serial_adaptor_port': self.camera_to_serial_port,
+                         'serial_adaptor_into_USBhub_port': self.serial_to_USBhub_port,
+                         'camera_into_USBhub_port': self.camera_to_USBhub_port
                          }
 
     if data_list['cameras']['devices'] == [None]:
@@ -315,14 +340,14 @@ def create_yaml_file():
     archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
 
 
-    display(birger_serial_number)
-    display(camera_serial_number)
-    display(lens_serial_number)
-    display(filter_ID_code)
-    display(serial_into_USBhub_port)
-    display(camera_into_serial_port)
-    display(USBhub_SN)
-    display(camera_into_USBhub_port)
+    display(self.birger_serial_number)
+    display(self.camera_serial_number)
+    display(self.lens_serial_number)
+    display(self.filter_ID_code)
+    display(self.serial_into_USBhub_port)
+    display(self.camera_into_serial_port)
+    display(self.USBhub_SN)
+    display(self.camera_into_USBhub_port)
 
     button1 = widgets.Button(description="Add new device set")
     display(button1)
