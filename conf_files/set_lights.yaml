@@ -1,6 +1,6 @@
 hue_lights:
 - hue_ip: "ip_goes_here"
-- file_path: "hue_username.txt"  
+- file_path: "/Users/SC09015/Desktop/Python_Control_Central/hue_username.txt"  
 - index: 
     led_index: 1 
     desk_index: 3 
