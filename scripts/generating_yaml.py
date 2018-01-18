@@ -39,6 +39,9 @@ class POCS_devices(object):
         Args:
             local_directory (optional) : the dir where Huntsman-POCS accesses the config file to be used.
 
+        Returns:
+            str of the directory path
+
         """
         self.local_direct = local_directory
         return str(self.local_direct)
@@ -53,6 +56,9 @@ class POCS_devices(object):
         Args:
             archive_directory (optional) : a dir of archived config files to act as a history/version control.
 
+        Returns:
+            str of the directory path
+
         """
         self.archive_direct = archive_directory
         return str(self.archive_direct)
@@ -61,6 +67,9 @@ class POCS_devices(object):
         """
         Function to put the general data from the previous run into a dict.
         It loads the previous .yaml config file and takes all information except the device data.
+
+        Args:
+            local_dir : the str directory path where the previous/local config file is held
 
         Returns:
             The dictionary data_dict of all the general data
@@ -82,7 +91,7 @@ class POCS_devices(object):
 
     def add_device_widget(self, add_device):
         """Function to add the details selected using the drop-down menu widgets to the 'data_list' dictionary.
-        The function is called by the widget and is then run when the user clicks on the widget button.
+        The function is called by a widget in create_yaml_file and is then run when the user clicks on the widget button.
 
         Args:
             add_device : on clicking the widget, a device set is saved to the dict.
@@ -134,13 +143,14 @@ class POCS_devices(object):
 
     def save_file_widget(self, save_file):
         """This function writes the 'data_list' dictionary to a .yaml text file.
-        The function is called by the widget and is run when the user clicks on the widget button.
+        The function is called by a widget in create_yaml_file() and is run when the user clicks on the widget button.
 
         Args:
             create_file : on clicking the widget, the dict is saved to a .yaml file
 
         Output:
-            Writes the information in the dict into a .yaml file in two locations;
+            Writes the information in the dict into a .yaml file in two locations, as determined by the assign_local_dir() and assign_archive_dir methods.
+            The default locations are:
                 '/var/huntsman-pocs/conf_files/huntsman.yaml'
                     for the local config file to be used by POCS
 
