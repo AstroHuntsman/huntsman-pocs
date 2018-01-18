@@ -104,8 +104,6 @@ class POCS_devices(object):
         lens_name_dict = {'3360000099': 'name1', '3360000063': 'name2',
                           '3360000087': 'name3', '2850000067': 'name4',
                           '3150000110': 'name5', '5370000054': 'name6'}
-        # need to put the lens names in the above dict when they are finalised
-        # create formal issue on github for this
 
         lens_image_stabalisation = {'3360000099': True, '3360000063': True,
                                     '3360000087': True, '2850000067': True,
