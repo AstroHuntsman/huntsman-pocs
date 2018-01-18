@@ -101,7 +101,7 @@ class POCS_devices(object):
 
         """
 
-        lens_name_dict = {'3360000099': 'name1', '3360000063': 'name2',
+        lens_name_dict = {'3360000099': 'name1', '3360000063': 'Tuc',
                           '3360000087': 'name3', '2850000067': 'name4',
                           '3150000110': 'name5', '5370000054': 'name6'}
 
