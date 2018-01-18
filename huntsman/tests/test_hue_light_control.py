@@ -1,6 +1,6 @@
 #Testing...
 import pytest
-#import huntsman.utils.hue_light_control
+import huntsman.utils.hue_light_control
 
 
 def test_get_username():
