@@ -41,6 +41,7 @@ class POCS_devices(object):
 
         """
         self.local_direct = local_directory
+        return str(self.local_direct)
 
     def assign_archive_dir(self, archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
         """
@@ -54,6 +55,7 @@ class POCS_devices(object):
 
         """
         self.archive_direct = archive_directory
+        return str(self.archive_direct)
 
     def load_previous_data(self, local_dir):
         """
@@ -66,15 +68,17 @@ class POCS_devices(object):
         """
         previous_file = os.path.join(local_dir, 'huntsman.yaml')
         # loading general data from the previous .yaml file used
+
         with open(previous_file, 'r') as file:
-            data_dict = yaml.load(file)
+            self.data_dict = yaml.load(file)
 
-        if 'cameras' in data_dict:
-            del data_dict['cameras']
+        if self.data_dict is not None and 'cameras' in self.data_dict:
+            del self.data_dict['cameras']
 
-        data_dict.update({'cameras': {'hdr_mode': True, 'auto_detect': False, 'devices': [None]}})
+        self.data_dict.update(
+            {'cameras': {'hdr_mode': True, 'auto_detect': False, 'devices': [None]}})
 
-        return data_dict
+        return self.data_dict
 
     def add_device_widget(self, add_device):
         """Function to add the details selected using the drop-down menu widgets to the 'data_list' dictionary.
@@ -119,14 +123,14 @@ class POCS_devices(object):
                              'camera_into_USBhub_port': self.camera_to_USBhub_port_chosen
                              }
 
-        data_list = self.load_previous_data(self.local_direct)
+        self.data_list = self.load_previous_data(self.local_direct)
 
-        if data_list['cameras']['devices'] == [None]:
-            data_list['cameras']['devices'] = [additional_device]
+        if self.data_list['cameras']['devices'] == [None]:
+            self.data_list['cameras']['devices'] = [additional_device]
         else:
-            data_list['cameras']['devices'].append(additional_device)
+            self.data_list['cameras']['devices'].append(additional_device)
 
-        return data_list
+        return self.data_list
 
     def save_file_widget(self, save_file):
         """This function writes the 'data_list' dictionary to a .yaml text file.
@@ -149,12 +153,12 @@ class POCS_devices(object):
 
         strOutFile1 = os.path.join(self.local_direct, 'huntsman.yaml')
         objFile1 = open(strOutFile1, "w")
-        yaml.dump(data_list, objFile1, default_flow_style=False, indent=4)
+        yaml.dump(self.data_list, objFile1, default_flow_style=False, indent=4)
         objFile1.close()
 
         strOutFile = os.path.join(self.archive_direct, self.archive_filename)
         objFile = open(strOutFile, "w")
-        yaml.dump(data_list, objFile, default_flow_style=False, indent=4)
+        yaml.dump(self.data_list, objFile, default_flow_style=False, indent=4)
         objFile.close()
 
     def create_yaml_file(self):
