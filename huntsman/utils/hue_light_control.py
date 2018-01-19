@@ -2,18 +2,20 @@ import yaml
 from os import path
 from qhue import Bridge, QhueException, create_new_username
 
+
 class Hue_Lights(object):
-     """A Python interface for the lighting control system of the huntsman dome
-            
-     Attributes:
-         hue_ip(int): the ip address of the hue bridge. 
-         led_index(int): the index of the led light strip found in the config file
-         desk_index(int): the index of the desk lamp found in config file
-         flat_index(int): the index of the flat field light that will eventually be addd to the config file
-         username_file_path(str): the file path of the text file that will be saved containing the current username 
-         verbose(bool): can be set to True or False to provide extra info if needed
-         
+    """A Python interface for the lighting control system of the huntsman dome
+
+    Attributes:
+        hue_ip(int): the ip address of the hue bridge.
+        led_index(int): the index of the led light strip found in the config file
+        desk_index(int): the index of the desk lamp found in config file
+        flat_index(int): the index of the flat field light that will eventually be addd to the config file
+        username_file_path(str): the file path of the text file that will be saved containing the current username
+        verbose(bool): can be set to True or False to provide extra info if needed
+
     """
+
     def __init__(self):
 
         yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
@@ -38,12 +40,12 @@ class Hue_Lights(object):
         bridge automatically.
         If a new username cannot be saved, and error message will be sent to the user. At this point
         manual login may be nessesary.
-        
+
         Attributes:
             username_file_path(str): the file path of the text file that will be saved containing the current username
             bridge(str): bridge connection
             verbose(bool): can be set to True or False to provide extra info if needed
-            hue_ip(int): the ip address of the hue bridge. 
+            hue_ip(int): the ip address of the hue bridge.
         """
 
         if not path.exists(self.username_file_path):
@@ -64,12 +66,12 @@ class Hue_Lights(object):
         self.bridge = Bridge(self.hue_ip, username)
 
     def get_username(self):
-        """Used to return the username saved in a text file 
-        
+        """Used to return the username saved in a text file
+
         Attributes:
             file_path(str): the file name of the text file that will be saved containing the current username
         """
-        
+
         with open(self.username_file_path, 'r') as user:
             if not path.exists(self.username_file_path):
                 print("Username cannot be found")
@@ -86,12 +88,12 @@ class Hue_Lights(object):
 
     def observing_mode(self):
         """The observing mode for the huntsman system
-        
+
         Attributes:
             bridge(str): bridge connection
             desk_index(int): the index of the desk lamp found in config file
             flat_index(int): the index of the flat field light that will eventually be addd to the config file
-            led_index(int): the index of the led light strip found in the config file   
+            led_index(int): the index of the led light strip found in the config file
         """
         self.bridge.lights[self.led_index].state(
             on=True, bri=100, hue=50, sat=250)
@@ -102,12 +104,12 @@ class Hue_Lights(object):
 
     def observing_bright_mode(self):
         """A bright observing mode for the huntsman system
-        
+
         Attributes:
             bridge(str): bridge connection
             desk_index(int): the index of the desk lamp found in config file
             flat_index(int): the index of the flat field light that will eventually be addd to the config file
-            led_index(int): the index of the led light strip found in the config file 
+            led_index(int): the index of the led light strip found in the config file
         """
         self.bridge.lights[self.led_index].state(
             on=True, bri=250, hue=100, sat=250)
@@ -119,12 +121,12 @@ class Hue_Lights(object):
 
     def bright_mode(self):
         """The bright mode for the huntsman, used to observe the system through the webcame
-        
+
         Attributes:
             bridge(str): bridge connection
             desk_index(int): the index of the desk lamp found in config file
             flat_index(int): the index of the flat field light that will eventually be addd to the config file
-            led_index(int): the index of the led light strip found in the config file 
+            led_index(int): the index of the led light strip found in the config file
         """
         self.bridge.lights[self.led_index].state(
             on=True, bri=250, hue=30000, sat=10)
@@ -136,12 +138,12 @@ class Hue_Lights(object):
 
     def lights_off(self):
         """The mode to turn all lights off for the huntsman system
-        
+
         Attributes:
             bridge(str): bridge connection
             desk_index(int): the index of the desk lamp found in config file
             flat_index(int): the index of the flat field light that will eventually be addd to the config file
-            led_index(int): the index of the led light strip found in the config file 
+            led_index(int): the index of the led light strip found in the config file
         """
         self.bridge.lights[self.led_index].state(on=False)
         self.bridge.lights[self.desk_index].state(on=False)
@@ -151,12 +153,12 @@ class Hue_Lights(object):
 
     def flat_field(self):
         """The flat_field mode for the huntsman system (in progress)
-        
+
         Attributes:
             bridge(str): bridge connection
             desk_index(int): the index of the desk lamp found in config file
             flat_index(int): the index of the flat field light that will eventually be addd to the config file
-            led_index(int): the index of the led light strip found in the config file  
+            led_index(int): the index of the led light strip found in the config file
         """
         self.bridge.lights[self.led_index].state(on=False)
         self.bridge.lights[self.desk_index].state(on=False)
