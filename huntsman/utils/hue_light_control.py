@@ -1,10 +1,20 @@
 import yaml
-
 from os import path
 from qhue import Bridge, QhueException, create_new_username
 
 class Hue_Lights(object):
-
+     """A Python interface for the lighting control system of the huntsman dome
+            
+     Attributes:
+         hue_ip(int): the ip address of the hue bridge. Set by default to "10.88.21.10"
+         led_index(int): the index of the led light strip found in the config file
+         desk_index(int): the index of the desk lamp found in config file
+         flat_index(int): the index of the flat field light that will eventually be addd to the config file
+         file_path(str): the file name of the text file that will be saved containing the current username
+         bridge(str): bridge connection 
+         verbose(bool): can be set to True or False to provide extra info if needed
+         
+    """
     def __init__(self):
 
         # Find the yaml file and load the config parameters
@@ -24,6 +34,15 @@ class Hue_Lights(object):
                 print(error)
 
     def login(self):
+        """Automatic login to the hue bridge using a stored username.
+        Creates a text file with stored username upon first connection to the bridge, will
+        prompt the user to press the hue bridge button to connect for the fist time and writes
+        the file to the working directory.
+        Should a username already exist, the stored username is read and used to log into the
+        bridge automatically.
+        If a new username cannot be saved, and error message will be sent to the user. At this point
+        manual login may be nessesary.
+        """
 
         if not path.exists(self.file_path):
             try:
@@ -48,20 +67,35 @@ class Hue_Lights(object):
         # the bridge. This is not good? - changed this?
 
     def get_username(self):
+        """Used to return the username saved in a text file 
+        
+        Attributes:
+            file_path(str): the file name of the text file that will be saved containing the current username
+        """
+        
         with open(self.file_path, 'r') as user:
             if not path.exists(self.file_path):
                 print("Username cannot be found")
             else:
                 username = user.read()
-        return(print(username))
+        print(username)
 
     def get_index(self):
+        """Used to return the index of each of the devices connected to the bridge should a factory reset occur"""
         lights = self.bridge.lights()
         for num, info in lights.items():
             info = print("{:10} {}".format(info['name'], num))
-        return(info)
+        print(info)
 
     def observing_mode(self):
+        """The observing mode for the huntsman system
+        
+        Attributes:
+            bridge(str): bridge connection
+            desk_index(int): the index of the desk lamp found in config file
+            flat_index(int): the index of the flat field light that will eventually be addd to the config file
+            led_index(int): the index of the led light strip found in the config file   
+        """
         self.bridge.lights[self.led_index].state(
             on=True, bri=100, hue=50, sat=250)
         self.bridge.lights[self.desk_index].state(on=False)
@@ -70,6 +104,14 @@ class Hue_Lights(object):
             print("Observing Mode Selected")
 
     def observing_bright_mode(self):
+        """A bright observing mode for the huntsman system
+        
+        Attributes:
+            bridge(str): bridge connection
+            desk_index(int): the index of the desk lamp found in config file
+            flat_index(int): the index of the flat field light that will eventually be addd to the config file
+            led_index(int): the index of the led light strip found in the config file 
+        """
         self.bridge.lights[self.led_index].state(
             on=True, bri=250, hue=100, sat=250)
         self.bridge.lights[self.desk_index].state(
@@ -79,6 +121,14 @@ class Hue_Lights(object):
             print("Observing Bright Mode Selected")
 
     def bright_mode(self):
+        """The bright mode for the huntsman, used to observe the system through the webcame
+        
+        Attributes:
+            bridge(str): bridge connection
+            desk_index(int): the index of the desk lamp found in config file
+            flat_index(int): the index of the flat field light that will eventually be addd to the config file
+            led_index(int): the index of the led light strip found in the config file 
+        """
         self.bridge.lights[self.led_index].state(
             on=True, bri=250, hue=30000, sat=10)
         self.bridge.lights[self.desk_index].state(
@@ -88,6 +138,14 @@ class Hue_Lights(object):
             print("Bright Mode Selected")
 
     def lights_off(self):
+        """The mode to turn all lights off for the huntsman system
+        
+        Attributes:
+            bridge(str): bridge connection
+            desk_index(int): the index of the desk lamp found in config file
+            flat_index(int): the index of the flat field light that will eventually be addd to the config file
+            led_index(int): the index of the led light strip found in the config file 
+        """
         self.bridge.lights[self.led_index].state(on=False)
         self.bridge.lights[self.desk_index].state(on=False)
         #self.bridge.lights[self.field_index].state(on = False)
@@ -95,6 +153,14 @@ class Hue_Lights(object):
             print("All Lights Off")
 
     def flat_field(self):
+        """The flat_field mode for the huntsman system (in progress)
+        
+        Attributes:
+            bridge(str): bridge connection
+            desk_index(int): the index of the desk lamp found in config file
+            flat_index(int): the index of the flat field light that will eventually be addd to the config file
+            led_index(int): the index of the led light strip found in the config file  
+        """
         self.bridge.lights[self.led_index].state(on=False)
         self.bridge.lights[self.desk_index].state(on=False)
         self.bridge.lights[self.field_index].state(
