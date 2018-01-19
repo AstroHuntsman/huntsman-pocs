@@ -1,7 +1,7 @@
 import yaml
 from os import path
 from qhue import Bridge, QhueException, create_new_username
-
+from warnings import warn
 
 class Hue_Lights(object):
     """A Python interface for the lighting control system of the huntsman dome
@@ -13,7 +13,6 @@ class Hue_Lights(object):
         flat_index(int): the index of the flat field light that will eventually be addd to the config file
         username_file_path(str): the file path of the text file that will be saved containing the current username
         verbose(bool): can be set to True or False to provide extra info if needed
-
     """
 
     def __init__(self):
@@ -29,7 +28,7 @@ class Hue_Lights(object):
                 self.flat_index = newyml['hue_lights'][2]['index']['flat_index']
                 self.verbose = False
             except yaml.YAMLError as error:
-                print(error)
+                warn(error)
 
     def login(self):
         """Automatic login to the hue bridge using a stored username.
@@ -52,7 +51,7 @@ class Hue_Lights(object):
             try:
                 username = create_new_username(self.hue_ip)
             except QhueException as err:
-                print("Cannot create new username: {}".format(err))
+                warn("Cannot create new username: {}".format(err))
             with open(self.username_file_path, "w") as cred_file:
                 cred_file.write(username)
                 if self.verbose:
