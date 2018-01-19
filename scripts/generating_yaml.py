@@ -10,7 +10,6 @@ class POCS_devices_database(object):
     """
     This class manages serial numbers and other information of multiple devices being used with POCS.
     It can be used to display ipython widgets to select the device information, and then create a .yaml config file that can be read and implemented by POCS.
-
     """
 
     def __init__(self):
