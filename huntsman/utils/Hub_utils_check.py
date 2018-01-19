@@ -3,18 +3,30 @@ import yaml
 from brainstem.result import Result
 from enum import IntEnum
 
+
 class Lights(IntEnum):
+    """Lights class inherited from IntEnum to set OFF to 0 and ON to 1 """
     OFF = 0
     ON = 1
 
+
 class Hub_Interface(object):
+    """The python interface for an Acroname USB Hub
+
+      Attributes:
+          no_camera(int): The camera number specified in the config yaml file
+          yaml_file(str): The full path to the yaml config file being used
+          verbose(bool): Can be True of Flase to give more infomation about the method performed
+          toggle_leds(bool): Set to True, this will flash the User LEDs when a command is performed
+          stem(str): The connection to the usb hub
+          hub_serial(int): The serial number of the USB hub
+          port(int): The port number of the USB hub that is in use
+    """
 
     def __init__(self):
         no_camera = 0
         yaml_file = "/Users/SC09015/Desktop/Astro/Code/device_info_testing_file.yaml"
-        #Just setting these parameters as default for now, will work out what to do with them later
-        #This relates to the final formatting of the yaml config file
-        self.verbose = False 
+        self.verbose = False
         self.toggle_leds = True
         with open(yaml_file, 'r') as yml:
             try:
@@ -46,24 +58,29 @@ class Hub_Interface(object):
                         self.hub_serial)
 
     def disconnect_from_hub(self):
+        """Used to disconect from the USB hub"""
         self.stem.disconnect()
         print('Disconnected from hub', self.hub_serial)
 
     def voltage(self):
+        """Prints the voltage across the chosen port"""
         voltage = self.stem.usb.getPortVoltage(self.port)
         print(voltage)
 
     def current(self):
+        """Prints the current through the chosen port"""
         current = self.stem.usb.getPortCurrent(self.port)
         print(current)
 
     def enable(self):
+        """Enables a specific port"""
         self.stem.usb.setPortEnable(self.port)
         if self.toggle_leds:
             for i in range(1, 11):
                 self.stem.system.setLED(i % 2)
 
     def disable(self):
+        """Dissables a specific port"""
         self.stem.usb.setPortDisable(self.port)
         if self.toggle_leds:
             for i in range(1, 11):
