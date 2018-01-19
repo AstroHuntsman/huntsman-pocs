@@ -6,7 +6,7 @@ from ipywidgets import interact, interactive, fixed, interact_manual
 from IPython.display import display
 
 
-class POCS_devices(object):
+class POCS_devices_database(object):
     """
     This class manages serial numbers and other information of multiple devices being used with POCS.
     It can be used to display ipython widgets to select the device information, and then create a .yaml config file that can be read and implemented by POCS.
@@ -15,15 +15,11 @@ class POCS_devices(object):
 
     def __init__(self):
 
-        device_info_file = os.path.join('/Users/moniquec/Documents/Uni/Huntsman_Project', 'device_info_master.yaml')
-        with open(device_info_file, 'r') as file:
-            self.data = yaml.load(file)
-
         date_info = datetime.datetime.today()
         datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
         self.archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
 
-    def assign_local_dir(self, local_directory='/var/huntsman-pocs/conf_files'):
+    def set_local_dir(self, local_directory='/var/huntsman-pocs/conf_files'):
         """This function enables the user to choose where the .yaml config file will be saved.
 
         Default path is:
@@ -36,10 +32,10 @@ class POCS_devices(object):
             str of the directory path
 
         """
-        self.local_direct = local_directory
-        return str(self.local_direct)
+        self.local_directory_chosen = local_directory
+        return str(self.local_directory_chosen)
 
-    def assign_archive_dir(self, archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
+    def set_archive_dir(self, archive_directory='/var/huntsman-pocs/conf_files/huntsman_archive'):
         """
         This function enables the user to choose where the archive of the .yaml config files will be saved.
 
@@ -53,8 +49,8 @@ class POCS_devices(object):
             str of the directory path
 
         """
-        self.archive_direct = archive_directory
-        return str(self.archive_direct)
+        self.archive_directory_chosen = archive_directory
+        return str(self.archive_directory_chosen)
 
     def load_previous_data(self, local_dir):
         """
@@ -111,7 +107,7 @@ class POCS_devices(object):
                              'camera_into_USBhub_port': self.camera_to_USBhub_port_chosen
                              }
 
-        self.data_list = self.load_previous_data(self.local_direct)
+        self.data_list = self.load_previous_data(self.local_directory_chosen)
 
         if self.data_list['cameras']['devices'] == [None]:
             self.data_list['cameras']['devices'] = [additional_device]
@@ -125,7 +121,7 @@ class POCS_devices(object):
         The function is called by a widget in create_yaml_file() and is run when the user clicks on the widget button.
 
         Args:
-            create_file : on clicking the widget, the dict is saved to a .yaml file
+            save_file : on clicking the widget, the dict is saved to a .yaml file
 
         Output:
             Writes the information in the dict into a .yaml file in two locations, as determined by the assign_local_dir() and assign_archive_dir methods.
@@ -140,12 +136,12 @@ class POCS_devices(object):
 
         """
 
-        strOutFile1 = os.path.join(self.local_direct, 'huntsman.yaml')
+        strOutFile1 = os.path.join(self.local_directory_chosen, 'huntsman.yaml')
         objFile1 = open(strOutFile1, "w")
         yaml.dump(self.data_list, objFile1, default_flow_style=False, indent=4)
         objFile1.close()
 
-        strOutFile = os.path.join(self.archive_direct, self.archive_filename)
+        strOutFile = os.path.join(self.archive_directory_chosen, self.archive_filename)
         objFile = open(strOutFile, "w")
         yaml.dump(self.data_list, objFile, default_flow_style=False, indent=4)
         objFile.close()
@@ -176,6 +172,12 @@ class POCS_devices(object):
             A .yaml config file for Huntsman
 
         """
+        print(self.create_yaml_file.__doc__)
+
+        device_info_file = os.path.join(self.local_directory_chosen, 'device_info_master.yaml')
+        with open(device_info_file, 'r') as file:
+            self.data = yaml.load(file)
+
         birger_sn = self.data['birger_SN']
         self.birger_serial_number = interactive(
             birger_sn_widget, birger_serial_number_displayed=birger_sn)
