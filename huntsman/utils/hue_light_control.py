@@ -85,6 +85,11 @@ class HueLights(object):
             print(info)
             
     def set_state(self, state):
+        """ Used to set the lighting state in the dome
+        
+        Atributes:
+            state: can be set to 'observing', 'observing_bright', 'bright', 'off' or 'flats'
+        """
        self.bridge.lights[self.led_index].state(
             on = self.config['states'][state]['led']['on'], 
             bri = self.config['states'][state]['led']['bri'], 
@@ -95,8 +100,12 @@ class HueLights(object):
             bri = self.config['states'][state]['desk']['bri'], 
             hue = self.config['states'][state]['desk']['hue'], 
             sat = self.config['states'][state]['desk']['sat'])
+        self.bridge.lights[self.flat_index].state(
+            on = self.config['states'][state]['flat_field']['on'], 
+            bri = self.config['states'][state]['flat_field']['bri'], 
+            hue = self.config['states'][state]['flat_field']['hue'], 
+            sat = self.config['states'][state]['flat_field']['sat'])
         
-
     def observing_mode(self):
         """The observing mode for the huntsman system
 
