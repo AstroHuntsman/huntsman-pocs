@@ -79,11 +79,11 @@ lens_image_stabalisation:
     '3360000099': true
     '5370000054': false
 lens_name:
-    '2850000067': name4
+    '2850000067': Steve
     '3150000110': name5
     '3360000063': Tuc
-    '3360000087': name3
-    '3360000099': name1
+    '3360000087': BrokenOne
+    '3360000099': Portia
     '5370000054': name6
 serial_into_USBhub_port:
 - 0
