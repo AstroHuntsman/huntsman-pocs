@@ -1,6 +1,6 @@
 hue_lights:
-  hue_ip: 
-  username_file_path: "/Users/SC09015/Desktop/Python_Control_Central/hue_username.txt"
+  hue_ip: "ip_goes_here"
+  file_path: "/Users/SC09015/Desktop/Python_Control_Central/hue_username.txt"
   index:
     led: 1
     desk: 3
@@ -14,8 +14,14 @@ states:
       sat: 250
     desk:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
     flat_field:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
   observing_bright:
     led:
       on: True
@@ -42,20 +48,38 @@ states:
             sat: 10
          flat_field:
             on: False
+            bri: 10
+            hue: 10
+            sat: 10
   off:
     led:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
     desk:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
     flate_field:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
   flats:
     led:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
     desk:
       on: False
+      bri: 10
+      hue: 10
+      sat: 10
     flat_field:
-        on: True
-        bri: 250
-        hue: 30000
-        sat: 10
+      on: True
+      bri: 250
+      hue: 30000
+      sat: 10

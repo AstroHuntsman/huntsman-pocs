@@ -19,22 +19,16 @@ class HueLights(object):
     def __init__(self):
         
         #Going to try the built in load config 
-        lights_config_path = '/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml'
+        lights_config_path = '/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml'     
         self.config = load_config(lights_config_path)
-
-        yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
-        with open(yamlf, 'r') as yml:
-            try:
-                newyml = (yaml.load(yml))
-                self.hue_ip = newyml['hue_lights'][0]['hue_ip']
-                self.username_file_path = newyml['hue_lights'][1]['file_path']
-                self.led_index = newyml['hue_lights'][2]['index']['led_index']
-                self.desk_index = newyml['hue_lights'][2]['index']['desk_index']
-                self.flat_index = newyml['hue_lights'][2]['index']['flat_index']
-                self.verbose = False
-            except yaml.YAMLError as error:
-                warn(error)
-
+        self.hue_ip = self.config['hue_lights']['hue_ip']
+        self.username_file_path = self.config['hue_lights']['username_file_path']
+        self.led_index = self.config['hue_lights']['index']['led']
+        self.desk_index = self.config['hue_lights']['index']['desk']
+        self.flat_index = self.config['hue_lights']['index']['flat']
+        self.verbose = False
+        
+ 
     def login(self):
         """Automatic login to the hue bridge using a stored username.
         Creates a text file with stored username upon first connection to the bridge, will
@@ -89,6 +83,19 @@ class HueLights(object):
         for num, info in lights.items():
             info = print("{:10} {}".format(info['name'], num))
             print(info)
+            
+    def set_state(self, state):
+       self.bridge.lights[self.led_index].state(
+            on = self.config['states'][state]['led']['on'], 
+            bri = self.config['states'][state]['led']['bri'], 
+            hue = self.config['states'][state]['led']['hue'], 
+            sat = self.config['states'][state]['led']['sat'])
+       self.bridge.lights[self.desk_index].state(
+            on = self.config['states'][state]['desk']['on'], 
+            bri = self.config['states'][state]['desk']['bri'], 
+            hue = self.config['states'][state]['desk']['hue'], 
+            sat = self.config['states'][state]['desk']['sat'])
+        
 
     def observing_mode(self):
         """The observing mode for the huntsman system
