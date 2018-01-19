@@ -12,11 +12,29 @@ class POCS_devices_database(object):
     It can be used to display ipython widgets to select the device information, and then create a .yaml config file that can be read and implemented by POCS.
     """
 
-    def __init__(self, device_info_master_directory, local_directory, archive_directory):
+    def __init__(self,
+                 device_info_master_directory,
+                 device_info_master_file = 'device_info_master.yaml',
+                 local_directory='/var/huntsman-pocs/conf_files/',
+                 archive_directory='/var/huntsman-pocs/conf_files/',
+                 output_yaml_filename='huntsman.yaml'):
+        """
+        Sets up the location to save all files, loads information off previous files, and gets the current datetime info for the archive filename.
+
+        Args:
+            device_info_master_directory : the file path of where the .yaml file that all the device info is in
+            local_directory : the dir where the config file needs to be saved to be used by POCS
+            archive_directory : the dir where the archive/version control of the config files are kept
+            output_yaml_filename : the chosen filename of the local config file used by POCS
+        """
         self.local_directory = local_directory
         self.archive_directory = archive_directory
         self.device_info_master_directory = device_info_master_directory
-        device_info_file = os.path.join(self.device_info_master_directory, 'device_info_master.yaml')
+        self.output_yaml_filename = output_yaml_filename
+        self.device_info_master_file = device_info_master_file
+
+        device_info_file = os.path.join(
+            self.device_info_master_directory, self.device_info_master_file)
         with open(device_info_file, 'r') as file:
             self.data = yaml.load(file)
 
@@ -24,7 +42,7 @@ class POCS_devices_database(object):
         datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
         self.archive_filename = '{}_{}.{}'.format('huntsman', datetime_str, 'yaml')
 
-        previous_file = os.path.join(self.local_directory, 'huntsman.yaml')
+        previous_file = os.path.join(self.local_directory, self.output_yaml_filename)
         # loading general data from the previous .yaml file used
         try:
             with open(previous_file, 'r') as file:
@@ -39,7 +57,7 @@ class POCS_devices_database(object):
 
     def add_device_widget(self, add_device):
         """Function to add the details selected using the drop-down menu widgets to the 'data_dict' dictionary.
-        The function is called by a widget in create_yaml_file and is then run when the user clicks on the widget button.
+        The function is called by a widget in start_interface() and is then run when the user clicks on the widget button.
 
         Args:
             add_device : on clicking the widget, a device set is saved to the dict.
@@ -75,7 +93,7 @@ class POCS_devices_database(object):
 
     def save_file_widget(self, save_file):
         """This function writes the 'data_dict' dictionary to a .yaml text file.
-        The function is called by a widget in create_yaml_file() and is run when the user clicks on the widget button.
+        The function is called by a widget in start_interface() and is run when the user clicks on the widget button.
 
         Args:
             save_file : on clicking the widget, the dict is saved to a .yaml file
@@ -93,7 +111,7 @@ class POCS_devices_database(object):
 
         """
 
-        strOutFile1 = os.path.join(self.local_directory, 'huntsman.yaml')
+        strOutFile1 = os.path.join(self.local_directory, self.output_yaml_filename)
         objFile1 = open(strOutFile1, "w")
         yaml.dump(self.data_dict, objFile1, default_flow_style=False, indent=4)
         objFile1.close()
@@ -103,13 +121,13 @@ class POCS_devices_database(object):
         yaml.dump(self.data_dict, objFile, default_flow_style=False, indent=4)
         objFile.close()
 
-    def create_yaml_file(self):
+    def start_interface(self):
         """This function runs all the code to generate the .yaml config files for the Huntsman-POCS system.
         It displays the Jupyter widgets which the user can interact with to write and save the config files.
 
         Files are saved in two locations, one for the local file that POCS will access,
                         and the other is an archive of all previous config files which acts as a version control.
-        By default, these locations are: (but can be changed using the assign_local_dir() and assign_archive_dir() functions)
+        By default, these locations are: (but can be changed using the arguments in the __init__ method)
             '/var/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
             '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive file.
 
@@ -129,7 +147,7 @@ class POCS_devices_database(object):
             A .yaml config file for Huntsman
 
         """
-        print(self.create_yaml_file.__doc__)
+        print(self.start_interface.__doc__)
 
         birger_sn = self.data['birger_SN']
         self.birger_serial_number = interactive(

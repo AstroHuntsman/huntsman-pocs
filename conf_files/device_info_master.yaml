@@ -1,3 +1,5 @@
+# This is where we store all the device information (such as serial numbers and port numbers) to be used to create the config files.
+
 USBhub_SN:
 - OX518EFFE1
 - OXCD12637D
