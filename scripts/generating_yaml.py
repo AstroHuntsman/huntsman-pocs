@@ -14,8 +14,8 @@ class POCS_devices_database(object):
     """
 
     def __init__(self,
-                 device_info_master_directory = '/var/huntsman-pocs/conf_files/',
-                 device_info_master_file = 'device_info_master.yaml',
+                 device_info_master_directory='/var/huntsman-pocs/conf_files/',
+                 device_info_master_file='device_info_master.yaml',
                  local_directory='/var/huntsman-pocs/conf_files/',
                  archive_directory='/var/huntsman-pocs/conf_files/archive/',
                  output_yaml_filename='huntsman.yaml'):
