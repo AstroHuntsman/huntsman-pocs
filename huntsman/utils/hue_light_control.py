@@ -2,8 +2,9 @@ import yaml
 from os import path
 from qhue import Bridge, QhueException, create_new_username
 from warnings import warn
+from pocs.utils.config import load_config
 
-class Hue_Lights(object):
+class HueLights(object):
     """A Python interface for the lighting control system of the huntsman dome
 
     Attributes:
@@ -16,6 +17,10 @@ class Hue_Lights(object):
     """
 
     def __init__(self):
+        
+        #Going to try the built in load config 
+        lights_config_path = '/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml'
+        self.config = load_config(lights_config_path)
 
         yamlf = "/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml"
         with open(yamlf, 'r') as yml:
@@ -78,12 +83,12 @@ class Hue_Lights(object):
                 username = user.read()
         print(username)
 
-    def get_index(self):
+    def get_bridge_index(self):
         """Used to return the index of each of the devices connected to the bridge should a factory reset occur"""
         lights = self.bridge.lights()
         for num, info in lights.items():
             info = print("{:10} {}".format(info['name'], num))
-        print(info)
+            print(info)
 
     def observing_mode(self):
         """The observing mode for the huntsman system
@@ -91,7 +96,7 @@ class Hue_Lights(object):
         Attributes:
             bridge(str): bridge connection
             desk_index(int): the index of the desk lamp found in config file
-            flat_index(int): the index of the flat field light that will eventually be addd to the config file
+            flat_index(int): the index of the flat field light that will eventually be add to the config file
             led_index(int): the index of the led light strip found in the config file
         """
         self.bridge.lights[self.led_index].state(
