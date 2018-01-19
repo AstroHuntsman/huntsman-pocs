@@ -4,6 +4,7 @@ import datetime
 import ipywidgets as widgets
 from ipywidgets import interact, interactive, fixed, interact_manual
 from IPython.display import display
+import sys
 
 
 class POCS_devices_database(object):
@@ -13,10 +14,10 @@ class POCS_devices_database(object):
     """
 
     def __init__(self,
-                 device_info_master_directory,
+                 device_info_master_directory = '/var/huntsman-pocs/conf_files/',
                  device_info_master_file = 'device_info_master.yaml',
                  local_directory='/var/huntsman-pocs/conf_files/',
-                 archive_directory='/var/huntsman-pocs/conf_files/',
+                 archive_directory='/var/huntsman-pocs/conf_files/archive/',
                  output_yaml_filename='huntsman.yaml'):
         """
         Sets up the location to save all files, loads information off previous files, and gets the current datetime info for the archive filename.
@@ -35,8 +36,11 @@ class POCS_devices_database(object):
 
         device_info_file = os.path.join(
             self.device_info_master_directory, self.device_info_master_file)
-        with open(device_info_file, 'r') as file:
-            self.data = yaml.load(file)
+        try:
+            with open(device_info_file, 'r') as file:
+                self.data = yaml.load(file)
+        except FileNotFoundError:
+            sys.exit("Cannot find device information master file")
 
         date_info = datetime.datetime.today()
         datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
