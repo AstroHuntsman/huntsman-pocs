@@ -10,7 +10,8 @@ import sys
 class POCS_devices_database(object):
     """
     This class manages serial numbers and other information of multiple devices being used with POCS.
-    It can be used to display ipython widgets to select the device information, and then create a .yaml config file that can be read and implemented by POCS.
+    It can be used to display ipython widgets to select the device information, and then create a .yaml
+    config file that can be read and implemented by POCS.
     """
 
     def __init__(self,
@@ -20,7 +21,8 @@ class POCS_devices_database(object):
                  archive_directory='/var/huntsman-pocs/conf_files/archive/',
                  output_yaml_filename='huntsman.yaml'):
         """
-        Sets up the location to save all files, loads information off previous files, and gets the current datetime info for the archive filename.
+        Sets up the location to save all files, loads information off previous files, and gets the current
+        datetime info for the archive filename.
 
         Args:
             device_info_master_directory : the file path of where the .yaml file that all the device info is in
@@ -59,12 +61,14 @@ class POCS_devices_database(object):
         self.data_dict.update(
             {'cameras': {'hdr_mode': True, 'auto_detect': False, 'devices': [None]}})
 
-    def add_device_widget(self, add_device):
-        """Function to add the details selected using the drop-down menu widgets to the 'data_dict' dictionary.
-        The function is called by a widget in start_interface() and is then run when the user clicks on the widget button.
+    def add_device_widget(self, dummy_variable_for_widget):
+        """Function to add the details selected using the drop-down menu widgets to the 'data_dict'
+        dictionary.
+        The function is called by a widget in start_interface() and is then run when the user clicks
+        on the widget button.
 
         Args:
-            add_device : on clicking the widget, a device set is saved to the dict.
+            dummy_variable_for_widget : the widget needs an extra arg for some reason
 
         Output:
             Appends the data_dict dict with the information chosen from the device information widgets.
@@ -95,15 +99,17 @@ class POCS_devices_database(object):
 
         return self.data_dict
 
-    def save_file_widget(self, save_file):
+    def save_file(self, dummy_variable_for_widget):
         """This function writes the 'data_dict' dictionary to a .yaml text file.
-        The function is called by a widget in start_interface() and is run when the user clicks on the widget button.
+        The function is called by a widget in start_interface() and is run when the user clicks on the
+        widget button.
 
         Args:
-            save_file : on clicking the widget, the dict is saved to a .yaml file
+            dummy_variable_for_widget : the widget needs an extra arg for some reason
 
         Output:
-            Writes the information in the dict into a .yaml file in two locations, as determined by the assign_local_dir() and assign_archive_dir methods.
+            Writes the information in the dict into a .yaml file in two locations, as determined by the
+            assign_local_dir() and assign_archive_dir methods.
             The default locations are:
                 '/var/huntsman-pocs/conf_files/huntsman.yaml'
                     for the local config file to be used by POCS
@@ -111,7 +117,8 @@ class POCS_devices_database(object):
                     and
 
                 '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml'
-                    for the archive of all version of the config files, with the date it was created in the filename
+                    for the archive of all version of the config files, with the date it was created in
+                    the filename
 
         """
 
@@ -203,7 +210,7 @@ class POCS_devices_database(object):
 
         button = widgets.Button(description="Save File")
         display(button)
-        button.on_click(self.save_file_widget)
+        button.on_click(self.save_file)
 
 
 def birger_sn_widget(birger_serial_number_displayed):
@@ -267,7 +274,8 @@ def serial_to_usb_widget(serial_into_USBhub_port_displayed):
     It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
     Args:
-        serial_into_USBhub_port (str) : the port number of the USB Hub that the Serial Adaptor is plugged into as selected from the widget.
+        serial_into_USBhub_port (str) : the port number of the USB Hub that the Serial Adaptor is plugged
+        into as selected from the widget.
 
     Returns:
         The result of the widget; the chosen USB port number
@@ -281,7 +289,8 @@ def camera_to_serial_widget(camera_into_serial_port_displayed):
     It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
     Args:
-        camera_into_serial_port (str) : the port number of the Serial Adaptor that the camera is plugged into as selected from the widget.
+        camera_into_serial_port (str) : the port number of the Serial Adaptor that the camera is plugged
+        into as selected from the widget.
 
     Returns:
         The result of the widget; the chosen serial port number
@@ -309,7 +318,8 @@ def camera_to_usb_widget(camera_into_USBhub_port_displayed):
     It takes the parameter chosen from the widget and returns it such that it can be used as a variable.
 
     Args:
-        camera_into_USBhub_port (str) : the port number of the USB Hub that the camera is plugged into as selected from the widget.
+        camera_into_USBhub_port (str) : the port number of the USB Hub that the camera is plugged into as
+        selected from the widget.
 
     Returns:
         The result of the widget; the chosen USB port number
