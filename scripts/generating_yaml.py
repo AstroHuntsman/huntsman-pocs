@@ -14,17 +14,10 @@ class POCS_devices(object):
     """
 
     def __init__(self):
-        self.data = {'serial_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-                     'camera_into_serial_port': [1, 2, 3, 4],
-                     'USBhub_SN': ['OX518EFFE1', 'OXCD12637D'],
-                     'camera_into_USBhub_port': [0, 1, 2, 3, 4, 5, 6, 7],
-                     'camera_SN': ['83F011167', '83F011791', '83F011639', '83F010801',
-                                   '83F010774', '83F011758', '83F010771', '83F011810', 'ML5232816', 'ML1722016'],
-                     'birger_sn': ['10858', '14287', '14286', '14285', '13281', '13134', '14284', '13208', '14276'],
-                     'lens_SN': ['3360000099', '3360000063', '3360000087', '2850000067', '3150000110', '5370000054'],
-                     'filter_ID': ['r2_1', 'r2_2', 'g2_3', 'g2_4', 'r2_5', 'r2_6', 'r2_7', 'g2_8', 'g2_9', 'ha1_10',
-                                   'ha1_11', 'g2_12', 'ha1_13', 'ha1_14']
-                     }
+
+        device_info_file = os.path.join('/Users/moniquec/Documents/Uni/Huntsman_Project', 'device_info_master.yaml')
+        with open(device_info_file, 'r') as file:
+            self.data = yaml.load(file)
 
         date_info = datetime.datetime.today()
         datetime_str = date_info.strftime('%Y_%m_%d_%H_%M')
@@ -101,19 +94,7 @@ class POCS_devices(object):
 
         """
 
-        lens_name_dict = {'3360000099': 'name1', '3360000063': 'Tuc',
-                          '3360000087': 'name3', '2850000067': 'name4',
-                          '3150000110': 'name5', '5370000054': 'name6'}
-
-        lens_image_stabalisation = {'3360000099': True, '3360000063': True,
-                                    '3360000087': True, '2850000067': True,
-                                    '3150000110': True, '5370000054': False}
-
-        camera_dict = {'83F011167': 'sbig', '83F011791': 'sbig', '83F011639': 'sbig',
-                       '83F010801': 'sbig', '83F010774': 'sbig', '83F011758': 'sbig',
-                       '83F010771': 'sbig', '83F011810': 'sbig', 'ML5232816': 'fli', 'ML1722016': 'fli'}
-
-        additional_device = {'model': camera_dict[self.camera_sn_chosen],
+        additional_device = {'model': self.camera_type_chosen,
                              'port': self.camera_sn_chosen,
                              'filter_type': self.filter_ID_chosen,
                              'focuser': {'model': 'birger',
@@ -122,8 +103,8 @@ class POCS_devices(object):
                                          },
                              'lens': {'model': 'canon',
                                       'port': self.lens_sn_chosen,
-                                      'name': lens_name_dict[self.lens_sn_chosen],
-                                      'image_stabalisataion': lens_image_stabalisation[self.lens_sn_chosen]},
+                                      'name': self.lens_name_chosen,
+                                      'image_stabalisataion': self.lens_image_stabalisation_chosen},
                              'USB_hub_serial_number': self.USB_hub_SN_chosen,
                              'camera_into_serial_adaptor_port': self.camera_to_serial_port_chosen,
                              'serial_adaptor_into_USBhub_port': self.serial_to_USBhub_port_chosen,
@@ -195,7 +176,7 @@ class POCS_devices(object):
             A .yaml config file for Huntsman
 
         """
-        birger_sn = self.data['birger_sn']
+        birger_sn = self.data['birger_SN']
         self.birger_serial_number = interactive(
             birger_sn_widget, birger_serial_number_displayed=birger_sn)
         camera_sn = self.data['camera_SN']
@@ -234,6 +215,10 @@ class POCS_devices(object):
         self.camera_to_serial_port_chosen = self.camera_into_serial_port.result
         self.USB_hub_SN_chosen = self.USBhub_SN.result
         self.camera_to_USBhub_port_chosen = self.camera_into_USBhub_port.result
+
+        self.camera_type_chosen = self.data['camera_type'][self.camera_sn_chosen]
+        self.lens_name_chosen = self.data['lens_name'][self.lens_sn_chosen]
+        self.lens_image_stabalisation_chosen = self.data['lens_image_stabalisation'][self.lens_sn_chosen]
 
         button1 = widgets.Button(description="Add new device set")
         display(button1)
