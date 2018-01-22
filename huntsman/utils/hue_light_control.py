@@ -23,6 +23,7 @@ class HueLights(object):
         verbose(bool): can be set to True or False to provide extra info if needed
         config: instance of the load_config class used to load configuration information from the configuration yaml file
         bridge(str): bridge connection
+        light_states(str): Allowed light states in yaml file
     """
 
     def __init__(self):
@@ -36,6 +37,7 @@ class HueLights(object):
         self.desk_index = self.config['hue_lights']['index']['desk']
         self.flat_index = self.config['hue_lights']['index']['flat']
         self.verbose = False
+        self.light_states = ('observing', 'observing_bright', 'bright', 'off', 'flats')
 
         if not path.exists(self.username_file_path):
             try:
@@ -91,8 +93,11 @@ class HueLights(object):
             led_state: defines the brightness, state, hue and saturation of the led strip
             desk_state: defines the brightness, state, hue and saturation of the desk lamp
             flat_state: defines the brightness, state, hue and saturation of the flat field lamp
+            light_states(str): Allowed light states in yaml file
         """
-
+        
+        if state not in self.lights_states:
+            raise ValueError("State chosen is not recognised")
         led_state = self.config['states'][state]['led']
         desk_state = self.config['states'][state]['desk']
         flat_state = self.config['states'][state]['flat_field']
