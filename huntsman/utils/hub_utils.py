@@ -3,12 +3,10 @@ import yaml
 from brainstem.result import Result
 from enum import IntEnum
 
-
 class Lights(IntEnum):
     """Lights class inherited from IntEnum to set OFF to 0 and ON to 1 """
     OFF = 0
     ON = 1
-
 
 class Hub_Interface(object):
     """The python interface for an Acroname USB Hub
