@@ -65,31 +65,20 @@ def prob_observable(skymap, header):
     twilight_horizon = config_loc['location']['twilight_horizon']
 
     time = astropy.time.Time.now()
-
-    # Determine resolution of sky map
     npix = len(skymap)
     nside = hp.npix2nside(npix)
 
-    # Geodetic coordinates of observatory
     observatory = astropy.coordinates.EarthLocation(
         lat=latitude*u.deg, lon=longitude*u.deg, height=elevation*u.m)
-
-    # Alt/az reference frame at observatory, now
     frame = astropy.coordinates.AltAz(obstime=time, location=observatory)
 
-    # Look up (celestial) spherical polar coordinates of HEALPix grid.
     theta, phi = hp.pix2ang(nside, np.arange(npix))
-    # Convert to RA, Dec.
     radecs = astropy.coordinates.SkyCoord(
         ra=phi*u.rad, dec=(0.5*np.pi - theta)*u.rad)
 
-    # Transform grid to alt/az coordinates at observatory, now
     altaz = radecs.transform_to(frame)
-
-    # Where is the sun, now
     sun_altaz = astropy.coordinates.get_sun(time).transform_to(altaz)
-
-    airmass = 2.5 # Secant of zenith angle approximation
+    airmass = 2.5
     prob = skymap[(sun_altaz.alt <= twilight_horizon*u.deg) & (altaz.secz <= airmass)].sum()
 
     return prob
