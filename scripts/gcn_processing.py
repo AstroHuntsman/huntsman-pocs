@@ -124,7 +124,8 @@ def process_gcn(payload, root, configname='parsers_config'):
     if verbose:
         print('Source has a %d%% chance of being observable now' % round(100 * prob))
     if prob > 0.5:
-        return grav_wav_parse.parse_event(header, skymap)
+        grav_wav_parse.parse_event(header, skymap)
+        pass
 
 
 # Listen for GCNs until the program is interrupted.
