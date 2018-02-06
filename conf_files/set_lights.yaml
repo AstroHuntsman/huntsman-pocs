@@ -3,83 +3,83 @@ hue_lights:
   username_file_path: "/Users/SC09015/Desktop/Python_Control_Central/hue_username.txt"
   index:
     led: 1
-    desk: 3
-    flat: 4
+    desk: 4
+    flat: 3
 states:
   observing:
     led:
-      on: True
+      'on': True
       bri: 100
       hue: 50
       sat: 250
     desk:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
     flat_field:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
   observing_bright:
     led:
-      on: True
+      'on': True
       bri: 250
       hue: 100
       sat: 250
     desk:
-      on: True
+      'on': True
       bri: 250
       hue: 30000
       sat: 20
     flat_field:
-      on: Flase
+      'on': Flase
   bright:
     led:
-      on: True
+      'on': True
       bri: 250
       hue: 30000
       sat: 10
     desk:
-      on: True
+      'on': True
       bri: 250
       hue: 30000
       sat: 10
     flat_field:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
-  off:
+  all_off:
     led:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
     desk:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
-    flate_field:
-      on: False
+    flat_field:
+      'on': False
       bri: 10
       hue: 10
       sat: 10
   flats:
     led:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
     desk:
-      on: False
+      'on': False
       bri: 10
       hue: 10
       sat: 10
     flat_field:
-      on: True
+      'on': True
       bri: 250
       hue: 30000
       sat: 10

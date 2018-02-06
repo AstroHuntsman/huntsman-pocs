@@ -29,15 +29,15 @@ class HueLights(object):
     def __init__(self):
         """Automatic login to the hue bridge using a stored username"""
 
-        lights_config_path = '/Users/SC09015/Desktop/Astro/Code/huntsman-pocs/conf_files/set_lights.yaml'
+        lights_config_path = '/Users/SC09015/Desktop/set_lights.yaml'
         self.config = load_config(lights_config_path)
         self.hue_ip = self.config['hue_lights']['hue_ip']
         self.username_file_path = self.config['hue_lights']['username_file_path']
         self.led_index = self.config['hue_lights']['index']['led']
         self.desk_index = self.config['hue_lights']['index']['desk']
         self.flat_index = self.config['hue_lights']['index']['flat']
-        self.verbose = False
-        self.light_states = ('observing', 'observing_bright', 'bright', 'off', 'flats')
+        self.verbose = True
+        self.light_states = ('observing', 'observing_bright', 'bright', 'all_off', 'flats')
 
         if not path.exists(self.username_file_path):
             try:
@@ -53,7 +53,7 @@ class HueLights(object):
                 username = cred_file.read()
                 if self.verbose:
                     print("Login with username", username, "successful")
-        self.bridge = Bridge(self.hue_ip, username)
+        self.b = Bridge(self.hue_ip, username)
 
     def get_username(self):
         """Used to return the username saved in a text file
@@ -75,7 +75,7 @@ class HueLights(object):
         Attributes:
             lights: instance of the qhue lights class
         """
-        lights = self.bridge.lights()
+        lights = self.b.lights()
         for num, info in lights.items():
             info = print("{:10} {}".format(info['name'], num))
             print(info)
@@ -84,7 +84,7 @@ class HueLights(object):
         """ Used to set the lighting state in the dome
 
         Atributes:
-            state: can be set to 'observing', 'observing_bright', 'bright', 'off' or 'flats' depending on what light state is required
+            state: can be set to 'observing', 'observing_bright', 'bright', 'all_off' or 'flats' depending on what light state is required
             bridge(str): bridge connection
             config: instance of the load_config class used to load configuration information from the configuration yaml file
             led_index(int): the index of the led light strip found in the config file
@@ -96,11 +96,11 @@ class HueLights(object):
             light_states(str): Allowed light states in yaml file
         """
         
-        if state not in self.lights_states:
+        if state not in self.light_states:
             raise ValueError("State chosen is not recognised")
         led_state = self.config['states'][state]['led']
         desk_state = self.config['states'][state]['desk']
-        flat_state = self.config['states'][state]['flat_field']
-        self.bridge.lights[self.led_index].state(led_state)
-        self.bridge.lights[self.desk_index].state(desk_state)
-        self.bridge.lights[self.flat_index].state(flat_state)
+        #flat_state = self.config['states'][state]['flat_field']
+        self.b.lights[self.led_index].state(on = led_state['on'], bri = led_state['bri'], hue = led_state['hue'], sat = led_state['sat'])
+        self.b.lights[self.desk_index].state(on = desk_state['on'], bri = desk_state['bri'], hue = desk_state['hue'], sat = desk_state['sat'])
+        #self.b.lights[self.flat_index].state(flat_state)
