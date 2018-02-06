@@ -16,9 +16,7 @@ from pocs.utils import images as img_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
-
-#from gunagala import imager
-
+from huntsman.utils import dither
 
 class HuntsmanObservatory(Observatory):
 
@@ -39,7 +37,7 @@ class HuntsmanObservatory(Observatory):
                 defaults to False.
             *args: Description
             **kwargs: Description
-        """        
+        """
         # Load the config file
         try:
             assert os.getenv('HUNTSMAN_POCS')
@@ -413,12 +411,9 @@ class HuntsmanObservatory(Observatory):
                                        dither_random_offset=0.5 * u.arcmin,
                                        n_positions=9
                                        ):
-        flat_config = self.config['flat_field']['twilight']
-
-        if alt is None:
+        if alt is None and az is None:
+            flat_config = self.config['flat_field']['twilight']
             alt = flat_config['alt']
-
-        if az is None:
             az = flat_config['az']
 
         flat_coords = utils.altaz_to_radec(
@@ -431,11 +426,11 @@ class HuntsmanObservatory(Observatory):
 
         if isinstance(flat_obs, DitheredObservation):
 
-            dither_coords = utils.dither.get_dither_positions(flat_obs.field.coord,
-                                                              n_positions=n_positions,
-                                                              pattern=utils.dither.dice9,
-                                                              pattern_offset=dither_pattern_offset,
-                                                              random_offset=dither_random_offset)
+            dither_coords = dither.get_dither_positions(flat_obs.field.coord,
+                                                        n_positions=n_positions,
+                                                        pattern=dither.dice9,
+                                                        pattern_offset=dither_pattern_offset,
+                                                        random_offset=dither_random_offset)
 
             self.logger.debug("Dither Coords for Flat-field: {}".format(dither_coords))
 
