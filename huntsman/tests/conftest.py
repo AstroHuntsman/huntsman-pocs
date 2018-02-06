@@ -2,7 +2,7 @@ import os
 import pytest
 
 from pocs.utils.config import load_config
-from pocs.utils.database import PanMongo
+from pocs.utils.database import PanDB
 
 
 def pytest_addoption(parser):
@@ -46,7 +46,7 @@ def config():
 
 @pytest.fixture
 def db():
-    return PanMongo(db='huntsman_testing')
+    return PanDB()
 
 
 @pytest.fixture
