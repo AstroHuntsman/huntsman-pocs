@@ -7,7 +7,7 @@ from astropy.stats import sigma_clipped_stats
 from photutils import DAOStarFinder
 from string import Template
 
-from pocs import PanBase
+from pocs.base import PanBase
 from pocs.utils import error
 from pocs.utils.theskyx import TheSkyX
 
