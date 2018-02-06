@@ -36,6 +36,10 @@ pointing:
     exptime: 30
     max_iterations: 3
 state_machine: huntsman
+flat_field:
+    twilight:
+        alt: 120
+        az: 70
 cameras:
     hdr_mode: True
     auto_detect: False

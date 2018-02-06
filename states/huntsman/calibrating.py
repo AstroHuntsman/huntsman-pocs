@@ -16,12 +16,24 @@ def on_enter(event_data):
 
         if pocs.observatory.take_flat_fields:
 
-            sun_pos = pocs.observatory.observer.altaz(current_time(), target=get_sun(current_time())).alt
+            sun_pos = pocs.observatory.observer.altaz(
+                current_time(),
+                target=get_sun(current_time())
+            ).alt
 
             if sun_pos.value <= 0 and sun_pos.value >= -18:
                 pocs.say("Taking some flat fields to start the night")
-                pocs.observatory.take_evening_flats(camera_list=['Cam02', 'Cam03'])  # H-alpha
-                pocs.observatory.take_evening_flats(camera_list=['Cam00', 'Cam01'])  # g and r
+
+                narrow_band_cameras = list()
+                broad_band_cameras = list()
+                for cam in pocs.observatory.cameras:
+                    if cam.filter_type.lower().startswith('ha'):
+                        narrow_band_cameras.append(cam.name)
+                    else:
+                        broad_band_cameras.append(cam.name)
+
+                pocs.observatory.take_evening_flats(camera_list=narrow_band_cameras)  # H-alpha
+                pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)   # g and r
 
         pocs.next_state = 'scheduling'
 
