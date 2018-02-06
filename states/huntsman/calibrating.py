@@ -27,7 +27,7 @@ def on_enter(event_data):
                 narrow_band_cameras = list()
                 broad_band_cameras = list()
                 for cam in pocs.observatory.cameras:
-                    if cam.filter == 'H-a':
+                    if cam.filter.lower().startswith('ha'):
                         narrow_band_cameras.append(cam.name)
                     else:
                         broad_band_cameras.append(cam.name)
