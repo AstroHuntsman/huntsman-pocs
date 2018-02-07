@@ -152,7 +152,11 @@ def find_flat_times(observatory,
 
             mean, median, stddev = stats.sigma_clipped_stats(data)
 
-            counts = mean - camera_bias[cam_name]
+            try:
+                counts = mean - camera_bias[cam_name]
+            except Exception:
+                counts = mean
+
             observatory.logger.debug("Counts: {}".format(counts))
 
             if counts < target_adu:
