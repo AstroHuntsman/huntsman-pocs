@@ -3,13 +3,22 @@ import time
 from astropy import units as u
 from astropy.io import fits
 from astropy import stats
+from astropy.coordinates import get_sun
 
 from pocs import utils
+from pocs.utils.images import crop_data
 from pocs.utils.images import fits as fits_utils
+from pocs.utils import current_time
 
 
-def find_flat_times(observatory, camera_list, target_adu=30000, bias=1000, exp_time=1):
-    """ Take saturated pictures at twilight and stop when no longer saturated.
+def find_flat_times(observatory,
+                    camera_list,
+                    target_adu=30000,
+                    exp_time=1,
+                    center_crop=True,
+                    crop_width=200
+                    ):
+    """Take saturated pictures at twilight and stop when no longer saturated.
 
     This function is used to find the time at which saturation no longer occurs.
     A series of `exp_time` images will be taken and once the count falls below
@@ -21,19 +30,27 @@ def find_flat_times(observatory, camera_list, target_adu=30000, bias=1000, exp_t
         camera_list (list): A list of cameras to expose with.
         target_adu (int, optional): Once counts fall below this level then the loop stops.
             Defaults to 30,000.
-        bias (int, optional): Bias counts in the camera that are removed before check.
-            Defaults to 1000.
         exp_time (int, optional): The exposure time to use. Defaults to one (1) second.
+        center_crop (bool, optional): Use only the center of the image for saturation calcuation.
+            Default True.
+        crop_width (int, optional): Size of the center crop. Default 200 pixels.
     """
     image_dir = observatory.config['directories']['images']
 
     flat_obs = observatory._create_flat_field_observation()
     exp_times = {cam_name: [exp_time * u.second] for cam_name in camera_list}
 
+    camera_bias = dict()
+
     # Loop until detector is not saturated
     while True:
+        sun_pos = observatory.observer.altaz(
+            current_time(),
+            target=get_sun(current_time())
+        ).alt
+
         # If we don't have cameras, break loop (they are removed below)
-        if not camera_list:
+        if not camera_list or sun_pos < -18:
             break
 
         observatory.logger.debug(
@@ -48,14 +65,52 @@ def find_flat_times(observatory, camera_list, target_adu=30000, bias=1000, exp_t
         fits_headers['start_time'] = utils.flatten_time(
             start_time)  # Common start time for cameras
 
+        fits_headers['sun_pos'] = sun_pos
+
+        dark_events = dict()
         camera_events = dict()
 
         # Take the observations
         for cam_name in camera_list:
-
             camera = observatory.cameras[cam_name]
 
-            filename = "{}/flats/{}/{}/{}.{}".format(
+            # Take dark (bias) image (only once)
+            if cam_name not in camera_bias:
+                dark_filename = "{}/flats/{}/{}/{}.{}".format(
+                    image_dir,
+                    camera.uid,
+                    flat_obs.seq_time,
+                    'dark_{:02d}'.format(flat_obs.current_exp),
+                    camera.file_extension)
+
+                # Take picture and wait for result
+                camera_event = camera.take_observation(
+                    flat_obs,
+                    fits_headers,
+                    filename=dark_filename,
+                    exp_time=exp_times[cam_name][-1],
+                    dark=True
+                )
+
+                dark_events[cam_name] = {
+                    'event': camera_event,
+                    'filename': dark_filename,
+                }
+
+                # Will block here until done exposing on all cameras
+                while not all([info['event'].is_set() for info in dark_events.values()]):
+                    observatory.logger.debug('Waiting for dark-field image')
+                    time.sleep(1)
+
+                dark_data = fits.getdata(dark_filename)
+                if center_crop:
+                    dark_data = crop_data(dark_data, box_width=crop_width)
+
+                mean, median, stddev = stats.sigma_clipped_stats(dark_data)
+                camera_bias[cam_name] = mean
+
+            # Start saturated images
+            flat_filename = "{}/flats/{}/{}/{}.{}".format(
                 image_dir,
                 camera.uid,
                 flat_obs.seq_time,
@@ -64,11 +119,15 @@ def find_flat_times(observatory, camera_list, target_adu=30000, bias=1000, exp_t
 
             # Take picture and get event
             camera_event = camera.take_observation(
-                flat_obs, fits_headers, filename=filename, exp_time=exp_times[cam_name][-1])
+                flat_obs,
+                fits_headers,
+                filename=flat_filename,
+                exp_time=exp_times[cam_name][-1]
+            )
 
             camera_events[cam_name] = {
                 'event': camera_event,
-                'filename': filename,
+                'filename': flat_filename,
             }
 
         # Block until done exposing on all cameras
@@ -88,10 +147,12 @@ def find_flat_times(observatory, camera_list, target_adu=30000, bias=1000, exp_t
                     '.fits', '.fits.fz'), unpack=True)
 
             data = fits.getdata(img_file)
+            if center_crop:
+                data = crop_data(data, box_width=crop_width)
 
             mean, median, stddev = stats.sigma_clipped_stats(data)
 
-            counts = mean - bias
+            counts = mean - camera_bias[cam_name]
             observatory.logger.debug("Counts: {}".format(counts))
 
             if counts < target_adu:
@@ -99,7 +160,10 @@ def find_flat_times(observatory, camera_list, target_adu=30000, bias=1000, exp_t
                     "Counts are under target_adu level for {}".format(cam_name))
 
                 observatory.logger.info(
-                    "Current time: {}".format(utils.current_time(pretty=True)))
+                    "Current time: {} \t Sun alt: {}".format(
+                        utils.current_time(pretty=True),
+                        sun_pos
+                    ))
 
                 # Camera no longer saturated, remove from list
                 del camera_list[cam_name]
