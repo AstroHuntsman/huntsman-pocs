@@ -71,6 +71,8 @@ lens_SN:
 - '2850000067'
 - '3150000110'
 - '5370000054'
+- '5370000053'
+- '5370000049'
 lens_image_stabalisation:
     '2850000067': true
     '3150000110': true
@@ -78,6 +80,8 @@ lens_image_stabalisation:
     '3360000087': true
     '3360000099': true
     '5370000054': false
+    '5370000053': false
+    '5370000049': false
 lens_name:
     '2850000067': Steve
     '3150000110': name5
@@ -85,6 +89,8 @@ lens_name:
     '3360000087': BrokenOne
     '3360000099': Portia
     '5370000054': name6
+    '5370000053': name7
+    '5370000049': name8
 serial_into_USBhub_port:
 - 0
 - 1
