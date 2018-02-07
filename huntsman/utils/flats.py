@@ -106,8 +106,7 @@ def find_flat_times(observatory,
                 if center_crop:
                     dark_data = crop_data(dark_data, box_width=crop_width)
 
-                mean, median, stddev = stats.sigma_clipped_stats(dark_data)
-                camera_bias[cam_name] = mean
+                camera_bias[cam_name] = dark_data
 
             # Start saturated images
             flat_filename = "{}/flats/{}/{}/{}.{}".format(
@@ -150,12 +149,13 @@ def find_flat_times(observatory,
             if center_crop:
                 data = crop_data(data, box_width=crop_width)
 
-            mean, median, stddev = stats.sigma_clipped_stats(data)
-
             try:
-                counts = mean - camera_bias[cam_name]
+                data = data - camera_bias[cam_name]
             except Exception:
-                counts = mean
+                observatory.logger.debug("Camera bias not avialable")
+
+            mean, median, stddev = stats.sigma_clipped_stats(data)
+            counts = mean
 
             observatory.logger.debug("Counts: {}".format(counts))
 
