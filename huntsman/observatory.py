@@ -12,11 +12,12 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
 from pocs.utils import config as cfg
-from pocs.utils import images as img_utils
+from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
 from huntsman.utils import dither
+
 
 class HuntsmanObservatory(Observatory):
 
@@ -274,7 +275,7 @@ class HuntsmanObservatory(Observatory):
                 # Unpack fits if compressed
                 if not os.path.exists(img_file) and \
                         os.path.exists(img_file.replace('.fits', '.fits.fz')):
-                    img_utils.fpack(img_file.replace('.fits', '.fits.fz'), unpack=True)
+                    fits_utils.fpack(img_file.replace('.fits', '.fits.fz'), unpack=True)
 
                 data = fits.getdata(img_file)
 
