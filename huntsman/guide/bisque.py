@@ -393,6 +393,6 @@ class Guide(PanBase):
         if params is None:
             params = {}
 
-        params.setdefault('async', 'false')
+        params.setdefault('async', 'true')
 
         return template.safe_substitute(params)
