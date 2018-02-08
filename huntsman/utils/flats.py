@@ -12,7 +12,7 @@ from pocs.utils import current_time
 
 
 def find_flat_times(observatory,
-                    camera_list,
+                    cameras,
                     target_adu=30000,
                     exp_time=1,
                     center_crop=True,
@@ -27,7 +27,7 @@ def find_flat_times(observatory,
 
     Args:
         observatory (pocs.observatory.observatory): An initialized Observatory instance.
-        camera_list (list): A list of cameras to expose with.
+        cameras (dict): A dict of cameras to expose with with name, obj.
         target_adu (int, optional): Once counts fall below this level then the loop stops.
             Defaults to 30,000.
         exp_time (int, optional): The exposure time to use. Defaults to one (1) second.
@@ -38,7 +38,7 @@ def find_flat_times(observatory,
     image_dir = observatory.config['directories']['images']
 
     flat_obs = observatory._create_flat_field_observation()
-    exp_times = {cam_name: [exp_time * u.second] for cam_name in camera_list}
+    exp_times = {cam_name: [exp_time * u.second] for cam_name in cameras.keys()}
 
     camera_bias = dict()
 
@@ -50,7 +50,7 @@ def find_flat_times(observatory,
         ).alt
 
         # If we don't have cameras, break loop (they are removed below)
-        if not camera_list or sun_pos < -18:
+        if not cameras:
             break
 
         observatory.logger.debug(
@@ -71,8 +71,7 @@ def find_flat_times(observatory,
         camera_events = dict()
 
         # Take the observations
-        for cam_name in camera_list:
-            camera = observatory.cameras[cam_name]
+        for cam_name, camera in cameras.items():
 
             # Take dark (bias) image (only once)
             if cam_name not in camera_bias:
@@ -170,7 +169,7 @@ def find_flat_times(observatory,
                     ))
 
                 # Camera no longer saturated, remove from list
-                del camera_list[cam_name]
+                del cameras[cam_name]
             else:
                 observatory.logger.debug(
                     "{} still saturated, taking more exposures".format(cam_name))
