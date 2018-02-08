@@ -173,3 +173,5 @@ def find_flat_times(observatory,
             else:
                 observatory.logger.debug(
                     "{} still saturated, taking more exposures".format(cam_name))
+
+        flat_obs.current_exp += 1
