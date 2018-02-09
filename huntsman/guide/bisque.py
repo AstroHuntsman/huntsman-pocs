@@ -17,18 +17,16 @@ class Guide(PanBase):
     def __init__(self, bin_size=None, image_path=None, template_dir=None, *args, **kwargs):
         """"""
         super().__init__(*args, **kwargs)
-        self.theskyx = TheSkyX()
 
-        if template_dir is None:
-            template_dir = self.config['guider']['template_dir']
-
+        template_dir = kwargs.get('template_dir',
+                                  self.config['guider']['template_dir'])
         if template_dir.startswith('/') is False:
             template_dir = os.path.join(os.environ['POCS'], template_dir)
 
         assert os.path.exists(template_dir), self.logger.warning(
-            "Bisque guider requires a template directory")
+            "Bisque autoguiders require a template directory")
 
-        self.template_dir = template_dir
+        self.theskyx = theskyx.TheSkyX(template_dir=template_dir)
 
         if bin_size is None:
             bin_size = self.config['guider']['bin_size']
@@ -305,94 +303,3 @@ class Guide(PanBase):
             success = self.start_guiding()
 
         return success
-
-
-##################################################################################################
-# Communication Methods
-##################################################################################################
-
-    def query(self, template, params=None, timeout=5):
-        """ Query the guider
-
-        Args:
-            template (str): Name of template file stored in `templates_dir`
-            params (dict, optional): Parameters required by the template
-
-        Returns:
-            dict: Response from guider, including `success` (bool) and `msg` (str)
-                as well as command-specific items
-        """
-        self.write(self._get_command(template, params=params))
-        response = self.read(timeout=timeout)
-        return response
-
-    def write(self, value):
-        """ Write to the guider
-
-        Note:
-            This method is usually just called via `query`
-
-        Args:
-            value (str): String to be written to guider, usually given by template
-        """
-        self.theskyx.write(value)
-
-    def read(self, timeout=5):
-        """ Read response from guider
-
-        Args:
-            timeout (int, optional): Timeout in seconds for attempting to get a response
-
-        Returns:
-            dict: Object representing the response, see `query`
-        """
-        response_obj = {'success': False}
-        while True:
-            response = self.theskyx.read()
-            if response is not None or timeout == 0:
-                break
-            else:
-                time.sleep(1)
-                timeout -= 1
-
-        if response is None:
-            return response_obj
-
-        try:
-            response_obj = json.loads(response)
-        except TypeError as e:
-            self.logger.warning("Error: {}".format(e, response))
-        except Exception as e:
-            response_obj = {
-                "response": response,
-                "success": False,
-            }
-
-        return response_obj
-
-##################################################################################################
-# Private Methods
-##################################################################################################
-
-    def _get_command(self, filename, params=None):
-        """ Looks up appropriate command for telescope """
-
-        if filename.startswith('/') is False:
-            filename = os.path.join(self.template_dir, filename)
-
-        if not filename.endswith('.js'):
-            filename += '.js'
-
-        template = ''
-        try:
-            with open(filename, 'r') as f:
-                template = Template(f.read())
-        except Exception as e:
-            self.logger.warning("Problem reading TheSkyX template {}: {}".format(filename, e))
-
-        if params is None:
-            params = {}
-
-        params.setdefault('async', 'false')
-
-        return template.safe_substitute(params)
