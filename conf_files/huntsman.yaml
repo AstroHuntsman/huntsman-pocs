@@ -8,6 +8,9 @@ location:
     elevation: 1000.0 # Meters
     utc_offset: 10.00 # Hours
     horizon: 30 # Degrees
+    obstructions:
+      - [[60, 163], [60, 167]] # lightning rod rough coordinates
+      - [[45, 355], [45, 5]] # telstra tower rough coordinates
     timezone: Australia/Sydney
 scheduler:
     type: dispatch
