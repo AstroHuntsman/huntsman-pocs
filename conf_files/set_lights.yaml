@@ -26,15 +26,15 @@ states:
     led:
       'on': True
       bri: 250
-      hue: 100
+      hue: 50
       sat: 250
     desk:
       'on': True
-      bri: 250
-      hue: 30000
-      sat: 20
+      bri: 100
+      hue: 50
+      sat: 250
     flat_field:
-      'on': Flase
+      'on': False
   bright:
     led:
       'on': True
