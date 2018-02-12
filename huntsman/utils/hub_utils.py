@@ -1,7 +1,10 @@
 import brainstem
-import yaml
 from brainstem.result import Result
+import time
 from enum import IntEnum
+#from pocs.utils.config import load_config
+from nested_lookup import nested_lookup
+from warnings import warn
 
 class Lights(IntEnum):
     """Lights class inherited from IntEnum to set OFF to 0 and ON to 1 """
@@ -21,86 +24,107 @@ class Hub_Interface(object):
           port(int): The port number of the USB hub that is in use
     """
 
-    def __init__(self):
-        no_camera = 0
-        yaml_file = "/Users/SC09015/Desktop/Python_Control_Central/device_info_testing_file2.yaml"
+    def __init__(self, state):
+
+        usb_config_path = "/Users/SC09015/Desktop/21_12_17_huntsman_local_full_set.yaml"
+
+        #self.config = load_config(usb_config_path)
+
         self.verbose = True
+
+        self.possible_states = ('observing', 'shut_down', 'start_her_up', 'power_cycle', 'pass')
+
+        if state not in self.possible_states:
+            raise ValueError("State chosen is not recognised")
+
         self.toggle_leds = True
-        self.hub_serial = 0xcd12637d
-        #with open(yaml_file, 'r') as yml:
-          #  try:
-           #     newyml = (yaml.load(yml))
-           #     self.hub_serial = newyml['cameras'][1]['devices'][no_camera]['USB_hub_serial_number']
-           #     self.port = newyml['cameras'][1]['devices'][no_camera]['camera_into_serial_adaptor_port']
-          #  except yaml.YAMLError as exc:
-          #      print(exc)
+        self.full_set = [0,1,2,3,4,5,6,7]
 
-        if self.verbose:
-            print('Connecting to hub', self.hub_serial)
-            
-        self.stem = brainstem.stem.USBHub3p()
-        
-        result = self.stem.discoverAndConnect(brainstem.link.Spec.USB, self.hub_serial)
-        
-        if result == (Result.NO_ERROR):
-            result1 = self.stem.system.getSerialNumber()
-            
-        else:
-            print('Could not connect to the device')
-            
-        if self.verbose:
-            print('Connected to USBStem with serial number:', result1)
-            
-        self.stem.system.setLED(Lights.ON)
-        
-        if self.toggle_leds:
-            if self.verbose:
-                print('Flashing the user LED on device')
-            for i in range(0, 101):
-                self.stem.system.setLED(i % 2)
-            
+        #hubs = nested_lookup("USB_hub_serial_number", self.config) <- correct one
+        hubs = ['OX518EFFE1', 'OX518EFFE1', 'OX518EFFE1', 'OX518EFFE1', 'OX518EFFE1']
 
-    def disconnect_from_hub(self):
-        """Used to disconect from the USB hub"""
-        self.stem.disconnect()
-        print('Disconnected from hub', self.hub_serial)
+        #camera_ports = nested_lookup("camera_into_USBhub_port", self.config)
+        camera_ports = [5, 1, 2, 4, 6]
 
-    def voltage(self, port):
-        """Prints the voltage across the chosen port in volts"""
-        voltage = self.stem.usb.getPortVoltage(port).value
-        voltage_out = voltage * 1e-6 
-        print(voltage_out)
+        #birger_ports = nested_lookup("serial_adaptor_into_USBhub_port", self.config)
+        birger_ports = [7, 0, 0, 0, 0]
 
-    def current(self, port):
-        """Prints the current through the chosen port in amps"""
-        current = self.stem.usb.getPortCurrent(port).value
-        current_out = current * 1e-6
-        print(current_out)
+        paired_states = list(zip(hubs, camera_ports, birger_ports))
 
-    def enable(self, port):
-        """Enables a specific port"""
-        self.stem.usb.setPortEnable(port)
-        if self.toggle_leds:
-            for i in range(1, 11):
-                self.stem.system.setLED(i % 2)
+        yaml_devices = list(range(0, len(paired_states)))
 
-    def disable(self, port):
-        """Dissables a specific port"""
-        self.stem.usb.setPortDisable(port)
-        if self.toggle_leds:
-            for i in range(1, 11):
-                self.stem.system.setLED(i % 2)
-                
-    def disable_all(self):
-        
-        ports = [0,1,2,3,4,5,6,7]
-        for port_id in ports:
-            self.stem.usb.setPortDisable(port_id)
-            
-    def enable_all(self):
-        
-        ports = [0,1,2,3,4,5,6,7]
-        for port_id in ports:
-            self.stem.usb.setPortEnable(port_id)        
+        for n in yaml_devices:
 
-            
+            if state == "pass":
+                pass
+
+            else:
+
+                ensamble = paired_states[n]
+                hub_serial = ensamble[0]
+                camera_port = ensamble[1]
+                birger_port = ensamble[2]
+
+                if hub_serial == 'OXCD12637D':
+                    hub_serial = 0xcd12637d
+                if hub_serial == 'OX518EFFE1':
+                    hub_serial = 0x518effe1
+
+                "Connect to the Hub"
+                if self.verbose:
+                    print('Connecting to hub', hub_serial)
+
+                self.stem = brainstem.stem.USBHub3p()
+
+                result = self.stem.discoverAndConnect(brainstem.link.Spec.USB, hub_serial)
+
+                if result == (Result.NO_ERROR):
+                    result1 = self.stem.system.getSerialNumber()
+                    if self.verbose:
+                        print('Connected to USBStem with serial number:', result1)
+
+                else:
+                    warn('Could not connect to the device')
+
+                self.stem.system.setLED(Lights.OFF)
+
+                if self.toggle_leds:
+                    if self.verbose:
+                        print('Flashing the user LED on device')
+                    for i in range(0, 101):
+                        self.stem.system.setLED(i % 2)
+
+                #enable all ports needed for observing and all hubs in use
+                if state == "observing":
+                    self.stem.usb.setPortEnable(camera_port)
+                    self.stem.usb.setPortEnable(birger_port)
+
+                else:
+                    pass
+
+                #shut down all ports in use on all hubs in use and disconnect
+                if state == "shut_down":
+                    self.stem.usb.setPortDisable(camera_port)
+                    self.stem.usb.setPortDisable(birger_port)
+                    self.stem.disconnect()
+
+                else:
+                    pass
+
+                #start up all ports from hubs in use
+                if state == "start_her_up":
+                    for port_id in self.full_set:
+                        self.stem.usb.setPortEnable(port_id)
+
+                else:
+                    pass
+
+                #power cycle every hub in use
+                if state == "power_cycle":
+                    for port_id in self.full_set:
+                        self.stem.usb.setPortDisable(port_id)
+                        time.sleep(30)
+                        self.stem.usb.setPortEnable(camera_port)
+                        self.stem.usb.setPortEnable(birger_port)
+                else:
+                    pass
