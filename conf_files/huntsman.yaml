@@ -10,7 +10,7 @@ location:
     horizon: 30 # Degrees
     obstructions:
       - [[60, 163], [60, 167]] # lightning rod rough coordinates
-      - [[45, 365], [45, 5]] # telstra tower rough coordinates
+      - [[45, 355], [45, 5]] # telstra tower rough coordinates
     timezone: Australia/Sydney
 scheduler:
     type: dispatch
