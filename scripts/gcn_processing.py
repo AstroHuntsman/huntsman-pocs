@@ -58,28 +58,29 @@ def prob_observable(skymap, header):
     config_loc = load_config(config_files=[
         '{}/huntsman.yaml'.format(huntsman_config_dir)
     ])
+    config_pocs = load_config()
 
     longitude = config_loc['location']['longitude']
     latitude = config_loc['location']['latitude']
     elevation = config_loc['location']['elevation']
-    twilight_horizon = config_loc['location']['twilight_horizon']
+    twilight_horizon = config_pocs['location']['twilight_horizon']
 
     time = astropy.time.Time.now()
     npix = len(skymap)
     nside = hp.npix2nside(npix)
 
     observatory = astropy.coordinates.EarthLocation(
-        lat=latitude*u.deg, lon=longitude*u.deg, height=elevation*u.m)
+        lat=latitude * u.deg, lon=longitude * u.deg, height=elevation * u.m)
     frame = astropy.coordinates.AltAz(obstime=time, location=observatory)
 
     theta, phi = hp.pix2ang(nside, np.arange(npix))
     radecs = astropy.coordinates.SkyCoord(
-        ra=phi*u.rad, dec=(0.5*np.pi - theta)*u.rad)
+        ra=phi * u.rad, dec=(0.5 * np.pi - theta) * u.rad)
 
     altaz = radecs.transform_to(frame)
     sun_altaz = astropy.coordinates.get_sun(time).transform_to(altaz)
     airmass = 2.5
-    prob = skymap[(sun_altaz.alt <= twilight_horizon*u.deg) & (altaz.secz <= airmass)].sum()
+    prob = skymap[(sun_altaz.alt <= twilight_horizon * u.deg) & (altaz.secz <= airmass)].sum()
 
     return prob
 
@@ -102,9 +103,11 @@ def process_gcn(payload, root, configname='parsers_config'):
         print('Got VOEvent:')
         print(payload)
 
-    if root.attrib['role'] != 'observation': return
+    if root.attrib['role'] != 'observation':
+        return
 
-    if root.find("./What/Param[@name='Group']").attrib['value'] != event: return
+    if root.find("./What/Param[@name='Group']").attrib['value'] != event:
+        return
 
     skymap_url = root.find(
         "./What/Param[@name='SKYMAP_URL_FITS_BASIC']").attrib['value']

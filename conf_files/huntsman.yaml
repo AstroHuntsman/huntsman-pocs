@@ -8,7 +8,6 @@ location:
     elevation: 1000.0 # Meters
     utc_offset: 10.00 # Hours
     horizon: 30 # Degrees
-    twilight_horizon: -18 # Degrees
     timezone: Australia/Sydney
 scheduler:
     type: dispatch
