@@ -18,7 +18,7 @@ import numpy as np
 
 import requests
 
-from pocs.utils.too.parsers.grav_wave_parser import GravWaveParse
+from huntsman.utils.too.parsers.grav_wave_parser import GravWaveParse
 from pocs.utils.config import load_config
 
 
@@ -90,8 +90,10 @@ def prob_observable(skymap, header):
 @gcn.handlers.include_notice_types(
     gcn.notice_types.LVC_INITIAL,
     gcn.notice_types.LVC_UPDATE)
-def process_gcn(payload, root, configname='parsers_config'):
-    config = load_config(configname)
+def process_gcn(payload, root):
+    config = load_config(config_files=[
+        '{}/parsers_config.yaml'.format(huntsman_config_dir)
+    ])
 
     grav_wave_parse = GravWaveParse()
 

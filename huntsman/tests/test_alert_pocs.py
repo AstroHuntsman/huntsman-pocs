@@ -5,7 +5,7 @@ from multiprocessing import Process
 
 from pocs import POCS
 from pocs.utils.messaging import PanMessaging
-from pocs.utils.too.alert_pocs import Alerter
+from huntsman.utils.too.alert_pocs import Alerter
 
 
 @pytest.fixture

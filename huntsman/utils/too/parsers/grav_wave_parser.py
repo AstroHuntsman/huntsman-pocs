@@ -8,9 +8,9 @@ from warnings import warn
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
-from ....utils.config import load_config
-from ....utils.too.alert_pocs import Alerter
-from ....utils.too.grav_wave.grav_wave import GravityWaveEvent
+from pocs.utils.config import load_config
+from huntsman.utils.too.alert_pocs import Alerter
+from huntsman.utils.too.grav_wave.grav_wave import GravityWaveEvent
 
 
 class GravWaveParse(object):
@@ -18,9 +18,7 @@ class GravWaveParse(object):
     """Creates parser classe for Gravity Wave events.
 
     Attributes:
-        - configname (str): name of config file it reads parser properies from.
-        - config (python dictionary or list of dictionaries): the loaded config file
-            of the given name.
+        - config (python dictionary or list of dictionaries): the loaded config file.
         - test_message (bool): enables the reading of test messages.
         - checked_targets (list): list of final targets in the parser.
         - alert_pocs (bool): Tells the Alerter class whether or not to send checked_targets.
@@ -37,14 +35,14 @@ class GravWaveParse(object):
     def __init__(
             self,
             test_message=False,
-            configname='parsers_config',
             alert_pocs=True,
             *args,
             **kwargs):
 
-        self.configname = configname
+        self.config = load_config(config_files=[
+            '{}/parsers_config.yaml'.format(huntsman_config_dir)
+        ])
 
-        self.config = load_config(configname)
         self.checked_targets = []
 
         self.alert_pocs = alert_pocs
@@ -104,7 +102,6 @@ class GravWaveParse(object):
 
             grav_wave = GravityWaveEvent(skymap, time=time,
                                          alert_pocs=self.alert_pocs,
-                                         configname=self.configname,
                                          header=header,
                                          verbose=self.verbose,
                                          selection_criteria=self.selection_criteria,

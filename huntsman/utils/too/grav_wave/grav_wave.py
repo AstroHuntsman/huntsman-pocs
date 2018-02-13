@@ -18,10 +18,10 @@ from astropy.cosmology import WMAP9 as cosmo
 from astropy.table import Column
 from astropy.utils.data import download_file
 
-from ....utils import current_time
-from ....utils.config import load_config
-from ....utils.too.alert_pocs import Alerter
-from ....utils.too.horizon.horizon_range import Horizon
+from pocs.utils import current_time
+from pocs.utils.config import load_config
+from huntsman.utils.too.alert_pocs import Alerter
+from huntsman.utils.too.horizon.horizon_range import Horizon
 
 from astroplan import Observer
 
@@ -31,7 +31,7 @@ class GravityWaveEvent(object):
     def __init__(self, skymap, observer=None, galaxy_catalog='J/ApJS/199/26/table3',
                  time=None, key={'ra': 'RAJ2000', 'dec': 'DEJ2000'}, frame='fk5', unit='deg',
                  selection_criteria=None, fov=None, dist_cut=50.0, header={},
-                 alert_pocs=None, percentile=95.0, altitude=None, configname='parsers_config',
+                 alert_pocs=None, percentile=95.0, altitude=None,
                  tile_types='c_tr_tl_br_bl', *args, **kwargs):
         """Handles recieved gravity wave triggers.
 
@@ -78,7 +78,9 @@ class GravityWaveEvent(object):
         self.verbose = kwargs.get('verbose', False)
         self.created_event = True
 
-        self.config_grav = load_config(configname)
+        self.config_grav = load_config(config_files=[
+            '{}/parsers_config.yaml'.format(huntsman_config_dir)
+        ])
 
         for parser in self.config_grav['parsers']:
             if parser['type'] == 'GravWaveParse':
@@ -300,9 +302,9 @@ class GravityWaveEvent(object):
             idx = Column(name='index', data=one_to_n)
             cands.add_column(idx, index=0)
 
-        keep = (self.catalog[self.key['ra']] <= coord['ra_max']) \
-            & (self.catalog[self.key['ra']] >= coord['ra_min']) \
-            & (self.catalog[self.key['dec']] <= coord['dec_max']) \
+        keep = (self.catalog[self.key['ra']] <= coord['ra_max'])
+            & (self.catalog[self.key['ra']] >= coord['ra_min'])
+            & (self.catalog[self.key['dec']] <= coord['dec_max'])
             & (self.catalog[self.key['dec']] >= coord['dec_min'])
 
         galaxies_in_tile = self.catalog[keep]
@@ -344,7 +346,7 @@ class GravityWaveEvent(object):
                 cand_coords = SkyCoord(float(gal[self.key['ra']]),
                                        float(gal[self.key['dec']]), frame=self.frame, unit=self.unit)
 
-                tile['text'] = tile['text'] + 'name: ' + \
+                tile['text'] = tile['text'] + 'name: ' +
                     str(gal['SimbadName']) + '   coords: ' + str(cand_coords.to_string('hmsdms')) + '\n'
 
                 tile['gal_indexes'].append(gal['index'])

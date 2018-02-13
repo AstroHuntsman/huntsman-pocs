@@ -6,7 +6,7 @@ from astropy import units as u
 from astropy.coordinates import AltAz
 from astropy.coordinates import FK5
 
-from ....utils import current_time
+from pocs.utils import current_time
 
 
 class Horizon(object):
