@@ -2,7 +2,7 @@ import brainstem
 from brainstem.result import Result
 import time
 from enum import IntEnum
-#from pocs.utils.config import load_config
+from pocs.utils.config import load_config
 from nested_lookup import nested_lookup
 from warnings import warn
 
@@ -26,9 +26,9 @@ class Hub_Interface(object):
 
     def __init__(self, state):
 
-        usb_config_path = "/Users/SC09015/Desktop/21_12_17_huntsman_local_full_set.yaml"
+        usb_config_path = "/private/var/huntsman/huntsman-pocs/conf_files/test_huntsman_config.yaml"
 
-        #self.config = load_config(usb_config_path)
+        self.config = load_config(usb_config_path)
 
         self.verbose = True
 
@@ -40,14 +40,11 @@ class Hub_Interface(object):
         self.toggle_leds = True
         self.full_set = [0,1,2,3,4,5,6,7]
 
-        #hubs = nested_lookup("USB_hub_serial_number", self.config) <- correct one
-        hubs = ['OX518EFFE1', 'OX518EFFE1', 'OX518EFFE1', 'OX518EFFE1', 'OX518EFFE1']
+        hubs = nested_lookup("USB_hub_serial_number", self.config) 
 
-        #camera_ports = nested_lookup("camera_into_USBhub_port", self.config)
-        camera_ports = [5, 1, 2, 4, 6]
-
-        #birger_ports = nested_lookup("serial_adaptor_into_USBhub_port", self.config)
-        birger_ports = [7, 0, 0, 0, 0]
+        camera_ports = nested_lookup("camera_into_USBhub_port", self.config)
+       
+        birger_ports = nested_lookup("serial_adaptor_into_USBhub_port", self.config)
 
         paired_states = list(zip(hubs, camera_ports, birger_ports))
 
@@ -57,13 +54,14 @@ class Hub_Interface(object):
 
             if state == "pass":
                 pass
-
-            else:
+            
+        else:
 
                 ensamble = paired_states[n]
                 hub_serial = ensamble[0]
                 camera_port = ensamble[1]
                 birger_port = ensamble[2]
+
 
                 if hub_serial == 'OXCD12637D':
                     hub_serial = 0xcd12637d
@@ -73,7 +71,9 @@ class Hub_Interface(object):
                 "Connect to the Hub"
                 if self.verbose:
                     print('Connecting to hub', hub_serial)
-
+                    
+                    
+                print("step1")
                 self.stem = brainstem.stem.USBHub3p()
 
                 result = self.stem.discoverAndConnect(brainstem.link.Spec.USB, hub_serial)
@@ -113,18 +113,23 @@ class Hub_Interface(object):
 
                 #start up all ports from hubs in use
                 if state == "start_her_up":
-                    for port_id in self.full_set:
-                        self.stem.usb.setPortEnable(port_id)
+                    for chosen_hub in hubs:
+                        new_set_stem = stem.discoverAndConnect(brainstem.link.Spec.USB, chosen_hub)
+                        for port_id in self.full_set:
+                            self.stem.usb.setPortEnable(port_id)
 
                 else:
                     pass
 
                 #power cycle every hub in use
                 if state == "power_cycle":
-                    for port_id in self.full_set:
-                        self.stem.usb.setPortDisable(port_id)
-                        time.sleep(30)
-                        self.stem.usb.setPortEnable(camera_port)
-                        self.stem.usb.setPortEnable(birger_port)
+                     for chosen_hub in hubs:
+                        new_set_stem = stem.discoverAndConnect(brainstem.link.Spec.USB, chosen_hub)
+                        for port_id in self.full_set:
+                            self.stem.usb.setPortDisable(port_id)
+                            time.sleep(30)
+                            self.stem.usb.setPortEnable(camera_port)
+                            self.stem.usb.setPortEnable(birger_port)
                 else:
                     pass
+                
