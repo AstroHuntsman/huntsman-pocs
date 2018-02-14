@@ -1,85 +1,25 @@
 hue_lights:
-  hue_ip: 
-  username_file_path: "/Users/SC09015/Desktop/Python_Control_Central/hue_username.txt"
-  index:
-    led: 1
-    desk: 4
-    flat: 3
+  hue_ip: null
+  index: {desk: 4, flat: 3, led: 1}
+  username: zC4QZINjrwD010r77bgyglZanKRlnotRBvIMD8Da
 states:
-  observing:
-    led:
-      'on': True
-      bri: 100
-      hue: 50
-      sat: 250
-    desk:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
-    flat_field:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
-  observing_bright:
-    led:
-      'on': True
-      bri: 250
-      hue: 50
-      sat: 250
-    desk:
-      'on': True
-      bri: 100
-      hue: 50
-      sat: 250
-    flat_field:
-      'on': False
-  bright:
-    led:
-      'on': True
-      bri: 250
-      hue: 30000
-      sat: 10
-    desk:
-      'on': True
-      bri: 250
-      hue: 30000
-      sat: 10
-    flat_field:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
   all_off:
-    led:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
-    desk:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
-    flat_field:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
+    desk: {bri: 10, hue: 10, 'on': false, sat: 10}
+    flat_field: {bri: 10, hue: 10, 'on': false, sat: 10}
+    led: {bri: 10, hue: 10, 'on': false, sat: 10}
+  bright:
+    desk: {bri: 250, hue: 30000, 'on': true, sat: 10}
+    flat_field: {bri: 10, hue: 10, 'on': false, sat: 10}
+    led: {bri: 250, hue: 30000, 'on': true, sat: 10}
   flats:
-    led:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
-    desk:
-      'on': False
-      bri: 10
-      hue: 10
-      sat: 10
-    flat_field:
-      'on': True
-      bri: 250
-      hue: 30000
-      sat: 10
+    desk: {bri: 10, hue: 10, 'on': false, sat: 10}
+    flat_field: {bri: 250, hue: 30000, 'on': true, sat: 10}
+    led: {bri: 10, hue: 10, 'on': false, sat: 10}
+  observing:
+    desk: {bri: 10, hue: 10, 'on': false, sat: 10}
+    flat_field: {bri: 10, hue: 10, 'on': false, sat: 10}
+    led: {bri: 100, hue: 50, 'on': true, sat: 250}
+  observing_bright:
+    desk: {bri: 100, hue: 50, 'on': true, sat: 250}
+    flat_field: {'on': false}
+    led: {bri: 250, hue: 50, 'on': true, sat: 250}

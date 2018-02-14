@@ -1,4 +1,6 @@
-from os import path
+import yaml
+import os
+import sys
 from qhue import Bridge, QhueException, create_new_username
 from warnings import warn
 from pocs.utils.config import load_config
@@ -8,7 +10,7 @@ class HueLights(object):
 
         Creates a text file with stored username upon first connection to the
         bridge, will
-        prompt the user to press the hue bridge button to connect for the fist
+        prompt the user to press the hue bridge button to connect for the first
         time and writes
         the file to the working directory.
         Should a username already exist, the stored username is read and used to
@@ -19,7 +21,7 @@ class HueLights(object):
         manual login may be nessesary.
 
     Attributes:
-        hue_ip(int): the ip address of the hue bridge - please note, this must
+        hue_ip(str): the ip address of the hue bridge - please note, this must
         be manualy input into the set_lights.yaml file to avoid pushing to git hub
         led_index(int): the index of the led light strip found in the config file
         desk_index(int): the index of the desk lamp found in config file
@@ -30,74 +32,66 @@ class HueLights(object):
         verbose(bool): can be set to True or False to provide extra info if needed
         config: instance of the load_config class used to load configuration
         information from the configuration yaml file
-        brid(str): bridge connection
+        bridge(str): bridge connection
         light_states(str): allowed light states in yaml file
-        lights_config_path(str): location of the config file
+        config_directory(str): location of the config file
     """
 
     def __init__(self):
         """Automatic login to the hue bridge using a stored username"""
-
-        lights_config_path = '/Users/SC09015/Desktop/set_lights.yaml'
-        self.config = load_config(lights_config_path)
+        
+        self.config_directory = '/var/huntsman/huntsman-pocs/conf_files/set_lights.yaml'
+        self.config = load_config(self.config_directory)
         self.hue_ip = self.config['hue_lights']['hue_ip']
         self.username_file_path = self.config['hue_lights']['username_file_path']
-        self.led_index = self.config['hue_lights']['index']['led']
-        self.desk_index = self.config['hue_lights']['index']['desk']
-        self.flat_index = self.config['hue_lights']['index']['flat']
-        self.verbose = True
+        self.hue_username = self.config['hue_lights']['username']
+        self.led_index = self.config['hue_lights']['bridge_index']['led']
+        self.desk_index = self.config['hue_lights']['bridge_index']['desk']
+        self.flat_index = self.config['hue_lights']['bridge_index']['flat']
+        self.verbose = kwargs.get('verbose', True)
         self.light_states = (
             'observing',
             'observing_bright',
             'bright',
             'all_off',
             'flats')
-
-        if not path.exists(self.username_file_path):
+        
+        if self.hue_username == None:
+          
             try:
                 username = create_new_username(self.hue_ip)
             except QhueException as err:
-                warn("Cannot create new username: {}".format(err))
-            with open(self.username_file_path, "w") as cred_file:
-                cred_file.write(username)
+                sys.exit("Cannot create new username: {}".format(err))    
+                
+                with open(self.config_directory) as file:
+                    self.lights_info = yaml.load(file)
+                    self.lights_info['hue_lights']['username'] = username
+                with open(self.config_directory, 'w') as file:
+                    yaml.dump(self.light_info, file)
+            except FileNotFoundError:
+                warn("Cannot find set_lights config file")
                 if self.verbose:
-                    print("Your hue username", username, "was created")
+                    print("Your hue username {} was created".format(username))
+                    
         else:
-            with open(self.username_file_path, "r") as cred_file:
-                username = cred_file.read()
-                if self.verbose:
-                    print("Login with username", username, "successful")
-        self.brid = Bridge(self.hue_ip, username)
-
-    def get_username(self):
-        """Used to return the username saved in a text file
-
-        Attributes:
-            username_file_path(str): the file path of the text file that will be
-            saved containing the current username - this is a good way to test
-            without a bridge conenction if you have a login username at all.
-        """
-
-        with open(self.username_file_path, 'r') as user:
-            if not path.exists(self.username_file_path):
-                warn("Username cannot be found")
-            else:
-                username = user.read()
-        print(username)
+            if self.verbose:
+                print("Login with username {} successful".format(username))
+        self.bridge = Bridge(self.hue_ip, username)
 
     def get_bridge_index(self):
-        """Used to return the index of each of the devices connected to the
+        """Used to print the index of each of the devices connected to the
         bridge should a factory reset occur
 
         Attributes:
             lights: instance of the qhue lights class
         """
-        lights = self.brid.lights()
+        lights = self.bridge.lights()
         for num, info in lights.items():
             info = print("{:10} {}".format(info['name'], num))
             print(info)
+        return info    
 
-    def set_state(self, state):
+    def set_state(self, state, verbose):
         """ Used to set the lighting state in the dome
 
         Atributes:
@@ -125,10 +119,12 @@ class HueLights(object):
         led_state = self.config['states'][state]['led']
         desk_state = self.config['states'][state]['desk']
         #flat_state = self.config['states'][state]['flat_field']
-        self.brid.lights[self.led_index].state(
+        self.bridge.lights[self.led_index].state(
             on=led_state['on'], bri=led_state['bri'], hue=led_state['hue'],
             sat=led_state['sat'])
-        self.brid.lights[self.desk_index].state(
+        self.bridge.lights[self.desk_index].state(
             on=desk_state['on'], bri=desk_state['bri'], hue=desk_state['hue'],
             sat=desk_state['sat'])
         # self.brid.lights[self.flat_index].state(flat_state)
+        if verbose:
+            print("Lights have been set to {} mode".format(state))
