@@ -3,6 +3,7 @@ from qhue import Bridge, QhueException, create_new_username
 from warnings import warn
 from pocs.utils.config import load_config
 
+
 class HueLights(object):
     """A Python interface for the lighting control system of the huntsman dome
 
@@ -23,9 +24,9 @@ class HueLights(object):
         config_directory(str): location of the config file
     """
 
-    def __init__(self, info_verbose = False):
+    def __init__(self, info_verbose=False):
         """Automatic login to the hue bridge using a stored username"""
-        
+
         self.config_directory = '/var/huntsman/huntsman-pocs/conf_files/set_lights.yaml'
         self.config = load_config(self.config_directory)
         self.hue_ip = self.config['hue_lights']['hue_ip']
@@ -39,15 +40,15 @@ class HueLights(object):
             'bright',
             'all_off',
             'flats')
-        if info_verbose == True:
+        if info_verbose:
             self.verbose = True
         else:
-            self.verbose = False          
-        if self.hue_username == None:    
+            self.verbose = False
+        if self.hue_username is None:
             try:
                 username = create_new_username(self.hue_ip)
             except QhueException as err:
-                warn("Cannot create new username: {}".format(err))           
+                warn("Cannot create new username: {}".format(err))
                 with open(self.config_directory) as file:
                     self.lights_info = yaml.load(file)
                     self.lights_info['hue_lights']['username'] = username
@@ -56,7 +57,7 @@ class HueLights(object):
             except FileNotFoundError:
                 warn("Cannot find set_lights config file")
                 if self.verbose:
-                    print("Your hue username {} was created".format(username))       
+                    print("Your hue username {} was created".format(username))
         else:
             if self.verbose:
                 print("Login with username {} successful".format(username))
@@ -73,7 +74,7 @@ class HueLights(object):
         for num, info in lights.items():
             info = print("{:10} {}".format(info['name'], num))
             print(info)
-        return info    
+        return info
 
     def set_state(self, state):
         """ Used to set the lighting state in the dome
