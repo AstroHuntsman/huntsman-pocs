@@ -3,7 +3,6 @@ from qhue import Bridge, QhueException, create_new_username
 from warnings import warn
 from pocs.utils.config import load_config
 
-
 class HueLights(object):
     """A Python interface for the lighting control system of the huntsman dome
 
@@ -93,7 +92,7 @@ class HueLights(object):
         """
 
         if state not in self.light_states:
-            raise ValueError("State chosen is not recognised")
+            raise ValueError(("State chosen is not recognised, please use one of the following: {}").format(self.light_states))
         led_state = self.config['states'][state]['led']
         desk_state = self.config['states'][state]['desk']
         #flat_state = self.config['states'][state]['flat_field']
