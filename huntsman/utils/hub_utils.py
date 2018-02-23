@@ -30,7 +30,7 @@ class Hub_Interface(object):
         self.verbose = True
         self.possible_states = ('observing', 'shut_down', 'start_her_up', 'power_cycle', 'pass')
         if state not in self.possible_states:
-            raise ValueError("State chosen is not recognised")
+            raise ValueError(("State chosen is not recognised. please try one of the following {}").format(self.possible_states))
         self.toggle_leds = True
         self.full_set = [0,1,2,3,4,5,6,7]
         hubs = nested_lookup("USB_hub_serial_number", self.config) 
