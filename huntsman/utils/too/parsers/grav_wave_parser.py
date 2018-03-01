@@ -38,7 +38,8 @@ class GravWaveParse(object):
             alert_pocs=True,
             *args,
             **kwargs):
-
+        huntsman_config_dir = '/var/huntsman-pocs/conf_files'
+        
         self.config = load_config(config_files=[
             '{}/parsers_config.yaml'.format(huntsman_config_dir)
         ])

@@ -69,6 +69,7 @@ class GravityWaveEvent(object):
             - percentile (float): the percentile in which we want to select candidate galaxies from.
             - created_event (bool): False if there are exceptions raised downloading the catalog or probability map.
         """
+        huntsman_config_dir = '/var/huntsman-pocs/conf_files'
 
         # need to make this more generic
         self.config_loc = load_config(config_files=[

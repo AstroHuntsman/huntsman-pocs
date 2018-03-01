@@ -55,6 +55,8 @@ def prob_observable(skymap, header):
     sky map that is observable from a particular ground-based site at a
     particular time.
     """
+    huntsman_config_dir = '/var/huntsman-pocs/conf_files'
+    
     config_loc = load_config(config_files=[
         '{}/huntsman.yaml'.format(huntsman_config_dir)
     ])
