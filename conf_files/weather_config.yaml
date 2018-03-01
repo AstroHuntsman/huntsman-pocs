@@ -1,0 +1,120 @@
+weather:
+    station: mongo
+    aat_metdata:
+      name: AAT metdata
+      link: ftp://site-ftp.aao.gov.au/pub/local/metdata/metdata1.dat
+      column_names:
+        time_UTC: u.dimensionless_unscaled
+        outside_air_temperature: u.Celsius
+        AAT_dome_air_temperature: u.Celsius
+        AAT_mirror_temperature: u.Celsius
+        AAT_dome_dewpoint: u.Celsius
+        outside_humidity: u.percent
+        barometric_pressure: cds.mmHg
+        wind_speed: u.km / u.hour
+        wind_gust: u.km / u.hour
+        wind_direction: u.degree
+        AAT_dome_door_status: u.dimensionless_unscaled
+        rain_sensor: u.dimensionless_unscaled
+        outside_dewpoint: u.Celsius
+        sky-ambient: u.Celsius
+        sky-ambient_uncertainty: u.Celsius
+        boltwood_sky_brightness: u.dimensionless_unscaled
+        boltwood_rain_flag: u.dimensionless_unscaled
+        boltwood_wet_flag: u.dimensionless_unscaled
+        rain_since_9am: u.mm
+        SQM_sky_brightness: u.ABmag
+      max_age: 60.
+      thresholds:
+        sky-ambient:
+          Clear:       [-.inf, -25.0]
+          Cloudy:      [-25., -15.0]
+          Very cloudy: [-15., 0]
+        wind_speed:
+          Calm:        [0.0, 50.0]
+          Windy:       [50.0, 75.0]
+          Very Windy:  [75.0, .inf]
+        wind_gust:
+          Calm:        [0.0, 100.0]
+          Gusty:       [100.0, 125.0]
+          Very gusty:  [125.0, .inf]
+        rain_sensor:
+          No data:     [-1]
+          No rain:     [0]
+          Rain:        [1]
+        boltwood_rain_flag:
+          No data:     [-1]
+          No rain:     [0]
+          Rain:        [1]
+        boltwood_wet_flag:
+          No data:     [-1]
+          Dry:         [0]
+          Wet:         [1]
+    met23:
+      name: 2.3 m metdata
+      link: http://www.mso.anu.edu.au/metdata/met23.xml
+      column_names:
+        date: u.dimensionless_unscaled
+        wind_speed: u.m / u.second
+        wind_gust: u.m / u.second
+        wind_direction: u.degree
+        wind_wrt_telescope: u.degree
+        dry-bulb_temp: u.Celsius
+        dewpoint: u.Celsius
+        rel_humidity: u.percent
+        barometric_pressure: u.hPa
+        sea-level_pressure: u.hPa
+        rain_sensor: u.dimensionless_unscaled
+      max_age: 360.
+      thresholds:
+        rain_sensor:
+          No data: [-1]
+          No rain: [0]
+          Rain: [1]
+        wind_speed:
+          Calm: [0.0, 14.0]
+          Windy: [14.0, 21.0]
+          Very Windy: [21.0, .inf]
+        wind_gust:
+          Calm: [0.0, 28.0]
+          Gusty: [28.0, 35.0]
+          Very gusty: [35.0, .inf]
+    skymap:
+      name: SkyMapper metdata
+      link: http://www.mso.anu.edu.au/metdata/skymap.xml
+      column_names:
+        date: u.dimensionless_unscaled
+        int_rain_sensor: u.dimensionless_unscaled
+        ext_rain_sensor: u.dimensionless_unscaled
+        wind_speed: u.m / u.second
+        wind_gust: u.m / u.second
+        wind_direction: u.degree
+        external_temp: u.Celsius
+        dewpoint: u.Celsius
+        rel_humidity: u.percent
+        barometric_pressure: u.hPa
+        internal_temp: u.Celsius
+        rain_intensity: u.mm / u.h
+        rain_duration: u.second
+        rain_accumulation: u.mm
+        hail_intensity: u.dimensionless_unscaled / (u.cm * u.cm * u.h)
+        hail_accumulation: u.dimensionless_unscaled / (u.cm * u.cm)
+        hail_duration: u.second
+        sky-ambient: u.Celsius
+      max_age: 360.
+      thresholds:
+        int_rain_sensor:
+          No rain: [0]
+          Rain: [1]
+        wind_speed:
+          Calm: [0.0, 14.0]
+          Windy: [14.0, 21.0]
+          Very Windy: [21.0, .inf]
+        wind_gust:
+          Calm: [0.0, 28.0]
+          Gusty: [28.0, 35.0]
+          Very gusty: [35.0, .inf]
+        sky-ambient:
+          Clear: [-.inf, -25.0]
+          Cloudy: [-25., -15.0]
+          Very cloudy: [-15., 0]
