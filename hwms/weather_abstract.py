@@ -4,8 +4,8 @@ import logging
 from pocs.utils.messaging import PanMessaging
 
 def get_mongodb():
-    from pocs.utils.database import PanMongo
-    return PanMongo()
+    from pocs.utils.database import PanDB
+    return PanDB()
 
 # -----------------------------------------------------------------------------
 #   Base Weather Abstract Class

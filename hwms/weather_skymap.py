@@ -11,7 +11,7 @@ from astropy.time import Time, TimeDelta
 
 from datetime import datetime as dt
 
-from . import load_config
+from pocs.utils.config import load_config
 from .weather_abstract import WeatherDataAbstract
 from .weather_abstract import get_mongodb
 
@@ -33,8 +33,12 @@ class SkyMapWeather(WeatherDataAbstract):
     """
 
     def __init__(self, use_mongo=True):
+        weather_config_dir = '/var/huntsman-pocs/conf_files/'
+
         # Read configuration
-        self.config = load_config()
+        self.config = load_config(config_files=[
+            '{}/weather_config.yaml'.format(weather_config_dir)
+        ])
         self.skymap_cfg = self.config['weather']['skymap']
         self.thresholds = self.skymap_cfg['thresholds']
 
