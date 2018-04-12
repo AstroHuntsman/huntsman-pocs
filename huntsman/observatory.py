@@ -298,6 +298,8 @@ class HuntsmanObservatory(Observatory):
                 # Get suggested exposure time
                 exp_time = int(exp_times[cam_name][-1].value * (target_adu / counts) *
                                (2.0 ** (elapsed_time / 180.0)) + 0.5)
+                if exp_time < 1:
+                    exp_time = 1
                 self.logger.debug("Suggested exp_time for {}: {}".format(cam_name, exp_time))
                 exp_times[cam_name].append(exp_time * u.second)
 
@@ -363,8 +365,6 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
 
-            flat_obs.current_exp = i
-
 ##########################################################################
 # Private Methods
 ##########################################################################
@@ -386,7 +386,7 @@ class HuntsmanObservatory(Observatory):
             try:
                 # Load the required module
                 module = utils.load_module(
-                    'pocs.scheduler.{}'.format(scheduler_type))
+                    'huntsman.scheduler.{}'.format(scheduler_type))
 
                 # Simple constraint for now
                 constraints = [constraint.MoonAvoidance(), constraint.Duration(30 * u.deg)]
