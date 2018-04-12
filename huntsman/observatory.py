@@ -386,7 +386,7 @@ class HuntsmanObservatory(Observatory):
             try:
                 # Load the required module
                 module = utils.load_module(
-                    'pocs.scheduler.{}'.format(scheduler_type))
+                    'huntsman.scheduler.{}'.format(scheduler_type))
 
                 # Simple constraint for now
                 constraints = [constraint.MoonAvoidance(), constraint.Duration(30 * u.deg)]
