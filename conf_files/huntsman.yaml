@@ -62,6 +62,23 @@ cameras:
         port: 83F011639
         serial_adaptor_into_USBhub_port: 0
     hdr_mode: true
+---
+name: HuntsmanSSO
+log_file: 'huntsman'
+location:
+    name: Siding Spring Observatory
+    latitude: -31.16 # Degrees
+    longitude: 149.13 # Degrees
+    elevation: 1000.0 # Meters
+    utc_offset: 10.00 # Hours
+    horizon: 30 # Degrees
+    obstructions:
+      - [[60, 163], [60, 167]] # lightning rod rough coordinates
+      - [[45, 355], [45, 5]] # telstra tower rough coordinates
+    timezone: Australia/Sydney
+scheduler:
+    type: dispatch
+    fields_file: targets.yaml
 directories:
     base: /var/huntsman
     data: data

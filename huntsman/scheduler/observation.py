@@ -21,7 +21,7 @@ class DitheredObservation(Observation):
     """
 
     def __init__(self, *args, **kwargs):
-        super(DitheredObservation, self).__init__(min_nexp=1, exp_set_size=1, *args, **kwargs)
+        super(DitheredObservation, self).__init__(*args, **kwargs)
 
         # Set initial list to original values
         self._exp_time = listify(self.exp_time)
