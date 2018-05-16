@@ -15,10 +15,10 @@ class POCS_devices_database(object):
     """
 
     def __init__(self,
-                 device_info_master_directory='/var/huntsman-pocs/conf_files/',
+                 device_info_master_directory='/var/huntsman/huntsman-pocs/conf_files/',
                  device_info_master_file='device_info_master.yaml',
-                 local_directory='/var/huntsman-pocs/conf_files/',
-                 archive_directory='/var/huntsman-pocs/conf_files/archive/',
+                 local_directory='/var/huntsman/huntsman-pocs/conf_files/',
+                 archive_directory='/var/huntsman/huntsman-pocs/conf_files/archive/',
                  output_yaml_filename='huntsman.yaml'):
         """
         Sets up the location to save all files, loads information off previous files, and gets the current
@@ -111,12 +111,12 @@ class POCS_devices_database(object):
             Writes the information in the dict into a .yaml file in two locations, as determined by the
             assign_local_dir() and assign_archive_dir methods.
             The default locations are:
-                '/var/huntsman-pocs/conf_files/huntsman.yaml'
+                '/var/huntsman/huntsman-pocs/conf_files/huntsman.yaml'
                     for the local config file to be used by POCS
 
                     and
 
-                '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml'
+                '/var/huntsman/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml'
                     for the archive of all version of the config files, with the date it was created in
                     the filename
 
@@ -139,8 +139,8 @@ class POCS_devices_database(object):
         Files are saved in two locations, one for the local file that POCS will access,
                         and the other is an archive of all previous config files which acts as a version control.
         By default, these locations are: (but can be changed using the arguments in the __init__ method)
-            '/var/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
-            '/var/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive file.
+            '/var/huntsman/huntsman-pocs/conf_files/huntsman.yaml' for the local file.
+            '/var/huntsman/huntsman-pocs/conf_files/huntsman_archive/huntsman_YYYY_mm_dd_hh_MM.yaml' for the archive file.
 
         Steps for the user to follow:
             Select from the dropdown menus the information for one device set.

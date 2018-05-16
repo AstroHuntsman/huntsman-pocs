@@ -1,35 +1,84 @@
 -
-  name: Betelguese
-  position: 05h55m10.30536s +7d24m25.4304s
+  name: NGC7713
+  position: 23h36m15.3s -37d56m20s
   priority: 100
-  hdr_mode: True
--
-  name: Achernar
-  position: 01h37m43s -57d14m13s
-  priority: 100
-  hdr_mode: True
-  exp_time: 3
-  min_nexp: 5
+  exp_time: 10
+  min_nexp: 1
   exp_set_size: 1
--
-  name: Fomalhaut
-  position: 22h57m40s -29d37m24s
-  priority: 100
-  hdr_mode: True
-  min_nexp: 5
-  exp_set_size: 1
--
-  name: 47Tuc
-  position: 00h24m05s -72d04m53s
-  priority: 100
-  hdr_mode: True
-  exp_time: 3
-  min_nexp: 5
-  exp_set_size: 1
--
-  name: Fornax
-  position: 03h38m00s -35d27m00s
-  priority: 300
-  exp_time: 60
-  min_nexp: 2
-  exp_set_size: 1
+# -
+#   name: Jewlbox
+#   position: 12h53m42s -60d22m00s
+#   priority: 100
+#   hdr_mode: True
+#   exp_time: 60
+# -
+#   name: M83
+#   position: 13h37m00.9s -29d51m57s
+#   priority: 300
+#   hdr_mode: True
+#   exp_time: 60
+#   min_nexp: 1
+#   exp_set_size: 1
+#-
+#  name: Betelguese
+#  position: 05h55m10.30536s +7d24m25.4304s
+#  priority: 100
+#  hdr_mode: True
+#-
+#  name: Achernar
+#  position: 01h37m43s -57d14m13s
+#  priority: 100
+#  hdr_mode: True
+#  exp_time: 3
+#  min_nexp: 5
+#  exp_set_size: 1
+#-
+#  name: Fomalhaut
+#  position: 22h57m40s -29d37m24s
+#  priority: 100
+#  hdr_mode: True
+#  min_nexp: 5
+#  exp_set_size: 1
+# -
+#  name: 47Tuc
+#   position: 00h24m05s -72d04m53s
+#   priority: 100
+#   hdr_mode: True
+#   exp_time: 3
+#   min_nexp: 5
+#   exp_set_size: 1
+# -
+#   name: Fornax
+#   position: 03h38m00s -35d27m00s
+#   priority: 100
+#   exp_time: 60
+#   min_nexp: 2
+#   exp_set_size: 1
+# -
+#   name: NGC1566
+#   position: 04h20m00.42 -54d56m16.1s
+#   priority: 300
+#   exp_time: 120
+#   min_nexp: 9
+#   exp_set_size: 9
+# -
+#   name: NGC1672
+#   position: 04h45m42.5s -59d14m49.9s
+#   priority: 400
+#   exp_time: 120
+#   min_nexp: 9
+#   exp_set_size: 9
+# -
+#   name: NGC3511_and_NGC3513
+#   position: 11h03m46.08s -23d14m43.8s
+#   priority: 200
+#   exp_time: 120
+#   min_nexp: 9
+#   exp_set_size: 9
+# -
+#   name: ESO202-G23
+#   position: 04h28m00.0s -47d54m46s
+#   priority: 100
+#   exp_time: 120
+#   min_nexp: 9
+#   exp_set_size: 9

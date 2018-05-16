@@ -101,6 +101,11 @@ def find_flat_times(observatory,
                     observatory.logger.debug('Waiting for dark-field image')
                     time.sleep(1)
 
+                if not os.path.exists(dark_filename) and \
+                        os.path.exists(dark_filename.replace('.fits', '.fits.fz')):
+                    fits_utils.fpack(dark_filename.replace(
+                        '.fits', '.fits.fz'), unpack=True)
+
                 dark_data = fits.getdata(dark_filename)
                 if center_crop:
                     dark_data = crop_data(dark_data, box_width=crop_width)

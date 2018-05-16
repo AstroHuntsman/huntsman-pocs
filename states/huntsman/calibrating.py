@@ -26,14 +26,17 @@ def on_enter(event_data):
 
                 narrow_band_cameras = list()
                 broad_band_cameras = list()
-                for cam in pocs.observatory.cameras:
+                for cam_name, cam in pocs.observatory.cameras.items():
                     if cam.filter_type.lower().startswith('ha'):
                         narrow_band_cameras.append(cam.name)
                     else:
                         broad_band_cameras.append(cam.name)
 
-                pocs.observatory.take_evening_flats(camera_list=narrow_band_cameras)  # H-alpha
-                pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)   # g and r
+                if len(narrow_band_cameras) > 0:
+                    pocs.observatory.take_evening_flats(camera_list=narrow_band_cameras)  # H-alpha
+
+                if len(broad_band_cameras) > 0:
+                    pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)   # g and r
 
         pocs.next_state = 'scheduling'
 

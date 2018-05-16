@@ -282,7 +282,10 @@ class Guide(PanBase):
                 pass
 
             self.logger.debug("Getting autoguiding image")
-            self.take_exposure()
+            try:
+                self.take_exposure()
+            except Exception:
+                self.logger.warning("Problem taking autoguiding exposure")
 
             count = 0
             while not os.path.exists(self.image_path):
@@ -297,12 +300,12 @@ class Guide(PanBase):
                 x, y = self.find_guide_star()
             except Exception as e:
                 raise error.PanError("Can't find guide star in image, guiding not turned on")
+            else:
+                self.logger.debug("Setting guide star at CCD coordinates: {} {}".format(x, y))
+                self.set_guide_position(x=x, y=y)
 
-            self.logger.debug("Setting guide star at CCD coordinates: {} {}".format(x, y))
-            self.set_guide_position(x=x, y=y)
-
-            self.logger.debug("Starting autoguide")
-            success = self.start_guiding()
+                self.logger.debug("Starting autoguide")
+                success = self.start_guiding()
 
         return success
 
@@ -393,6 +396,6 @@ class Guide(PanBase):
         if params is None:
             params = {}
 
-        params.setdefault('async', 'false')
+        params.setdefault('async', 'true')
 
         return template.safe_substitute(params)

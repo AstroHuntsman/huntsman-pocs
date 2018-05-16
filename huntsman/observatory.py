@@ -166,11 +166,12 @@ class HuntsmanObservatory(Observatory):
         """
         separation_limit = 0.5 * u.degree
 
-        if self.has_autoguider and self.autoguider.is_guiding:
-            try:
-                self.autoguider.stop_guiding()
-            except Exception as e:
-                self.logger.warning("Problem stopping autoguide")
+        if self.has_autoguider:
+            if self.autoguider.is_guiding:
+                try:
+                    self.autoguider.stop_guiding()
+                except Exception as e:
+                    self.logger.warning("Problem stopping autoguide")
 
         # Slew to target
         self.mount.slew_to_target()
@@ -303,6 +304,9 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Suggested exp_time for {}: {}".format(cam_name, exp_time))
                 exp_times[cam_name].append(exp_time * u.second)
 
+            self.logger.debug("Incrementing exposure count")
+            flat_obs.current_exp += 1
+
             self.logger.debug("Checking for long exposures")
             # Stop flats if any time is greater than max
             if any([t[-1].value >= max_exptime for t in exp_times.values()]):
@@ -314,9 +318,6 @@ class HuntsmanObservatory(Observatory):
             if any([len(t) >= max_num_exposures for t in exp_times.values()]):
                 self.logger.debug("Too many flats, quitting")
                 break
-
-            self.logger.debug("Incrementing exposure count")
-            flat_obs.current_exp += 1
 
         # Add a bias exposure
         for cam_name in camera_list:
@@ -364,6 +365,8 @@ class HuntsmanObservatory(Observatory):
             while not all([info['event'].is_set() for info in camera_events.values()]):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
+
+            flat_obs.current_exp += 1
 
 ##########################################################################
 # Private Methods
