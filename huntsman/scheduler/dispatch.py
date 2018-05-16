@@ -47,7 +47,7 @@ class Scheduler(dispatch.Scheduler):
                 self.logger.debug(
                     "Dither Coords for Flat-field: {}".format(dither_coords))
 
-                fields = [Field('Dither{:02d}'.format(i), coord)
+                fields = [Field(field_config['name'], coord)
                           for i, coord in enumerate(dither_coords)]
                 exp_times = [obs.exp_time for coord in dither_coords]
 
