@@ -366,6 +366,8 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
 
+            flat_obs.current_exp += 1
+
 ##########################################################################
 # Private Methods
 ##########################################################################
