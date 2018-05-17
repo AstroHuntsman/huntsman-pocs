@@ -75,28 +75,25 @@ class POCS_devices_database(object):
 
         """
 
-        additional_device = {'model': self.camera_type_chosen,
-                             'port': self.camera_sn_chosen,
-                             'filter_type': self.filter_ID_chosen,
+        additional_device = {'model': self.data['camera_type'][self.camera_serial_number.result],
+                             'port': self.camera_serial_number.result,
+                             'filter_type': self.filter_ID_code.result,
                              'focuser': {'model': 'birger',
-                                         'port': self.birger_sn_chosen
-
-                                         },
+                                         'port': self.birger_serial_number.result},
                              'lens': {'model': 'canon',
-                                      'port': self.lens_sn_chosen,
-                                      'name': self.lens_name_chosen,
-                                      'image_stabalisataion': self.lens_image_stabalisation_chosen},
-                             'USB_hub_serial_number': self.USB_hub_SN_chosen,
-                             'camera_into_serial_adaptor_port': self.camera_to_serial_port_chosen,
-                             'serial_adaptor_into_USBhub_port': self.serial_to_USBhub_port_chosen,
-                             'camera_into_USBhub_port': self.camera_to_USBhub_port_chosen
+                                      'port': self.lens_serial_number.result,
+                                      'name': self.data['lens_name'][self.lens_serial_number.result],
+                                      'image_stabalisataion': self.data['lens_image_stabalisation'][self.lens_serial_number.result]},
+                             'USB_hub_serial_number': self.USBhub_SN.result,
+                             'camera_into_serial_adaptor_port': self.camera_into_serial_port.result,
+                             'serial_adaptor_into_USBhub_port': self.serial_into_USBhub_port.result,
+                             'camera_into_USBhub_port': self.camera_into_USBhub_port.result
                              }
 
         if self.data_dict['cameras']['devices'] == [None]:
             self.data_dict['cameras']['devices'] = [additional_device]
         else:
             self.data_dict['cameras']['devices'].append(additional_device)
-
         return self.data_dict
 
     def save_file(self, dummy_variable_for_widget):
@@ -190,19 +187,6 @@ class POCS_devices_database(object):
         display(self.camera_into_serial_port)
         display(self.USBhub_SN)
         display(self.camera_into_USBhub_port)
-
-        self.birger_sn_chosen = self.birger_serial_number.result
-        self.camera_sn_chosen = self.camera_serial_number.result
-        self.lens_sn_chosen = self.lens_serial_number.result
-        self.filter_ID_chosen = self.filter_ID_code.result
-        self.serial_to_USBhub_port_chosen = self.serial_into_USBhub_port.result
-        self.camera_to_serial_port_chosen = self.camera_into_serial_port.result
-        self.USB_hub_SN_chosen = self.USBhub_SN.result
-        self.camera_to_USBhub_port_chosen = self.camera_into_USBhub_port.result
-
-        self.camera_type_chosen = self.data['camera_type'][self.camera_sn_chosen]
-        self.lens_name_chosen = self.data['lens_name'][self.lens_sn_chosen]
-        self.lens_image_stabalisation_chosen = self.data['lens_image_stabalisation'][self.lens_sn_chosen]
 
         button1 = widgets.Button(description="Add new device set")
         display(button1)
