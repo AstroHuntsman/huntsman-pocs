@@ -1,24 +1,80 @@
 -
-  name: NGC7713
-  position: 23h36m15.3s -37d56m20s
-  priority: 100
-  exp_time: 10
-  min_nexp: 1
-  exp_set_size: 1
+   name: NGC6744
+   position: 19h09m46.1s -63d51m27s
+   priority: 100
+   exp_time: 300
+   min_nexp: 5
+   exp_set_size: 5
 # -
+#   name: HAT-P-27
+#   position: 14h51m04.19s +05d56m50.5s
+#   priority: 500
+#   exp_time: 90
+#   no_dither: true
+# -
+#   name: Wasp 43
+#   position: 10h19m38.008s -09d48m22.59s
+#   priority: 500    
+#   min_nexp: 30
+#   exp_set_size: 5
+#   exp_time: 27
+#   no_dither: true
+-
+  name: NGC6300
+  position: 17h16m59.5s -62d49m14s
+  priority: 100
+  exp_time: 300
+  min_nexp: 5
+  exp_set_size: 5
+-
+  name: ESO270-017
+  position: 13h34m47.3s -45d32m51s
+  priority: 100
+  exp_time: 300
+  min_nexp: 5
+  exp_set_size: 5
+-
+  name: MC_dust_filament
+  position: 03h33m08s -63d35m29s 
+  priority: 100
+  exp_time: 300
+  min_nexp: 5
+  exp_set_size: 5
+-
+  name: M8
+  position: 18h3m37s -24d23m12s
+  priority: 300
+  exp_time: 300
+  min_nexp: 5
+  exp_set_size: 5 
+# -
+#   name: stargazing_sn
+#   position: 13h10m28.38s -30d48m57.7s
+#   priority: 500
+#   exp_time: 300
+#   min_nexp: 5
+#   exp_set_size: 5
+
+# -
+#  name: NGC7713
+#  position: 23h36m15.3s -37d56m20s
+#  priority: 100
+#  exp_time: 300
+#  min_nexp: 1
+#  exp_set_size: 1
+#-
 #   name: Jewlbox
 #   position: 12h53m42s -60d22m00s
 #   priority: 100
 #   hdr_mode: True
 #   exp_time: 60
-# -
-#   name: M83
-#   position: 13h37m00.9s -29d51m57s
-#   priority: 300
-#   hdr_mode: True
-#   exp_time: 60
-#   min_nexp: 1
-#   exp_set_size: 1
+#-
+#  name: M83
+#  position: 13h37m00.9s -29d51m57s
+#  priority: 300
+#  exp_time: 300
+#  min_nexp: 5
+#  exp_set_size: 5
 #-
 #  name: Betelguese
 #  position: 05h55m10.30536s +7d24m25.4304s

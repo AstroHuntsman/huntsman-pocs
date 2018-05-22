@@ -1,48 +1,50 @@
+slack_webhook_url: https://hooks.slack.com/services/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
 cameras:
   auto_detect: false
   hdr_mode: true
   devices:
-  - USB_hub_serial_number: OX518EFFE1
-    camera_into_USBhub_port: 1
-    camera_into_serial_adaptor_port: 4
-    filter_type: g2_4
-    focuser:
-      model: birger
-      port: '10858' # /dev/tty.USA49WR244P4.4
-      initial_position: 21738
-      autofocus_keep_files: True
-      autofocus_range:
-          - 200
-          - 2000
-      autofocus_step:
-          - 10
-          - 100
-      autofocus_seconds: 1
-      autofocus_size: 1000
-      autofocus_spline_smoothing: 0.2
-    lens:
-      model: canon
-      port: '3360000099'
-    model: sbig
-    port: 83F011167
-    set_point: 0
-    serial_adaptor_into_USBhub_port: 0
+# Bad camera! Don't use.
+#  - USB_hub_serial_number: OX518EFFE1
+#    camera_into_USBhub_port: 1
+#    camera_into_serial_adaptor_port: 4
+#    filter_type: g2_4
+#    focuser:
+#      model: birger
+#      port: '10858' # /dev/tty.USA49WR244P4.4
+#      initial_position: 21854 #21738
+#      autofocus_keep_files: False
+#      autofocus_range:
+#          - 200
+#          - 2000
+#      autofocus_step:
+#          - 10
+#          - 100
+#      autofocus_seconds: 1
+#      autofocus_size: 1000
+#      autofocus_spline_smoothing: 0.2
+#    lens:
+#      model: canon
+#      port: '3360000099'
+#    model: sbig
+#    port: 83F011167
+#    set_point: 0
+#    serial_adaptor_into_USBhub_port: 0
   - USB_hub_serial_number: OX518EFFE1
     camera_into_USBhub_port: 2
     camera_into_serial_adaptor_port: 2
-    filter_type: r2_1
+    filter_type: ha1_10
     focuser:
       model: birger
       port: '14287' # /dev/tty.USA49WR244P2.2
-      initial_position: 21643
+      initial_position: 21836 #21643
       autofocus_keep_files: True
       autofocus_range:
-          - 200
-          - 2000
+          - 50
+          - 500
       autofocus_step:
-          - 10
-          - 100
-      autofocus_seconds: 1
+          - 5
+          - 50
+      autofocus_seconds: 20
       autofocus_size: 1000
       autofocus_spline_smoothing: 0.2
     lens:
@@ -59,14 +61,14 @@ cameras:
     focuser:
       model: birger
       port: '13281' # /dev/tty.USA49WR244P1.1
-      initial_position: 21600
+      initial_position: 21689 #21715 #21600
       autofocus_keep_files: True
       autofocus_range:
-          - 200
-          - 2000
+          - 50
+          - 500
       autofocus_step:
-          - 10
-          - 100
+          - 5
+          - 50
       autofocus_seconds: 1
       autofocus_size: 1000
       autofocus_spline_smoothing: 0.2
@@ -80,35 +82,36 @@ cameras:
   - USB_hub_serial_number: OX518EFFE1
     camera_into_USBhub_port: 4
     camera_into_serial_adaptor_port: 3
-    filter_type: r2_2
+    filter_type: r2_1
     focuser:
       model: birger
       port: '14286' # /dev/tty.USA49WR244P3.3
-      initial_position: 21650
+      initial_position: 21726 #21650
       autofocus_keep_files: True
       autofocus_range:
-          - 200
-          - 2000
+        - 50
+        - 500
       autofocus_step:
-          - 10
-          - 100
+        - 5
+        - 50
       autofocus_seconds: 1
       autofocus_size: 1000
       autofocus_spline_smoothing: 0.2
     lens:
       model: canon
-      port: '3360000087'
+      port: '3150000110'
     model: sbig
     port: 83F011639
     set_point: 0
-    serial_adaptor_into_USBhub_port: 0
+    serial_adaptor_into_USBhub_port: 0    
 
   # FLI is not currently being used
+  # Can't make it work on OS X!
   #
   # - USB_hub_serial_number: OX518EFFE1
   #   camera_into_USBhub_port: 5
   #   camera_into_serial_adaptor_port:
-  #   filter_type: r2_2
+  #   filter_type: g2_3
   #   focuser:
   #     model: birger
   #     port: '14286'
