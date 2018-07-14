@@ -55,8 +55,8 @@ class HuntsmanObservatory(Observatory):
         # Creating an imager array object
         if self.has_hdr_mode:
             self.logger.error("HDR mode not support currently")
-            #self.logger.info('\tSetting up HDR imager array')
-            #self.imager_array = imager.create_imagers()
+            # self.logger.info('\tSetting up HDR imager array')
+            # self.imager_array = imager.create_imagers()
 
         if self.has_autoguider:
             self.logger.info("\tSetting up autoguider")
@@ -325,11 +325,12 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Too many flats, quitting")
                 break
 
-            self.logger.debug("Checking for saturation")            
+            self.logger.debug("Checking for saturation")
             if is_saturated and exp_times[cam_name][-1].value < 2:
-                self.logger.debug("Saturated with short exposure, waiting 30 seconds before next exposure")
+                self.logger.debug(
+                    "Saturated with short exposure, waiting 30 seconds before next exposure")
                 max_num_exposures += 1
-                time.sleep(30)                
+                time.sleep(30)
 
         # Add a bias exposure
         for cam_name in camera_list:

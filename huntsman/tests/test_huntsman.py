@@ -16,7 +16,7 @@ from huntsman.observatory import HuntsmanObservatory as Observatory
 
 @pytest.fixture
 def observatory():
-    observatory = Observatory(simulator=['all'])
+    observatory = Observatory(simulator=['all'], with_autoguider=False)
 
     yield observatory
 
