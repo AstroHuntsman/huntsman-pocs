@@ -1,0 +1,32 @@
+dist: trusty
+sudo: required
+language: python
+services:
+  - mongodb
+python:
+  - "3.6"
+cache:
+  - pip
+env:
+before_install:
+    - sudo mkdir /var/panoptes && sudo chmod 777 /var/panoptes
+    - cd /var/panoptes
+    - git clone https://github.com/panoptes/POCS.git
+    - cd POCS
+    - pip install -r requirements.txt
+    - python setup.py install
+    - ln -s $TRAVIS_BUILD_DIR /var/panoptes/POCS
+    - cd /var/panoptes
+    - git clone https://github.com/AstroHuntsman/gunagala.git
+    - cd gunagala
+    - python setup.py install
+    - cd $TRAVIS_BUILD_DIR
+    - pip install coveralls
+    - pip install -U pip
+script:
+  - coverage run setup.py test
+  - coverage combine .coverage*
+after_success:
+    - if [[ $TRAVIS_PYTHON_VERSION == 3.6* ]]; then
+          bash <(curl -s https://codecov.io/bash);
+      fi
