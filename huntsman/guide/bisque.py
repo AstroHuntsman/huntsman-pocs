@@ -354,9 +354,7 @@ class Guide(PanBase):
         """
         response_obj = {'success': False}
         while True:
-            self.logger.debug("Reading from TSX direct")
             response = self.theskyx.read()
-            self.logger.debug("Read from TSX: {}".format(response))
             if response is not None or timeout == 0:
                 break
             else:
