@@ -6,8 +6,8 @@ from multiprocessing import Process
 
 from astropy import units as u
 
-from pocs import PanBase
-from pocs import POCS
+from pocs.base import PanBase
+from pocs.core import POCS
 from pocs.utils import error
 from pocs.utils.messaging import PanMessaging
 
@@ -16,7 +16,7 @@ from huntsman.observatory import HuntsmanObservatory as Observatory
 
 @pytest.fixture
 def observatory():
-    observatory = Observatory(simulator=['all'])
+    observatory = Observatory(simulator=['all'], with_autoguider=False)
 
     yield observatory
 
@@ -70,7 +70,7 @@ def test_bad_pandir_env(pocs):
     pandir = os.getenv('PANDIR')
     os.environ['PANDIR'] = '/foo/bar'
     with pytest.raises(SystemExit):
-        pocs._check_environment()
+        pocs.check_environment()
     os.environ['PANDIR'] = pandir
 
 
@@ -78,7 +78,7 @@ def test_bad_pocs_env(pocs):
     pocs_dir = os.getenv('POCS')
     os.environ['POCS'] = '/foo/bar'
     with pytest.raises(SystemExit):
-        pocs._check_environment()
+        pocs.check_environment()
     os.environ['POCS'] = pocs_dir
 
 
@@ -88,7 +88,7 @@ def test_make_log_dir(pocs):
 
     old_pandir = os.environ['PANDIR']
     os.environ['PANDIR'] = os.getcwd()
-    pocs._check_environment()
+    pocs.check_environment()
 
     assert os.path.exists(log_dir) is True
     os.removedirs(log_dir)

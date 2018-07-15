@@ -1,6 +1,11 @@
 # PANOPTES specific files
 conf_files/*_local.yaml
+conf_files/*_local_*.yaml
+conf_files/*.bk
+conf_files_test/huntsman_archive/*.yaml
+*.patch
 config_local.yaml
+.pytest_cache
 
 # Development support
 sftp-config.json

@@ -55,8 +55,8 @@ class HuntsmanObservatory(Observatory):
         # Creating an imager array object
         if self.has_hdr_mode:
             self.logger.error("HDR mode not support currently")
-            #self.logger.info('\tSetting up HDR imager array')
-            #self.imager_array = imager.create_imagers()
+            # self.logger.info('\tSetting up HDR imager array')
+            # self.imager_array = imager.create_imagers()
 
         if self.has_autoguider:
             self.logger.info("\tSetting up autoguider")
@@ -166,12 +166,6 @@ class HuntsmanObservatory(Observatory):
         """
         separation_limit = 0.5 * u.degree
 
-        if self.has_autoguider and self.autoguider.is_guiding:
-            try:
-                self.autoguider.stop_guiding()
-            except Exception as e:
-                self.logger.warning("Problem stopping autoguide")
-
         # Slew to target
         self.mount.slew_to_target()
 
@@ -181,13 +175,6 @@ class HuntsmanObservatory(Observatory):
         while not self.mount.is_tracking and self.mount.distance_from_target() >= separation_limit:
             self.logger.debug("Slewing to target")
             time.sleep(1)
-
-        # Turn on autoguiding
-        if self.has_autoguider:
-            try:
-                self.autoguider.autoguide()
-            except error.PanError:
-                self.logger.warning("Continuing without guiding")
 
     def take_evening_flats(self,
                            alt=None,
@@ -254,13 +241,14 @@ class HuntsmanObservatory(Observatory):
                     camera.file_extension)
 
                 # Take picture and get event
-                camera_event = camera.take_observation(
-                    flat_obs, fits_headers, filename=filename, exp_time=exp_times[cam_name][-1])
+                if exp_times[cam_name][-1].value < max_exptime:
+                    camera_event = camera.take_observation(
+                        flat_obs, fits_headers, filename=filename, exp_time=exp_times[cam_name][-1])
 
-                camera_events[cam_name] = {
-                    'event': camera_event,
-                    'filename': filename,
-                }
+                    camera_events[cam_name] = {
+                        'event': camera_event,
+                        'filename': filename,
+                    }
 
             # Block until done exposing on all cameras
             while not all([info['event'].is_set() for info in camera_events.values()]):
@@ -268,6 +256,7 @@ class HuntsmanObservatory(Observatory):
                 time.sleep(1)
 
             # Check the counts for each image
+            is_saturated = False
             for cam_name, info in camera_events.items():
                 img_file = info['filename']
                 self.logger.debug("Checking counts for {}".format(img_file))
@@ -292,6 +281,10 @@ class HuntsmanObservatory(Observatory):
                 if counts < min_counts or counts > max_counts:
                     self.logger.debug("Counts outside min/max range, should be discarded")
 
+                # If we are saturating then wait a bit and redo
+                if counts >= max_counts:
+                    is_saturated = True
+
                 elapsed_time = (utils.current_time() - start_time).sec
                 self.logger.debug("Elapsed time: {}".format(elapsed_time))
 
@@ -303,20 +296,27 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Suggested exp_time for {}: {}".format(cam_name, exp_time))
                 exp_times[cam_name].append(exp_time * u.second)
 
+            self.logger.debug("Incrementing exposure count")
+            flat_obs.current_exp += 1
+
             self.logger.debug("Checking for long exposures")
             # Stop flats if any time is greater than max
-            if any([t[-1].value >= max_exptime for t in exp_times.values()]):
+            if all([t[-1].value >= max_exptime for t in exp_times.values()]):
                 self.logger.debug("Exposure times greater than max, stopping flat fields")
                 break
 
-            self.logger.debug("Checking for too many exposures")
             # Stop flats if we are going on too long
+            self.logger.debug("Checking for too many exposures")
             if any([len(t) >= max_num_exposures for t in exp_times.values()]):
                 self.logger.debug("Too many flats, quitting")
                 break
 
-            self.logger.debug("Incrementing exposure count")
-            flat_obs.current_exp += 1
+            self.logger.debug("Checking for saturation")
+            if is_saturated and exp_times[cam_name][-1].value < 2:
+                self.logger.debug(
+                    "Saturated with short exposure, waiting 30 seconds before next exposure")
+                max_num_exposures += 1
+                time.sleep(30)
 
         # Add a bias exposure
         for cam_name in camera_list:
@@ -328,7 +328,7 @@ class HuntsmanObservatory(Observatory):
         # Reset to first exposure so we can loop through again taking darks
         flat_obs.current_exp = 0
 
-        # Take darks
+        # Take darks (just last ten)
         for i in range(num_exposures):
             self.logger.debug("Slewing to dark-field coords: {}".format(flat_obs.field))
             self.mount.set_target_coordinates(flat_obs.field)
@@ -336,6 +336,11 @@ class HuntsmanObservatory(Observatory):
             self.status()
 
             for cam_name in camera_list:
+
+                try:
+                    exp_time = exp_times[cam_name][i]
+                except KeyError:
+                    break
 
                 camera = self.cameras[cam_name]
 
@@ -351,7 +356,7 @@ class HuntsmanObservatory(Observatory):
                     flat_obs,
                     fits_headers,
                     filename=filename,
-                    exp_time=exp_times[cam_name][i],
+                    exp_time=exp_time,
                     dark=True
                 )
 
@@ -364,6 +369,8 @@ class HuntsmanObservatory(Observatory):
             while not all([info['event'].is_set() for info in camera_events.values()]):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
+
+            flat_obs.current_exp += 1
 
 ##########################################################################
 # Private Methods
@@ -389,6 +396,7 @@ class HuntsmanObservatory(Observatory):
                     'huntsman.scheduler.{}'.format(scheduler_type))
 
                 # Simple constraint for now
+                # constraints = [constraint.MoonAvoidance()]
                 constraints = [constraint.MoonAvoidance(), constraint.Duration(30 * u.deg)]
 
                 # Create the Scheduler instance

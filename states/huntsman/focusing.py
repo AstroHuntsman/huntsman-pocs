@@ -2,7 +2,6 @@ from time import sleep
 
 wait_interval = 15.
 
-
 def on_enter(event_data):
     """Pointing State
 

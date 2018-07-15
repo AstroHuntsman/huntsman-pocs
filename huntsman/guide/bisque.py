@@ -227,6 +227,7 @@ class Guide(PanBase):
                 'exptime': exp_time,
                 'path': filename,
             })
+            self.logger.debug("Got response from taking guide image: {}".format(response))
 
             if response['success']:
                 self.logger.debug("Guide image saved at {}".format(filename))
@@ -282,30 +283,32 @@ class Guide(PanBase):
                 pass
 
             self.logger.debug("Getting autoguiding image")
-            self.take_exposure()
-
-            count = 0
-            while not os.path.exists(self.image_path):
-                self.logger.debug("Waiting for guide image")
-                time.sleep(1)
-                count += 1
-
-                if count == timeout:
-                    raise error.PanError("Problem getting autoguide image")
-
             try:
-                x, y = self.find_guide_star()
+                self.take_exposure(filename='/var/huntsman/temp/guide_image.fits')
             except Exception as e:
-                raise error.PanError("Can't find guide star in image, guiding not turned on")
+                self.logger.warning("Problem taking autoguiding exposure: {}".format(e))
+            else:
+                count = 0
+                while not os.path.exists(self.image_path):
+                    self.logger.debug("Waiting for guide image")
+                    time.sleep(1)
+                    count += 1
 
-            self.logger.debug("Setting guide star at CCD coordinates: {} {}".format(x, y))
-            self.set_guide_position(x=x, y=y)
+                    if count == timeout:
+                        raise error.PanError("Problem getting autoguide image")
 
-            self.logger.debug("Starting autoguide")
-            success = self.start_guiding()
+                try:
+                    x, y = self.find_guide_star()
+                except Exception as e:
+                    raise error.PanError("Can't find guide star in image, guiding not turned on")
+                else:
+                    self.logger.debug("Setting guide star at CCD coordinates: {} {}".format(x, y))
+                    self.set_guide_position(x=x, y=y)
+
+                    self.logger.debug("Starting autoguide")
+                    success = self.start_guiding()
 
         return success
-
 
 ##################################################################################################
 # Communication Methods
@@ -323,7 +326,9 @@ class Guide(PanBase):
                 as well as command-specific items
         """
         self.write(self._get_command(template, params=params))
+        self.logger.debug("Wrote {} command".format(template))
         response = self.read(timeout=timeout)
+        self.logger.debug("Guide response: {}".format(response))
         return response
 
     def write(self, value):
@@ -363,6 +368,7 @@ class Guide(PanBase):
         except TypeError as e:
             self.logger.warning("Error: {}".format(e, response))
         except Exception as e:
+            self.logger.debug("Got error reading from TheSkyX")
             response_obj = {
                 "response": response,
                 "success": False,
@@ -393,6 +399,7 @@ class Guide(PanBase):
         if params is None:
             params = {}
 
-        params.setdefault('async', 'false')
+        params.setdefault('async', 'true')
+        self.logger.debug("Successfully looked up command")
 
         return template.safe_substitute(params)
