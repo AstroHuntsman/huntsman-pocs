@@ -166,13 +166,6 @@ class HuntsmanObservatory(Observatory):
         """
         separation_limit = 0.5 * u.degree
 
-        # if self.has_autoguider:
-        #     if self.autoguider.is_guiding:
-        #         try:
-        #             self.autoguider.stop_guiding()
-        #         except Exception as e:
-        #             self.logger.warning("Problem stopping autoguide")
-
         # Slew to target
         self.mount.slew_to_target()
 
@@ -182,13 +175,6 @@ class HuntsmanObservatory(Observatory):
         while not self.mount.is_tracking and self.mount.distance_from_target() >= separation_limit:
             self.logger.debug("Slewing to target")
             time.sleep(1)
-
-        # # Turn on autoguiding
-        # if self.has_autoguider:
-        #     try:
-        #         self.autoguider.autoguide()
-        #     except error.PanError:
-        #         self.logger.warning("Continuing without guiding")
 
     def take_evening_flats(self,
                            alt=None,
