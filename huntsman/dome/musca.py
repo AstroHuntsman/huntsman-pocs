@@ -18,11 +18,11 @@ class Protocol:
     VALID_DEVICE = (SHUTTER, DOOR, BATTERY, SOLAR_ARRAY, SWITCH)
 
     # Commands to send to shutter
-    OPEN_DOME = 'Shutter_open'
-    CLOSE_DOME = 'Shutter_close'
-    KEEP_DOME_OPEN = 'Keep_dome_open'
-    GET_STATUS = 'Status_update'
-    GET_PARAMETER = 'Get_parameters'
+    OPEN_DOME = 'Shutter_open\n'.encode()
+    CLOSE_DOME = 'Shutter_close\n'.encode()
+    KEEP_DOME_OPEN = 'Keep_dome_open\n'.encode()
+    GET_STATUS = 'Status_update\n'.encode()
+    GET_PARAMETER = 'Get_parameters\n'.encode()
 
     # Status codes produced by Shutter
     CLOSED = 'Closed'
@@ -44,15 +44,17 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
     """Class for musca serial shutter control plus sending updated commands to TSX.
     Musca Port setting: 9600/8/N/1
 
+    TODO: See about checking status every 60 seconds to monitor connectivity.
+
     """
     LISTEN_TIMEOUT = 3  # Max number of seconds to wait for a response.
-    MOVE_TIMEOUT = 10  # Max number of seconds to run the door motors.
+    MOVE_TIMEOUT = 15  # Max number of seconds to run the door motors.
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
     NUM_CLOSE_FEEDBACKS = 2  # Number of target_feedback bytes needed.
 
     SHUTTER_CMD_DELAY = 0.5  # s, Wait this long before allowing next command due to slow musica CPU
     STATUS_UPDATE_FREQUENCY = 60.  # s, A status_update is requested every minute to monitor connectivity.
-    MIN_OPERATING_VOLTAGE = 11.  # V, so we don't open if less than this or CLose immediately if we go less than this
+    MIN_OPERATING_VOLTAGE = 12.  # V, so we don't open if less than this or CLose immediately if we go less than this
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -61,23 +63,50 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
     @property
     def is_open(self):
-        v = self._read_latest_state()
+        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
         return v == Protocol.OPEN
 
-    def open_dome(self):
+    @property
+    def is_closed(self):
+        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
+        return v == Protocol.CLOSED
 
+    @property
+    def door_open(self):
+        v = self._get_shutter_status_dict()[Protocol.DOOR]
+        return v == Protocol.DOOR_OPEN
+
+    @property
+    def door_closed(self):
+        v = self._get_shutter_status_dict()[Protocol.DOOR]
+        return v == Protocol.DOOR_CLOSED
+
+    def open(self):
+        """Open the shutter using musca.
+
+        Returns
+        -------
+        Boolean
+            True if Opened, False if it did not Open.
+        """
         if self.is_open():
             return True
 
-        self.logger.info('Opening dome shutter')
-        self._full_move(Protocol.OPEN_DOME, Protocol.OPEN)
-        v = self._read_state_until_stable()
+        v = self._get_shutter_status_dict()[Protocol.BATTERY]
+        if v < self.MIN_OPERATING_VOLTAGE:
+            self.logger.error('Dome shutter battery Voltage too low: {!r}', v)
+            return False
+
+        _send_musca_command(Protocol.OPEN_DOME, 'Opening dome shutter')
+        time.sleep(HuntsmanDome.MOVE_TIMEOUT)
+
+        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
         if v == Protocol.OPEN:
             return True
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
 
-    def close_dome(self):
+    def close(self):
         """Short summary.
 
         Returns
@@ -87,12 +116,11 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
         """
 
-    @property
     def shutter_status(self):
         """Return a text string describing dome shutter's current status."""
         if not self.is_connected:
             return 'Not connected to the shutter'
-        v = self._read_latest_state()
+        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
         if v == Protocol.CLOSED:
             return 'Shutter closed'
         if v == Protocol.OPENING:
@@ -109,100 +137,38 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
     def __str__(self):
         if self.is_connected:
-            return self.status
+            return self.shutter_status()
         return 'Disconnected'
-
-##################################################################################################
-# Communication Methods
-##################################################################################################
 
 
 ##################################################################################################
 # Private Methods
 ##################################################################################################
 
-    def _read_latest_state(self):
-        """Read and return the latest output from the Astrohaven dome controller."""
-        # TODO(jamessynge): Add the ability to do a non-blocking read of the available input
-        # from self.serial. If there is some input, return it, but don't wait for more. The last
-        # received byte is good enough for our purposes... as long as we drained the input buffer
-        # before sending a command to the dome.
-        self.serial.reset_input_buffer()
-        data = self.serial.read()
-        if len(data):
-            return chr(data[-1])
-        return None
+    def _send_musca_command(self, cmd, log_message=None):
+        if log_message is not None:
+            self.logger.info(log_message)
+        self.serial.ser.write(cmd)
+        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
 
-    def _read_state_until_stable(self):
-        """Read the status until it reaches one of the stable values."""
-        end_by = time.time() + HuntsmanDome.LISTEN_TIMEOUT
-        c = ''
-        while True:
-            data = self.serial.read_bytes(size=1)
-            if data:
-                c = chr(data[-1])
-                if c in Protocol.STABLE_STATES:
-                    return c
-                self.logger.debug('_read_state_until_stable not yet stable: {!r}', data)
-            if time.time() < end_by:
-                continue
-            pass
-        return c
+    def _get_shutter_status_dict(self):
+        """ Return dictionary of musca status.
 
-    def _full_move(self, send, target_feedback, feedback_countdown=1):
-        """Send a command code until the target_feedback is recieved, or a timeout is reached.
-        Args:
-            send: The command code to send; this is a string of one ASCII character. See
-                Protocol above for the command codes.
-            target_feedback: The response code to compare to the response from the dome;
-                this is a string of one ASCII character. See Protocol above for the codes;
-                while the dome is moving, it echoes the command code sent.
-        Returns:
-            True if the target_feedback is received from the dome before the MOVE_TIMEOUT;
-            False otherwise.
+        Example output line:
+        # # [b'Status:\r\n', b'Shutter:Closed\r\n', b'Door:Closed\r\n', b'Battery:\t 13.0671\r\n',
+        b'Solar_A:\t 0.400871\r\n', b'Switch:EM243A\r\n', b'Battery:\t 13.101\r\n',
+        b'Solar_A:\t 0.439232\r\n']
         """
-        # Set a short timeout on reading, so that we don't open or close slowly.
-        # In other words, we'll try to read status, but if it isn't available,
-        # we'll just send another command.
-        saved_timeout = self.serial.ser.timeout
-        self.serial.ser.timeout = HuntsmanDome.MOVE_LISTEN_TIMEOUT
-        try:
-            have_seen_send = False
-            end_by = time.time() + HuntsmanDome.MOVE_TIMEOUT
-            self.serial.reset_input_buffer()
-            # Note that there is no sleep in this loop because we have a timeout on reading from
-            # the the dome controller, and we know that the dome doesn't echo every character that
-            # we send to it.
-            while True:
-                self.serial.write(send)
-                data = self.serial.read_bytes(size=1)
-                if data:
-                    c = chr(data[-1])
-                    if c == target_feedback:
-                        feedback_countdown -= 1
-                        self.logger.debug('Got target_feedback, feedback_countdown={}',
-                                          feedback_countdown)
-                        if feedback_countdown <= 0:
-                            # Woot! Moved the dome and got the desired response.
-                            return True
-                    elif c == send:
-                        have_seen_send = True
-                    elif not have_seen_send and c in Protocol.STABLE_STATES:
-                        # At the start of looping, we may see the previous stable state until
-                        # we start seeing the echo of `send`.
-                        pass
-                    else:
-                        self.logger.warning(
-                            'Unexpected value from dome! send={!r} expected={!r} actual={!r}',
-                            send, target_feedback, data)
-                if time.time() < end_by:
-                    continue
-                self.logger.error(
-                    'Timed out moving the dome. Check for hardware or communications ' +
-                    'problem. send={!r} expected={!r} actual={!r}', send, target_feedback, data)
-                return False
-        finally:
-            self.serial.ser.timeout = saved_timeout
+        self.serial.ser.write(Protocol.GET_STATUS)
+        shutter_status_list = self.serial.ser.readlines()
+        shutter_status_dict = {}
+        for shutter_status_item in shutter_status_list:
+            k, v = shutter_status_item.strip().decode().split(':')
+            if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
+                v = float(v)
+            shutter_status_dict[k] = v
+        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+        return shutter_status_dict
 
 
 # Expose as Dome so that we can generically load by module name, without knowing the specific type
