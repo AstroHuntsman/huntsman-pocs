@@ -1,0 +1,25 @@
+hue_lights:
+  hue_ip: null
+  index: {desk: 4, flat: 3, led: 1}
+  username: zC4QZINjrwD010r77bgyglZanKRlnotRBvIMD8Da
+states:
+  all_off:
+    desk: {bri: 10, hue: 10, 'on': false, sat: 10}
+    flat_field: {bri: 10, hue: 10, 'on': false, sat: 10}
+    led: {bri: 10, hue: 10, 'on': false, sat: 10}
+  bright:
+    desk: {bri: 250, hue: 30000, 'on': true, sat: 10}
+    flat_field: {bri: 10, hue: 10, 'on': false, sat: 10}
+    led: {bri: 250, hue: 30000, 'on': true, sat: 10}
+  flats:
+    desk: {bri: 10, hue: 10, 'on': false, sat: 10}
+    flat_field: {bri: 250, hue: 30000, 'on': true, sat: 10}
+    led: {bri: 10, hue: 10, 'on': false, sat: 10}
+  observing:
+    desk: {bri: 10, hue: 10, 'on': false, sat: 10}
+    flat_field: {bri: 10, hue: 10, 'on': false, sat: 10}
+    led: {bri: 100, hue: 50, 'on': true, sat: 250}
+  observing_bright:
+    desk: {bri: 100, hue: 50, 'on': true, sat: 250}
+    flat_field: {'on': false}
+    led: {bri: 250, hue: 50, 'on': true, sat: 250}

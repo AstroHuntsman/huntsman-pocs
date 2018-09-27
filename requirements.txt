@@ -27,3 +27,4 @@ healpy
 astroquery
 photutils
 git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
+qhue
