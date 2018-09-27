@@ -22,7 +22,7 @@ from huntsman.utils import dither
 class HuntsmanObservatory(Observatory):
 
     def __init__(self,
-                 with_autoguider=True,
+                 with_autoguider=False,
                  hdr_mode=False,
                  take_flats=False,
                  *args, **kwargs
