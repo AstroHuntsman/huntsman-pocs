@@ -17,12 +17,12 @@ class Protocol:
     # Valid thing to query about status
     VALID_DEVICE = (SHUTTER, DOOR, BATTERY, SOLAR_ARRAY, SWITCH)
 
-    # Commands to send to shutter
-    OPEN_DOME = 'Shutter_open'.encode()
-    CLOSE_DOME = 'Shutter_close'.encode()
-    KEEP_DOME_OPEN = 'Keep_dome_open'.encode()
-    GET_STATUS = 'Status_update'.encode()
-    GET_PARAMETER = 'Get_parameters'.encode()
+    # Commands to write/send to shutter
+    OPEN_DOME = 'Shutter_open'
+    CLOSE_DOME = 'Shutter_close'
+    KEEP_DOME_OPEN = 'Keep_dome_open'
+    GET_STATUS = 'Status_update'
+    GET_PARAMETER = 'Get_parameters'
 
     # Status codes produced by Shutter
     CLOSED = 'Closed'
@@ -57,7 +57,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
     MIN_OPERATING_VOLTAGE = 12.  # V, so we don't open if less than this or CLose immediately if we go less than this
 
     def __init__(self, *args, **kwargs):
-        super(port='9600').__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT
 
@@ -97,7 +97,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
             self.logger.error('Dome shutter battery Voltage too low: {!r}', v)
             return False
 
-        self._send_musca_command(Protocol.OPEN_DOME, 'Opening dome shutter')
+        self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
         v = self._get_shutter_status_dict()[Protocol.SHUTTER]
@@ -115,12 +115,11 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
             Description of returned object.
 
         """
-
+        self.logger.warning('musca Close function not yet operational')
 
     def status(self):
         shutter_status = self._get_shutter_status_dict()
         return(shutter_status)
-
 
     def __str__(self):
         if self.is_connected:
@@ -132,12 +131,20 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 # Private Methods
 ###############################################################################
 
-    def _send_musca_command(self, cmd, log_message=None):
-        """Send command to serial bluetooth device musca."""
+    def _write_musca(self, cmd, log_message=None):
+        """Write command to serial bluetooth device musca."""
         if log_message is not None:
             self.logger.info(log_message)
-        self.serial.ser.write(cmd)
+        self.serial.ser.write(cmd.encode())
         time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+
+    def _read_musca(self, log_message=None):
+        """Read serial bluetooth device musca."""
+        if log_message is not None:
+            self.logger.info(log_message)
+        lines = self.serial.ser.readlines()
+        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+        return lines
 
     def _get_shutter_status_string(self):
         """Return a text string describing dome shutter's current status."""
@@ -162,14 +169,14 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
         """ Return dictionary of musca status.
 
         Example output line:
-        # # [b'Status:\r\n', b'Shutter:Closed\r\n', b'Door:Closed\r\n', 
+        # # [b'Status:\r\n', b'Shutter:Closed\r\n', b'Door:Closed\r\n',
         b'Battery:\t 13.0671\r\n',
         b'Solar_A:\t 0.400871\r\n', b'Switch:EM243A\r\n',
         b'Battery:\t 13.101\r\n',
         b'Solar_A:\t 0.439232\r\n']
         """
-        self.serial.ser.write(Protocol.GET_STATUS)
-        shutter_status_list = self.serial.ser.readlines()
+        self._write_musca(Protocol.GET_STATUS)
+        shutter_status_list = self._read_musca()
         shutter_status_dict = {}
         for shutter_status_item in shutter_status_list:
             k, v = shutter_status_item.strip().decode().split(':')
@@ -180,7 +187,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
         return shutter_status_dict
 
 
-# Expose as Dome so that we can generically load by module name, without 
-# knowing the specific type  of dome. But for testing, it make sense to 
+# Expose as Dome so that we can generically load by module name, without
+# knowing the specific type  of dome. But for testing, it make sense to
 # *know* that we're dealing with the correct class.
 Dome = HuntsmanDome
