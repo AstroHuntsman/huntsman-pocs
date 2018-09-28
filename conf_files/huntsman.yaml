@@ -28,7 +28,7 @@ dome:
     template_dir: resources/bisque
     driver: bisque
     brand: bisque
-    port: tty.Bluetooth-Incoming-Port
+    port: tty.Tinyos-DevB
 flat_field:
     twilight:
         alt: 70
