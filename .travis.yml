@@ -8,7 +8,7 @@ python:
 cache:
   pip: true
 env:
-  - PANDIR=/var/huntsman POCS={$PANDIR}/POCS PANUSER=$USER HUNSTMAN_POCS={$PANDIR}/huntsman-pocs
+  - PANDIR=/var/huntsman POCS=${PANDIR}/POCS PANUSER=$USER HUNSTMAN_POCS=${PANDIR}/huntsman-pocs
 before_install:
   - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
   - mkdir -p $PANDIR/logs
