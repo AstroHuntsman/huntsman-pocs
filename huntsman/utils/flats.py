@@ -180,39 +180,3 @@ def find_flat_times(observatory,
                     "{} still saturated, taking more exposures".format(cam_name))
 
         flat_obs.current_exp += 1
-
-
-def wait_for_sun_alt(pocs,
-                     min_altitude=None,
-                     max_altitude=None,
-                     delay=60,
-                     message="Waiting for Sun altitude. Current: {}"):
-    """
-    Wait for the altitude of the Sun to be within given limits
-
-    Args:
-        pocs :
-        min_altitude (astropy.units.Quantity, optional):
-        max_altitude (astropy.units.Quantity, optional):
-        message (str):
-    """
-    if min_altitude is None and max_altitude is None:
-        raise ValueError("At least one of min_altitude & max_altitude must be given")
-    if min_altitude is None:
-        min_altitude = -90
-    if max_altitude is None:
-        max_altitude is +90
-    if isinstance(min_altitude, u.Quantity):
-        min_altitude = min_altitude.to(u.degree).value
-    if isinstance(max_altitude, u.Quantity):
-        max_altitude = max_altitude.to(u.degree).value
-
-    while True:
-        sun_pos = pocs.observatory.observer.altaz(current_time(),
-                                                  target=get_sun(current_time())
-                                                  ).alt
-        if sun_pos.value > max_altitude or sun_pos.value < min_altitude:
-            pocs.say(message.format(sun_pos.value))
-            pocs.sleep(delay=delay)
-        else:
-            break
