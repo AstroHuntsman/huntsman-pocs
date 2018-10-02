@@ -10,11 +10,11 @@ cache:
 env:
   - PANDIR=/var/huntsman POCS={$PANDIR}/POCS PANUSER=$USER HUNSTMAN_POCS={$PANDIR}/huntsman-pocs
 before_install:
-  - sudo mkdir /var/huntsman && sudo chmod 777 /var/huntsman
+  - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
   - mkdir -p $PANDIR/logs
   - pip install -U pip
   - pip install coveralls
-  - cd /var/huntsman
+  - cd $PANDIR
   - git clone https://github.com/panoptes/POCS.git
   - cd POCS
   - pip install -r requirements.txt
