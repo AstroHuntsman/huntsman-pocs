@@ -1,6 +1,7 @@
 from astropy.coordinates import get_sun
 
 from pocs.utils import current_time
+from pocs.utils.flats import wait_for_sun_alt
 
 
 def on_enter(event_data):
@@ -49,20 +50,25 @@ def on_enter(event_data):
                     pocs.say("Staring broad band flat fields")
                     pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)   # g and r
 
-        pocs.next_state = 'scheduling'
-
-        # Wait for astronomical sunset if needed
-        while True:
-            sun_pos = pocs.observatory.observer.altaz(
-                current_time(),
-                target=get_sun(current_time())
-            ).alt
-
-            if sun_pos.value >= -12:
-                pocs.say("Done with calibration frames, waiting for astronomical sunset ({})".format(sun_pos.value))
-                pocs.sleep(delay=60*3)
-            else:
-                break
-
     except Exception as e:
-        pocs.logger.warning("Problem with flat-fielding: {}".format(e))
+        pocs.logger.warning("Problem with flat fielding: {}".format(e))
+
+    # Coarse focus all cameras to start the night.
+    # Wait for nautical twilight if needed.
+    wait_for_sun_alt(pocs=pocs,
+                     max_altitude=-12 * u.degree,
+                     message="Done with flat fields, waiting for nautical twilight ({})",
+                     delay=60*3)
+    try:
+        pocs.say("Coarse focusing all cameras before starting observing for the night")
+        pocs.observatory.autofocus_cameras(coarse=True)
+    except Exception as e:
+        pocs.logger.warning("Problem with coarse autofocus: {}".format(e))
+
+    # Wait for astronomical twilight if needed
+    wait_for_sun_alt(pocs=pocs,
+                     max_altitude=-18 * u.degree,
+                     message="Done with calibrations, waiting for astronomical twilight ({})",
+                     delay=60*3)
+
+    pocs.next_state = 'scheduling'
