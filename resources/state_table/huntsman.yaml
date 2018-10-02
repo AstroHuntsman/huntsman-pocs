@@ -1,6 +1,7 @@
 ---
 name: huntsman
 initial: sleeping
+location: states
 states:
     - parked
     - sleeping
@@ -90,7 +91,7 @@ transitions:
         source: dithering
         dest: observing
         trigger: observe
-        conditions: mount_is_tracking        
+        conditions: mount_is_tracking
     -
         source: analyzing
         dest: scheduling

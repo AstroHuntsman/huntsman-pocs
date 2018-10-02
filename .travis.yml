@@ -6,21 +6,28 @@ services:
 python:
   - "3.6"
 cache:
-  - pip
+  pip: true
 env:
+  - PANDIR=/var/huntsman POCS={$PANDIR}/POCS PANUSER=$USER HUNSTMAN_POCS={$PANDIR}/huntsman-pocs
 before_install:
-    - sudo mkdir /var/huntsman && sudo chmod 777 /var/huntsman
-    - cd /var/huntsman
-    - git clone https://github.com/huntsman/POCS.git
-    - cd POCS
-    - pip install -r requirements.txt
-    - python setup.py install
-    - ln -s $TRAVIS_BUILD_DIR /var/huntsman/POCS
+  - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
+  - mkdir -p $PANDIR/logs
+  - pip install -U pip
+  - pip install coveralls
+  - cd $PANDIR
+  - git clone https://github.com/panoptes/POCS.git
+  - cd POCS
+  - pip install -r requirements.txt
+  - python setup.py install
+  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+install:
+  - cd $TRAVIS_BUILD_DIR
+  - pip install -r requirements.txt
+  - python setup.py install
 script:
-  - coverage run setup.py test
-  - coverage combine .coverage*
+  - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
+  - export COVERAGE_PROCESS_START=.coveragerc
+  - coverage run $(which pytest) -v
+  - coverage combine
 after_success:
-    - if [[ $TRAVIS_PYTHON_VERSION == 3.7* ]]; then
-          bash <(curl -s https://codecov.io/bash);
-      fi
-
+  - bash <(curl -s https://codecov.io/bash)

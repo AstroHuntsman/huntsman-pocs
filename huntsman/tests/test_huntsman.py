@@ -191,7 +191,7 @@ def test_is_weather_safe_no_simulator(pocs, db):
 
 
 def test_run_wait_until_safe(db, observatory):
-    os.environ['POCSTIME'] = '2016-08-13 23:00:00'
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
 
     def start_pocs():
         observatory.config['simulator'] = ['camera', 'mount', 'night']
