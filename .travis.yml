@@ -8,7 +8,7 @@ python:
 cache:
   pip: true
 env:
-  - PANDIR=/var/huntsman POCS=/var/huntsman/POCS PANUSER=$USER
+  - PANDIR=/var/huntsman POCS={$PANDIR}/POCS PANUSER=$USER HUNSTMAN_POCS={$PANDIR}/huntsman-pocs
 before_install:
   - sudo mkdir /var/huntsman && sudo chmod 777 /var/huntsman
   - mkdir -p $PANDIR/logs
@@ -19,12 +19,14 @@ before_install:
   - cd POCS
   - pip install -r requirements.txt
   - python setup.py install
-  - ln -s $TRAVIS_BUILD_DIR /var/huntsman/huntsman-pocs
+  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
 install:
   - cd $TRAVIS_BUILD_DIR
   - pip install -r requirements.txt
   - python setup.py install
 script:
+  - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
+  - export COVERAGE_PROCESS_START=.coveragerc
   - coverage run $(which pytest) -v
   - coverage combine
 after_success:

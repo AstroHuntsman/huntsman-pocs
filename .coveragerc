@@ -1,0 +1,18 @@
+[run]
+branch = True
+concurrency =
+    multiprocessing
+    threading
+    subprocess
+source =
+    huntsman
+    states
+parallel = True
+
+[report]
+exclude_lines =
+    pragma: no cover
+
+ignore_errors = True
+omit =
+    tests/*
