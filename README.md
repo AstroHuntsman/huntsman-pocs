@@ -1,7 +1,7 @@
 # Huntsman-POCS
 
 [![Build Status](https://travis-ci.org/AstroHuntsman/huntsman-pocs.svg?branch=develop)](https://travis-ci.org/AstroHuntsman/huntsman-pocs)
-[![codecov](https://codecov.io/gh/AstroHuntsman/huntsman-pocs/branch/develop/graph/badge.svg)](https://codecov.io/gh/AstroHuntsman/hunsman-pocs)
+[![codecov](https://codecov.io/gh/AstroHuntsman/huntsman-pocs/branch/develop/graph/badge.svg)](https://codecov.io/gh/AstroHuntsman/huntsman-pocs)
 [![astropy](http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat)](http://www.astropy.org/)
 
 POCS on the Huntsman Telephoto Array
