@@ -3,6 +3,42 @@ from astropy.coordinates import get_sun
 from pocs.utils import current_time
 
 
+def wait_for_sun_alt(pocs,
+                     min_altitude=None,
+                     max_altitude=None,
+                     delay=60,
+                     message="Waiting for Sun altitude. Current: {}"):
+    """
+    Wait for the altitude of the Sun to be within given limits
+
+    Args:
+        pocs :
+        min_altitude (astropy.units.Quantity, optional):
+        max_altitude (astropy.units.Quantity, optional):
+        message (str):
+    """
+    if min_altitude is None and max_altitude is None:
+        raise ValueError("At least one of min_altitude & max_altitude must be given")
+    if min_altitude is None:
+        min_altitude = -90
+    if max_altitude is None:
+        max_altitude is 90
+    if isinstance(min_altitude, u.Quantity):
+        min_altitude = min_altitude.to(u.degree).value
+    if isinstance(max_altitude, u.Quantity):
+        max_altitude = max_altitude.to(u.degree).value
+
+    while True:
+        sun_pos = pocs.observatory.observer.altaz(current_time(),
+                                                  target=get_sun(current_time())
+                                                  ).alt
+        if sun_pos.value > max_altitude or sun_pos.value < min_altitude:
+            pocs.say(message.format(sun_pos.value))
+            pocs.sleep(delay=delay)
+        else:
+            break
+
+
 def on_enter(event_data):
     """Pointing State
 
@@ -49,20 +85,25 @@ def on_enter(event_data):
                     pocs.say("Staring broad band flat fields")
                     pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)   # g and r
 
-        pocs.next_state = 'scheduling'
-
-        # Wait for astronomical sunset if needed
-        while True:
-            sun_pos = pocs.observatory.observer.altaz(
-                current_time(),
-                target=get_sun(current_time())
-            ).alt
-
-            if sun_pos.value >= -12:
-                pocs.say("Done with calibration frames, waiting for astronomical sunset ({})".format(sun_pos.value))
-                pocs.sleep(delay=60*3)
-            else:
-                break
-
     except Exception as e:
-        pocs.logger.warning("Problem with flat-fielding: {}".format(e))
+        pocs.logger.warning("Problem with flat fielding: {}".format(e))
+
+    # Coarse focus all cameras to start the night.
+    # Wait for nautical twilight if needed.
+    wait_for_sun_alt(pocs=pocs,
+                     max_altitude=-12 * u.degree,
+                     message="Done with flat fields, waiting for nautical twilight ({})",
+                     delay=60*3)
+    try:
+        pocs.say("Coarse focusing all cameras before starting observing for the night")
+        pocs.observatory.autofocus_cameras(coarse=True)
+    except Exception as e:
+        pocs.logger.warning("Problem with coarse autofocus: {}".format(e))
+
+    # Wait for astronomical twilight if needed
+    wait_for_sun_alt(pocs=pocs,
+                     max_altitude=-18 * u.degree,
+                     message="Done with calibrations, waiting for astronomical twilight ({})",
+                     delay=60*3)
+
+    pocs.next_state = 'scheduling'
