@@ -22,7 +22,7 @@ def wait_for_sun_alt(pocs,
     if min_altitude is None:
         min_altitude = -90
     if max_altitude is None:
-        max_altitude is +90
+        max_altitude is 90
     if isinstance(min_altitude, u.Quantity):
         min_altitude = min_altitude.to(u.degree).value
     if isinstance(max_altitude, u.Quantity):
