@@ -60,6 +60,12 @@ def data_dir():
 
 
 def end_process(proc):
+    """
+    Makes absolutely sure that a process is definitely well and truly dead.
+
+    Args:
+        proc (subprocess.Popen): Popen object for the process
+    """
     expected_return = 0
     if proc.poll() is None:
         # I'm not dead!

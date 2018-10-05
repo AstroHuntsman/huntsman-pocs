@@ -12,7 +12,6 @@ import subprocess
 from astropy import units as u
 import Pyro4
 
-from pocs.base import PanBase
 from pocs.utils import current_time
 from pocs.utils.logger import get_root_logger
 from pocs.utils import load_module
@@ -34,15 +33,16 @@ class Camera(AbstractCamera):
                  model='pyro',
                  *args, **kwargs):
         super().__init__(name=name, port=uri, model=model, *args, **kwargs)
+        self._uri = uri
 
         # Connect to camera
-        self.connect(uri)
+        self.connect()
 
 # Properties
 
     @AbstractCamera.uid.getter
     def uid(self):
-        # Neet to overide this because the base class only returns the 1st 6 characters of the
+        # Need to overide this because the base class only returns the 1st 6 characters of the
         # serial number, which is not a unique identifier for most of the camera types.
         return self._serial_number
 
@@ -92,15 +92,15 @@ class Camera(AbstractCamera):
 
 # Methods
 
-    def connect(self, uri):
+    def connect(self):
         """
         (re)connect to the distributed camera.
         """
-        self.logger.debug('Connecting to {} on {}'.format(self.name, uri))
+        self.logger.debug('Connecting to {} on {}'.format(self.name, self._uri))
 
         # Get a proxy for the camera
         try:
-            self._proxy = Pyro4.Proxy(uri)
+            self._proxy = Pyro4.Proxy(self._uri)
         except Pyro4.errors.NamingError as err:
             msg = "Couldn't get proxy to camera {}: {}".format(self.name, err)
             warn(msg)
@@ -108,14 +108,14 @@ class Camera(AbstractCamera):
             return
 
         # Set sync mode
-        Pyro4.async(self._proxy, async=False)
+        Pyro4.asyncproxy(self._proxy, asynchronous=False)
 
         # Force camera proxy to connect by getting the camera uid.
         # This will trigger the remote object creation & (re)initialise the camera & focuser,
         # which can take a long time with real hardware.
         uid = self._proxy.get_uid()
         if not uid:
-            msg = "Couldn't connect to {} on {}!".format(self.name, uri)
+            msg = "Couldn't connect to {} on {}!".format(self.name, self._uri)
             warn(msg)
             self.logger.error(msg)
             return
@@ -170,10 +170,10 @@ class Camera(AbstractCamera):
 
         dir_name, base_name = os.path.split(filename)
         # Make sure dir_name has one and only one trailing slash, otherwise rsync may fail
-        dir_name = dir_name.rstrip('/') + '/'
+        dir_name = os.path.normpath(dir_name) + '/'
 
         # Make sure proxy is in async mode
-        Pyro4.async(self._proxy, async=True)
+        Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
         # Start the exposure
         self.logger.debug('Taking {} second exposure on {}: {}'.format(
@@ -255,8 +255,7 @@ class Camera(AbstractCamera):
         """
         # Make certain that all the argument are builtin types for easy Pyro serialisation
         if isinstance(seconds, u.Quantity):
-            seconds = seconds.to(u.second)
-            seconds = seconds.value
+            seconds = seconds.to(u.second).value
         if seconds is not None:
             seconds = float(seconds)
 
@@ -288,8 +287,7 @@ class Camera(AbstractCamera):
             make_plots = bool(make_plots)
 
         if isinstance(timeout, u.Quantity):
-            timeout = timeout.to(u.second)
-            timeout = timeout.value
+            timeout = timeout.to(u.second).value
         if timeout is not None:
             timeout = float(timeout)
 
@@ -310,7 +308,7 @@ class Camera(AbstractCamera):
         focus_dir = os.path.join(os.path.abspath(self.config['directories']['images']), 'focus/')
 
         # Make sure proxy is in async mode
-        Pyro4.async(self._proxy, async=True)
+        Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
         # Start autofocus
         autofocus_result = {}
@@ -402,13 +400,13 @@ class CameraServer(object):
     """
     Wrapper for the camera class for use as a Pyro camera server
     """
-    def __init__(self):
+    def __init__(self, config_files=['pyro_camera.yaml']):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
-        self.config = load_config(config_files=['pyro_camera.yaml'])
+        self.config = load_config(config_files=config_files)
         self.name = self.config.get('name')
         self.host = self.config.get('host')
         self.port = self.config.get('port')
-        self.user = os.getenv('PANUSER', 'panoptes')
+        self.user = os.getenv('PANUSER', 'huntsman')
 
         camera_config = self.config.get('camera')
         camera_config.update({'name': self.name,

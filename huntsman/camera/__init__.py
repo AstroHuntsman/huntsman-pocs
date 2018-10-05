@@ -9,39 +9,13 @@ from pocs.utils import error
 from pocs.utils import load_module
 from pocs.utils.config import load_config
 
+from pocs.camera import list_connected_cameras
 from pocs.camera.camera import AbstractCamera  # pragma: no flakes
 from pocs.camera.camera import AbstractGPhotoCamera  # pragma: no flakes
 
 from huntsman.camera.pyro import Camera as PyroCamera
 
 from pocs.utils import logger as logger_module
-
-
-def list_connected_cameras():
-    """Detect connected cameras.
-
-    Uses gphoto2 to try and detect which cameras are connected. Cameras should
-    be known and placed in config but this is a useful utility.
-
-    Returns:
-        list: A list of the ports with detected cameras.
-    """
-
-    gphoto2 = shutil.which('gphoto2')
-    command = [gphoto2, '--auto-detect']
-    result = subprocess.check_output(command)
-    lines = result.decode('utf-8').split('\n')
-
-    ports = []
-
-    for line in lines:
-        camera_match = re.match(r'([\w\d\s_\.]{30})\s(usb:\d{3},\d{3})', line)
-        if camera_match:
-            # camera_name = camera_match.group(1).strip()
-            port = camera_match.group(2).strip()
-            ports.append(port)
-
-    return ports
 
 
 def list_distributed_cameras(ns_host=None, logger=None):
@@ -53,10 +27,10 @@ def list_distributed_cameras(ns_host=None, logger=None):
         host (str, optional): hostname or IP address of the name server host. If not given
             will attempt to locate the name server via UDP network broadcast.
         logger (logging.Logger, optional): logger to use for messages, if not given will
-            ise the root logger.
+            use the root logger.
 
     Returns:
-        dict: Dictionary of distributed camera name, URI pairs
+        dict: Dictionary of detected distributed camera name, URI pairs
     """
     if not logger:
         logger = logger_module.get_root_logger()
@@ -246,7 +220,7 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
 def create_distributed_cameras(camera_info, logger=None):
     """Create distributed camera object(s) based on detected cameras and config
 
-    Creates a pocs.camera.pyro.Camera object for each distributed camera detected.
+    Creates a `pocs.camera.pyro.Camera` object for each distributed camera detected.
 
     Args:
         camera_info: 'cameras' section from POCS config
@@ -257,6 +231,8 @@ def create_distributed_cameras(camera_info, logger=None):
         OrderedDict: An ordered dictionary of created camera objects, with the
             camera name as key and camera instance as value. Returns an empty
             OrderedDict if no distributed cameras are found.
+        Camera: a reference to the primary camera if camera_info['primary'] matched either
+            the name or UID of one of the distributed cameras, otherwise None
     """
     if not logger:
         logger = logger_module.get_root_logger()

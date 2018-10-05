@@ -101,10 +101,8 @@ def run_name_server(host=None, port=None, autoclean=0):
         else:
             host = str(host)
 
-        if port:
+        if port is not None:
             port = int(port)
-        else:
-            port = None
 
         Pyro4.config.NS_AUTOCLEAN = float(autoclean)
 
@@ -123,8 +121,8 @@ def run_camera_server(ignore_local):
 
     Args:
         ignore_local (bool, optional): If True use the default $POCS/conf_files/pyro_camera.yaml
-            only. If False will allow $POCS/conf_files/pyro_camera_local.yaml to override the
-            default configuration. Default False.
+            only. If False will allow $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override
+            the default configuration. Default False.
     """
     Pyro4.config.SERVERTYPE = "multiplex"
     config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
