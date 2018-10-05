@@ -100,7 +100,7 @@ def end_process(proc):
 
 @pytest.fixture(scope='session')
 def name_server(request):
-    ns_cmds = [os.path.expandvars('$POCS/scripts/pyro_name_server.py'),
+    ns_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_name_server.py'),
                '--host', 'localhost']
     ns_proc = subprocess.Popen(ns_cmds)
     request.addfinalizer(lambda: end_process(ns_proc))
@@ -120,7 +120,7 @@ def name_server(request):
 
 @pytest.fixture(scope='session')
 def camera_server(name_server, request):
-    cs_cmds = [os.path.expandvars('$POCS/scripts/pyro_camera_server.py'),
+    cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
                '--ignore_local']
     cs_proc = subprocess.Popen(cs_cmds)
     request.addfinalizer(lambda: end_process(cs_proc))

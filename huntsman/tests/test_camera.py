@@ -3,6 +3,7 @@ import pytest
 import os
 import time
 import glob
+import sys
 from ctypes.util import find_library
 
 import astropy.units as u
@@ -10,11 +11,6 @@ import astropy.io.fits as fits
 
 import Pyro4
 
-from pocs.camera.simulator import Camera as SimCamera
-from pocs.camera.pyro import Camera as PyroCamera
-from pocs.camera.sbig import Camera as SBIGCamera
-from pocs.camera.sbigudrv import SBIGDriver, INVALID_HANDLE_VALUE
-from pocs.camera.fli import Camera as FLICamera
 from pocs.focuser.simulator import Focuser
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
@@ -22,8 +18,12 @@ from pocs.utils.config import load_config
 from pocs.utils.error import NotFound
 from pocs.utils.images import fits as fits_utils
 
-params = [SimCamera, PyroCamera, SBIGCamera, FLICamera]
-ids = ['simulator', 'pyro', 'sbig', 'fli']
+from huntsman.camera.pyro import Camera as PyroCamera
+
+sys.excepthook = Pyro4.util.excepthook
+
+params = [PyroCamera]
+ids = ['pyro']
 
 
 @pytest.fixture(scope='module')
@@ -35,41 +35,11 @@ def images_dir(tmpdir_factory):
 # Ugly hack to access id inside fixture
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
 def camera(request, images_dir, camera_server):
-    if request.param[0] == SimCamera:
-        camera = SimCamera(focuser={'model': 'simulator',
-                                    'focus_port': '/dev/ttyFAKE',
-                                    'initial_position': 20000,
-                                    'autofocus_range': (40, 80),
-                                    'autofocus_step': (10, 20),
-                                    'autofocus_seconds': 0.1,
-                                    'autofocus_size': 500,
-                                    'autofocus_keep_files': False})
-    elif request.param[0] == PyroCamera:
+    if request.param[0] == PyroCamera:
         ns = Pyro4.locateNS()
         cameras = ns.list(metadata_all={'POCS', 'Camera'})
         cam_name, cam_uri = cameras.popitem()
         camera = PyroCamera(name=cam_name, uri=cam_uri)
-    else:
-        # Load the local config file and look for camera configurations of the specified type
-        configs = []
-        local_config = load_config('pocs_local', ignore_local=True)
-        camera_info = local_config.get('cameras')
-        if camera_info:
-            # Local config file has a cameras section
-            camera_configs = camera_info.get('devices')
-            if camera_configs:
-                # Local config file camera section has a devices list
-                for camera_config in camera_configs:
-                    if camera_config['model'] == request.param[1]:
-                        # Camera config is the right type
-                        configs.append(camera_config)
-
-        if not configs:
-            pytest.skip(
-                "Found no {} configs in pocs_local.yaml, skipping tests".format(request.param[1]))
-
-        # Create and return an camera based on the first config
-        camera = request.param[0](**configs[0])
 
     camera.config['directories']['images'] = images_dir
     return camera
@@ -89,83 +59,6 @@ def patterns(camera, images_dir):
                 'coarse_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
                                             'coarse_focus.png')}
     return patterns
-
-
-# Hardware independent tests, mostly use simulator:
-
-def test_sim_create_focuser():
-    sim_camera = SimCamera(focuser={'model': 'simulator', 'focus_port': '/dev/ttyFAKE'})
-    assert isinstance(sim_camera.focuser, Focuser)
-
-
-def test_sim_passed_focuser():
-    sim_focuser = Focuser(port='/dev/ttyFAKE')
-    sim_camera = SimCamera(focuser=sim_focuser)
-    assert sim_camera.focuser is sim_focuser
-
-
-def test_sim_bad_focuser():
-    with pytest.raises((AttributeError, ImportError, NotFound)):
-        SimCamera(focuser={'model': 'NOTAFOCUSER'})
-
-
-def test_sim_worse_focuser():
-    sim_camera = SimCamera(focuser='NOTAFOCUSER')
-    # Will log an error but raise no exceptions
-    assert sim_camera.focuser is None
-
-
-def test_sim_string():
-    sim_camera = SimCamera()
-    assert str(sim_camera) == 'Simulated Camera ({}) on None'.format(sim_camera.uid)
-    sim_camera = SimCamera(name='Sim', port='/dev/ttyFAKE')
-    assert str(sim_camera) == 'Sim ({}) on /dev/ttyFAKE'.format(sim_camera.uid)
-
-
-def test_sim_file_extension():
-    sim_camera = SimCamera()
-    assert sim_camera.file_extension == 'fits'
-    sim_camera = SimCamera(file_extension='FIT')
-    assert sim_camera.file_extension == 'FIT'
-
-
-def test_sim_readout_time():
-    sim_camera = SimCamera()
-    assert sim_camera.readout_time == 5.0
-    sim_camera = SimCamera(readout_time=2.0)
-    assert sim_camera.readout_time == 2.0
-
-
-# Hardware independent tests for SBIG camera
-
-
-def test_sbig_driver_bad_path():
-    """
-    Manually specify an incorrect path for the SBIG shared library. The
-    CDLL loader should raise OSError when it fails. Can't test a successful
-    driver init as it would cause subsequent tests to fail because of the
-    CDLL unload problem.
-    """
-    with pytest.raises(OSError):
-        SBIGDriver(library_path='no_library_here')
-
-
-@pytest.mark.filterwarnings('ignore:Could not connect to SBIG Camera')
-def test_sbig_bad_serial():
-    """
-    Attempt to create an SBIG camera instance for a specific non-existent
-    camera. No actual cameras are required to run this test but the SBIG
-    driver does need to be installed.
-    """
-    if find_library('sbigudrv') is None:
-        pytest.skip("Test requires SBIG camera driver to be installed")
-    camera = SBIGCamera(port='NOTAREALSERIALNUMBER')
-    assert camera._connected is False
-    if isinstance(camera, SBIGCamera):
-        assert camera._handle == INVALID_HANDLE_VALUE
-
-
-# *Potentially* hardware dependant tests:
 
 
 def test_init(camera):

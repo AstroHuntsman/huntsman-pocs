@@ -5,8 +5,9 @@ import netifaces
 import Pyro4
 from Pyro4 import naming, errors
 
-from pocs.camera.pyro import CameraServer
-from pocs.utils.config import load_config
+from huntsman.utils import load_config
+
+from huntsman.camera.pyro import CameraServer
 
 
 def get_own_ip(verbose=False, logger=None):

@@ -11,7 +11,8 @@ from pocs.utils.config import load_config
 
 from pocs.camera.camera import AbstractCamera  # pragma: no flakes
 from pocs.camera.camera import AbstractGPhotoCamera  # pragma: no flakes
-from pocs.camera.pyro import Camera as PyroCamera
+
+from huntsman.camera.pyro import Camera as PyroCamera
 
 from pocs.utils import logger as logger_module
 

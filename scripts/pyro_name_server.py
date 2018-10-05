@@ -7,13 +7,13 @@ POCS.
 """
 import argparse
 
-from pocs.utils.pyro import run_name_server
+from huntsman.utils.pyro import run_name_server
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", help="hostname or IP address to bind the server on")
     parser.add_argument("--port", help="port number to bind the server on")
     parser.add_argument("--autoclean", help="interval between registration autoclean (0=disabled)",
-                        default=0)
+                        default=60)
     args = parser.parse_args()
     run_name_server(args.host, args.port, args.autoclean)

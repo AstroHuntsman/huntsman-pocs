@@ -6,7 +6,7 @@ import os
 import pytest
 import Pyro4
 
-from pocs.utils.pyro import get_own_ip
+from huntsman.utils.pyro import get_own_ip
 
 
 def test_get_own_ip():

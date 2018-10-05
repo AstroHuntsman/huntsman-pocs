@@ -8,7 +8,7 @@ but before POCS.
 import argparse
 from warnings import warn
 
-from pocs.utils.pyro import run_camera_server
+from huntsman.utils.pyro import run_camera_server
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
