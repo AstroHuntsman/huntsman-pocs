@@ -67,10 +67,6 @@ def test_init(camera):
     """
     assert camera.is_connected
 
-    if isinstance(camera, SBIGCamera):
-        # Successfully initialised SBIG cameras should also have a valid 'handle'
-        assert camera._handle != INVALID_HANDLE_VALUE
-
 
 def test_uid(camera):
     # Camera uid should be a string (or maybe an int?) of non-zero length. Assert True
@@ -130,10 +126,7 @@ def test_exposure(camera, tmpdir):
     # A one second normal exposure.
     camera.take_exposure(filename=fits_path)
     # By default take_exposure is non-blocking, need to give it some time to complete.
-    if isinstance(camera, FLICamera):
-        time.sleep(10)
-    else:
-        time.sleep(5)
+    time.sleep(5)
     assert os.path.exists(fits_path)
     # If can retrieve some header data there's a good chance it's a valid FITS file
     header = fits_utils.getheader(fits_path)
@@ -180,10 +173,7 @@ def test_exposure_collision(camera, tmpdir):
     fits_path_2 = str(tmpdir.join('test_exposure_collision2.fits'))
     camera.take_exposure(2 * u.second, filename=fits_path_1)
     camera.take_exposure(1 * u.second, filename=fits_path_2)
-    if isinstance(camera, FLICamera):
-        time.sleep(10)
-    else:
-        time.sleep(5)
+    time.sleep(5)
     assert os.path.exists(fits_path_1)
     assert os.path.exists(fits_path_2)
     assert fits_utils.getval(fits_path_1, 'EXPTIME') == 2.0

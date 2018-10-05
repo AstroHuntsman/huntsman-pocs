@@ -14,11 +14,11 @@ import Pyro4
 
 from pocs.base import PanBase
 from pocs.utils import current_time
-from pocs.utils import config
 from pocs.utils.logger import get_root_logger
 from pocs.utils import load_module
 from pocs.camera import AbstractCamera
 
+from huntsman.utils import load_config
 
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
@@ -404,7 +404,7 @@ class CameraServer(object):
     """
     def __init__(self):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
-        self.config = config.load_config(config_files=['pyro_camera.yaml'])
+        self.config = load_config(config_files=['pyro_camera.yaml'])
         self.name = self.config.get('name')
         self.host = self.config.get('host')
         self.port = self.config.get('port')
