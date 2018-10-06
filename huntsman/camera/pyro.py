@@ -158,13 +158,11 @@ class Camera(AbstractCamera):
 
         # Want exposure time as a builtin type for Pyro serialisation
         if isinstance(seconds, u.Quantity):
-            seconds = seconds.to(u.second)
-            seconds = seconds.value
+            seconds = seconds.to(u.second).value
         seconds = float(seconds)
 
         if isinstance(timeout, u.Quantity):
-            timeout = timeout.to(u.second)
-            timeout = timeout.value
+            timeout = timeout.to(u.second).value
         if timeout is not None:
             timeout = float(timeout)
 
