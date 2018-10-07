@@ -20,6 +20,10 @@ before_install:
   - pip install -r requirements.txt
   - python setup.py install
   - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+  - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
+  - touch ~/.ssh/authorized_keys
+  - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  - ssh-keyscan -H localhost >> ~/.ssh/known_hosts
 install:
   - cd $TRAVIS_BUILD_DIR
   - pip install -r requirements.txt

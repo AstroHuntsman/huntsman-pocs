@@ -13,9 +13,9 @@ from pocs.core import POCS
 from pocs.utils import error
 from pocs.utils.messaging import PanMessaging
 from pocs.utils import CountdownTimer
-from pocs.camera import create_cameras_from_config
 
-
+from huntsman.camera import create_cameras_from_config
+from huntsman.camera.pyro import Camera as PyroCamera
 from huntsman.observatory import HuntsmanObservatory as Observatory
 
 
@@ -223,6 +223,22 @@ def test_is_weather_safe_no_simulator(pocs, db):
     # Set a time 181 seconds later
     os.environ['POCSTIME'] = '2016-08-13 23:05:01'
     assert pocs.is_weather_safe() is False
+
+
+def test_pyro_camera(config, camera_server):
+    conf = config.copy()
+    conf['cameras'] = {'distributed_cameras': True}
+    simulator = hardware.get_all_names(without=['camera'])
+    conf['simulator'] = simulator
+    cameras = create_cameras_from_config(conf)
+    obs = Observatory(cameras=cameras,
+                      config=conf,
+                      simulator=simulator,
+                      ignore_local_config=True)
+    assert len(obs.cameras) == 1
+    assert 'camera.simulator.001' in obs.cameras
+    assert isinstance(obs.cameras['camera.simulator.001'], PyroCamera)
+    assert obs.cameras['camera.simulator.001'].is_connected
 
 
 def test_run_wait_until_safe(observatory):
