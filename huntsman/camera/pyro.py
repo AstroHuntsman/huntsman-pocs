@@ -334,6 +334,10 @@ class Camera(AbstractCamera):
     def _clean_directories(self, source):
         """
         Clean up empty directories left behind by rsysc.
+
+        Args:
+            source (str): remote path to clean up empty directories from, in
+                user@host:/directory/subdirectory format.
         """
         user_at_host, path = source.split(':')
         path_root = path.split('/./')[0]

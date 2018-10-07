@@ -1,3 +1,6 @@
+# This is lightly edited copy of pocs/tests/test_camera.py from POCS. The intent is to
+# apply all the same tests from there to the Camera class(es) in huntsman-pocs. This file
+# should be udpated to track any changes to the tests in POCS.
 import pytest
 
 import os

@@ -120,9 +120,10 @@ def run_camera_server(ignore_local):
     camera servers should be started after the name server, but before POCS.
 
     Args:
-        ignore_local (bool, optional): If True use the default $POCS/conf_files/pyro_camera.yaml
-            only. If False will allow $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override
-            the default configuration. Default False.
+        ignore_local (bool, optional): If True use the default
+        $HUNTSMAN_POCS/conf_files/pyro_camera.yaml only. If False will allow
+        $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override the default configuration.
+        Default False.
     """
     Pyro4.config.SERVERTYPE = "multiplex"
     config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
