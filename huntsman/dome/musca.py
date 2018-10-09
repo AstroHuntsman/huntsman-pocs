@@ -48,7 +48,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
     """
     LISTEN_TIMEOUT = 3  # Max number of seconds to wait for a response.
-    MOVE_TIMEOUT = 15  # Max number of seconds to run the door motors.
+    MOVE_TIMEOUT = 45  # Max number of seconds to run the door motors.
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
     NUM_CLOSE_FEEDBACKS = 2  # Number of target_feedback bytes needed.
 
@@ -63,23 +63,32 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
     @property
     def is_open(self):
-        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         return v == Protocol.OPEN
 
     @property
     def is_closed(self):
-        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         return v == Protocol.CLOSED
 
     @property
     def door_open(self):
-        v = self._get_shutter_status_dict()[Protocol.DOOR]
+        v = self.status[Protocol.DOOR]
         return v == Protocol.DOOR_OPEN
 
     @property
     def door_closed(self):
-        v = self._get_shutter_status_dict()[Protocol.DOOR]
+        v = self.status[Protocol.DOOR]
         return v == Protocol.DOOR_CLOSED
+
+    @property
+    def status(self):
+        """A dictionary containing all status info for dome.
+
+        TODO: Add other info (e.g. dome moving)
+        TODO: Auto-update this every ~60s
+        """
+        return(self._get_shutter_status_dict())
 
     def open(self):
         """Open the shutter using musca.
@@ -92,7 +101,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
         if self.is_open():
             return True
 
-        v = self._get_shutter_status_dict()[Protocol.BATTERY]
+        v = self.status[Protocol.BATTERY]
         if v < self.MIN_OPERATING_VOLTAGE:
             self.logger.error('Dome shutter battery Voltage too low: {!r}', v)
             return False
@@ -100,7 +109,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
         self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
-        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         if v == Protocol.OPEN:
             return True
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
@@ -116,10 +125,6 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
         """
         self.logger.warning('musca Close function not yet operational')
-
-    def status(self):
-        shutter_status = self._get_shutter_status_dict()
-        return(shutter_status)
 
     def __str__(self):
         if self.is_connected:
@@ -150,7 +155,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
         """Return a text string describing dome shutter's current status."""
         if not self.is_connected:
             return 'Not connected to the shutter'
-        v = self._get_shutter_status_dict()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         if v == Protocol.CLOSED:
             return 'Shutter closed'
         if v == Protocol.OPENING:
