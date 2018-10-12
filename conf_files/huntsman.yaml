@@ -28,6 +28,7 @@ dome:
     template_dir: resources/bisque
     driver: bisque
     brand: bisque
+    port: tty.Tinyos-DevB
 flat_field:
     twilight:
         alt: 70
@@ -45,4 +46,4 @@ pointing:
     exptime: 30
     max_iterations: 3
     threshold: 0.05
-state_machine: huntsman
+state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml

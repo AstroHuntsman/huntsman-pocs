@@ -11,20 +11,21 @@ from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
-from pocs.utils import config as cfg
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
 from huntsman.utils import dither
+from huntsman.utils import load_config
 
 
 class HuntsmanObservatory(Observatory):
 
     def __init__(self,
-                 with_autoguider=True,
+                 with_autoguider=False,
                  hdr_mode=False,
                  take_flats=False,
+                 config=None,
                  *args, **kwargs
                  ):
         """Huntsman POCS Observatory
@@ -45,7 +46,10 @@ class HuntsmanObservatory(Observatory):
         except AssertionError:
             sys.exit("Must set HUNTSMAN_POCS variable")
 
-        super().__init__(config=self._load_config(), *args, **kwargs)
+        # If we don't receive a config then load a local
+        if not config:
+            config = load_config()
+        super().__init__(config=config, *args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
@@ -455,10 +459,3 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(flat_obs))
 
         return flat_obs
-
-    def _load_config(self):
-        huntsman_config_dir = '{}/conf_files/'.format(os.getenv('HUNTSMAN_POCS'))
-        config = cfg.load_config(config_files=[
-            '{}/huntsman.yaml'.format(huntsman_config_dir)
-        ])
-        return config
