@@ -1,4 +1,5 @@
 from astropy.coordinates import get_sun
+from astropy import units as u
 
 from pocs.utils import current_time
 
@@ -93,7 +94,7 @@ def on_enter(event_data):
     wait_for_sun_alt(pocs=pocs,
                      max_altitude=-12 * u.degree,
                      message="Done with flat fields, waiting for nautical twilight ({})",
-                     delay=60*3)
+                     delay=60 * 3)
     try:
         pocs.say("Coarse focusing all cameras before starting observing for the night")
         pocs.observatory.autofocus_cameras(coarse=True)
@@ -104,6 +105,6 @@ def on_enter(event_data):
     wait_for_sun_alt(pocs=pocs,
                      max_altitude=-18 * u.degree,
                      message="Done with calibrations, waiting for astronomical twilight ({})",
-                     delay=60*3)
+                     delay=60 * 3)
 
     pocs.next_state = 'scheduling'
