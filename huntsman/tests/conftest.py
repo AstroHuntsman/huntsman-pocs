@@ -3,11 +3,16 @@ import pytest
 import signal
 import subprocess
 import time
+import copy
 from warnings import warn
 import Pyro4
 
+import pocs.base
 from pocs.utils.config import load_config
 from pocs.utils.database import PanDB
+
+# Global variable with the default config; we read it once, copy it each time it is needed.
+_one_time_config = None
 
 
 def pytest_addoption(parser):
@@ -42,11 +47,26 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_hardware)
 
 
-@pytest.fixture
-def config():
-    config = load_config(ignore_local=True, simulator=['all'])
-    config['db']['name'] = 'huntsman_testing'
-    return config
+@pytest.fixture(scope='module')
+def images_dir(tmpdir_factory):
+    directory = tmpdir_factory.mktemp('images')
+    return str(directory)
+
+
+@pytest.fixture(scope='function')
+def config(images_dir):
+    pocs.base.reset_global_config()
+
+    global _one_time_config
+    if not _one_time_config:
+        _one_time_config = load_config(ignore_local=True, simulator=['all'])
+        _one_time_config['db']['name'] = 'huntsman_testing'
+        _one_time_config['name'] = 'PAN000'  # Make sure always testing with PAN000
+        _one_time_config['scheduler']['fields_file'] = 'simulator.yaml'
+
+    _one_time_config['directories']['images'] = images_dir
+
+    return copy.deepcopy(_one_time_config)
 
 
 @pytest.fixture
