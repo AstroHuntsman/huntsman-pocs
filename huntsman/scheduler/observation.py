@@ -58,7 +58,7 @@ class DitheredObservation(Observation):
 
     @property
     def exposure_index(self):
-        return self.current_exp % len(self._exp_time)
+        return self.current_exp_num % len(self._exp_time)
 
     def add_field(self, new_field, new_exp_time):
         """ Add a new field to observe along with exposure time
