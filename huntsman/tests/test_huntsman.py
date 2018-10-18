@@ -262,6 +262,7 @@ def test_run_wait_until_safe(observatory):
                                                     'exp_time': 2,
                                                     'min_nexp': 2,
                                                     'exp_set_size': 2,
+                                                    'no_dither': True
                                                     })
 
         pocs.initialize()
