@@ -1,5 +1,6 @@
 from astropy import units as u
 
+from contextlib import suppress
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
 
@@ -58,7 +59,11 @@ class DitheredObservation(Observation):
 
     @property
     def exposure_index(self):
-        return self.current_exp_num % len(self._exp_time)
+        _exp_index = 0
+        with suppress(AttributeError):
+            _exp_index = self.current_exp_num % len(self._exp_time)
+
+        return _exp_index
 
     def add_field(self, new_field, new_exp_time):
         """ Add a new field to observe along with exposure time
