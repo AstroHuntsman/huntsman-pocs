@@ -110,7 +110,7 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
 
         v = self.status()[Protocol.BATTERY]
         if v < self.MIN_OPERATING_VOLTAGE:
-            self.logger.error('Dome shutter battery Voltage too low: {!r}', v)
+            self.logger.error('Dome shutter battery voltage too low to open: {!r}', v)
             return False
 
         self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
@@ -123,15 +123,24 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
         return False
 
     def close(self):
-        """Short summary.
+        """Close the shutter using musca.
 
         Returns
         -------
-        type
-            Description of returned object.
-
+        Boolean
+            True if Closed, False if it did not Close.
         """
-        self.logger.warning('musca Close function not yet operational')
+        if self.is_closed():
+            return True
+
+        self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter')
+        time.sleep(HuntsmanDome.MOVE_TIMEOUT)
+
+        v = self.status()[Protocol.SHUTTER]
+        if v == Protocol.CLOSE:
+            return True
+        self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
+        return False
 
     def __str__(self):
         if self.is_connected:
