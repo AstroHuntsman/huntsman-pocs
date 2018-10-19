@@ -16,6 +16,7 @@ location:
 scheduler:
     type: dispatch
     fields_file: targets.yaml
+    check_file: True
 directories:
     base: /var/huntsman
     data: data
