@@ -97,7 +97,10 @@ def on_enter(event_data):
                      delay=60 * 3)
     try:
         pocs.say("Coarse focusing all cameras before starting observing for the night")
-        pocs.observatory.autofocus_cameras(coarse=True)
+        autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
+        pocs.logger.debug("Started focus, going to wait")
+        pocs.wait_for_events(autofocus_events, 600)  # Longer timeout?
+
     except Exception as e:
         pocs.logger.warning("Problem with coarse autofocus: {}".format(e))
 
