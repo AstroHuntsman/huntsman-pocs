@@ -8,8 +8,11 @@ from warnings import warn
 import Pyro4
 
 import pocs.base
+from pocs.utils.logger import get_root_logger
 from pocs.utils.config import load_config
 from pocs.utils.database import PanDB
+from pocs.utils.messaging import PanMessaging
+
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
 _one_time_config = None
@@ -161,3 +164,70 @@ def camera_server(name_server, request):
         waited += 1
 
     raise TimeoutError("Timeout waiting for camera server to start")
+
+# -----------------------------------------------------------------------
+# Messaging support fixtures. It is important that tests NOT use the same
+# ports that the real pocs_shell et al use; when they use the same ports,
+# then tests may cause errors in the real system (e.g. by sending a
+# shutdown command).
+
+
+@pytest.fixture(scope='module')
+def messaging_ports():
+    # Some code (e.g. POCS._setup_messaging) assumes that sub and pub ports
+    # are sequential so these need to match that assumption for now.
+    return dict(msg_ports=(43001, 43002), cmd_ports=(44001, 44002))
+
+
+@pytest.fixture(scope='function')
+def message_forwarder(messaging_ports):
+    cmd = os.path.join(os.getenv('POCS'), 'scripts', 'run_messaging_hub.py')
+    args = [cmd]
+    # Note that the other programs using these port pairs consider
+    # them to be pub and sub, in that order, but the forwarder sees things
+    # in reverse: it subscribes to the port that others publish to,
+    # and it publishes to the port that others subscribe to.
+    for _, (sub, pub) in messaging_ports.items():
+        args.append('--pair')
+        args.append(str(sub))
+        args.append(str(pub))
+
+    get_root_logger().info('message_forwarder fixture starting: {}', args)
+    proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # It takes a while for the forwarder to start, so allow for that.
+    # TODO(jamessynge): Come up with a way to speed up these fixtures.
+    time.sleep(3)
+    yield messaging_ports
+    proc.terminate()
+
+
+@pytest.fixture(scope='function')
+def msg_publisher(message_forwarder):
+    port = message_forwarder['msg_ports'][0]
+    publisher = PanMessaging.create_publisher(port)
+    yield publisher
+    publisher.close()
+
+
+@pytest.fixture(scope='function')
+def msg_subscriber(message_forwarder):
+    port = message_forwarder['msg_ports'][1]
+    subscriber = PanMessaging.create_subscriber(port)
+    yield subscriber
+    subscriber.close()
+
+
+@pytest.fixture(scope='function')
+def cmd_publisher(message_forwarder):
+    port = message_forwarder['cmd_ports'][0]
+    publisher = PanMessaging.create_publisher(port)
+    yield publisher
+    publisher.close()
+
+
+@pytest.fixture(scope='function')
+def cmd_subscriber(message_forwarder):
+    port = message_forwarder['cmd_ports'][1]
+    subscriber = PanMessaging.create_subscriber(port)
+    yield subscriber
+    subscriber.close()

@@ -407,42 +407,7 @@ def test_run(pocs):
     assert pocs.state == 'sleeping'
 
 
-def test_run_interrupt_with_reschedule_of_target(observatory):
-    def start_pocs():
-        pocs = POCS(observatory, messaging=True)
-        pocs.logger.info('Before initialize')
-        pocs.initialize()
-        pocs.logger.info('POCS initialized, back in test')
-        pocs.observatory.scheduler.fields_list = [{'name': 'KIC 8462852',
-                                                   'position': '20h06m15.4536s +44d27m24.75s',
-                                                   'priority': '100',
-                                                   'exp_time': 2,
-                                                   'min_nexp': 1,
-                                                   'exp_set_size': 1,
-                                                   }]
-        pocs.run(exit_when_done=True, run_once=True)
-        pocs.logger.info('run finished, powering down')
-        pocs.power_down()
-
-    pub = PanMessaging.create_publisher(6500)
-    sub = PanMessaging.create_subscriber(6511)
-
-    pocs_process = Process(target=start_pocs)
-    pocs_process.start()
-
-    while True:
-        msg_type, msg_obj = sub.receive_message()
-        if msg_type == 'STATUS':
-            current_state = msg_obj.get('state', {})
-            if current_state == 'pointing':
-                pub.send_message('POCS-CMD', 'shutdown')
-                break
-
-    pocs_process.join()
-    assert pocs_process.is_alive() is False
-
-
-def test_run_power_down_interrupt(observatory):
+def test_run_power_down_interrupt(observatory, msg_subscriber, cmd_publisher):
     def start_pocs():
         pocs = POCS(observatory, messaging=True)
         pocs.initialize()
@@ -456,19 +421,13 @@ def test_run_power_down_interrupt(observatory):
         pocs.logger.info('Starting observatory run')
         pocs.run()
 
-    pocs_process = Process(target=start_pocs)
-    pocs_process.start()
+    pocs_thread = threading.Thread(target=start_pocs, daemon=True)
+    pocs_thread.start()
 
-    pub = PanMessaging.create_publisher(6500)
-    sub = PanMessaging.create_subscriber(6511)
+    try:
+        assert wait_for_state(msg_subscriber, 'scheduling')
+    finally:
+        cmd_publisher.send_message('POCS-CMD', 'shutdown')
+        pocs_thread.join(timeout=30)
 
-    while True:
-        msg_type, msg_obj = sub.receive_message()
-        if msg_type == 'STATUS':
-            current_state = msg_obj.get('state', {})
-            if current_state == 'pointing':
-                pub.send_message('POCS-CMD', 'shutdown')
-                break
-
-    pocs_process.join()
-    assert pocs_process.is_alive() is False
+    assert pocs_thread.is_alive() is False
