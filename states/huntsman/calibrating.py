@@ -44,7 +44,8 @@ def on_enter(event_data):
         pocs.say("Coarse focusing all cameras before starting observing for the night")
         autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
         pocs.logger.debug("Started focus, going to wait")
-        pocs.wait_for_events(autofocus_events, 30 * 60)
+        pocs.wait_for_events([e for e in autofocus_events.values()], 30 * 60)
+        pocs.say("Finished with initial coarse forcus for the night")
 
     except Exception as e:
         pocs.logger.warning("Problem with coarse autofocus: {}".format(e))

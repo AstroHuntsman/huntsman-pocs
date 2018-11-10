@@ -272,6 +272,9 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         # Insert a dummy weather record to break wait
         os.environ['POCSTIME'] = '2016-09-09 09:00:00'
 
+        time.sleep(4)
+        os.environ['POCSTIME'] = '2016-09-09 10:00:00'
+
         assert wait_for_state(msg_subscriber, 'scheduling')
     finally:
         cmd_publisher.send_message('POCS-CMD', 'shutdown')
