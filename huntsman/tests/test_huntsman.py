@@ -316,13 +316,14 @@ def test_power_down_while_running(pocs):
 
 
 def test_run_no_targets_and_exit(pocs):
-    os.environ['POCSTIME'] = '2016-08-13 23:00:00'
-    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night']
+    os.environ['POCSTIME'] = '2016-09-09 10:00:00'
+    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night', 'power']
     pocs.state = 'sleeping'
 
     pocs.initialize()
+    pocs.observatory.scheduler.clear_available_observations()
     assert pocs.is_initialized is True
-    pocs.run(exit_when_done=True)
+    pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 
 
