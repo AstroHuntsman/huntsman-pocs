@@ -3,15 +3,12 @@ import pytest
 import time
 import threading
 
-from multiprocessing import Process
-
 from astropy import units as u
 
 from pocs import hardware
 from pocs.base import PanBase
 from pocs.core import POCS
 from pocs.utils import error
-from pocs.utils.messaging import PanMessaging
 from pocs.utils import CountdownTimer
 
 from huntsman.camera import create_cameras_from_config
@@ -51,8 +48,9 @@ def observatory(config, cameras):
         config=config,
         cameras=cameras,
         simulator=['all'],
+        ignore_local_config=True
     )
-    yield observatory
+    return observatory
 
 
 @pytest.fixture(scope='function')
@@ -63,17 +61,6 @@ def pocs(config, observatory):
                 run_once=True,
                 config=config,
                 ignore_local_config=True)
-
-    pocs.observatory.scheduler.fields_file = None
-    pocs.observatory.scheduler.fields_list = [
-        {'name': 'Wasp 33',
-         'position': '02h26m51.0582s +37d33m01.733s',
-         'priority': '100',
-         'exp_time': 2,
-         'min_nexp': 2,
-         'exp_set_size': 2,
-         },
-    ]
 
     yield pocs
 
@@ -241,7 +228,7 @@ def test_pyro_camera(config, camera_server):
     assert obs.cameras['camera.simulator.001'].is_connected
 
 
-def test_run_wait_until_safe(observatory):
+def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     os.environ['POCSTIME'] = '2016-09-09 08:00:00'
 
     # Make sure DB is clear for current weather
@@ -250,7 +237,7 @@ def test_run_wait_until_safe(observatory):
     def start_pocs():
         observatory.logger.info('start_pocs ENTER')
         # Remove weather simulator, else it would always be safe.
-        observatory.config['simulator'] = hardware.get_all_names(without=['weather'])
+        observatory.config['simulator'] = hardware.get_all_names(without=['night'])
 
         pocs = POCS(observatory,
                     messaging=True, safe_delay=5)
@@ -262,84 +249,35 @@ def test_run_wait_until_safe(observatory):
                                                     'exp_time': 2,
                                                     'min_nexp': 2,
                                                     'exp_set_size': 2,
-                                                    'no_dither': True
                                                     })
 
         pocs.initialize()
         pocs.logger.info('Starting observatory run')
-        assert pocs.is_weather_safe() is False
+        assert pocs.observatory.is_dark(horizon='flat') is False
         pocs.send_message('RUNNING')
         pocs.run(run_once=True, exit_when_done=True)
-        assert pocs.is_weather_safe() is True
+        pocs.logger.info("Check it's dark once we are done")
+        assert pocs.observatory.is_dark(horizon='flat') is True
         pocs.power_down()
-        observatory.logger.info('start_pocs EXIT')
+        pocs.observatory.logger.info('start_pocs EXIT')
 
-    pub = PanMessaging.create_publisher(6500)
-    sub = PanMessaging.create_subscriber(6511)
-
-    pocs_thread = threading.Thread(target=start_pocs)
+    pocs_thread = threading.Thread(target=start_pocs, daemon=True)
     pocs_thread.start()
 
     try:
         # Wait for the RUNNING message,
-        assert wait_for_running(sub)
+        assert wait_for_running(msg_subscriber)
 
         time.sleep(2)
         # Insert a dummy weather record to break wait
-        observatory.db.insert_current('weather', {'safe': True})
+        os.environ['POCSTIME'] = '2016-09-09 09:00:00'
 
-        assert wait_for_state(sub, 'scheduling')
+        assert wait_for_state(msg_subscriber, 'scheduling')
     finally:
-        pub.send_message('POCS-CMD', 'shutdown')
+        cmd_publisher.send_message('POCS-CMD', 'shutdown')
         pocs_thread.join(timeout=30)
 
     assert pocs_thread.is_alive() is False
-
-
-# def test_run_wait_until_safe(db, observatory):
-#     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
-
-#     def start_pocs():
-#         observatory.config['simulator'] = ['camera', 'mount', 'night']
-
-#         pocs = POCS(observatory,
-#                     messaging=True, safe_delay=15)
-#         pocs.db.current.remove({})
-#         pocs.initialize()
-#         pocs.logger.info('Starting observatory run')
-#         assert pocs.is_weather_safe() is False
-#         pocs.send_message('RUNNING')
-#         pocs.run(run_once=True, exit_when_done=True)
-#         assert pocs.is_weather_safe() is True
-
-#     pub = PanMessaging.create_publisher(6500)
-#     sub = PanMessaging.create_subscriber(6511)
-
-#     pocs_process = Process(target=start_pocs)
-#     pocs_process.start()
-
-#     # Wait for the running message
-#     while True:
-#         msg_type, msg_obj = sub.receive_message()
-#         if msg_obj is None:
-#             time.sleep(2)
-#             continue
-
-#         if msg_obj.get('message', '') == 'RUNNING':
-#             time.sleep(2)
-#             # Insert a dummy weather record to break wait
-#             db.insert_current('weather', {'safe': True})
-
-#         if msg_type == 'STATUS':
-#             current_state = msg_obj.get('state', {})
-#             if current_state == 'pointing':
-#                 pub.send_message('POCS-CMD', 'shutdown')
-#                 break
-
-#         time.sleep(0.5)
-
-#     pocs_process.join()
-#     assert pocs_process.is_alive() is False
 
 
 def test_unsafe_park(pocs):
