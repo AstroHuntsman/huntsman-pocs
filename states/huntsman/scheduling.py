@@ -25,16 +25,19 @@ def on_enter(event_data):
             observation = pocs.observatory.get_observation()
             pocs.logger.info("Observation: {}".format(observation))
 
-            if pocs.force_reschedule:
-                pocs.force_reschedule = False
-
         except error.NoObservation as e:
             pocs.say("No valid observations found. Can't schedule. Going to park.")
         except Exception as e:
             pocs.logger.warning("Error in scheduling: {}".format(e))
         else:
 
-            if observation != existing_observation:
+            if existing_observation and observation.name == existing_observation.name:
+                pocs.say("I'm sticking with {}".format(observation.name))
+
+                # Make sure we are using existing observation (with pointing image)
+                pocs.observatory.current_observation = existing_observation
+                pocs.next_state = 'preparing'
+            else:
                 pocs.say("Got it! I'm going to check out: {}".format(observation.name))
 
                 pocs.logger.debug("Setting Observation coords: {}".format(observation.field))
@@ -42,6 +45,3 @@ def on_enter(event_data):
                     pocs.next_state = 'preparing'
                 else:
                     pocs.logger.warning("Field not properly set. Parking.")
-            else:
-                pocs.say("I'm sticking with {}".format(observation.name))
-                pocs.next_state = 'preparing'

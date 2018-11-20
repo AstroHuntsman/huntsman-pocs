@@ -30,32 +30,28 @@ transitions:
             - dithering
         dest: parking
         trigger: park
-        conditions: always_safe
     -
         source: parking
         dest: parked
         trigger: set_park
-        conditions: always_safe
     -
         source: parked
         dest: housekeeping
         trigger: clean_up
-        conditions: always_safe
     -
         source: housekeeping
         dest: sleeping
         trigger: goto_sleep
-        conditions: always_safe
     -
         source: housekeeping
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized always_safe
+        conditions: mount_is_initialized 
     -
         source: sleeping
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized always_safe
+        conditions: mount_is_initialized 
     -
         source: ready
         dest: calibrating
