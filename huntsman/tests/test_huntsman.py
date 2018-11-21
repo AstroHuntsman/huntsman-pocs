@@ -229,18 +229,16 @@ def test_pyro_camera(config, camera_server):
 
 
 def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
-    os.environ['POCSTIME'] = '2016-09-09 08:00:00'
+    os.environ['POCSTIME'] = '2016-09-09 10:00:00'
 
-    # Make sure DB is clear for current weather
-    observatory.db.clear_current('weather')
+    observatory.db.insert_current('weather', {'safe': False})
 
     def start_pocs():
         observatory.logger.info('start_pocs ENTER')
         # Remove weather simulator, else it would always be safe.
-        observatory.config['simulator'] = hardware.get_all_names(without=['night'])
+        observatory.config['simulator'] = hardware.get_all_names(without=['weather'])
 
-        pocs = POCS(observatory,
-                    messaging=True, safe_delay=5)
+        pocs = POCS(observatory, messaging=True, safe_delay=5)
 
         pocs.observatory.scheduler.clear_available_observations()
         pocs.observatory.scheduler.add_observation({'name': 'KIC 8462852',
@@ -253,11 +251,11 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
 
         pocs.initialize()
         pocs.logger.info('Starting observatory run')
-        assert pocs.observatory.is_dark(horizon='flat') is False
+        assert pocs.is_weather_safe() is False
+        pocs.logger.info('Sending RUNNING message')
         pocs.send_message('RUNNING')
         pocs.run(run_once=True, exit_when_done=True)
-        pocs.logger.info("Check it's dark once we are done")
-        assert pocs.observatory.is_dark(horizon='flat') is True
+        assert pocs.observatory.is_weather_safe() is True
         pocs.power_down()
         pocs.observatory.logger.info('start_pocs EXIT')
 
@@ -267,15 +265,13 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     try:
         # Wait for the RUNNING message,
         assert wait_for_running(msg_subscriber)
+        observatory.logger.info('Got RUNNING message')
 
-        time.sleep(2)
+        time.sleep(5)
         # Insert a dummy weather record to break wait
-        os.environ['POCSTIME'] = '2016-09-09 09:00:00'
+        observatory.db.insert_current('weather', {'safe': True})
 
-        time.sleep(4)
-        os.environ['POCSTIME'] = '2016-09-09 10:00:00'
-
-        assert wait_for_state(msg_subscriber, 'scheduling')
+        assert wait_for_state(msg_subscriber, 'calibrating')
     finally:
         cmd_publisher.send_message('POCS-CMD', 'shutdown')
         pocs_thread.join(timeout=30)
