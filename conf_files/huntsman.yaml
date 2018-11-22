@@ -31,6 +31,13 @@ directories:
     resources: POCS/resources/
     targets: /var/huntsman/huntsman-pocs/conf_files
     webcam: webcams
+cameras:
+    auto_detect: False
+    devices:
+    -
+        model: simulator
+    -
+        model: simulator    
 dome:
     template_dir: resources/bisque
     driver: bisque

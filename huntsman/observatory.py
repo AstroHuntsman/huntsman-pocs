@@ -177,6 +177,26 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Slewing to target")
             time.sleep(1)
 
+    def analyze_recent(self):
+        """Analyze the most recent exposure
+
+        This is a small wrapper around the POCS version which just ensures that
+        there is a "pointing" image to use as a reference for solving.
+
+        Returns:
+            dict: Offset information
+        """
+        # Set the first image as our pointing image
+        if self.current_observation.pointing_image is None:
+            image_id, file_path = self.current_observation.first_exposure
+            self.current_observation.pointing_images[image_id] = file_path
+            self.logger.debug(f'Pointing image set to {self.current_observation.pointing_image}')
+
+        # Now call the main analyze
+        super().analyze_recent()
+
+        return self.current_offset_info
+
     def take_evening_flats(self,
                            alt=None,
                            az=None,
@@ -244,7 +264,11 @@ class HuntsmanObservatory(Observatory):
                 # Take picture and get event
                 if exp_times[cam_name][-1].value < max_exptime:
                     camera_event = camera.take_observation(
-                        flat_obs, fits_headers, filename=filename, exp_time=exp_times[cam_name][-1])
+                        flat_obs,
+                        fits_headers,
+                        filename=filename,
+                        exp_time=exp_times[cam_name][-1]
+                    )
 
                     camera_events[cam_name] = {
                         'event': camera_event,

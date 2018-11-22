@@ -39,6 +39,7 @@ def wait_for_state(sub, state, max_duration=90):
 @pytest.fixture(scope='function')
 def cameras(config):
     """Get the default cameras from the config."""
+    config['simulator'] = ['camera']
     return create_cameras_from_config(config)
 
 
@@ -60,6 +61,7 @@ def pocs(config, observatory):
     pocs = POCS(observatory,
                 run_once=True,
                 config=config,
+                simulator=['all'],
                 ignore_local_config=True)
 
     yield pocs
@@ -162,8 +164,6 @@ def test_free_space(pocs):
 
     # Test something ridiculous
     assert pocs.has_free_space(required_space=1e9 * u.gigabyte) is False
-
-    assert pocs.is_safe() is True
 
 
 def test_is_dark_simulator(pocs):
@@ -271,7 +271,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         # Insert a dummy weather record to break wait
         observatory.db.insert_current('weather', {'safe': True})
 
-        assert wait_for_state(msg_subscriber, 'calibrating')
+        assert wait_for_state(msg_subscriber, 'scheduling')
     finally:
         cmd_publisher.send_message('POCS-CMD', 'shutdown')
         pocs_thread.join(timeout=30)
@@ -291,7 +291,7 @@ def test_unsafe_park(pocs):
 
     # My time goes fast...
     os.environ['POCSTIME'] = '2016-08-13 23:00:00'
-    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'power']
+    pocs.config['simulator'] = hardware.get_all_names(without=['night'])
     assert pocs.is_safe() is False
 
     assert pocs.state == 'parking'
@@ -313,25 +313,32 @@ def test_power_down_while_running(pocs):
 
 def test_run_no_targets_and_exit(pocs):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
-    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night', 'power']
+
+    pocs.config['simulator'] = hardware.get_all_names()
     pocs.state = 'sleeping'
 
     pocs.initialize()
     pocs.observatory.scheduler.clear_available_observations()
+    pocs.observatory.scheduler._fields_file = None
+    pocs.observatory.scheduler._fields_list = None
     assert pocs.is_initialized is True
+
+    pocs.observatory.take_flat_fields = False
+    assert pocs.observatory.take_flat_fields is False
     pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 
 
 def test_run(pocs):
-    os.environ['POCSTIME'] = '2016-09-09 08:00:00'
-    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night']
+    os.environ['POCSTIME'] = '2016-09-09 10:00:00'
+    pocs.config['simulator'] = hardware.get_all_names()
     pocs.state = 'sleeping'
     pocs._do_states = True
 
+    pocs.observatory.scheduler.clear_available_observations()
     pocs.observatory.scheduler.add_observation({'name': 'KIC 8462852',
                                                         'position': '20h06m15.4536s +44d27m24.75s',
-                                                        'priority': '100',
+                                                        'priority': '1000',
                                                         'exp_time': 2,
                                                         'min_nexp': 2,
                                                         'exp_set_size': 2,
@@ -340,6 +347,7 @@ def test_run(pocs):
     pocs.initialize()
     assert pocs.is_initialized is True
 
+    pocs.observatory.take_flat_fields = False
     pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 

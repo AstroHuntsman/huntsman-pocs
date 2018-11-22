@@ -64,8 +64,9 @@ def config(images_dir, messaging_ports):
     if not _one_time_config:
         _one_time_config = load_config(ignore_local=True, simulator=['all'])
         _one_time_config['db']['name'] = 'huntsman_testing'
-        _one_time_config['name'] = 'PAN000'  # Make sure always testing with PAN000
+        _one_time_config['name'] = 'HuntsmanTest'
         _one_time_config['scheduler']['fields_file'] = 'simulator.yaml'
+        _one_time_config['scheduler']['check_file'] = False
 
     # Make a copy before we modify based on test fixtures.
     result = copy.deepcopy(_one_time_config)
