@@ -89,10 +89,17 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
     def kwargs_or_config(item, default=None):
         return kwargs.get(item, config.get(item, default))
 
-    camera_info = kwargs_or_config('cameras')
-    if not camera_info:
+    a_simulator = 'camera' in kwargs_or_config('simulator', default=False)
+    logger.debug("Camera simulator: {}".format(a_simulator))
+
+    camera_info = kwargs_or_config('cameras', default=dict())
+
+    if not camera_info and not a_simulator:
         logger.info('No camera information in config.')
         return OrderedDict()
+
+    distributed_cameras = kwargs.get('distributed_cameras',
+                                     camera_info.get('distributed_cameras', False))
 
     try:
         cameras = create_local_cameras(config=config, logger=logger, **kwargs)
@@ -100,9 +107,6 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
         logger.debug("No local cameras")
         cameras = OrderedDict()
 
-    a_simulator = 'camera' in kwargs_or_config('simulator', default=list())
-    distributed_cameras = kwargs.get('distributed_cameras',
-                                     camera_info.get('distributed_cameras', False))
     if not a_simulator and distributed_cameras:
         logger.debug("Creating distributed cameras")
         cameras.update(create_distributed_cameras(camera_info, logger=logger))

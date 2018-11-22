@@ -8,8 +8,8 @@ coveralls
 dateparser
 ffmpy
 gcloud
-git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
-git+git://github.com/panoptes/POCS@develop#panoptes
+-e git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
+-e git+git://github.com/wtgee/POCS@develop#egg=panoptes
 healpy
 matplotlib >= 2.0.0
 netifaces

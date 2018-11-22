@@ -7,12 +7,18 @@ location:
     longitude: 149.13 # Degrees
     elevation: 1160.0 # Meters
     utc_offset: 10.00 # Hours
-    horizon: 30 # Degrees
+    horizon: 30 # Degrees - Targets above this limit
+    flat_horizon: -6 # Degrees - Flats between this and focus_horizon
+    focus_horizon: -12 # Degrees - Focus between this and observe_horizon
+    observe_horizon: -18 # Degrees - Sun below this limit to observe
     obstructions:
       - [[60, 163], [60, 167]] # lightning rod rough coordinates
       - [[45, 355], [45, 5]] # telstra tower rough coordinates
     timezone: Australia/Sydney
     twilight_horizon: 0 # Degrees
+db: 
+    name: huntsman
+    type: mongo    
 scheduler:
     type: dispatch
     fields_file: targets.yaml
@@ -25,6 +31,13 @@ directories:
     resources: POCS/resources/
     targets: /var/huntsman/huntsman-pocs/conf_files
     webcam: webcams
+cameras:
+    auto_detect: False
+    devices:
+    -
+        model: simulator
+    -
+        model: simulator    
 dome:
     template_dir: resources/bisque
     driver: bisque
@@ -47,4 +60,27 @@ pointing:
     exptime: 30
     max_iterations: 3
     threshold: 0.05
+messaging:
+    cmd_port: 6500
+    msg_port: 6510    
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
+########################### Flat Fields ########################################
+# Controls various aspects of flat fields, both for evening and morning. 
+# 
+# Note: The times at which flat-fielding will occur are controlled by the
+# `location.flat_horizon` and `location.observe_horizon` config entries.
+#
+# take_evening_flats: If we should try to take flats during evening twilight
+# take_morning_flats: If we should try to take flats during morning twilight
+# evening:            The coordinates should be roughly opposite the sun.
+# morning:            The coordinates should be roughly opposite the sun.
+################################################################################
+flat_field:
+    take_evening_flats: False
+    take_morning_flats: False
+    evening:
+        alt: 70  # degrees
+        az: 120  # degrees
+    morning:
+        alt: 70  # degrees
+        az: 320  # degrees

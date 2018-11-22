@@ -7,7 +7,7 @@ from pocs.utils import current_time
 def wait_for_sun_alt(pocs,
                      min_altitude=None,
                      max_altitude=None,
-                     delay=60,
+                     delay=None,
                      message="Waiting for Sun altitude. Current: {}"):
     """
     Wait for the altitude of the Sun to be within given limits
@@ -29,7 +29,10 @@ def wait_for_sun_alt(pocs,
     if isinstance(max_altitude, u.Quantity):
         max_altitude = max_altitude.to(u.degree).value
 
-    while True:
+    if not delay:
+        delay = pocs._safe_delay
+
+    while pocs.is_safe():
         sun_pos = pocs.observatory.observer.altaz(current_time(),
                                                   target=get_sun(current_time())
                                                   ).alt
@@ -93,13 +96,12 @@ def on_enter(event_data):
     # Wait for nautical twilight if needed.
     wait_for_sun_alt(pocs=pocs,
                      max_altitude=-12 * u.degree,
-                     message="Done with flat fields, waiting for nautical twilight ({})",
-                     delay=60 * 3)
+                     message="Done with flat fields, waiting for nautical twilight for  ({:.02f})")
     try:
         pocs.say("Coarse focusing all cameras before starting observing for the night")
         autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
         pocs.logger.debug("Started focus, going to wait")
-        pocs.wait_for_events(autofocus_events, 600)  # Longer timeout?
+        pocs.wait_for_events(autofocus_events.values(), 600)  # Longer timeout?
 
     except Exception as e:
         pocs.logger.warning("Problem with coarse autofocus: {}".format(e))
@@ -107,7 +109,6 @@ def on_enter(event_data):
     # Wait for astronomical twilight if needed
     wait_for_sun_alt(pocs=pocs,
                      max_altitude=-18 * u.degree,
-                     message="Done with calibrations, waiting for astronomical twilight ({})",
-                     delay=60 * 3)
+                     message="Done with calibrations, waiting for astronomical twilight ({:.02f})")
 
     pocs.next_state = 'scheduling'

@@ -21,4 +21,3 @@ def on_enter(event_data):
                 pocs.next_state = 'scheduling'
     except Exception as e:
         pocs.logger.error("Problem in analyzing: {}".format(e))
-        #pocs.next_state = 'parking'

@@ -46,16 +46,20 @@ transitions:
         source: housekeeping
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized
+        conditions: mount_is_initialized 
     -
         source: sleeping
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized
+        conditions: mount_is_initialized 
     -
         source: ready
         dest: calibrating
         trigger: calibrate
+    -
+        source: ready
+        dest: scheduling
+        trigger: schedule        
     -
         source: calibrating
         dest: scheduling
