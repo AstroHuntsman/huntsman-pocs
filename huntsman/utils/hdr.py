@@ -1,4 +1,4 @@
-from huntsman.utils import dither
+from pocs.utils import dither
 
 from astropy import units as u
 from astropy.coordinates import SkyCoord

@@ -4,9 +4,9 @@ from pocs.scheduler import dispatch
 from pocs.scheduler.field import Field
 from pocs.utils import current_time
 from pocs.scheduler.observation import Observation
+from pocs.utils import dither
 
 from huntsman.scheduler.observation import DitheredObservation
-from huntsman.utils import dither
 
 
 class Scheduler(dispatch.Scheduler):

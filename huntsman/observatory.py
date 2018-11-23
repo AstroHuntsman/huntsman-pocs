@@ -11,11 +11,11 @@ from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
+from pocs.utils import dither
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
-from huntsman.utils import dither
 from huntsman.utils import load_config
 
 
