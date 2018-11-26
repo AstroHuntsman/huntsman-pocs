@@ -1,3 +1,5 @@
+-e git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
+-e git+git://github.com/wtgee/POCS@develop#egg=panoptes
 astroplan
 astropy >= 2.0.0
 astroquery
@@ -8,8 +10,6 @@ coveralls
 dateparser
 ffmpy
 gcloud
--e git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
--e git+git://github.com/wtgee/POCS@develop#egg=panoptes
 healpy
 matplotlib >= 2.0.0
 netifaces
@@ -21,6 +21,7 @@ pymongo >= 3.2.2
 Pyro4
 pyserial >= 3.1.1
 pytest >= 2.8.5
+pytest-mpl
 python-dateutil >= 2.5.3
 PyYAML >= 3.11
 pyzmq >= 15.3.0
