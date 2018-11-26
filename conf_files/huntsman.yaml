@@ -12,7 +12,6 @@ location:
     focus_horizon: -12 # Degrees - Focus between this and observe_horizon
     observe_horizon: -18 # Degrees - Sun below this limit to observe
     obstructions:
-      - [[60, 163], [60, 167]] # lightning rod rough coordinates
       - [[45, 355], [45, 5]] # telstra tower rough coordinates
     timezone: Australia/Sydney
     twilight_horizon: 0 # Degrees
@@ -38,15 +37,7 @@ cameras:
         model: simulator
     -
         model: simulator    
-dome:
-    template_dir: resources/bisque
-    driver: bisque
-    brand: bisque
-    port: tty.Tinyos-DevB
-flat_field:
-    twilight:
-        alt: 70
-        az: 120
+
 guider:
     bin_size: 1
     image_path: /var/huntsman/temp/guide_image.fits
@@ -64,6 +55,7 @@ messaging:
     cmd_port: 6500
     msg_port: 6510    
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
+
 ########################### Flat Fields ########################################
 # Controls various aspects of flat fields, both for evening and morning. 
 # 
@@ -78,9 +70,3 @@ state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
 flat_field:
     take_evening_flats: False
     take_morning_flats: False
-    evening:
-        alt: 70  # degrees
-        az: 120  # degrees
-    morning:
-        alt: 70  # degrees
-        az: 320  # degrees

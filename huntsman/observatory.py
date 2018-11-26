@@ -139,8 +139,6 @@ class HuntsmanObservatory(Observatory):
 
             observation.field = fields
             observation.exp_time = exp_times
-            observation.min_nexp = len(fields)
-            observation.exp_set_size = len(fields)
 
             self.logger.debug("New Dithered Observation: {}".format(observation))
 
