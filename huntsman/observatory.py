@@ -145,7 +145,7 @@ class HuntsmanObservatory(Observatory):
     def finish_observing(self):
         """Performs various cleanup functions for observe.
 
-        Add the latest observtion to the exposure list.
+        Add the latest observation to the exposure list.
         """
 
         # Lookup the current observation
