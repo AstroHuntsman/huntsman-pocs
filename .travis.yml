@@ -1,0 +1,37 @@
+dist: trusty
+sudo: required
+language: python
+services:
+  - mongodb
+python:
+  - "3.6"
+cache:
+  pip: true
+env:
+  - PANDIR=/var/huntsman POCS=${PANDIR}/POCS PANUSER=$USER HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
+before_install:
+  - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
+  - mkdir -p $PANDIR/logs
+  - pip install -U pip
+  - pip install coveralls
+  - cd $PANDIR
+  - git clone https://github.com/panoptes/POCS.git
+  - cd POCS
+  - pip install -r requirements.txt
+  - python setup.py install
+  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+  - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
+  - touch ~/.ssh/authorized_keys
+  - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  - ssh-keyscan -H localhost >> ~/.ssh/known_hosts
+install:
+  - cd $TRAVIS_BUILD_DIR
+  - pip install -r requirements.txt
+  - python setup.py install
+script:
+  - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
+  - export COVERAGE_PROCESS_START=.coveragerc
+  - coverage run $(which pytest) -v
+  - coverage combine
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

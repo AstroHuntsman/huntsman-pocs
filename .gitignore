@@ -6,6 +6,7 @@ conf_files_test/huntsman_archive/*.yaml
 *.patch
 config_local.yaml
 .pytest_cache
+Running Huntsman.ipynb
 
 # Development support
 sftp-config.json
@@ -36,6 +37,7 @@ _build
 */cython_version.py
 htmlcov
 .coverage
+.coverage.*
 MANIFEST
 
 # Sphinx
