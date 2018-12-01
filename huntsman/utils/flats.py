@@ -79,7 +79,7 @@ def find_flat_times(observatory,
                     image_dir,
                     camera.uid,
                     flat_obs.seq_time,
-                    'dark_{:02d}'.format(flat_obs.current_exp),
+                    'dark_{:02d}'.format(flat_obs.current_exp_num),
                     camera.file_extension)
 
                 # Take picture and wait for result
@@ -117,7 +117,7 @@ def find_flat_times(observatory,
                 image_dir,
                 camera.uid,
                 flat_obs.seq_time,
-                'saturated_flat_{:02d}'.format(flat_obs.current_exp),
+                'saturated_flat_{:02d}'.format(flat_obs.current_exp_num),
                 camera.file_extension)
 
             # Take picture and get event
@@ -179,4 +179,4 @@ def find_flat_times(observatory,
                 observatory.logger.debug(
                     "{} still saturated, taking more exposures".format(cam_name))
 
-        flat_obs.current_exp += 1
+        flat_obs.current_exp_num += 1

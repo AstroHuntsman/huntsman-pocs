@@ -3,7 +3,7 @@
 import time
 
 from pocs.utils import CountdownTimer
-from pocs.dome.bisque import Dome as BisqueDome
+#from pocs.dome.bisque import Dome as BisqueDome
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
 
 
@@ -41,7 +41,7 @@ class Protocol:
     DOOR_CLOSED = 'Closed'
 
 
-class HuntsmanDome(AbstractSerialDome, BisqueDome):
+class HuntsmanDome(AbstractSerialDome):
     """Class for musca serial shutter control plus sending updated commands to TSX.
     Musca Port setting: 9600/8/N/1
 

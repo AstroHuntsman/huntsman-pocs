@@ -1,4 +1,5 @@
 from astropy.coordinates import get_sun
+from astropy import units as u
 
 from pocs.utils import current_time
 
@@ -66,7 +67,7 @@ def on_enter(event_data):
                     break
 
             # Take the flats
-            if sun_pos.value <= 0 and sun_pos.value >= -12:
+            if sun_pos.value <= 0 and sun_pos.value >= -14:
                 pocs.say("Taking some flat fields to start the night")
 
                 narrow_band_cameras = list()
@@ -91,12 +92,14 @@ def on_enter(event_data):
     # Coarse focus all cameras to start the night.
     # Wait for nautical twilight if needed.
     wait_for_sun_alt(pocs=pocs,
-                     max_altitude=-12 * u.degree,
+                     max_altitude=-14 * u.degree,
                      message="Done with flat fields, waiting for nautical twilight ({})",
                      delay=60*3)
     try:
         pocs.say("Coarse focusing all cameras before starting observing for the night")
-        pocs.observatory.autofocus_cameras(coarse=True)
+        autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
+        pocs.logger.debug("Started focus, going to wait")
+        pocs.wait_for_events(autofocus_events, 600)
     except Exception as e:
         pocs.logger.warning("Problem with coarse autofocus: {}".format(e))
 

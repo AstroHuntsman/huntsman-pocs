@@ -383,7 +383,12 @@ class Camera(AbstractCamera):
     def _async_wait(self, future_result, name='?', event=None, timeout=None):
         # For now not checking for any problems, just wait for everything to return (or timeout)
         if future_result.wait(timeout):
-            result = future_result.value
+            try:
+                result = future_result.value
+            except Exception as e:
+                self.logger.debug("Problem in wait: {}".format(e))
+                result = True
+                self.logger.debug("Setting result to True anyway")
         else:
             msg = "Timeout while waiting for {} on {}".format(name, self.name)
             warn(msg)
