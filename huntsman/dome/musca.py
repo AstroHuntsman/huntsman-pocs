@@ -53,9 +53,12 @@ class HuntsmanDome(AbstractSerialDome, BisqueDome):
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
     NUM_CLOSE_FEEDBACKS = 2  # Number of target_feedback bytes needed.
 
-    SHUTTER_CMD_DELAY = 0.5  # s, Wait this long before allowing next command due to slow musica CPU
-    STATUS_UPDATE_FREQUENCY = 60.  # s, A status_update is requested every minute to monitor connectivity.
-    MIN_OPERATING_VOLTAGE = 12.  # V, so we don't open if less than this or CLose immediately if we go less than this
+    # s, Wait this long before allowing next command due to slow musica CPU
+    SHUTTER_CMD_DELAY = 0.5
+    # s, A status_update is requested every minute to monitor connectivity.
+    STATUS_UPDATE_FREQUENCY = 60.
+    # V, so we don't open if less than this or CLose immediately if we go less than this
+    MIN_OPERATING_VOLTAGE = 12.
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
