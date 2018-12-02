@@ -143,9 +143,9 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("New Dithered Observation: {}".format(observation))
 
     def finish_observing(self):
-        """Performs various cleanup functions for observe
-        Extracts the most recent observation metadata from the mongo `current`
-        collection and increments the exposure count for the `current_observation`.
+        """Performs various cleanup functions for observe.
+
+        Add the latest observation to the exposure list.
         """
 
         # Lookup the current observation
@@ -157,10 +157,10 @@ class HuntsmanObservatory(Observatory):
         self.current_observation.exposure_list[image_id] = file_path
 
     def slew_to_target(self):
-        """ Slew to target and turn on guiding
+        """ Slew to target and turn on guiding.
 
         This is convenience method to slew to the target and turn on the guiding
-        given a large spearation
+        given a large separation.
 
         """
         separation_limit = 0.5 * u.degree
@@ -176,7 +176,7 @@ class HuntsmanObservatory(Observatory):
             time.sleep(1)
 
     def analyze_recent(self):
-        """Analyze the most recent exposure
+        """Analyze the most recent exposure.
 
         This is a small wrapper around the POCS version which just ensures that
         there is a "pointing" image to use as a reference for solving.
@@ -184,7 +184,7 @@ class HuntsmanObservatory(Observatory):
         Returns:
             dict: Offset information
         """
-        # Set the first image as our pointing image
+        # Set the first image as our pointing image.
         if self.current_observation.pointing_image is None:
             image_id, file_path = self.current_observation.first_exposure
             self.current_observation.pointing_images[image_id] = file_path
@@ -256,8 +256,7 @@ class HuntsmanObservatory(Observatory):
                     image_dir,
                     camera.uid,
                     flat_obs.seq_time,
-                    'flat_{:02d}'.format(flat_obs.current_exp_num),
-                    camera.file_extension)
+                    'flat_{:02d}'.format(flat_obs.current_exp_num), camera.file_extension)
 
                 # Take picture and get event
                 if exp_times[cam_name][-1].value < max_exptime:
