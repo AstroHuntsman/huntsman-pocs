@@ -37,7 +37,11 @@ cameras:
         model: simulator
     -
         model: simulator    
-
+dome:
+    template_dir: resources/bisque
+    driver: bisque
+    brand: bisque
+    port: /dev/tty.Tinyos-DevB
 guider:
     bin_size: 1
     image_path: /var/huntsman/temp/guide_image.fits
