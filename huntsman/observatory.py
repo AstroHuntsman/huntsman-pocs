@@ -11,20 +11,21 @@ from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
-from pocs.utils import config as cfg
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation
 from huntsman.utils import dither
+from huntsman.utils import load_config
 
 
 class HuntsmanObservatory(Observatory):
 
     def __init__(self,
-                 with_autoguider=True,
+                 with_autoguider=False,
                  hdr_mode=False,
                  take_flats=False,
+                 config=None,
                  *args, **kwargs
                  ):
         """Huntsman POCS Observatory
@@ -45,7 +46,10 @@ class HuntsmanObservatory(Observatory):
         except AssertionError:
             sys.exit("Must set HUNTSMAN_POCS variable")
 
-        super().__init__(config=self._load_config(), *args, **kwargs)
+        # If we don't receive a config then load a local
+        if not config:
+            config = load_config()
+        super().__init__(config=config, *args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
@@ -135,15 +139,13 @@ class HuntsmanObservatory(Observatory):
 
             observation.field = fields
             observation.exp_time = exp_times
-            observation.min_nexp = len(fields)
-            observation.exp_set_size = len(fields)
 
             self.logger.debug("New Dithered Observation: {}".format(observation))
 
     def finish_observing(self):
-        """Performs various cleanup functions for observe
-        Extracts the most recent observation metadata from the mongo `current`
-        collection and increments the exposure count for the `current_observation`.
+        """Performs various cleanup functions for observe.
+
+        Add the latest observation to the exposure list.
         """
 
         # Lookup the current observation
@@ -154,14 +156,11 @@ class HuntsmanObservatory(Observatory):
         # Add most recent exposure to list
         self.current_observation.exposure_list[image_id] = file_path
 
-        # Increment count
-        self.current_observation.current_exp += 1
-
     def slew_to_target(self):
-        """ Slew to target and turn on guiding
+        """ Slew to target and turn on guiding.
 
         This is convenience method to slew to the target and turn on the guiding
-        given a large spearation
+        given a large separation.
 
         """
         separation_limit = 0.5 * u.degree
@@ -175,6 +174,26 @@ class HuntsmanObservatory(Observatory):
         while not self.mount.is_tracking and self.mount.distance_from_target() >= separation_limit:
             self.logger.debug("Slewing to target")
             time.sleep(1)
+
+    def analyze_recent(self):
+        """Analyze the most recent exposure.
+
+        This is a small wrapper around the POCS version which just ensures that
+        there is a "pointing" image to use as a reference for solving.
+
+        Returns:
+            dict: Offset information
+        """
+        # Set the first image as our pointing image.
+        if self.current_observation.pointing_image is None:
+            image_id, file_path = self.current_observation.first_exposure
+            self.current_observation.pointing_images[image_id] = file_path
+            self.logger.debug(f'Pointing image set to {self.current_observation.pointing_image}')
+
+        # Now call the main analyze
+        super().analyze_recent()
+
+        return self.current_offset_info
 
     def take_evening_flats(self,
                            alt=None,
@@ -237,13 +256,16 @@ class HuntsmanObservatory(Observatory):
                     image_dir,
                     camera.uid,
                     flat_obs.seq_time,
-                    'flat_{:02d}'.format(flat_obs.current_exp),
-                    camera.file_extension)
+                    'flat_{:02d}'.format(flat_obs.current_exp_num), camera.file_extension)
 
                 # Take picture and get event
                 if exp_times[cam_name][-1].value < max_exptime:
                     camera_event = camera.take_observation(
-                        flat_obs, fits_headers, filename=filename, exp_time=exp_times[cam_name][-1])
+                        flat_obs,
+                        fits_headers,
+                        filename=filename,
+                        exp_time=exp_times[cam_name][-1]
+                    )
 
                     camera_events[cam_name] = {
                         'event': camera_event,
@@ -296,9 +318,6 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Suggested exp_time for {}: {}".format(cam_name, exp_time))
                 exp_times[cam_name].append(exp_time * u.second)
 
-            self.logger.debug("Incrementing exposure count")
-            flat_obs.current_exp += 1
-
             self.logger.debug("Checking for long exposures")
             # Stop flats if any time is greater than max
             if all([t[-1].value >= max_exptime for t in exp_times.values()]):
@@ -323,10 +342,7 @@ class HuntsmanObservatory(Observatory):
             exp_times[cam_name].append(0 * u.second)
 
         # Record how many exposures we took
-        num_exposures = flat_obs.current_exp
-
-        # Reset to first exposure so we can loop through again taking darks
-        flat_obs.current_exp = 0
+        num_exposures = flat_obs.current_exp_num
 
         # Take darks (just last ten)
         for i in range(num_exposures):
@@ -348,7 +364,7 @@ class HuntsmanObservatory(Observatory):
                     image_dir,
                     camera.uid,
                     flat_obs.seq_time,
-                    'dark_{:02d}'.format(flat_obs.current_exp),
+                    'dark_{:02d}'.format(flat_obs.current_exp_num),
                     camera.file_extension)
 
                 # Take picture and wait for result
@@ -369,8 +385,6 @@ class HuntsmanObservatory(Observatory):
             while not all([info['event'].is_set() for info in camera_events.values()]):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
-
-            flat_obs.current_exp += 1
 
 ##########################################################################
 # Private Methods
@@ -455,10 +469,3 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(flat_obs))
 
         return flat_obs
-
-    def _load_config(self):
-        huntsman_config_dir = '{}/conf_files/'.format(os.getenv('HUNTSMAN_POCS'))
-        config = cfg.load_config(config_files=[
-            '{}/huntsman.yaml'.format(huntsman_config_dir)
-        ])
-        return config
