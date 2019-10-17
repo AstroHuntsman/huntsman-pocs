@@ -327,11 +327,11 @@ class Camera(AbstractCamera):
 # Private Methods
 
     def _start_exposure(self, seconds=None, filename=None, dark=False, header=None):
-        """Dummy method on the client"""
+        """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
     def _readout(self, filename=None):
-        """Dummy method on the client"""
+        """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
     def _clean_directories(self, source):
