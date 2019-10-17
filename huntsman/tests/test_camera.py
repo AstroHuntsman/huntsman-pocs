@@ -7,18 +7,13 @@ import os
 import time
 import glob
 import sys
-from ctypes.util import find_library
 
 import astropy.units as u
-import astropy.io.fits as fits
 
 import Pyro4
 
-from pocs.focuser.simulator import Focuser
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
-from pocs.utils.config import load_config
-from pocs.utils.error import NotFound
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.camera.pyro import Camera as PyroCamera
