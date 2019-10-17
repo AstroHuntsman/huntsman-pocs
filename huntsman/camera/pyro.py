@@ -1,19 +1,14 @@
 import sys
 import os
-import glob
-import time
 from warnings import warn
 from threading import Event
 from threading import Timer
 from threading import Thread
-from threading import Lock
 import subprocess
 
 from astropy import units as u
 import Pyro4
 
-from pocs.utils import current_time
-from pocs.utils.logger import get_root_logger
 from pocs.utils import load_module
 from pocs.camera import AbstractCamera
 
@@ -27,6 +22,7 @@ class Camera(AbstractCamera):
     """
     Class representing the client side interface to a distributed camera
     """
+
     def __init__(self,
                  uri,
                  name='Pyro Camera',
@@ -125,7 +121,7 @@ class Camera(AbstractCamera):
         self.model = self._proxy.model
         self._file_extension = self._proxy.file_extension
         self._readout_time = self._proxy.readout_time
-        self.filter_type = self._proxy.filter_type
+        self._filter_type = self._proxy.filter_type
         self.logger.debug("{} connected".format(self))
 
     def take_exposure(self,
@@ -174,8 +170,7 @@ class Camera(AbstractCamera):
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
         # Start the exposure
-        self.logger.debug('Taking {} second exposure on {}: {}'.format(
-            seconds, self.name, base_name))
+        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
@@ -331,6 +326,14 @@ class Camera(AbstractCamera):
 
 # Private Methods
 
+    def _start_exposure(self, seconds=None, filename=None, dark=False, header=None):
+        """Dummy method on the client required to overwrite @abstractmethod"""
+        pass
+
+    def _readout(self, filename=None):
+        """Dummy method on the client required to overwrite @abstractmethod"""
+        pass
+
     def _clean_directories(self, source):
         """
         Clean up empty directories left behind by rsysc.
@@ -346,6 +349,7 @@ class Camera(AbstractCamera):
                                      user_at_host,
                                      'find {} -empty -delete'.format(path_root)],
                                     check=True)
+            self.logger.debug(f'_clean_directories result: {result!r}')
         except subprocess.CalledProcessError as err:
             msg = "Clean up of empty directories in {}:{} failed".format(user_at_host, path_root)
             warn(msg)
@@ -371,6 +375,7 @@ class Camera(AbstractCamera):
                                      source,
                                      destination],
                                     check=True)
+            self.logger.debug(f'_file_transfer result: {result!r}')
         except subprocess.CalledProcessError as err:
             msg = "File transfer {} -> {} failed".format(source, destination)
             warn(msg)
@@ -407,6 +412,7 @@ class CameraServer(object):
     """
     Wrapper for the camera class for use as a Pyro camera server
     """
+
     def __init__(self, config_files=['pyro_camera.yaml']):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
         self.config = load_config(config_files=config_files)
