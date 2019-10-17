@@ -1,16 +1,11 @@
 from collections import OrderedDict
-import re
-import shutil
-import subprocess
 
 import Pyro4
 
 from pocs.utils import error
-from pocs.utils import load_module
 
 from huntsman.utils import load_config
 
-from pocs.camera import list_connected_cameras
 from pocs.camera import create_cameras_from_config as create_local_cameras
 from pocs.camera.camera import AbstractCamera  # pragma: no flakes
 from pocs.camera.camera import AbstractGPhotoCamera  # pragma: no flakes
