@@ -6,7 +6,6 @@ pyro_camera_local.yaml config file. The camera servers should be started after t
 but before POCS.
 """
 import argparse
-from warnings import warn
 
 from huntsman.utils.pyro import run_camera_server
 
