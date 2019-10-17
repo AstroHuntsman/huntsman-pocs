@@ -1,19 +1,14 @@
 import sys
 import os
-import glob
-import time
 from warnings import warn
 from threading import Event
 from threading import Timer
 from threading import Thread
-from threading import Lock
 import subprocess
 
 from astropy import units as u
 import Pyro4
 
-from pocs.utils import current_time
-from pocs.utils.logger import get_root_logger
 from pocs.utils import load_module
 from pocs.camera import AbstractCamera
 
@@ -27,6 +22,7 @@ class Camera(AbstractCamera):
     """
     Class representing the client side interface to a distributed camera
     """
+
     def __init__(self,
                  uri,
                  name='Pyro Camera',
@@ -346,6 +342,7 @@ class Camera(AbstractCamera):
                                      user_at_host,
                                      'find {} -empty -delete'.format(path_root)],
                                     check=True)
+            self.logger.debug(f'_clean_directories result: {result!r}')
         except subprocess.CalledProcessError as err:
             msg = "Clean up of empty directories in {}:{} failed".format(user_at_host, path_root)
             warn(msg)
@@ -371,6 +368,7 @@ class Camera(AbstractCamera):
                                      source,
                                      destination],
                                     check=True)
+            self.logger.debug(f'_file_transfer result: {result!r}')
         except subprocess.CalledProcessError as err:
             msg = "File transfer {} -> {} failed".format(source, destination)
             warn(msg)
@@ -407,6 +405,7 @@ class CameraServer(object):
     """
     Wrapper for the camera class for use as a Pyro camera server
     """
+
     def __init__(self, config_files=['pyro_camera.yaml']):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
         self.config = load_config(config_files=config_files)
