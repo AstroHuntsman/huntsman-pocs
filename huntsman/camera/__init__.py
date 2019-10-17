@@ -84,7 +84,7 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
     def kwargs_or_config(item, default=None):
         return kwargs.get(item, config.get(item, default))
 
-    a_simulator = 'camera' in kwargs_or_config('simulator', default=False)
+    a_simulator = 'camera' in kwargs_or_config('simulator', default=list())
     logger.debug("Camera simulator: {}".format(a_simulator))
 
     camera_info = kwargs_or_config('cameras', default=dict())
