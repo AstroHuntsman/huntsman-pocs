@@ -15,9 +15,9 @@ location:
       - [[45, 355], [45, 5]] # telstra tower rough coordinates
     timezone: Australia/Sydney
     twilight_horizon: 0 # Degrees
-db: 
+db:
     name: huntsman
-    type: mongo    
+    type: file
 scheduler:
     type: dispatch
     fields_file: targets.yaml
@@ -36,7 +36,7 @@ cameras:
     -
         model: simulator
     -
-        model: simulator    
+        model: simulator
 
 guider:
     bin_size: 1
@@ -53,12 +53,12 @@ pointing:
     threshold: 0.05
 messaging:
     cmd_port: 6500
-    msg_port: 6510    
+    msg_port: 6510
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
 
 ########################### Flat Fields ########################################
-# Controls various aspects of flat fields, both for evening and morning. 
-# 
+# Controls various aspects of flat fields, both for evening and morning.
+#
 # Note: The times at which flat-fielding will occur are controlled by the
 # `location.flat_horizon` and `location.observe_horizon` config entries.
 #

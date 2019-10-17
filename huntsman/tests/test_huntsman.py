@@ -12,6 +12,10 @@ from pocs.utils import error
 from pocs.utils import CountdownTimer
 
 from huntsman.camera import create_cameras_from_config
+from pocs.utils.location import create_location_from_config
+from pocs.scheduler import create_scheduler_from_config
+from pocs.dome import create_dome_from_config
+
 from huntsman.camera.pyro import Camera as PyroCamera
 from huntsman.observatory import HuntsmanObservatory as Observatory
 
@@ -44,12 +48,25 @@ def cameras(config):
 
 
 @pytest.fixture(scope='function')
-def observatory(config, cameras):
+def scheduler(config):
+    site_details = create_location_from_config(config)
+    return create_scheduler_from_config(config, observer=site_details['observer'])
+
+
+@pytest.fixture(scope='function')
+def dome(config):
+    return create_dome_from_config(config)
+
+
+@pytest.fixture(scope='function')
+def observatory(config, db_type, cameras, scheduler, dome):
     observatory = Observatory(
         config=config,
         cameras=cameras,
+        scheduler=scheduler,
         simulator=['all'],
-        ignore_local_config=True
+        ignore_local_config=True,
+        db_type=db_type
     )
     return observatory
 

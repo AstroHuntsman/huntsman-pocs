@@ -122,6 +122,7 @@ def test_exposure(camera, tmpdir):
     """
     fits_path = str(tmpdir.join('test_exposure.fits'))
     # A one second normal exposure.
+    camera.logger.debug(f'test_exposure fits_path={fits_path}')
     camera.take_exposure(filename=fits_path)
     # By default take_exposure is non-blocking, need to give it some time to complete.
     time.sleep(5)
@@ -195,12 +196,13 @@ def test_observation(camera, images_dir):
     Tests functionality of take_observation()
     """
     field = Field('Test Observation', '20h00m43.7135s +22d42m39.0645s')
-    observation = Observation(field, exp_time=1.5 * u.second)
+    observation = Observation(field, exptime=1.5 * u.second)
     observation.seq_time = '19991231T235959'
     camera.take_observation(observation, headers={})
     time.sleep(7)
     observation_pattern = os.path.join(images_dir, 'fields', 'TestObservation',
                                        camera.uid, observation.seq_time, '*.fits*')
+    camera.logger.debug(f'Looking for observation pattern: {observation_pattern}')
     assert len(glob.glob(observation_pattern)) == 1
 
 

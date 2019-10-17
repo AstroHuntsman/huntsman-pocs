@@ -121,7 +121,7 @@ class Camera(AbstractCamera):
         self.model = self._proxy.model
         self._file_extension = self._proxy.file_extension
         self._readout_time = self._proxy.readout_time
-        self.filter_type = self._proxy.filter_type
+        self._filter_type = self._proxy.filter_type
         self.logger.debug("{} connected".format(self))
 
     def take_exposure(self,
@@ -170,8 +170,7 @@ class Camera(AbstractCamera):
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
         # Start the exposure
-        self.logger.debug('Taking {} second exposure on {}: {}'.format(
-            seconds, self.name, base_name))
+        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
@@ -326,6 +325,12 @@ class Camera(AbstractCamera):
         return autofocus_event
 
 # Private Methods
+
+    def _start_exposure(self, seconds=None, filename=None, dark=False, header=None):
+        pass
+
+    def _readout(self, filename=None):
+        pass
 
     def _clean_directories(self, source):
         """

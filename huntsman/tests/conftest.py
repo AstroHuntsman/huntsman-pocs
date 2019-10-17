@@ -16,9 +16,13 @@ from huntsman.utils import load_config
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
 _one_time_config = None
+# Global variable set to a bool by can_connect_to_mongo().
+_can_connect_to_mongo = None
+_all_databases = ['mongo', 'file', 'memory']
 
 
 def pytest_addoption(parser):
+    db_names = ",".join(_all_databases) + ' (or all for all databases)'
     parser.addoption(
         "--hardware-test",
         action="store_true",
@@ -44,6 +48,12 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="If tests that require solving should be run")
+    parser.addoption(
+        "--test-databases",
+        nargs="+",
+        default=['file'],
+        help=("Test databases in the list. List items can include: " + db_names +
+              ". Note that travis-ci will test all of them by default."))
 
 
 def pytest_collection_modifyitems(config, items):
@@ -100,9 +110,42 @@ def config(images_dir, messaging_ports):
     return result
 
 
-@pytest.fixture
-def db():
-    return PanDB()
+def can_connect_to_mongo(db_name):
+    global _can_connect_to_mongo
+    if _can_connect_to_mongo is None:
+        logger = get_root_logger()
+        try:
+            PanDB(db_type='mongo', db_name=db_name, logger=logger, connect=True)
+            _can_connect_to_mongo = True
+        except Exception:
+            _can_connect_to_mongo = False
+        logger.info('can_connect_to_mongo = {}', _can_connect_to_mongo)
+    return _can_connect_to_mongo
+
+
+@pytest.fixture(scope="session")
+def db_name():
+    return 'huntsman_testing'
+
+
+@pytest.fixture(scope='function', params=_all_databases)
+def db_type(request, db_name):
+
+    db_list = request.config.option.test_databases
+    if request.param not in db_list and 'all' not in db_list:
+        pytest.skip("Skipping {} DB, set --test-all-databases=True".format(request.param))
+
+    # If testing mongo, make sure we can connect, otherwise skip.
+    if request.param == 'mongo' and not can_connect_to_mongo(db_name):
+        pytest.skip("Can't connect to {} DB, skipping".format(request.param))
+    PanDB.permanently_erase_database(request.param, db_name, really='Yes', dangerous='Totally')
+    return request.param
+
+
+@pytest.fixture(scope='function')
+def db(db_type, db_name):
+    return PanDB(
+        db_type=db_type, db_name=db_name, logger=get_root_logger(), connect=True)
 
 
 @pytest.fixture
