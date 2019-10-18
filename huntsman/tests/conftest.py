@@ -18,7 +18,7 @@ from huntsman.utils import load_config
 _one_time_config = None
 # Global variable set to a bool by can_connect_to_mongo().
 _can_connect_to_mongo = None
-_all_databases = ['mongo', 'file', 'memory']
+_all_databases = ['file']
 
 
 def pytest_addoption(parser):
