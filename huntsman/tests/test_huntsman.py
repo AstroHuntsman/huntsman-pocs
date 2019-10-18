@@ -42,52 +42,48 @@ def wait_for_state(sub, state, max_duration=90):
 
 
 @pytest.fixture(scope='function')
-def cameras(config):
+def cameras(config_with_simulated_stuff):
     """Get the default cameras from the config."""
-    config['simulator'] = ['camera']
-    return create_cameras_from_config(config)
+    return create_cameras_from_config(config_with_simulated_stuff)
 
 
 @pytest.fixture(scope='function')
-def scheduler(config):
-    site_details = create_location_from_config(config)
-    return create_scheduler_from_config(config, observer=site_details['observer'])
+def scheduler(config_with_simulated_stuff):
+    site_details = create_location_from_config(config_with_simulated_stuff)
+    return create_scheduler_from_config(config_with_simulated_stuff,
+                                        observer=site_details['observer'])
 
 
 @pytest.fixture(scope='function')
-def dome(config):
-    return create_dome_from_config(config)
+def dome(config_with_simulated_stuff):
+    return create_dome_from_config(config_with_simulated_stuff)
 
 
 @pytest.fixture(scope='function')
-def mount(config):
-    return create_mount_from_config(config)
+def mount(config_with_simulated_stuff):
+    return create_mount_from_config(config_with_simulated_stuff)
 
 
 @pytest.fixture(scope='function')
-def observatory(config, db_type, cameras, scheduler, dome, mount):
+def observatory(config_with_simulated_stuff, db_type, cameras, scheduler, dome, mount):
     observatory = Observatory(
-        config=config,
+        config=config_with_simulated_stuff,
         cameras=cameras,
         scheduler=scheduler,
         dome=dome,
         mount=mount,
-        simulator=['all'],
-        ignore_local_config=True,
         db_type=db_type
     )
     return observatory
 
 
 @pytest.fixture(scope='function')
-def pocs(config, observatory):
+def pocs(config_with_simulated_stuff, observatory):
     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
 
     pocs = POCS(observatory,
                 run_once=True,
-                config=config,
-                simulator=['all'],
-                ignore_local_config=True)
+                config=config_with_simulated_stuff)
 
     yield pocs
 

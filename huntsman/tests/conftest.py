@@ -110,6 +110,24 @@ def config(images_dir, messaging_ports):
     return result
 
 
+@pytest.fixture
+def config_with_simulated_stuff(config):
+    config.update({
+        'dome': {
+            'brand': 'Simulacrum',
+            'driver': 'simulator',
+            },
+        'mount': {
+            'model': 'simulator',
+            'driver': 'simulator',
+            'serial': {
+                'port': 'simulator'
+            }
+        },
+    })
+    return config
+
+
 def can_connect_to_mongo(db_name):
     global _can_connect_to_mongo
     if _can_connect_to_mongo is None:
