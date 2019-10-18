@@ -37,8 +37,8 @@ directories:
 # host: 999.999.999.999
 # camera:
 #   model: sbig
-#   port: 83F012345
-#   set_point: 0
+#   serial_number: 83F012345
+#   target_temperature: 0
 #   filter_type: r2_6
 #   focuser:
 #     model: birger
@@ -59,8 +59,8 @@ directories:
 # host: 999.999.999.999
 # camera:
 #   model: fli
-#   port: ML12345
-#   set_point: -10
+#   serial_number: ML12345
+#   target_temperature: -10
 #   filter_type: r2_4
 #   focuser:
 #     model: birger
@@ -77,12 +77,12 @@ directories:
 #     autofocus_size: 1000
 #
 # FLI Camera with FocusLynx focuser:
-# name: camera.fli.002
+# name: camera.zwo.001
 # host: 999.999.999.999
 # camera:
-#   model: fli
-#   port: ML12345
-#   set_point: -10
+#   model: zwo
+#   serial_number: abcdef0123456789
+#   target_temperature: -10
 #   filter_type: g2_0
 #   focuser:
 #     model: focuslynx
