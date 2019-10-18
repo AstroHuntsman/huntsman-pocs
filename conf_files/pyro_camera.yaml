@@ -10,9 +10,9 @@
 name: camera.simulator.001
 host: localhost
 camera:
-  model: simulator
-  port: /dev/ttyFAKE01
-  set_point: 0
+  model: simulator_sdk
+  serial_number: SSC101
+  target_temperature: 20
   filter_type: r2_6
   focuser:
     model: simulator
