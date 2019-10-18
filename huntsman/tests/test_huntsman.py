@@ -15,6 +15,7 @@ from huntsman.camera import create_cameras_from_config
 from pocs.utils.location import create_location_from_config
 from pocs.scheduler import create_scheduler_from_config
 from pocs.dome import create_dome_from_config
+from pocs.mount import create_mount_from_config
 
 from huntsman.camera.pyro import Camera as PyroCamera
 from huntsman.observatory import HuntsmanObservatory as Observatory
@@ -59,11 +60,18 @@ def dome(config):
 
 
 @pytest.fixture(scope='function')
-def observatory(config, db_type, cameras, scheduler, dome):
+def mount(config):
+    return create_mount_from_config(config)
+
+
+@pytest.fixture(scope='function')
+def observatory(config, db_type, cameras, scheduler, dome, mount):
     observatory = Observatory(
         config=config,
         cameras=cameras,
         scheduler=scheduler,
+        dome=dome,
+        mount=mount,
         simulator=['all'],
         ignore_local_config=True,
         db_type=db_type
