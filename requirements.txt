@@ -1,5 +1,5 @@
 -e git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
--e git+git://github.com/wtgee/POCS@develop#egg=panoptes
+-e git+git://github.com/panoptes/POCS@develop#egg=panoptes
 astroplan
 astropy >= 2.0.0
 astroquery
