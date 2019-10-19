@@ -460,7 +460,7 @@ class CameraServer(object):
         return temperature.to(u.Celsius).value
 
     @target_temperature.setter
-    def target_temperature(self, set_point):
+    def target_temperature(self, target):
         self._camera.target_temperature = set_point
 
     @property
