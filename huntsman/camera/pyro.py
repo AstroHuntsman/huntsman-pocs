@@ -461,7 +461,7 @@ class CameraServer(object):
 
     @target_temperature.setter
     def target_temperature(self, target):
-        self._camera.target_temperature = set_point
+        self._camera.target_temperature = target
 
     @property
     def cooling_enabled(self):
