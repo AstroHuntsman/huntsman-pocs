@@ -18,7 +18,7 @@ from huntsman.utils import load_config
 _one_time_config = None
 # Global variable set to a bool by can_connect_to_mongo().
 _can_connect_to_mongo = None
-_all_databases = ['mongo', 'file', 'memory']
+_all_databases = ['file']
 
 
 def pytest_addoption(parser):
@@ -108,6 +108,24 @@ def config(images_dir, messaging_ports):
 
     get_root_logger().debug('config fixture: {!r}', result)
     return result
+
+
+@pytest.fixture
+def config_with_simulated_stuff(config):
+    config.update({
+        'dome': {
+            'brand': 'Simulacrum',
+            'driver': 'simulator',
+            },
+        'mount': {
+            'model': 'simulator',
+            'driver': 'simulator',
+            'serial': {
+                'port': 'simulator'
+            }
+        },
+    })
+    return config
 
 
 def can_connect_to_mongo(db_name):

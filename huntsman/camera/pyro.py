@@ -43,48 +43,48 @@ class Camera(AbstractCamera):
         return self._serial_number
 
     @property
-    def ccd_temp(self):
+    def temperature(self):
         """
         Current temperature of the camera's image sensor.
         """
-        return self._proxy.ccd_temp * u.Celsius
+        return self._proxy.temperature * u.Celsius
 
     @property
-    def ccd_set_point(self):
+    def target_temperature(self):
         """
         Current value of the CCD set point, the target temperature for the camera's
         image sensor cooling control.
 
         Can be set by assigning an astropy.units.Quantity.
         """
-        return self._proxy.ccd_set_point * u.Celsius
+        return self._proxy.target_temperature * u.Celsius
 
-    @ccd_set_point.setter
-    def ccd_set_point(self, set_point):
-        if isinstance(set_point, u.Quantity):
-            set_point = set_point.to(u.Celsius).value
-        self._proxy.ccd_set_point = float(set_point)
+    @target_temperature.setter
+    def target_temperature(self, target):
+        if isinstance(target, u.Quantity):
+            target = target.to(u.Celsius).value
+        self._proxy.target_temperature = float(target)
 
     @property
-    def ccd_cooling_enabled(self):
+    def cooling_enabled(self):
         """
         Current status of the camera's image sensor cooling system (enabled/disabled).
 
         For some cameras it is possible to change this by assigning a boolean
         """
-        return self._proxy.ccd_cooling_enabled
+        return self._proxy.cooling_enabled
 
-    @ccd_cooling_enabled.setter
-    def ccd_cooling_enabled(self, enabled):
-        self._proxy.ccd_cooling_enabled = bool(enabled)
+    @cooling_enabled.setter
+    def cooling_enabled(self, enabled):
+        self._proxy.cooling_enabled = bool(enabled)
 
     @property
-    def ccd_cooling_power(self):
+    def cooling_power(self):
         """
         Current power level of the camera's image sensor cooling system (typically as
         a percentage of the maximum).
         """
-        return self._proxy.ccd_cooling_power
+        return self._proxy.cooling_power
 
 # Methods
 
@@ -450,30 +450,30 @@ class CameraServer(object):
         return self._camera.readout_time
 
     @property
-    def ccd_temp(self):
-        temperature = self._camera.ccd_temp
+    def temperature(self):
+        temperature = self._camera.temperature
         return temperature.to(u.Celsius).value
 
     @property
-    def ccd_set_point(self):
-        temperature = self._camera.ccd_set_point
+    def target_temperature(self):
+        temperature = self._camera.target_temperature
         return temperature.to(u.Celsius).value
 
-    @ccd_set_point.setter
-    def ccd_set_point(self, set_point):
-        self._camera.ccd_set_point = set_point
+    @target_temperature.setter
+    def target_temperature(self, target):
+        self._camera.target_temperature = target
 
     @property
-    def ccd_cooling_enabled(self):
-        return self._camera.ccd_cooling_enabled
+    def cooling_enabled(self):
+        return self._camera.cooling_enabled
 
-    @ccd_cooling_enabled.setter
-    def ccd_cooling_enabled(self, enabled):
-        self._camera.ccd_cooling_enabled = enabled
+    @cooling_enabled.setter
+    def cooling_enabled(self, enabled):
+        self._camera.cooling_enabled = enabled
 
     @property
-    def ccd_cooling_power(self):
-        return self._camera.ccd_cooling_power
+    def cooling_power(self):
+        return self._camera.cooling_power
 
 # Methods
 

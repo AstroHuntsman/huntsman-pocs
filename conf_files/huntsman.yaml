@@ -34,9 +34,9 @@ cameras:
     auto_detect: False
     devices:
     -
-        model: simulator
+        model: simulator_sdk
     -
-        model: simulator    
+        model: simulator_sdk    
 dome:
     template_dir: resources/bisque
     driver: bisque
