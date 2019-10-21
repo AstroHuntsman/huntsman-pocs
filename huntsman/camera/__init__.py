@@ -98,7 +98,7 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
 
     try:
         cameras = create_local_cameras(config=config, logger=logger, **kwargs)
-    except (error.PanError, KeyError, error.CameraNotFound):
+    except (error.PanError, KeyError, error.CameraNotFound, SystemExit):
         logger.debug("No local cameras")
         cameras = OrderedDict()
 
