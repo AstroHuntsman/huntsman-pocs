@@ -11,6 +11,7 @@ import sys
 import astropy.units as u
 
 import Pyro4
+import Pyro4.util
 
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
@@ -37,7 +38,7 @@ def camera(request, images_dir, camera_server):
         ns = Pyro4.locateNS()
         cameras = ns.list(metadata_all={'POCS', 'Camera'})
         cam_name, cam_uri = cameras.popitem()
-        camera = PyroCamera(name=cam_name, uri=cam_uri)
+        camera = PyroCamera(port=cam_name, uri=cam_uri)
 
     camera.config['directories']['images'] = images_dir
     return camera

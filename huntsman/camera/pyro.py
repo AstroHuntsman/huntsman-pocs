@@ -8,6 +8,7 @@ import subprocess
 
 from astropy import units as u
 import Pyro4
+import Pyro4.util
 
 from pocs.utils import load_module
 from pocs.camera import AbstractCamera
@@ -28,8 +29,9 @@ class Camera(AbstractCamera):
                  uri,
                  name='Pyro Camera',
                  model='pyro',
+                 port=None,
                  *args, **kwargs):
-        super().__init__(name=name, port=uri, model=model, *args, **kwargs)
+        super().__init__(name=name, port=port, model=model, *args, **kwargs)
         self._uri = uri
 
         # Connect to camera
@@ -110,6 +112,7 @@ class Camera(AbstractCamera):
         # Force camera proxy to connect by getting the camera uid.
         # This will trigger the remote object creation & (re)initialise the camera & focuser,
         # which can take a long time with real hardware.
+
         uid = self._proxy.get_uid()
         if not uid:
             msg = "Couldn't connect to {} on {}!".format(self.name, self._uri)
@@ -126,7 +129,7 @@ class Camera(AbstractCamera):
         self._filter_type = self._proxy.filter_type
         self.logger.debug("{} connected".format(self))
 
-        if self._proxy._has_focuser:
+        if self._proxy.has_focuser:
             self.focuser = PyroFocuser(camera=self)
         else:
             self.focuser = None
@@ -423,14 +426,11 @@ class CameraServer(object):
     def __init__(self, config_files=['pyro_camera.yaml']):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
         self.config = load_config(config_files=config_files)
-        self.name = self.config.get('name')
         self.host = self.config.get('host')
-        self.port = self.config.get('port')
         self.user = os.getenv('PANUSER', 'huntsman')
 
         camera_config = self.config.get('camera')
-        camera_config.update({'name': self.name,
-                              'config': self.config})
+        camera_config.update({'config': self.config})
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
@@ -439,6 +439,10 @@ class CameraServer(object):
     @property
     def uid(self):
         return self._camera.uid
+
+    @property
+    def name(self):
+        return self._camera.name
 
     @property
     def model(self):

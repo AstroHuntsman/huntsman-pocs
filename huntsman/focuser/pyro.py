@@ -1,5 +1,4 @@
 from pocs.focuser import AbstractFocuser
-from huntsman.camera.pyro import Camera
 
 
 class Focuser(AbstractFocuser):
@@ -8,10 +7,6 @@ class Focuser(AbstractFocuser):
                  name='Pyro Focuser',
                  model='pyro',
                  camera=None):
-
-        if not isinstance(camera, Camera):
-            msg = f"camera must be instance of huntsman.camera.pyro.Camera, got {type(camera)}."
-            raise ValueError
 
         super().__init__(name=name, model=model, camera=camera)
         self.connect()
