@@ -76,7 +76,7 @@ class Camera(AbstractCamera):
 
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
-        tolerance = get_quantity_value(tolerace, u.Celsius)
+        tolerance = get_quantity_value(tolerance, u.Celsius)
         self._proxy.temperature_tolerance = float(tolerance)
 
     @property

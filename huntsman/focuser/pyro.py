@@ -19,7 +19,6 @@ class Focuser(AbstractFocuser):
 
     @property
     def is_connected(self):
-        """ Is the focuser available """
         return self._proxy.focuser_is_connected
 
     @property
@@ -47,10 +46,6 @@ class Focuser(AbstractFocuser):
     def is_moving(self):
         """ True if the focuser is currently moving. """
         return self._proxy.focuser_is_moving
-
-    @property
-    def is_ready(self):
-        return self._proxy.focuser_is_ready
 
     @property
     def focuser_autofocus_range(self):
