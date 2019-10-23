@@ -445,7 +445,7 @@ class Camera(AbstractCamera):
             msg = "Timeout while waiting for {} on {}".format(name, self.name)
             warn(msg)
             self.logger.error(msg)
-            return False
+            result = False
 
         if event is not None:
             event.set()
