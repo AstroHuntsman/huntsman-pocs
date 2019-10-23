@@ -11,6 +11,7 @@ import Pyro4
 
 from pocs.utils import load_module
 from pocs.camera import AbstractCamera
+from pocs.focuser.pyro import Focuser as PyroFocuser
 
 from huntsman.utils import load_config
 
@@ -92,13 +93,13 @@ class Camera(AbstractCamera):
         """
         (re)connect to the distributed camera.
         """
-        self.logger.debug('Connecting to {} on {}'.format(self.name, self._uri))
+        self.logger.debug('Connecting to {} at {}'.format(self.port, self._uri))
 
         # Get a proxy for the camera
         try:
             self._proxy = Pyro4.Proxy(self._uri)
         except Pyro4.errors.NamingError as err:
-            msg = "Couldn't get proxy to camera {}: {}".format(self.name, err)
+            msg = "Couldn't get proxy to camera {}: {}".format(self.port, err)
             warn(msg)
             self.logger.error(msg)
             return
@@ -118,11 +119,17 @@ class Camera(AbstractCamera):
 
         self._connected = True
         self._serial_number = uid
+        self.name = self._proxy.name
         self.model = self._proxy.model
         self._file_extension = self._proxy.file_extension
         self._readout_time = self._proxy.readout_time
         self._filter_type = self._proxy.filter_type
         self.logger.debug("{} connected".format(self))
+
+        if self._proxy._has_focuser:
+            self.focuser = PyroFocuser(camera=self)
+        else:
+            self.focuser = None
 
     def take_exposure(self,
                       seconds=1.0 * u.second,
@@ -475,6 +482,7 @@ class CameraServer(object):
     def cooling_power(self):
         return self._camera.cooling_power
 
+
 # Methods
 
     def get_uid(self):
@@ -511,3 +519,55 @@ class CameraServer(object):
                                   '*')
         # Return the user@host:/path for created files to enable them to be moved over the network.
         return "{}@{}:{}".format(self.user, self.host, focus_path)
+
+# Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
+
+    @property
+    def has_focuser(self):
+        return self._camera.focuser is not None
+
+    @property
+    def focuser_name(self):
+        return self._camera.focuser.name
+
+    @property
+    def focuser_model(self):
+        return self._camera.focuser.model
+
+    @property
+    def focuser_uid(self):
+        return self._camera.focuser.uid
+
+    @property
+    def focuser_is_connected(self):
+        return self._camera.focuser.is_connected
+
+    @property
+    def focuser_position(self):
+        return self._camera.focuser.position
+
+    @focuser_position.setter
+    def focuser_position(self, position):
+        self._camera.focuser.position = position
+
+    @property
+    def focuser_min_position(self):
+        return self._camera.focuser.min_position
+
+    @property
+    def focuser_max_position(self):
+        return self._camera.focuser.max_position
+
+    @property
+    def focuser_is_moving(self):
+        return self._camera.focuser.is_moving
+
+    @property
+    def focuser_is_ready(self):
+        return self._camera.focuser.is_ready
+
+    def focuser_move_to(self, position):
+        return self._camera.focuser.move_to(position)
+
+    def focuser_move_by(self, increment):
+        return self._camera.focuser.move_by(increment)

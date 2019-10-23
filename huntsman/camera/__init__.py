@@ -156,14 +156,13 @@ def create_distributed_cameras(camera_info, logger=None):
     primary_id = camera_info.get('primary', '')
     for cam_name, cam_uri in camera_uris.items():
         logger.debug('Creating camera: {}'.format(cam_name))
-        cam = PyroCamera(name=cam_name, uri=cam_uri)
+        cam = PyroCamera(port=cam_name, uri=cam_uri)
         is_primary = ''
         if primary_id == cam.uid or primary_id == cam.name:
             cam.is_primary = True
             is_primary = ' [Primary]'
 
-        logger.debug("Camera created: {} {}{}".format(
-            cam.name, cam.uid, is_primary))
+        logger.debug(f"Camera created: {cam}")
 
         cameras[cam_name] = cam
 
