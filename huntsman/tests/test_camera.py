@@ -218,6 +218,7 @@ def test_exposure_collision(camera, tmpdir):
     assert os.path.exists(fits_path_1)
     assert not os.path.exists(fits_path_2)
     assert fits_utils.getval(fits_path_1, 'EXPTIME') == 2.0
+    assert not camera.is_exposing
 
 
 def test_exposure_scaling(camera, tmpdir):
