@@ -570,6 +570,78 @@ class CameraServer(object):
     def focuser_is_ready(self):
         return self._camera.focuser.is_ready
 
+    @property
+    def focuser_autofocus_range(self):
+        return self._camera.focuser.autofocus_range
+
+    @focuser_autofocus_range.setter
+    def focuser_autofocus_range(self, autofocus_range):
+        self._camera.focuser.autofocus_range = autofocus_range
+
+    @property
+    def focuser_autofocus_step(self):
+        return self._camera.focuser.autofocus_step
+
+    @focuser_autofocus_step.setter
+    def focuser_autofocus_step(self, step):
+        self._camera.focuser.autofocus_step = step
+
+    @property
+    def focuser_autofocus_seconds(self):
+        return self._camera.focuser.autofocus_seconds
+
+    @focuser_autofocus_seconds.setter
+    def focuser_autofocus_seconds(self, seconds):
+        self._camera.focuser.autofocus_seconds = seconds
+
+    @property
+    def focuser_autofocus_size(self):
+        return self._camera.focuser.autofocus_size
+
+    @focuser_autofocus_size.setter
+    def focuser_autofocus_size(self, size):
+        self._camera.focuser.autofocus_size = size
+
+    @property
+    def focuser_autofocus_keep_files(self):
+        return self._camera.focuser.autofocus_keep_files
+
+    @focuser_autofocus_keep_files
+    def focuser_autofocus_keep_files(self, keep_files):
+        self._camera.focuser.autofocus_keep_files = keep_files
+
+    @property
+    def focuser_autofocus_take_dark(self):
+        return self._camera.focuser.autofocus_take_dark
+
+    @focuser_autofocus_take_dark.setter
+    def focuser_autofocus_take_dark(self, take_dark):
+        self._camera.focuser.autofocus_take_dark = take_dark
+
+    @property
+    def focuser_autofocus_merit_function(self):
+        return self._camera.focuser.autofocus_merit_function
+
+    @focuser_autofocus_merit_function.setter
+    def focuser_autofocus_merit_function(self, merit_function):
+        self._camera.focuser.autofocus_merit_function = merit_function
+
+    @property
+    def focuser_autofocus_merit_function_kwargs(self):
+        return self._camera.focuser.autofocus_merit_function_kwargs
+
+    @focuser_autofocus_merit_function_kwargs.setter
+    def focuser_autofocus_merit_function_kwargs(self, kwargs):
+        self._camera.focuser.autofocus_merit_function_kwargs = kwargs
+
+    @property
+    def focuser_autofocus_mask_dilations(self):
+        return self._camera.focuser.autofocus_mask_dilations
+
+    @focuser_autofocus_mask_dilations
+    def focuser_autofocus_mask_dilations(self, dilations):
+        self._camera.focuser.autofocus_mask_dilations = dilations
+
     def focuser_move_to(self, position):
         return self._camera.focuser.move_to(position)
 
