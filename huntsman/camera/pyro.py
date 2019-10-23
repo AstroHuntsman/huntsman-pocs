@@ -5,6 +5,7 @@ from threading import Event
 from threading import Timer
 from threading import Thread
 import subprocess
+from contextlib import suppress
 
 from astropy import units as u
 import Pyro4
@@ -42,11 +43,17 @@ class Camera(AbstractCamera):
 
     @property
     def egain(self):
-        return self._egain
+        if self._egain is not None:
+            return self._egain
+        else:
+            raise NotImplementError
 
     @property
     def bit_depth(self):
-        return self._bit_depth
+        if self._bit_depth is not None:
+            return self._bit_depth
+        else:
+            raise NotImplementedError
 
     @property
     def temperature(self):
@@ -77,12 +84,10 @@ class Camera(AbstractCamera):
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
         tolerance = get_quantity_value(tolerance, u.Celsius)
-        try:
-            self._proxy.temperature_tolerance = float(tolerance)
-        except AttributeError:
+        with suppress(AttributeError):
             # Base class constructor is trying to set a default temperature temperature
             # before self._proxy exists, & it's up to the remote camera to do that anyway.
-            pass
+            self._proxy.temperature_tolerance = float(tolerance)
 
     @property
     def cooling_enabled(self):
@@ -146,8 +151,14 @@ class Camera(AbstractCamera):
         self.model = self._proxy.model
         self._readout_time = self._proxy.readout_time
         self._file_extension = self._proxy.file_extension
-        self._egain = self._proxy.egain
-        self._bitdepth = self._proxy.bitdepth
+        try:
+            self._egain = self._proxy.egain
+        except NotImplementError:
+            self._egain = None
+        try:
+            self._bit_depth = self._proxy.bit_depth
+        except NotImplementedError:
+            self._bit_depth = None
         self._filter_type = self._proxy.filter_type
         self._is_cooled_camera = self._proxy.is_cooled_camera
         self.logger.debug("{} connected".format(self))
