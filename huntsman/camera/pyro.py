@@ -13,6 +13,7 @@ import Pyro4.util
 
 from pocs.utils import load_module
 from pocs.utils import get_quantity_value
+from pocs.utils import error
 from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 
@@ -35,7 +36,6 @@ class Camera(AbstractCamera):
                  *args, **kwargs):
         super().__init__(name=name, port=port, model=model, *args, **kwargs)
         self._uri = uri
-
         # Connect to camera
         self.connect()
 
@@ -112,7 +112,7 @@ class Camera(AbstractCamera):
 
     @property
     def is_exposing(self):
-        return self._proxy.is_exposing
+        return not self._exposure_event.is_set()
 
 # Methods
 
@@ -198,6 +198,13 @@ class Camera(AbstractCamera):
 
         assert filename is not None, self.logger.warning("Must pass filename for take_exposure")
 
+        if not self._exposure_event.is_set():
+            msg = "Attempt to take exposure on {} while one already in progress.".format(self)
+            raise error.PanError(msg)
+
+        # Clear event now to prevent any other exposures starting before this one is finished.
+        self._exposure_event.clear()
+
         # Want exposure time as a builtin type for Pyro serialisation
         if isinstance(seconds, u.Quantity):
             seconds = seconds.to(u.second).value
@@ -229,16 +236,15 @@ class Camera(AbstractCamera):
         exposure_result = exposure_result.then(self._clean_directories)
 
         # Start a thread that will set an event once exposure has completed
-        exposure_event = Event()
         exposure_thread = Timer(interval=seconds + self.readout_time,
                                 function=self._async_wait,
-                                args=(exposure_result, 'exposure', exposure_event, timeout))
+                                args=(exposure_result, 'exposure', self._exposure_event, timeout))
         exposure_thread.start()
 
         if blocking:
-            exposure_event.wait()
+            self._exposure_event.wait()
 
-        return exposure_event
+        return self._exposure_event
 
     def autofocus(self,
                   seconds=None,
