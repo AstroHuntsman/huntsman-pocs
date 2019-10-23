@@ -162,10 +162,7 @@ def test_exposure(camera, tmpdir):
     assert not exp_event.is_set()
     assert not camera.is_ready
     # By default take_exposure is non-blocking, need to give it some time to complete.
-    if isinstance(camera, FLICamera):
-        time.sleep(10)
-    else:
-        time.sleep(5)
+    time.sleep(5)
     # Output file should exist, Event should be set and camera should say it's not exposing.
     assert os.path.exists(fits_path)
     assert exp_event.is_set()
