@@ -11,7 +11,7 @@ import Pyro4
 
 from pocs.utils import load_module
 from pocs.camera import AbstractCamera
-from pocs.focuser.pyro import Focuser as PyroFocuser
+from huntsman.focuser.pyro import Focuser as PyroFocuser
 
 from huntsman.utils import load_config
 
