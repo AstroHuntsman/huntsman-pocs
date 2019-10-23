@@ -175,7 +175,6 @@ class Camera(AbstractCamera):
                       filename=None,
                       dark=False,
                       blocking=False,
-                      timeout=None,
                       *args,
                       **kwargs):
         """
@@ -187,8 +186,6 @@ class Camera(AbstractCamera):
             dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
-            timeout (u.second, optional): Length of time beyond the length the exposure to wait
-                for exposures to complete. If not given will wait indefinitely.
 
         Returns:
             threading.Event: Event that will be set when exposure is complete
@@ -209,11 +206,6 @@ class Camera(AbstractCamera):
         if isinstance(seconds, u.Quantity):
             seconds = seconds.to(u.second).value
         seconds = float(seconds)
-
-        if isinstance(timeout, u.Quantity):
-            timeout = timeout.to(u.second).value
-        if timeout is not None:
-            timeout = float(timeout)
 
         dir_name, base_name = os.path.split(filename)
         # Make sure dir_name has one and only one trailing slash, otherwise rsync may fail
@@ -238,7 +230,10 @@ class Camera(AbstractCamera):
         # Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=seconds + self.readout_time,
                                 function=self._async_wait,
-                                args=(exposure_result, 'exposure', self._exposure_event, timeout))
+                                args=(exposure_result,
+                                      'exposure',
+                                      self._exposure_event,
+                                      self._timeout))
         exposure_thread.start()
 
         if blocking:
