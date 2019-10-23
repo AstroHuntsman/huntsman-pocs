@@ -77,7 +77,12 @@ class Camera(AbstractCamera):
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
         tolerance = get_quantity_value(tolerance, u.Celsius)
-        self._proxy.temperature_tolerance = float(tolerance)
+        try:
+            self._proxy.temperature_tolerance = float(tolerance)
+        except AttributeError:
+            # Base class constructor is trying to set a default temperature temperature
+            # before self._proxy exists, & it's up to the remote camera to do that anyway.
+            pass
 
     @property
     def cooling_enabled(self):
