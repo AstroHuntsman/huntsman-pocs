@@ -16,7 +16,7 @@ import Pyro4.util
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
 from pocs.utils.images import fits as fits_utils
-from pocs import error
+from pocs.utils import error
 
 from huntsman.camera.pyro import Camera as PyroCamera
 
