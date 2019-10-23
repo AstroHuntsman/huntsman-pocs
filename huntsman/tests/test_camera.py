@@ -67,17 +67,6 @@ def test_init(camera):
     assert camera.is_connected
 
 
-def test_init(camera):
-    """
-    Test that camera got initialised as expected
-    """
-    assert camera.is_connected
-
-    if isinstance(camera, SBIGCamera):
-        # Successfully initialised SBIG cameras should also have a valid 'handle'
-        assert camera._handle != INVALID_HANDLE_VALUE
-
-
 def test_uid(camera):
     # Camera uid should be a string (or maybe an int?) of non-zero length. Assert True
     assert camera.uid

@@ -11,6 +11,7 @@ import Pyro4
 import Pyro4.util
 
 from pocs.utils import load_module
+from pocs.utils import get_quantity_value
 from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 
@@ -39,11 +40,13 @@ class Camera(AbstractCamera):
 
 # Properties
 
-    @AbstractCamera.uid.getter
-    def uid(self):
-        # Need to overide this because the base class only returns the 1st 6 characters of the
-        # serial number, which is not a unique identifier for most of the camera types.
-        return self._serial_number
+    @property
+    def egain(self):
+        return self._egain
+
+    @property
+    def bit_depth(self):
+        return self._bit_depth
 
     @property
     def temperature(self):
@@ -64,9 +67,17 @@ class Camera(AbstractCamera):
 
     @target_temperature.setter
     def target_temperature(self, target):
-        if isinstance(target, u.Quantity):
-            target = target.to(u.Celsius).value
+        target = get_quantity_value(target, u.Celsius)
         self._proxy.target_temperature = float(target)
+
+    @property
+    def temperature_tolerance(self):
+        return self._proxy.temperature_tolerance * u.Celsius
+
+    @temperature_tolerance.setter
+    def temperature_tolerance(self, tolerance):
+        tolerance = get_quantity_value(tolerace, u.Celsius)
+        self._proxy.temperature_tolerance = float(tolerance)
 
     @property
     def cooling_enabled(self):
@@ -88,6 +99,10 @@ class Camera(AbstractCamera):
         a percentage of the maximum).
         """
         return self._proxy.cooling_power
+
+    @property
+    def is_exposing(self):
+        return self._proxy.is_exposing
 
 # Methods
 
@@ -124,15 +139,20 @@ class Camera(AbstractCamera):
         self._serial_number = uid
         self.name = self._proxy.name
         self.model = self._proxy.model
-        self._file_extension = self._proxy.file_extension
         self._readout_time = self._proxy.readout_time
+        self._file_extension = self._proxy.file_extension
+        self._egain = self._proxy.egain
+        self._bitdepth = self._proxy.bitdepth
         self._filter_type = self._proxy.filter_type
+        self._is_cooled_camera = self._proxy.is_cooled_camera
         self.logger.debug("{} connected".format(self))
 
         if self._proxy.has_focuser:
             self.focuser = PyroFocuser(camera=self)
         else:
             self.focuser = None
+
+        self.filterwheel = None  # Remote filterwheels not supported yet.
 
     def take_exposure(self,
                       seconds=1.0 * u.second,
@@ -437,10 +457,6 @@ class CameraServer(object):
 # Properties
 
     @property
-    def uid(self):
-        return self._camera.uid
-
-    @property
     def name(self):
         return self._camera.name
 
@@ -449,30 +465,46 @@ class CameraServer(object):
         return self._camera.model
 
     @property
-    def filter_type(self):
-        return self._camera.filter_type
-
-    @property
-    def file_extension(self):
-        return self._camera.file_extension
+    def uid(self):
+        return self._camera.uid
 
     @property
     def readout_time(self):
         return self._camera.readout_time
 
     @property
+    def file_extension(self):
+        return self._camera.file_extension
+
+    @property
+    def egain(self):
+        return self._camera.egain
+
+    @property
+    def bit_depth(self):
+        return self._camera.bit_depth
+
+    @property
     def temperature(self):
         temperature = self._camera.temperature
-        return temperature.to(u.Celsius).value
+        return get_quantity_value(temperature, u.Celsius)
 
     @property
     def target_temperature(self):
         temperature = self._camera.target_temperature
-        return temperature.to(u.Celsius).value
+        return get_quantity_value(temperature, u.Celsius)
 
     @target_temperature.setter
     def target_temperature(self, target):
         self._camera.target_temperature = target
+
+    @property
+    def temperature_tolerance(self):
+        return self._camera.temperature_tolerance
+
+    @temperature_tolerance.setter
+    def temperature_tolerance(self, tolerance):
+        self._camera.temperature_tolerance = tolerance
 
     @property
     def cooling_enabled(self):
@@ -486,6 +518,21 @@ class CameraServer(object):
     def cooling_power(self):
         return self._camera.cooling_power
 
+    @property
+    def filter_type(self):
+        return self._camera.filter_type
+
+    @property
+    def is_cooled_camera(self):
+        return self._camera.is_cooled_camera
+
+    @property
+    def is_temperature_stable(self):
+        return self._camera.is_temperature_stable
+
+    @property
+    def is_exposing(self):
+        return self._camera.is_exposing
 
 # Methods
 
