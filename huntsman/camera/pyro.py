@@ -512,9 +512,13 @@ class CameraServer(object):
         return "{}@{}:{}".format(self.user, self.host, filename)
 
     def autofocus(self, *args, **kwargs):
+        if not self.has_focuser:
+            msg = "Camera must have a focuser for autofocus!"
+            self.logger.error(msg)
+            raise AttributeError(msg)
         # Start the autofocus and wait for it to completed
         kwargs['blocking'] = True
-        self._camera.autofocus(*args, **kwargs)
+        self._camera.focuser.autofocus(*args, **kwargs)
         # Find where the resulting files are. Need to cast a wide net to get both
         # coarse and fine focus files, anything in focus directory should be fair game.
         focus_path = os.path.join(os.path.abspath(self.config['directories']['images']),
