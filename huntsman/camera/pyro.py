@@ -516,7 +516,7 @@ class CameraServer(object):
 
     @property
     def temperature_tolerance(self):
-        return self._camera.temperature_tolerance
+        return get_quantity_value(self._camera.temperature_tolerance, u.Celsius)
 
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
