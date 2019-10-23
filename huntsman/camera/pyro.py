@@ -46,7 +46,7 @@ class Camera(AbstractCamera):
         if self._egain is not None:
             return self._egain
         else:
-            raise NotImplementError
+            raise NotImplementedError
 
     @property
     def bit_depth(self):
@@ -153,7 +153,7 @@ class Camera(AbstractCamera):
         self._file_extension = self._proxy.file_extension
         try:
             self._egain = self._proxy.egain
-        except NotImplementError:
+        except NotImplementedError:
             self._egain = None
         try:
             self._bit_depth = self._proxy.bit_depth
