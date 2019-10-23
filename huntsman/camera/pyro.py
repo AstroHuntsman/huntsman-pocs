@@ -606,7 +606,7 @@ class CameraServer(object):
     def focuser_autofocus_keep_files(self):
         return self._camera.focuser.autofocus_keep_files
 
-    @focuser_autofocus_keep_files
+    @focuser_autofocus_keep_files.setter
     def focuser_autofocus_keep_files(self, keep_files):
         self._camera.focuser.autofocus_keep_files = keep_files
 
@@ -638,7 +638,7 @@ class CameraServer(object):
     def focuser_autofocus_mask_dilations(self):
         return self._camera.focuser.autofocus_mask_dilations
 
-    @focuser_autofocus_mask_dilations
+    @focuser_autofocus_mask_dilations.setter
     def focuser_autofocus_mask_dilations(self, dilations):
         self._camera.focuser.autofocus_mask_dilations = dilations
 

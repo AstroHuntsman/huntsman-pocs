@@ -89,7 +89,7 @@ class Focuser(AbstractFocuser):
     def focuser_autofocus_keep_files(self):
         return self._proxy.focuser_autofocus_keep_files
 
-    @focuser_autofocus_keep_files
+    @focuser_autofocus_keep_files.setter
     def focuser_autofocus_keep_files(self, keep_files):
         self._proxy.focuser_autofocus_keep_files = bool(keep_files)
 
@@ -121,7 +121,7 @@ class Focuser(AbstractFocuser):
     def focuser_autofocus_mask_dilations(self):
         return self._proxy.focuser_autofocus_mask_dilations
 
-    @focuser_autofocus_mask_dilations
+    @focuser_autofocus_mask_dilations.setter
     def focuser_autofocus_mask_dilations(self, dilations):
         self._proxy.focuser_autofocus_mask_dilations = int(dilations)
 
