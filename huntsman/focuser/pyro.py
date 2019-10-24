@@ -18,10 +18,6 @@ class Focuser(AbstractFocuser):
 ##################################################################################################
 
     @property
-    def is_connected(self):
-        return self._proxy.focuser_is_connected
-
-    @property
     def position(self):
         """ Current encoder position of the focuser """
         return self._proxy.focuser_position
@@ -48,77 +44,90 @@ class Focuser(AbstractFocuser):
         return self._proxy.focuser_is_moving
 
     @property
-    def focuser_autofocus_range(self):
+    def autofocus_range(self):
         return self._proxy.focuser_autofocus_range
 
-    @focuser_autofocus_range.setter
-    def focuser_autofocus_range(self, autofocus_ranges):
-        self._proxy.focuser_autofocus_range = (int(autofocus_range)
-                                               for autofocus_range in autofocus_ranges)
+    @autofocus_range.setter
+    def autofocus_range(self, autofocus_ranges):
+        if autofocus_ranges is not None:
+            autofocus_ranges = (int(autofocus_ranges[0]), int(autofocus_ranges[1]))
+        self._proxy.focuser_autofocus_range = autofocus_ranges
 
     @property
-    def focuser_autofocus_step(self):
+    def autofocus_step(self):
         return self._proxy.focuser_autofocus_step
 
-    @focuser_autofocus_step.setter
-    def focuser_autofocus_step(self, steps):
-        self._proxy.focuser_autofocus_step = (int(step) for step in steps)
+    @autofocus_step.setter
+    def autofocus_step(self, steps):
+        if steps is not None:
+            steps = (int(steps[0]), int(steps[1]))
+        self._proxy.focuser_autofocus_step = steps
 
     @property
-    def focuser_autofocus_seconds(self):
+    def autofocus_seconds(self):
         return self._proxy.focuser_autofocus_seconds
 
-    @focuser_autofocus_seconds.setter
-    def focuser_autofocus_seconds(self, seconds):
-        self._proxy.focuser_autofocus_seconds = float(get_quantity_value(seconds, u.second))
+    @autofocus_seconds.setter
+    def autofocus_seconds(self, seconds):
+        if seconds is not None:
+            seconds = float(get_quantity_value(seconds, u.second))
+        self._proxy.focuser_autofocus_seconds = seconds
 
     @property
-    def focuser_autofocus_size(self):
+    def autofocus_size(self):
         return self._proxy.focuser_autofocus_size
 
-    @focuser_autofocus_size.setter
-    def focuser_autofocus_size(self, size):
-        self._proxy.focuser_autofocus_size = int(size)
+    @autofocus_size.setter
+    def autofocus_size(self, size):
+        if size is not None:
+            size = int(size)
+        self._proxy.focuser_autofocus_size = size
 
     @property
-    def focuser_autofocus_keep_files(self):
+    def autofocus_keep_files(self):
         return self._proxy.focuser_autofocus_keep_files
 
-    @focuser_autofocus_keep_files.setter
-    def focuser_autofocus_keep_files(self, keep_files):
+    @autofocus_keep_files.setter
+    def autofocus_keep_files(self, keep_files):
         self._proxy.focuser_autofocus_keep_files = bool(keep_files)
 
     @property
-    def focuser_autofocus_take_dark(self):
+    def autofocus_take_dark(self):
         return self._proxy.focuser_autofocus_take_dark
 
-    @focuser_autofocus_take_dark.setter
-    def focuser_autofocus_take_dark(self, take_dark):
+    @autofocus_take_dark.setter
+    def autofocus_take_dark(self, take_dark):
         self._proxy.focuser_autofocus_take_dark = bool(take_dark)
 
     @property
-    def focuser_autofocus_merit_function(self):
+    def autofocus_merit_function(self):
         return self._proxy.focuser_autofocus_merit_function
 
-    @focuser_autofocus_merit_function.setter
-    def focuser_autofocus_merit_function(self, merit_function):
-        self._proxy.focuser_autofocus_merit_function = str(merit_function)
+    @autofocus_merit_function.setter
+    def autofocus_merit_function(self, merit_function):
+        if merit_function is not None:
+            merit_function = str(merit_function)
+        self._proxy.focuser_autofocus_merit_function = merit_function
 
     @property
-    def focuser_autofocus_merit_function_kwargs(self):
+    def autofocus_merit_function_kwargs(self):
         return self._proxy.focuser_autofocus_merit_function_kwargs
 
-    @focuser_autofocus_merit_function_kwargs.setter
-    def focuser_autofocus_merit_function_kwargs(self, kwargs):
-        self._proxy.focuser_autofocus_merit_function_kwargs = dict(kwargs)
+    @autofocus_merit_function_kwargs.setter
+    def autofocus_merit_function_kwargs(self, kwargs):
+        if kwargs is not None:
+            kwargs = dict(kwargs)
+        self._proxy.focuser_autofocus_merit_function_kwargs =kwargs
 
     @property
-    def focuser_autofocus_mask_dilations(self):
+    def autofocus_mask_dilations(self):
         return self._proxy.focuser_autofocus_mask_dilations
 
-    @focuser_autofocus_mask_dilations.setter
-    def focuser_autofocus_mask_dilations(self, dilations):
-        self._proxy.focuser_autofocus_mask_dilations = int(dilations)
+    @autofocus_mask_dilations.setter
+    def autofocus_mask_dilations(self, dilations):
+        if dilations is not None:
+            dilations = int(dilations)
+        self._proxy.focuser_autofocus_mask_dilations = dilations
 
 ##################################################################################################
 # Methods
@@ -131,6 +140,8 @@ class Focuser(AbstractFocuser):
         self.model = self._proxy.focuser_model
         self.port = self.camera.port
         self._serial_number = self._proxy.focuser_uid
+        self._connected = self._proxy.focuser_is_connected
+
         self.logger.debug(f"{self} connected.")
 
     def move_to(self, position):
@@ -145,3 +156,7 @@ class Focuser(AbstractFocuser):
 
     def autofocus(self, *args, **kwargs):
         self.camera.autofocus(*args, **kwargs)
+
+    def _set_autofocus_parameters(self, *args, **kwargs):
+        """Needed to stop the base class overwriting all the parameters of the remote focuser."""
+        pass

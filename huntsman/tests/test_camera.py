@@ -371,7 +371,7 @@ def test_autofocus_keep_files(camera, patterns, counter):
     assert len(glob.glob(patterns['final'])) == counter['value']
 
 
-def test_autofocus_no_size(camera):
+def test_autofocus_no_size(camera, caplog):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -379,13 +379,16 @@ def test_autofocus_no_size(camera):
     initial_focus = camera.focuser.position
     thumbnail_size = camera.focuser.autofocus_size
     camera.focuser.autofocus_size = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
+    camera.autofocus()
+    # Will be an ValueError raised, but it's hidden in another thread.
+    # Should be an error in the logs, though.
+    time.sleep(0.1)
+    assert caplog.records[-1].levelname == "ERROR"
     camera.focuser.autofocus_size = thumbnail_size
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_seconds(camera):
+def test_autofocus_no_seconds(camera, caplog):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -393,13 +396,16 @@ def test_autofocus_no_seconds(camera):
     initial_focus = camera.focuser.position
     seconds = camera.focuser.autofocus_seconds
     camera.focuser.autofocus_seconds = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
+    camera.autofocus()
+    # Will be an ValueError raise, but it's hidden in another thread.
+    # Should be an error in the logs, though.
+    time.sleep(0.1)
+    assert caplog.records[-1].levelname == "ERROR"
     camera.focuser.autofocus_seconds = seconds
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_step(camera):
+def test_autofocus_no_step(camera, caplog):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -407,13 +413,16 @@ def test_autofocus_no_step(camera):
     initial_focus = camera.focuser.position
     autofocus_step = camera.focuser.autofocus_step
     camera.focuser.autofocus_step = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
+    camera.autofocus()
+    # Will be an ValueError raise, but it's hidden in another thread.
+    # Should be an error in the logs, though.
+    time.sleep(0.1)
+    assert caplog.records[-1].levelname == "ERROR"
     camera.focuser.autofocus_step = autofocus_step
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_range(camera):
+def test_autofocus_no_range(camera, caplog):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -421,8 +430,11 @@ def test_autofocus_no_range(camera):
     initial_focus = camera.focuser.position
     autofocus_range = camera.focuser.autofocus_range
     camera.focuser.autofocus_range = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
+    camera.autofocus()
+    # Will be an ValueError raise, but it's hidden in another thread.
+    # Should be an error in the logs, though.
+    time.sleep(0.1)
+    assert caplog.records[-1].levelname == "ERROR"
     camera.focuser.autofocus_range = autofocus_range
     assert camera.focuser.position == initial_focus
 

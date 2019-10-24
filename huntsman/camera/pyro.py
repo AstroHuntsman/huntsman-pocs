@@ -293,6 +293,16 @@ class Camera(AbstractCamera):
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
         """
+        assert self.is_connected, self.logger.error("Camera must be connected for autofocus.")
+
+        if self.focuser is None:
+            msg = "Camera must have a focuser for autofocus!"
+            self.logger.error(msg)
+            raise AttributeError(msg)
+
+        assert self.focuser.is_connected, \
+            self.logger.error("Focuser must be connected for autofocus.")
+
         # Make certain that all the argument are builtin types for easy Pyro serialisation
         if isinstance(seconds, u.Quantity):
             seconds = seconds.to(u.second).value
@@ -438,12 +448,17 @@ class Camera(AbstractCamera):
             try:
                 result = future_result.value
             except Exception as err:
-                msg = f"Problem while waiting for {name} on {self.port}: {err}"
-                raise error.PanError(msg)
+                # Add some extra text to the exception then re-raise it.
+                if len(err.args) >= 1:
+                    msg = f"Problem while waiting for {name} on {self.port}: {err.args[0]}"
+                    err.args = (msg,) + err.args[1:]
+                else:
+                    msg = f"Problem while waiting for {name} on {self.port}: {err}"
+                self.logger.error(msg)  # Make sure error makes it into the logs
+                raise err
             finally:
                 if event is not None:
                     event.set()
-
         else:
             if event is not None:
                 event.set()
