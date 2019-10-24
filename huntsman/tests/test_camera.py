@@ -1,6 +1,8 @@
-# This is lightly edited copy of pocs/tests/test_camera.py from POCS. The intent is to
-# apply all the same tests from there to the Camera class(es) in huntsman-pocs. This file
-# should be udpated to track any changes to the tests in POCS.
+"""This is lightly edited copy of pocs/tests/test_camera.py from POCS.
+
+The intent is to apply all the same tests from there to the Camera class(es) in huntsman-pocs.
+This file should be udpated to track any changes to the tests in POCS.
+"""
 import pytest
 
 import os
@@ -214,11 +216,11 @@ def test_exposure_collision(camera, tmpdir):
     camera.take_exposure(2 * u.second, filename=fits_path_1)
     with pytest.raises(error.PanError):
         camera.take_exposure(1 * u.second, filename=fits_path_2)
-    time.sleep(5)
+    time.sleep(10)
+    assert not camera.is_exposing
     assert os.path.exists(fits_path_1)
     assert not os.path.exists(fits_path_2)
     assert fits_utils.getval(fits_path_1, 'EXPTIME') == 2.0
-    assert not camera.is_exposing
 
 
 def test_exposure_scaling(camera, tmpdir):
@@ -276,20 +278,27 @@ def test_exposure_timeout(camera, tmpdir, caplog):
     # Make timeout extremely short to force a timeout error
     original_timeout = camera._timeout
     camera._timeout = 0.01
+    # Need to fudge readout_time, too.
+    original_readout_time = camera._readout_time
+    camera._readout_time = 0.01
     # This should result in a timeout error in the poll thread, but the exception won't
     # be seen in the main thread. Can check for logged error though.
-    exposure_event = camera.take_exposure(seconds=0.1, filename=fits_path)
-    # Wait for it all to be over.
-    time.sleep(original_timeout)
+    exposure_event = camera.take_exposure(seconds=0.01, filename=fits_path)
+    # Wait timeout to happen.
+    time.sleep(0.5)
     # Put the timeout back to the original setting.
     camera._timeout = original_timeout
-    # Should be an ERROR message in the log from the exposure tiemout
+    # And readout_time
+    camera._readout_time = original_readout_time
+    # Should be an ERROR message in the log from the exposure timeout
     assert caplog.records[-1].levelname == "ERROR"
     # Should be no data file, camera should not be exposing, and exposure event should be set
     assert not os.path.exists(fits_path)
     assert not camera.is_exposing
     assert exposure_event is camera._exposure_event
     assert exposure_event.is_set()
+    # The camera didn't actually fail, so should wait for it to really finish.
+    time.sleep(5)
 
 
 def test_observation(camera, images_dir):

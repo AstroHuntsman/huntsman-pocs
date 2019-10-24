@@ -221,11 +221,11 @@ class Camera(AbstractCamera):
                                                     base_name=base_name,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs)
-        # Tag the file transfer on the end.
-        exposure_result = exposure_result.then(self._file_transfer, dir_name)
-        # Tag empty directory cleanup on the end & keep future result to check for completion
-        exposure_result = exposure_result.then(self._clean_directories)
+                                                    **kwargs) \
+            .then(self._file_transfer, dir_name) \
+            .then(self._clean_directories)
+
+        exposure_result
 
         # Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=seconds + self.readout_time,
@@ -437,18 +437,18 @@ class Camera(AbstractCamera):
         if future_result.wait(timeout):
             try:
                 result = future_result.value
-            except Exception as e:
-                self.logger.debug("Problem in wait: {}".format(e))
-                result = True
-                self.logger.debug("Setting result to True anyway")
-        else:
-            msg = "Timeout while waiting for {} on {}".format(name, self.name)
-            warn(msg)
-            self.logger.error(msg)
-            result = False
+            except Exception as err:
+                msg = f"Problem while waiting for {name} on {self.port}: {err}"
+                raise error.PanError(msg)
+            finally:
+                if event is not None:
+                    event.set()
 
-        if event is not None:
-            event.set()
+        else:
+            if event is not None:
+                event.set()
+            msg = "Timeout while waiting for {} on {}".format(name, self.port)
+            raise error.Timeout(msg)
 
         return result
 
