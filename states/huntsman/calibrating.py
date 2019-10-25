@@ -33,7 +33,6 @@ def wait_for_sun_alt(pocs,
         delay = pocs._safe_delay
 
     while pocs.is_safe():
-
         sun_pos = pocs.observatory.observer.altaz(current_time(),
                                                   target=get_sun(current_time())
                                                   ).alt
