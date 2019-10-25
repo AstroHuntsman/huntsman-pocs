@@ -152,11 +152,11 @@ class Camera(AbstractCamera):
         self._readout_time = self._proxy.readout_time
         self._file_extension = self._proxy.file_extension
         try:
-            self._egain = self._proxy.egain
+            self._egain = self._proxy.egain * u.electron / u.ADU
         except NotImplementedError:
             self._egain = None
         try:
-            self._bit_depth = self._proxy.bit_depth
+            self._bit_depth = self._proxy.bit_depth * u.bit
         except NotImplementedError:
             self._bit_depth = None
         self._filter_type = self._proxy.filter_type
@@ -510,11 +510,11 @@ class CameraServer(object):
 
     @property
     def egain(self):
-        return self._camera.egain
+        return get_quantity_value(self._camera.egain, u.electron / u.ADU)
 
     @property
     def bit_depth(self):
-        return self._camera.bit_depth
+        return get_quantity_value(self._camera.bit_depth, u.bit)
 
     @property
     def temperature(self):
