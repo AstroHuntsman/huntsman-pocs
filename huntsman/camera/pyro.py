@@ -514,7 +514,7 @@ class CameraServer(object):
 
     @property
     def bit_depth(self):
-        return get_quantity.value(self._camera.bit_depth, u.bit)
+        return get_quantity_value(self._camera.bit_depth, u.bit)
 
     @property
     def temperature(self):
