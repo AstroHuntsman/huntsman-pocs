@@ -37,8 +37,13 @@ def wait_for_sun_alt(pocs,
                                                   target=get_sun(current_time())
                                                   ).alt
         if sun_pos.value > max_altitude or sun_pos.value < min_altitude:
-            pocs.say(message.format(sun_pos.value))
-            pocs.sleep(delay=delay)
+            # Check simulator for 'night'
+            if 'night' in pocs.config['simulator']:
+                pocs.logger.info(f'Using night simulator, pretending sun down.')
+                break
+            else:
+                pocs.say(message.format(sun_pos.value))
+                pocs.sleep(delay=delay)
         else:
             break
 
