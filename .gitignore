@@ -84,3 +84,5 @@ notebooks/*
 
 # Ignore link to weather_plots in web/static/
 weather_plots
+
+src/

@@ -5,12 +5,17 @@ from threading import Event
 from threading import Timer
 from threading import Thread
 import subprocess
+from contextlib import suppress
 
 from astropy import units as u
 import Pyro4
+import Pyro4.util
 
 from pocs.utils import load_module
+from pocs.utils import get_quantity_value
+from pocs.utils import error
 from pocs.camera import AbstractCamera
+from huntsman.focuser.pyro import Focuser as PyroFocuser
 
 from huntsman.utils import load_config
 
@@ -27,20 +32,28 @@ class Camera(AbstractCamera):
                  uri,
                  name='Pyro Camera',
                  model='pyro',
+                 port=None,
                  *args, **kwargs):
-        super().__init__(name=name, port=uri, model=model, *args, **kwargs)
+        super().__init__(name=name, port=port, model=model, *args, **kwargs)
         self._uri = uri
-
         # Connect to camera
         self.connect()
 
 # Properties
 
-    @AbstractCamera.uid.getter
-    def uid(self):
-        # Need to overide this because the base class only returns the 1st 6 characters of the
-        # serial number, which is not a unique identifier for most of the camera types.
-        return self._serial_number
+    @property
+    def egain(self):
+        if self._egain is not None:
+            return self._egain
+        else:
+            raise NotImplementedError
+
+    @property
+    def bit_depth(self):
+        if self._bit_depth is not None:
+            return self._bit_depth
+        else:
+            raise NotImplementedError
 
     @property
     def temperature(self):
@@ -61,9 +74,20 @@ class Camera(AbstractCamera):
 
     @target_temperature.setter
     def target_temperature(self, target):
-        if isinstance(target, u.Quantity):
-            target = target.to(u.Celsius).value
+        target = get_quantity_value(target, u.Celsius)
         self._proxy.target_temperature = float(target)
+
+    @property
+    def temperature_tolerance(self):
+        return self._proxy.temperature_tolerance * u.Celsius
+
+    @temperature_tolerance.setter
+    def temperature_tolerance(self, tolerance):
+        tolerance = get_quantity_value(tolerance, u.Celsius)
+        with suppress(AttributeError):
+            # Base class constructor is trying to set a default temperature temperature
+            # before self._proxy exists, & it's up to the remote camera to do that anyway.
+            self._proxy.temperature_tolerance = float(tolerance)
 
     @property
     def cooling_enabled(self):
@@ -86,19 +110,23 @@ class Camera(AbstractCamera):
         """
         return self._proxy.cooling_power
 
+    @property
+    def is_exposing(self):
+        return not self._exposure_event.is_set()
+
 # Methods
 
     def connect(self):
         """
         (re)connect to the distributed camera.
         """
-        self.logger.debug('Connecting to {} on {}'.format(self.name, self._uri))
+        self.logger.debug('Connecting to {} at {}'.format(self.port, self._uri))
 
         # Get a proxy for the camera
         try:
             self._proxy = Pyro4.Proxy(self._uri)
         except Pyro4.errors.NamingError as err:
-            msg = "Couldn't get proxy to camera {}: {}".format(self.name, err)
+            msg = "Couldn't get proxy to camera {}: {}".format(self.port, err)
             warn(msg)
             self.logger.error(msg)
             return
@@ -109,6 +137,7 @@ class Camera(AbstractCamera):
         # Force camera proxy to connect by getting the camera uid.
         # This will trigger the remote object creation & (re)initialise the camera & focuser,
         # which can take a long time with real hardware.
+
         uid = self._proxy.get_uid()
         if not uid:
             msg = "Couldn't connect to {} on {}!".format(self.name, self._uri)
@@ -118,18 +147,34 @@ class Camera(AbstractCamera):
 
         self._connected = True
         self._serial_number = uid
+        self.name = self._proxy.name
         self.model = self._proxy.model
-        self._file_extension = self._proxy.file_extension
         self._readout_time = self._proxy.readout_time
+        self._file_extension = self._proxy.file_extension
+        try:
+            self._egain = self._proxy.egain
+        except NotImplementedError:
+            self._egain = None
+        try:
+            self._bit_depth = self._proxy.bit_depth
+        except NotImplementedError:
+            self._bit_depth = None
         self._filter_type = self._proxy.filter_type
+        self._is_cooled_camera = self._proxy.is_cooled_camera
         self.logger.debug("{} connected".format(self))
+
+        if self._proxy.has_focuser:
+            self.focuser = PyroFocuser(camera=self)
+        else:
+            self.focuser = None
+
+        self.filterwheel = None  # Remote filterwheels not supported yet.
 
     def take_exposure(self,
                       seconds=1.0 * u.second,
                       filename=None,
                       dark=False,
                       blocking=False,
-                      timeout=None,
                       *args,
                       **kwargs):
         """
@@ -141,8 +186,6 @@ class Camera(AbstractCamera):
             dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
-            timeout (u.second, optional): Length of time beyond the length the exposure to wait
-                for exposures to complete. If not given will wait indefinitely.
 
         Returns:
             threading.Event: Event that will be set when exposure is complete
@@ -152,15 +195,17 @@ class Camera(AbstractCamera):
 
         assert filename is not None, self.logger.warning("Must pass filename for take_exposure")
 
+        if not self._exposure_event.is_set():
+            msg = "Attempt to take exposure on {} while one already in progress.".format(self)
+            raise error.PanError(msg)
+
+        # Clear event now to prevent any other exposures starting before this one is finished.
+        self._exposure_event.clear()
+
         # Want exposure time as a builtin type for Pyro serialisation
         if isinstance(seconds, u.Quantity):
             seconds = seconds.to(u.second).value
         seconds = float(seconds)
-
-        if isinstance(timeout, u.Quantity):
-            timeout = timeout.to(u.second).value
-        if timeout is not None:
-            timeout = float(timeout)
 
         dir_name, base_name = os.path.split(filename)
         # Make sure dir_name has one and only one trailing slash, otherwise rsync may fail
@@ -176,23 +221,25 @@ class Camera(AbstractCamera):
                                                     base_name=base_name,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs)
-        # Tag the file transfer on the end.
-        exposure_result = exposure_result.then(self._file_transfer, dir_name)
-        # Tag empty directory cleanup on the end & keep future result to check for completion
-        exposure_result = exposure_result.then(self._clean_directories)
+                                                    **kwargs) \
+            .then(self._file_transfer, dir_name) \
+            .then(self._clean_directories)
+
+        exposure_result
 
         # Start a thread that will set an event once exposure has completed
-        exposure_event = Event()
         exposure_thread = Timer(interval=seconds + self.readout_time,
                                 function=self._async_wait,
-                                args=(exposure_result, 'exposure', exposure_event, timeout))
+                                args=(exposure_result,
+                                      'exposure',
+                                      self._exposure_event,
+                                      self._timeout))
         exposure_thread.start()
 
         if blocking:
-            exposure_event.wait()
+            self._exposure_event.wait()
 
-        return exposure_event
+        return self._exposure_event
 
     def autofocus(self,
                   seconds=None,
@@ -246,6 +293,16 @@ class Camera(AbstractCamera):
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
         """
+        assert self.is_connected, self.logger.error("Camera must be connected for autofocus.")
+
+        if self.focuser is None:
+            msg = "Camera must have a focuser for autofocus!"
+            self.logger.error(msg)
+            raise AttributeError(msg)
+
+        assert self.focuser.is_connected, \
+            self.logger.error("Focuser must be connected for autofocus.")
+
         # Make certain that all the argument are builtin types for easy Pyro serialisation
         if isinstance(seconds, u.Quantity):
             seconds = seconds.to(u.second).value
@@ -390,18 +447,23 @@ class Camera(AbstractCamera):
         if future_result.wait(timeout):
             try:
                 result = future_result.value
-            except Exception as e:
-                self.logger.debug("Problem in wait: {}".format(e))
-                result = True
-                self.logger.debug("Setting result to True anyway")
+            except Exception as err:
+                # Add some extra text to the exception then re-raise it.
+                if len(err.args) >= 1:
+                    msg = f"Problem while waiting for {name} on {self.port}: {err.args[0]}"
+                    err.args = (msg,) + err.args[1:]
+                else:
+                    msg = f"Problem while waiting for {name} on {self.port}: {err}"
+                self.logger.error(msg)  # Make sure error makes it into the logs
+                raise err
+            finally:
+                if event is not None:
+                    event.set()
         else:
-            msg = "Timeout while waiting for {} on {}".format(name, self.name)
-            warn(msg)
-            self.logger.error(msg)
-            return False
-
-        if event is not None:
-            event.set()
+            if event is not None:
+                event.set()
+            msg = "Timeout while waiting for {} on {}".format(name, self.port)
+            raise error.Timeout(msg)
 
         return result
 
@@ -416,52 +478,65 @@ class CameraServer(object):
     def __init__(self, config_files=['pyro_camera.yaml']):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
         self.config = load_config(config_files=config_files)
-        self.name = self.config.get('name')
         self.host = self.config.get('host')
-        self.port = self.config.get('port')
         self.user = os.getenv('PANUSER', 'huntsman')
 
         camera_config = self.config.get('camera')
-        camera_config.update({'name': self.name,
-                              'config': self.config})
+        camera_config.update({'config': self.config})
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
 # Properties
 
     @property
-    def uid(self):
-        return self._camera.uid
+    def name(self):
+        return self._camera.name
 
     @property
     def model(self):
         return self._camera.model
 
     @property
-    def filter_type(self):
-        return self._camera.filter_type
-
-    @property
-    def file_extension(self):
-        return self._camera.file_extension
+    def uid(self):
+        return self._camera.uid
 
     @property
     def readout_time(self):
         return self._camera.readout_time
 
     @property
+    def file_extension(self):
+        return self._camera.file_extension
+
+    @property
+    def egain(self):
+        return self._camera.egain
+
+    @property
+    def bit_depth(self):
+        return self._camera.bit_depth
+
+    @property
     def temperature(self):
         temperature = self._camera.temperature
-        return temperature.to(u.Celsius).value
+        return get_quantity_value(temperature, u.Celsius)
 
     @property
     def target_temperature(self):
         temperature = self._camera.target_temperature
-        return temperature.to(u.Celsius).value
+        return get_quantity_value(temperature, u.Celsius)
 
     @target_temperature.setter
     def target_temperature(self, target):
         self._camera.target_temperature = target
+
+    @property
+    def temperature_tolerance(self):
+        return get_quantity_value(self._camera.temperature_tolerance, u.Celsius)
+
+    @temperature_tolerance.setter
+    def temperature_tolerance(self, tolerance):
+        self._camera.temperature_tolerance = tolerance
 
     @property
     def cooling_enabled(self):
@@ -474,6 +549,22 @@ class CameraServer(object):
     @property
     def cooling_power(self):
         return self._camera.cooling_power
+
+    @property
+    def filter_type(self):
+        return self._camera.filter_type
+
+    @property
+    def is_cooled_camera(self):
+        return self._camera.is_cooled_camera
+
+    @property
+    def is_temperature_stable(self):
+        return self._camera.is_temperature_stable
+
+    @property
+    def is_exposing(self):
+        return self._camera.is_exposing
 
 # Methods
 
@@ -500,9 +591,13 @@ class CameraServer(object):
         return "{}@{}:{}".format(self.user, self.host, filename)
 
     def autofocus(self, *args, **kwargs):
+        if not self.has_focuser:
+            msg = "Camera must have a focuser for autofocus!"
+            self.logger.error(msg)
+            raise AttributeError(msg)
         # Start the autofocus and wait for it to completed
         kwargs['blocking'] = True
-        self._camera.autofocus(*args, **kwargs)
+        self._camera.focuser.autofocus(*args, **kwargs)
         # Find where the resulting files are. Need to cast a wide net to get both
         # coarse and fine focus files, anything in focus directory should be fair game.
         focus_path = os.path.join(os.path.abspath(self.config['directories']['images']),
@@ -511,3 +606,127 @@ class CameraServer(object):
                                   '*')
         # Return the user@host:/path for created files to enable them to be moved over the network.
         return "{}@{}:{}".format(self.user, self.host, focus_path)
+
+# Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
+
+    @property
+    def has_focuser(self):
+        return self._camera.focuser is not None
+
+    @property
+    def focuser_name(self):
+        return self._camera.focuser.name
+
+    @property
+    def focuser_model(self):
+        return self._camera.focuser.model
+
+    @property
+    def focuser_uid(self):
+        return self._camera.focuser.uid
+
+    @property
+    def focuser_is_connected(self):
+        return self._camera.focuser.is_connected
+
+    @property
+    def focuser_position(self):
+        return self._camera.focuser.position
+
+    @focuser_position.setter
+    def focuser_position(self, position):
+        self._camera.focuser.position = position
+
+    @property
+    def focuser_min_position(self):
+        return self._camera.focuser.min_position
+
+    @property
+    def focuser_max_position(self):
+        return self._camera.focuser.max_position
+
+    @property
+    def focuser_is_moving(self):
+        return self._camera.focuser.is_moving
+
+    @property
+    def focuser_is_ready(self):
+        return self._camera.focuser.is_ready
+
+    @property
+    def focuser_autofocus_range(self):
+        return self._camera.focuser.autofocus_range
+
+    @focuser_autofocus_range.setter
+    def focuser_autofocus_range(self, autofocus_range):
+        self._camera.focuser.autofocus_range = autofocus_range
+
+    @property
+    def focuser_autofocus_step(self):
+        return self._camera.focuser.autofocus_step
+
+    @focuser_autofocus_step.setter
+    def focuser_autofocus_step(self, step):
+        self._camera.focuser.autofocus_step = step
+
+    @property
+    def focuser_autofocus_seconds(self):
+        return self._camera.focuser.autofocus_seconds
+
+    @focuser_autofocus_seconds.setter
+    def focuser_autofocus_seconds(self, seconds):
+        self._camera.focuser.autofocus_seconds = seconds
+
+    @property
+    def focuser_autofocus_size(self):
+        return self._camera.focuser.autofocus_size
+
+    @focuser_autofocus_size.setter
+    def focuser_autofocus_size(self, size):
+        self._camera.focuser.autofocus_size = size
+
+    @property
+    def focuser_autofocus_keep_files(self):
+        return self._camera.focuser.autofocus_keep_files
+
+    @focuser_autofocus_keep_files.setter
+    def focuser_autofocus_keep_files(self, keep_files):
+        self._camera.focuser.autofocus_keep_files = keep_files
+
+    @property
+    def focuser_autofocus_take_dark(self):
+        return self._camera.focuser.autofocus_take_dark
+
+    @focuser_autofocus_take_dark.setter
+    def focuser_autofocus_take_dark(self, take_dark):
+        self._camera.focuser.autofocus_take_dark = take_dark
+
+    @property
+    def focuser_autofocus_merit_function(self):
+        return self._camera.focuser.autofocus_merit_function
+
+    @focuser_autofocus_merit_function.setter
+    def focuser_autofocus_merit_function(self, merit_function):
+        self._camera.focuser.autofocus_merit_function = merit_function
+
+    @property
+    def focuser_autofocus_merit_function_kwargs(self):
+        return self._camera.focuser.autofocus_merit_function_kwargs
+
+    @focuser_autofocus_merit_function_kwargs.setter
+    def focuser_autofocus_merit_function_kwargs(self, kwargs):
+        self._camera.focuser.autofocus_merit_function_kwargs = kwargs
+
+    @property
+    def focuser_autofocus_mask_dilations(self):
+        return self._camera.focuser.autofocus_mask_dilations
+
+    @focuser_autofocus_mask_dilations.setter
+    def focuser_autofocus_mask_dilations(self, dilations):
+        self._camera.focuser.autofocus_mask_dilations = dilations
+
+    def focuser_move_to(self, position):
+        return self._camera.focuser.move_to(position)
+
+    def focuser_move_by(self, increment):
+        return self._camera.focuser.move_by(increment)
