@@ -136,18 +136,21 @@ class HuntsmanDome(AbstractSerialDome):
         """Periodically tell musca to reset watchdog timer
 
         """
-        # check to see if a dome closure has occured
-        while True:
+        # maximum number of loops before dome closure (correspond to 15hrs)
+        max_loopps = 186
+        for i in range(max_loops):
+            # check to see if a dome closure has occured
             if self._close_event().is_set():
                 self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
                 # if dome has closed, don't try to 'keep dome open'
-                return
+                break
             self.logger.info('Sending keep dome open command to musca.')
             self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
             # wait slightly less than 5 minutes to make sure we reset the
             # dome closure timer before it initiates a dome closure
             self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
             time.sleep(290)
+        self.logger.info('Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
 
     def close(self):
         """Close the shutter using musca.
