@@ -167,7 +167,7 @@ class HuntsmanDome(AbstractSerialDome):
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
         v = self.status()[Protocol.SHUTTER]
-        if v == Protocol.CLOSE:
+        if v == Protocol.CLOSED:
             return True
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
