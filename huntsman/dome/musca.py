@@ -1,10 +1,10 @@
 # based upon @jamessynge's astrohave.py code in POCS
 
-import time
 import threading
+import time
 
-from pocs.utils import CountdownTimer
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
+from pocs.utils import CountdownTimer
 
 
 class Protocol:
@@ -114,7 +114,8 @@ class HuntsmanDome(AbstractSerialDome):
 
         v = self.status()[Protocol.BATTERY]
         if v < self.MIN_OPERATING_VOLTAGE:
-            self.logger.error('Dome shutter battery voltage too low to open: {!r}', v)
+            self.logger.error(
+                'Dome shutter battery voltage too low to open: {!r}', v)
             return False
 
         self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
@@ -136,25 +137,30 @@ class HuntsmanDome(AbstractSerialDome):
         """Periodically tell musca to reset watchdog timer
 
         """
-        # maximum number of loops before dome closure (correspond to 15hrs)
-        max_loops = 186
-        for i in range(max_loops):
+        last_time = time.monotonic()
+        # maximum shutter open time in seconds
+        max_open_seconds = 15 * 60 * 60  # 15 hours in seconds
+        for i in range(max_open_seconds):
             # check to see if a dome closure has occured
             if self._close_event.is_set():
-                self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
+                self.logger.info(
+                    'Keep dome open thread has detected a dome closure, ending thread.')
                 # if dome has closed, don't try to 'keep dome open'
-                break
-            status = self._get_shutter_status_dict()
-            self.logger.info((f'Status Update: Shutter is {status[Shutter]}, '
-                              f'Door is {status[Door]}, '
-                              f'Battery voltage is {status[Battery]}'))
-            self.logger.info('Sending keep dome open command to musca.')
-            self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
-            # wait slightly less than 5 minutes to make sure we reset the
-            # dome closure timer before it initiates a dome closure
-            self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
-            time.sleep(290)
-        self.logger.warning('Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
+                return
+            now = time.monotonic()
+            if now - last_time > 290:
+                status = self._get_shutter_status_dict()
+                self.logger.info((f'Status Update: Shutter is '
+                                  f'{status[Shutter]}, Door is {status[Door]},'
+                                  f' Battery voltage is {status[Battery]}'))
+                self._write_musca(Protocol.KEEP_DOME_OPEN,
+                                  'Keeping dome open.')
+                last_time = now
+                self.logger.debug(
+                    'Keep dome open thread sleeping for ~5 minutes.')
+            time.sleep(1)
+        self.logger.warning(
+            'Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
 
     def close(self):
         """Close the shutter using musca.
