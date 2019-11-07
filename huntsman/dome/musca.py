@@ -144,6 +144,10 @@ class HuntsmanDome(AbstractSerialDome):
                 self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
                 # if dome has closed, don't try to 'keep dome open'
                 break
+            status = self._get_shutter_status_dict()
+            self.logger.info((f'Status Update: Shutter is {status[Shutter]}, '
+                              f'Door is {status[Door]}, '
+                              f'Battery voltage is {status[Battery]}'))
             self.logger.info('Sending keep dome open command to musca.')
             self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
             # wait slightly less than 5 minutes to make sure we reset the
@@ -178,6 +182,8 @@ class HuntsmanDome(AbstractSerialDome):
             return self._get_shutter_status_string()
         return 'Disconnected'
 
+    def __del__(self):
+        self.close()
 
 ###############################################################################
 # Private Methods
