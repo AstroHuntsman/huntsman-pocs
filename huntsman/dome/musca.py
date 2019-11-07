@@ -153,7 +153,7 @@ class HuntsmanDome(AbstractSerialDome):
                 self.logger.info((f'Status Update: Shutter is '
                                   f'{status[Protocol.SHUTTER]}, '
                                   f'Door is {status[Protocol.DOOR]}, '
-                                  f'Battery voltage is {status[Protocol.Battery]}'))
+                                  f'Battery voltage is {status[Protocol.BATTERY]}'))
                 self._write_musca(Protocol.KEEP_DOME_OPEN,
                                   'Keeping dome open.')
                 last_time = now
