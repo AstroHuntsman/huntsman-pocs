@@ -1,8 +1,7 @@
 # based upon @jamessynge's astrohave.py code in POCS
 
 import time
-from threading import Event
-from threading import Thread
+import threading
 
 from pocs.utils import CountdownTimer
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
@@ -110,7 +109,7 @@ class HuntsmanDome(AbstractSerialDome):
         Boolean
             True if Opened, False if it did not Open.
         """
-        if self.is_open():
+        if self.is_open:
             return True
 
         v = self.status()[Protocol.BATTERY]
@@ -160,7 +159,7 @@ class HuntsmanDome(AbstractSerialDome):
         Boolean
             True if Closed, False if it did not Close.
         """
-        if self.is_closed():
+        if self.is_closed:
             return True
 
         self._close_event().set()
