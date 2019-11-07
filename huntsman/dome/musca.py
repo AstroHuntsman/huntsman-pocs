@@ -139,7 +139,7 @@ class HuntsmanDome(AbstractSerialDome):
         max_loopps = 186
         for i in range(max_loops):
             # check to see if a dome closure has occured
-            if self._close_event().is_set():
+            if self._close_event.is_set():
                 self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
                 # if dome has closed, don't try to 'keep dome open'
                 break
@@ -162,7 +162,7 @@ class HuntsmanDome(AbstractSerialDome):
         if self.is_closed:
             return True
 
-        self._close_event().set()
+        self._close_event.set()
         self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter')
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
