@@ -151,9 +151,9 @@ class HuntsmanDome(AbstractSerialDome):
             if now - last_time > 290:
                 status = self._get_shutter_status_dict()
                 self.logger.info((f'Status Update: Shutter is '
-                                  f'{status['Shutter']}, '
-                                  f'Door is {status['Door']}, '
-                                  f'Battery voltage is {status['Battery']}'))
+                                  f'{status[Protocol.SHUTTER]}, '
+                                  f'Door is {status[Protocol.DOOR]}, '
+                                  f'Battery voltage is {status[Protocol.Battery]}'))
                 self._write_musca(Protocol.KEEP_DOME_OPEN,
                                   'Keeping dome open.')
                 last_time = now
