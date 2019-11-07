@@ -1,6 +1,8 @@
 # based upon @jamessynge's astrohave.py code in POCS
 
 import time
+from threading import Event
+from threading import Thread
 
 from pocs.utils import CountdownTimer
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
@@ -67,6 +69,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._status = dict()
         self._status_delay = 5  # seconds
         self._status_timer = CountdownTimer(self._status_delay)
+        self._close_event = threading.Event()
 
     @property
     def is_open(self):
@@ -120,9 +123,34 @@ class HuntsmanDome(AbstractSerialDome):
 
         v = self.status()[Protocol.SHUTTER]
         if v == Protocol.OPEN:
+            # refresh the threading close event
+            self._close_event.clear()
+            self.logger.info('Starting thread to keep dome open.')
+            # start a thread to send the keep dome open command to musca
+            keep_open = threading.Thread(target=self.keep_dome_open)
             return True
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
+
+    def keep_dome_open(self):
+        """Periodically tell musca to reset watchdog timer
+
+        """
+        # maximum number of loops before dome closure (correspond to 15hrs)
+        max_loopps = 186
+        for i in range(max_loops):
+            # check to see if a dome closure has occured
+            if self._close_event().is_set():
+                self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
+                # if dome has closed, don't try to 'keep dome open'
+                break
+            self.logger.info('Sending keep dome open command to musca.')
+            self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
+            # wait slightly less than 5 minutes to make sure we reset the
+            # dome closure timer before it initiates a dome closure
+            self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
+            time.sleep(290)
+        self.logger.warning('Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
 
     def close(self):
         """Close the shutter using musca.
@@ -135,6 +163,7 @@ class HuntsmanDome(AbstractSerialDome):
         if self.is_closed():
             return True
 
+        self._close_event().set()
         self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter')
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
