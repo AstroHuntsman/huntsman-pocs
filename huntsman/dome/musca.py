@@ -150,7 +150,7 @@ class HuntsmanDome(AbstractSerialDome):
             # dome closure timer before it initiates a dome closure
             self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
             time.sleep(290)
-        self.logger.info('Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
+        self.logger.warning('Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
 
     def close(self):
         """Close the shutter using musca.
