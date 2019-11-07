@@ -127,6 +127,7 @@ class HuntsmanDome(AbstractSerialDome):
             self.logger.info('Starting thread to keep dome open.')
             # start a thread to send the keep dome open command to musca
             keep_open = threading.Thread(target=self.keep_dome_open)
+            keep_open.start()
             return True
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
