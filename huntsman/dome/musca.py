@@ -137,7 +137,7 @@ class HuntsmanDome(AbstractSerialDome):
 
         """
         # maximum number of loops before dome closure (correspond to 15hrs)
-        max_loopps = 186
+        max_loops = 186
         for i in range(max_loops):
             # check to see if a dome closure has occured
             if self._close_event.is_set():
