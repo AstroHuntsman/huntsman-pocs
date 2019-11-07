@@ -137,16 +137,17 @@ class HuntsmanDome(AbstractSerialDome):
 
         """
         # check to see if a dome closure has occured
-        if self._close_event().is_set():
-            self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
-            # if dome has closed, don't try to 'keep dome open'
-            return
-        self.logger.info('Sending keep dome open command to musca.')
-        self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
-        # wait slightly less than 5 minutes to make sure we reset the
-        # dome closure timer before it initiates a dome closure
-        self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
-        time.sleep(290)
+        while True:
+            if self._close_event().is_set():
+                self.logger.info('Keep dome open thread has detected a dome closure, ending thread.')
+                # if dome has closed, don't try to 'keep dome open'
+                return
+            self.logger.info('Sending keep dome open command to musca.')
+            self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
+            # wait slightly less than 5 minutes to make sure we reset the
+            # dome closure timer before it initiates a dome closure
+            self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
+            time.sleep(290)
 
     def close(self):
         """Close the shutter using musca.
