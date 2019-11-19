@@ -30,6 +30,7 @@ directories:
     resources: POCS/resources/
     targets: /var/huntsman/huntsman-pocs/conf_files
     webcam: webcams
+    sshfs_mount: /home/huntsman/Huntsmans-Pro
 cameras:
     auto_detect: False
     devices:

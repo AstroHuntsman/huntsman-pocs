@@ -577,9 +577,12 @@ class CameraServer(object):
 
     def take_exposure(self, seconds, base_name, dark, *args, **kwargs):
         # Using the /./ syntax for partial relative paths (needs rsync >= 2.6.7)
-        filename = os.path.join(os.path.abspath(self.config['directories']['images']),
-                                './',
+        
+        filename = os.path.join(self.config['directories']['sshfs_mount'],
+                                self.config['directories']['base'],
+                                self.config['directories']['images'],
                                 base_name)
+                
         # Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
