@@ -590,7 +590,7 @@ class CameraServer(object):
                                    blocking=True,
                                    *args,
                                    **kwargs)
-        return None
+        return filename
 
     def autofocus(self, *args, **kwargs):
         if not self.has_focuser:
