@@ -1,67 +1,26 @@
-from pocs.mount import create_mount_from_config
-from pocs.scheduler import create_scheduler_from_config 
-from huntsman.camera import create_cameras_from_config
-from huntsman.observatory import HuntsmanObservatory
-from pocs.core import POCS
-from huntsman.utils import load_config
+def on_enter(event_data):
+    """Pointing State
+    Take dark fields
+    """
+    pocs = event_data.model
 
-# Import datetime to insert a timestamp in each image.
-from datetime import datetime
+    pocs.next_state = 'parking'
 
-import os
+    try:
+        pocs.say("It's time to take darks!")
 
-# Load Huntsman configuration
-config = load_config()
+        current_observation = pocs.observatory.current_observation
 
-# create cameras
-cameras = create_cameras_from_config()
-# Start exoplanet observation
+        pocs.logger.debug("Setting coords: {}".format(current_observation.field))
 
-# Create mount
-mount = create_mount_from_config(config)
-mount.initialize()
+        if pocs.observatory.mount.set_target_coordinates(current_observation.field):
 
-# create the scheduler
-scheduler = create_scheduler_from_config(config)
+            pocs.status()
 
-# Create the observatory
-observatory = HuntsmanObservatory(cameras=cameras, mount=mount,
-                                  scheduler=scheduler,
-                                  with_autoguider=True,
-                                  take_flats=True)
+            # Wait until mount is parked
+            pocs.say("I'm going to take next dark")
 
-# Create POCS
-pocs = POCS(observatory, simulator=["power"])
-pocs.initialize()
+            pocs.next_state = 'parked'
 
-# Run POCS
-pocs.run()
-
-# Set the number of exposures to take.
-number_calibrations = 20
-# Set the exposure time in seconds.
-exposure_times = [0.1, 120]
-# Get the bias and darks for the night, and name the
-# directory where the data will be saved.
-night_date = datetime.utcnow().isoformat()[0:10]
-data_directory = f"/var/huntsman/data_{night_date}"
-images_dir = os.makedirs(data_directory, exist_ok=True)
-
-
-# Output directory for bias and darks
-bias_darks_dir = data_directory + "/bias_darks"
-biasdarks_dir = os.makedirs(bias_darks_dir, exist_ok=True)
-
-for i in range(number_calibrations):
-    print(f"Starting exposures {i+1} of {number_calibrations}")
-    exposure_events = []
-    for camera in cameras.values():
-        timestamp = datetime.utcnow().isoformat()
-        name = f"bias_darks_dir/{camera.uid}/{timestamp}.fits"
-        for exptime in exposure_times:
-            exposure_events.append(camera.take_exposure(seconds=exptime,
-                                                        filename=name,
-                                                        dark=True))
-            print(f"Exposure {name} started.")
-        for e in exposure_events:
-            e.wait()
+    except Exception as e:
+        pocs.logger.warning("Problem with preparing: {}".format(e))
