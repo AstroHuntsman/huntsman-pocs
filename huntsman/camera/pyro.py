@@ -216,7 +216,7 @@ class Camera(AbstractCamera):
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
-                                                    filename=filename,
+                                                    base_name=base_name,
                                                     dark=bool(dark),
                                                     *args,
                                                     **kwargs) 
@@ -570,27 +570,20 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, filename, dark, *args, **kwargs):
+    def take_exposure(self, seconds, base_name, dark, *args, **kwargs):
         
-        #Make sure the filename is accessible on the SSHFS
-        basename = os.path.normpath(self.config['directories']['base'])
-        filename = os.path.normpath(filename)
-        if not filename.startswith(basename):
-            raise ValueError("Filename not accesible on SSHFS.")
-        
-        #Update the filename for the SSHFS
-        mountpoint = os.path.normpath(self.config['directories']['sshfs_mount'])
-        filename = os.path.join(mountpoint, filename)
-        
-                
-        # Start the exposure and wait for it complete
+        #Specify the full filename
+        filename = os.path.join(os.path.abspath(
+                        self.config['directories']['images']), base_name)
+                    
+        #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
                                    dark=dark,
                                    blocking=True,
                                    *args,
                                    **kwargs)
-        return None
+        return filename
 
     def autofocus(self, *args, **kwargs):
         if not self.has_focuser:
