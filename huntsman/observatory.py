@@ -14,7 +14,7 @@ from pocs import utils
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation, DarkObservation
+from huntsman.scheduler.observation import DitheredObservation
 from huntsman.utils import dither
 from huntsman.utils import load_config
 
@@ -386,74 +386,6 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
 
-    def take_dark_fields(self,
-                         max_exptime=60.,
-                         camera_list=None,
-                         max_num_exposures=10,
-                         *args, **kwargs
-                         ):
-        """Take dark fields
-
-        Args:
-            max_exptime (float, optional): Maximum exposure time before stopping
-            camera_list (list, optional): List of cameras to use for darks
-            max_num_exposures (int, optional): Maximum number of darks to take
-            *args (TYPE): Description
-            **kwargs (TYPE): Description
-
-        """
-
-        image_dir = self.config['directories']['images']
-
-        dark_obs = self._create_dark_observation()
-        exp_times = {cam_name: [1. * u.second] for cam_name in camera_list}
-
-        # Loop until conditions are met for dark fields
-        while True:
-            # self.logger.debug("Slewing to parked-mount coords: {}".format(dark_obs.field))
-            # self.mount.set_target_coordinates(dark_obs.field)
-            # self.mount.slew_to_target()
-            self.status()  # Seems to help with reading coords
-
-            fits_headers = self.get_standard_headers(observation=dark_obs)
-
-            start_time = utils.current_time()
-            fits_headers['start_time'] = utils.flatten_time(
-                start_time)  # Common start time for cameras
-
-            camera_events = dict()
-
-            # Take the observations
-            for cam_name in camera_list:
-
-                camera = self.cameras[cam_name]
-
-                filename = "{}/darks/{}/{}/{}.{}".format(
-                    image_dir,
-                    camera.uid,
-                    dark_obs.seq_time,
-                    'dark_{:02d}'.format(dark_obs.current_exp_num),
-                    camera.file_extension)
-
-                # Take picture and get event
-                if exp_times[cam_name][-1].value < max_exptime:
-                    camera_event = camera.take_observation(
-                        dark_obs,
-                        fits_headers,
-                        filename=filename,
-                        exp_time=exp_times[cam_name][-1]
-                    )
-
-                    camera_events[cam_name] = {
-                        'event': camera_event,
-                        'filename': filename,
-                    }
-
-            # Block until done exposing on all cameras
-            while not all([info['event'].is_set() for info in camera_events.values()]):
-                self.logger.debug('Waiting for dark-field image')
-                time.sleep(1)
-
 ##########################################################################
 # Private Methods
 ##########################################################################
@@ -537,28 +469,3 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(flat_obs))
 
         return flat_obs
-
-    def _create_dark_observation(self, n_darks=9):
-        dark_coords = self.mount.get_current_coordinates().to_string('hmsdms')
-
-        self.logger.debug("Creating darks observation")
-        dark_field = Field('Darks', dark_coords)
-        dark_obs = DarkObservation(dark_field, exp_time=1. * u.second)
-        dark_obs.seq_time = utils.current_time(flatten=True)
-
-        if isinstance(dark_obs, DarkObservation):
-
-            self.logger.debug("Going to take {} dark fields".format(n_darks))
-
-            dark_fields = [Field('Dark{:02d}'.format(i), dark_coords)
-                           for i in range(n_darks)]
-            exp_times = [dark_obs.exp_time for i in range(n_darks)]
-
-            dark_obs.field = dark_fields
-            dark_obs.exp_time = exp_times
-            dark_obs.min_nexp = len(dark_fields)
-            dark_obs.exp_set_size = len(dark_fields)
-
-        self.logger.debug("Dark observation: {}".format(dark_obs))
-
-        return dark_obs
