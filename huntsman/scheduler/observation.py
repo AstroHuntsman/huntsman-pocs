@@ -79,3 +79,65 @@ class DitheredObservation(Observation):
 
     def __str__(self):
         return "DitheredObservation: {}: {}".format(self._field, self._exp_time)
+
+
+class DarkObservation(Observation):
+
+    """ Collection of darks when weather is bad
+
+    Dark observations will consist of both multiple exposure, but no fields.
+    Also, the mount will be parked when used.
+
+    Note:
+        For now the new observation must be created like a normal `Observation`,
+        with one `exp_time` and one `field`. Then use direct property assignment
+        for the list of `exp_time` and `field`. New `field`/`exp_time` combos can
+        more conveniently be set with `add_field`
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(DarkObservation, self).__init__(*args, **kwargs)
+
+        # Set initial list to original values
+        self._exp_time = listify(self.exp_time)
+        self._field = listify(self.field)
+
+        self.extra_config = kwargs
+
+    @property
+    def exp_time(self):
+        exp_time = self._exp_time[self.exposure_index]
+
+        if not isinstance(exp_time, u.Quantity):
+            exp_time *= u.second
+
+        return exp_time
+
+    @exp_time.setter
+    def exp_time(self, values):
+        assert all(t > 0.0 for t in listify(values)), \
+            self.logger.error("Exposure times (exp_time) must be greater than 0")
+
+        self._exp_time = listify(values)
+
+    @property
+    def field(self):
+        return self._field[self.exposure_index]
+
+    @field.setter
+    def field(self, values):
+        assert all(isinstance(f, Field) for f in listify(values)), \
+            self.logger.error("All fields must be a valid Field instance")
+
+        self._field = listify(values)
+
+    @property
+    def exposure_index(self):
+        _exp_index = 0
+        with suppress(AttributeError):
+            _exp_index = self.current_exp_num % len(self._exp_time)
+
+        return _exp_index
+
+    def __str__(self):
+        return "DarkObservation: {}: {}".format(self._field, self._exp_time)
