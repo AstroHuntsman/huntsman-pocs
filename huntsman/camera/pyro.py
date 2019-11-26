@@ -213,12 +213,15 @@ class Camera(AbstractCamera):
         # Start the exposure
         filename = os.path.abspath(filename) 
         base_name = os.path.split(filename)[-1]
-        #self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
+        directory = self.config['directories']['images']
+        
+        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
                                                     dark=bool(dark),
-                                                    logger_=self.logger, *args,
+                                                    directory=directory,
+                                                    *args,
                                                     **kwargs) 
         exposure_result
 
@@ -570,13 +573,14 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, base_name, dark, logger_, *args, **kwargs):
+    def take_exposure(self, seconds, base_name, dark, directory=None, *args, **kwargs):
         
         #Specify the full filename
-        filename = os.path.join(os.path.abspath(
+        if directory is None:
+            filename = os.path.join(os.path.abspath(
                         self.config['directories']['images']), base_name)
-        
-        logger_.debug('Saving to filename: %s' % (filename))
+        else:
+            filename = os.path.join(directory, base_name)
 
         #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
