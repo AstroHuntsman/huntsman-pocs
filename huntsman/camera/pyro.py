@@ -216,6 +216,8 @@ class Camera(AbstractCamera):
         directory = self.config['directories']['images']
         
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
+        self.logger.debug('The directory is %s' % (directory))
+        
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
