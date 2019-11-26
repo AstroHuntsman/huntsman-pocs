@@ -218,7 +218,7 @@ class Camera(AbstractCamera):
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
                                                     dark=bool(dark),
-                                                    *args,
+                                                    logger_=self.logger, *args,
                                                     **kwargs) 
         exposure_result
 
@@ -570,13 +570,13 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, base_name, dark, *args, **kwargs):
+    def take_exposure(self, seconds, base_name, dark, logger_, *args, **kwargs):
         
         #Specify the full filename
         filename = os.path.join(os.path.abspath(
                         self.config['directories']['images']), base_name)
         
-        self.logger.debug('Saving to filename: %s' % (filename))
+        logger_.debug('Saving to filename: %s' % (filename))
 
         #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
