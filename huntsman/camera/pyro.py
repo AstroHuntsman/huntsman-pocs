@@ -582,7 +582,7 @@ class CameraServer(object):
             filename = os.path.join(os.path.abspath(
                         self.config['directories']['images']), base_name)
         else:
-            self.logger.debug('Writing image to directory: %s' % (directory))
+            #self.logger.debug('Writing image to directory: %s' % (directory))
             filename = os.path.join(directory, base_name)
 
         #Start the exposure and wait for it complete
