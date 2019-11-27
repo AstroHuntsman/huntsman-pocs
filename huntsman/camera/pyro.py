@@ -207,24 +207,22 @@ class Camera(AbstractCamera):
             seconds = seconds.to(u.second).value
         seconds = float(seconds)
 
-        dir_name, base_name = os.path.split(filename)
-        # Make sure dir_name has one and only one trailing slash, otherwise rsync may fail
-        dir_name = os.path.normpath(dir_name) + '/'
-
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
         # Start the exposure
+        filename = os.path.abspath(filename) 
+        dir_name, base_name = os.path.split(filename)
+        
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
+        
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
+                                                    dir_name=dir_name,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs) \
-            .then(self._file_transfer, dir_name) \
-            .then(self._clean_directories)
-
+                                                    **kwargs) 
         exposure_result
 
         # Start a thread that will set an event once exposure has completed
@@ -575,20 +573,26 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, base_name, dark, *args, **kwargs):
-        # Using the /./ syntax for partial relative paths (needs rsync >= 2.6.7)
-        filename = os.path.join(os.path.abspath(self.config['directories']['images']),
-                                './',
-                                base_name)
-        # Start the exposure and wait for it complete
+    def take_exposure(self, seconds, base_name, dark, dir_name=None, *args,
+                      **kwargs):
+        
+        #Specify the full filename
+        #This uses the camera server's "images" directory 
+        if dir_name is None:
+            filename = os.path.join(os.path.abspath(
+                        self.config['directories']['images']), base_name)
+        #This does not necessarily use the "images" directory
+        else:
+            filename = os.path.join(dir_name, base_name)
+                    
+        #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
                                    dark=dark,
                                    blocking=True,
                                    *args,
                                    **kwargs)
-        # Return the user@host:/path for created file to enable it to be moved over the network.
-        return "{}@{}:{}".format(self.user, self.host, filename)
+        return filename
 
     def autofocus(self, *args, **kwargs):
         if not self.has_focuser:
