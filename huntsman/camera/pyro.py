@@ -214,7 +214,7 @@ class Camera(AbstractCamera):
         filename = os.path.abspath(filename) 
         dir_name, base_name = os.path.split(filename)
         
-        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name}')
+        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name} in {dir_name}')
         
         # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
