@@ -10,16 +10,22 @@ cache:
 env:
   - PANDIR=/var/huntsman POCS=${PANDIR}/POCS PANUSER=$USER HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 before_install:
+  # Set up directories.
   - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
   - mkdir -p $PANDIR/logs
+  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+  # Install testing dependencies.
   - pip install -U pip
   - pip install coveralls
   - cd $PANDIR
+  # Install POCS
   - git clone https://github.com/panoptes/POCS.git
   - cd POCS
   - pip install -r requirements.txt
   - python setup.py install
-  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+  # Download the astrometry.net files and IERS index.
+  - python pocs/utils/data.py --folder $PANDIR/astrometry/data
+  # Create SSH key for Pyro nameservers
   - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
   - touch ~/.ssh/authorized_keys
   - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
