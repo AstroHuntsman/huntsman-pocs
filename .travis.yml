@@ -23,6 +23,14 @@ before_install:
   - cd POCS
   - pip install -r requirements.txt
   - python setup.py install
+  # Create SSH key for Pyro nameservers
+  - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
+  - touch ~/.ssh/authorized_keys
+  - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+  - ssh-keyscan -H localhost >> ~/.ssh/known_hosts
+install:
+  - cd $TRAVIS_BUILD_DIR
+  - pip install -r requirements.txt
   # Download just the IERS index.
   - |
     echo "\
@@ -32,14 +40,6 @@ before_install:
     iers_auto_url_mirror = https://storage.googleapis.com/panoptes-resources/iers/ser7.dat
     " >> $HOME/.astropy/config/astropy.cfg
   - python pocs/utils/data.py --no-narrow-field --no-wide-field
-  # Create SSH key for Pyro nameservers
-  - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
-  - touch ~/.ssh/authorized_keys
-  - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-  - ssh-keyscan -H localhost >> ~/.ssh/known_hosts
-install:
-  - cd $TRAVIS_BUILD_DIR
-  - pip install -r requirements.txt
   - python setup.py install
 script:
   - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
