@@ -24,6 +24,13 @@ before_install:
   - pip install -r requirements.txt
   - python setup.py install
   # Download just the IERS index.
+  - |
+    echo "\
+
+    [utils.iers.iers]
+    iers_auto_url = https://storage.googleapis.com/panoptes-resources/iers/ser7.dat
+    iers_auto_url_mirror = https://storage.googleapis.com/panoptes-resources/iers/ser7.dat
+    " >> $HOME/.astropy/config/astropy.cfg
   - python pocs/utils/data.py --no-narrow-field --no-wide-field
   # Create SSH key for Pyro nameservers
   - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
