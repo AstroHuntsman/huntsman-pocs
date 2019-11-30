@@ -23,8 +23,8 @@ before_install:
   - cd POCS
   - pip install -r requirements.txt
   - python setup.py install
-  # Download the astrometry.net files and IERS index.
-  - python pocs/utils/data.py --folder $PANDIR/astrometry/data
+  # Download just the IERS index.
+  - python pocs/utils/data.py --no-narrow-field --no-wide-field
   # Create SSH key for Pyro nameservers
   - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
   - touch ~/.ssh/authorized_keys
