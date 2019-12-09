@@ -1,7 +1,7 @@
 -e git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
 -e git+git://github.com/panoptes/POCS@develop#egg=panoptes
-astroplan
-astropy >= 2.0.0
+-e git+git://github.com/astropy/astroplan@master#egg=astroplan
+astropy >= 3.2.3
 astroquery
 ccdproc
 codecov

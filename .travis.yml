@@ -10,16 +10,20 @@ cache:
 env:
   - PANDIR=/var/huntsman POCS=${PANDIR}/POCS PANUSER=$USER HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 before_install:
+  # Set up directories.
   - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
   - mkdir -p $PANDIR/logs
+  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+  # Install testing dependencies.
   - pip install -U pip
   - pip install coveralls
   - cd $PANDIR
+  # Install POCS
   - git clone https://github.com/panoptes/POCS.git
   - cd POCS
   - pip install -r requirements.txt
   - python setup.py install
-  - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
+  # Create SSH key for Pyro nameservers
   - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
   - touch ~/.ssh/authorized_keys
   - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
@@ -27,6 +31,18 @@ before_install:
 install:
   - cd $TRAVIS_BUILD_DIR
   - pip install -r requirements.txt
+  # Dummy command to make astropy config file appear.
+  - python -c "import astroplan"
+  # Add custom IERS urls to astropy config.
+  - |
+    echo "\
+
+    [utils.iers.iers]
+    iers_auto_url = https://storage.googleapis.com/panoptes-resources/iers/ser7.dat
+    iers_auto_url_mirror = https://storage.googleapis.com/panoptes-resources/iers/ser7.dat
+    " >> $HOME/.astropy/config/astropy.cfg
+  # Download just the IERS index.
+  - python $POCS/pocs/utils/data.py --no-narrow-field --no-wide-field
   - python setup.py install
 script:
   - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
