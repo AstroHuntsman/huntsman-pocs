@@ -46,11 +46,14 @@ def AttemptUnmount(local):
 if __name__ == '__main__':
     
     #Specify the mount point as ~/Huntsmans-Pro (for huntsman user)
-    local = '/home/huntsman/Huntsmans-Pro'
+    home = os.path.expandvars('$HOME')
+    local = os.path.join(home, 'huntsman', 'Huntsmans-Pro')
     
     #Specify the remote directory
-    dirs = load_config()['directories']
-    remote = f"huntsman@192.168.80.101:{dirs['base']}"
+    config = load_config()
+    remote_ip = config['messaging']['huntsman_pro_ip']
+    remote_dir= config['directories']['base']
+    remote = f"huntsman@{remote_ip}:{remote_dir}"
     
     #Check if the remote is already mounted, if so, unmount
     print(f'Attempting to unmount {local}...')
@@ -62,7 +65,7 @@ if __name__ == '__main__':
     
     #Symlink the directories
     original = os.path.join(local, 'images')
-    link = dirs['images']
+    link = config['directories']['images']
     
     #If link already exists, make sure it is pointing to the right place
     if os.path.exists(link):

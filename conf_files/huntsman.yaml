@@ -58,6 +58,7 @@ pointing:
 messaging:
     cmd_port: 6500
     msg_port: 6510
+    huntsman_pro_ip: 127.0.0.1 #This should be updated in huntsman_local.yaml
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
 
 ########################### Flat Fields ########################################
