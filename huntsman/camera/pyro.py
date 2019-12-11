@@ -1,6 +1,7 @@
 import sys
 import os
 import requests
+import threading
 from warnings import warn
 from threading import Event
 from threading import Timer
@@ -23,6 +24,7 @@ from huntsman.utils import load_config
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
 
+#==============================================================================
 
 class Camera(AbstractCamera):
     """
@@ -503,9 +505,10 @@ class Camera(AbstractCamera):
         Parameters
         ----------
         filename (str):
-            The local filename.
+            The local filename, the basename of which is the default NGAS
+            filename.
         filename_ngas (str, optional):
-            The NGAS filename. If None, assumes filename_ngas=filename.
+            The NGAS filename. If None, filename_ngas=basename(filename)
         ngas_push (bool, optional):
             Will attempt the push only if True. Else, does nothing!
         port (int, optional):
@@ -520,7 +523,7 @@ class Camera(AbstractCamera):
             return True
                 
         if filename_ngas is None:
-            filename_ngas = filename
+            filename_ngas = os.path.basename(filename)
         
         #Get the IP address of the NGAS server
         ngas_ip = self.config['messaging']['ngas_server_ip']
@@ -543,8 +546,64 @@ class Camera(AbstractCamera):
                 return False
 
         return True
-        
     
+    
+    #Might be a good idea to override _setup_observation to output filename
+    #suitible for NGAS...
+    
+    """
+    def take_observation(self, observation, headers=None, filename=None,
+                         **kwargs):
+        '''
+        Take an observation.
+        Gathers various header information, sets the file path, and calls
+        `take_exposure`. Also creates a `threading.Event` object and a
+        `threading.Thread` object. The Thread calls `process_exposure`
+        after the exposure had completed and the Event is set once
+        `process_exposure` finishes.
+            
+        This overrides the default method of AbstractCamera. The only 
+        difference is that here we specify the necessary information for the 
+        NGAS push.
+        
+        Args:
+            observation (~pocs.scheduler.observation.Observation): Object
+                describing the observation
+            headers (dict, optional): Header data to be saved along with the file.
+            filename (str, optional): pass a filename for the output FITS file to
+                overrride the default file naming system
+            **kwargs (dict): Optional keyword arguments (`exptime`, dark)
+        Returns:
+            threading.Event: An event to be set when the image is done processing
+        '''
+        # To be used for marking when exposure is complete (see `process_exposure`)
+        observation_event = threading.Event()
+
+        exptime, file_path, image_id, metadata = self._setup_observation(
+                                    observation, headers, filename, **kwargs)
+        
+        exposure_event = self.take_exposure(seconds=exptime,filename=file_path,
+                                            **kwargs)
+
+        # Add most recent exposure to list
+        if self.is_primary:
+            if 'POINTING' in headers:
+                observation.pointing_images[image_id] = file_path
+            else:
+                observation.exposure_list[image_id] = file_path
+
+        # Process the exposure once readout is complete
+        t = threading.Thread(
+            target=self.process_exposure,
+            args=(metadata, observation_event, exposure_event),
+            daemon=True)
+        t.name = '{}Thread'.format(self.name)
+        t.start()
+
+        return observation_event
+    """
+#==============================================================================
+        
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class CameraServer(object):
@@ -654,7 +713,20 @@ class CameraServer(object):
 
     def take_exposure(self, seconds, base_name, dark, dir_name=None, *args,
                       **kwargs):
-        
+        '''
+        Parameters
+        ----------
+        base_name (str):
+            The basename of the file.
+        dir_name (str, optional):
+            The directory in which to store the file. If None, will use
+            the images directory indicated by self.config.
+            
+        Returns
+        -------
+        str:
+            The full filename of the exposure output.
+        '''
         #Specify the full filename
         #This uses the camera server's "images" directory 
         if dir_name is None:
