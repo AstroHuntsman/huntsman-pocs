@@ -124,16 +124,19 @@ class Camera(AbstractCamera):
         '''
         # Make sure there isn't an exposure already in progress.
         if self.is_exposing:
+            self.logger.debug('Camera not ready: exposing!')
             return False
         
         # For cooled camera expect stable temperature before taking exposure
         if self.is_cooled_camera and not self.is_temperature_stable:
+            self.logger.debug('Camera not ready: temperature not stable!')
             return False
 
         # Check all the subcomponents too, e.g. make sure filterwheel/focuser 
         #aren't moving.
         for sub_name in self._subcomponent_names:
             if getattr(self, sub_name) and not getattr(self,sub_name).is_ready:
+                self.logger.debug(f'Camera not ready: {sub_name} not ready!')
                 return False
 
         return True
