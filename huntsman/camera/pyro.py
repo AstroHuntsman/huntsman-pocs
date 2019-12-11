@@ -1,5 +1,6 @@
 import sys
 import os
+import requests
 from warnings import warn
 from threading import Event
 from threading import Timer
@@ -200,6 +201,8 @@ class Camera(AbstractCamera):
                       filename=None,
                       dark=False,
                       blocking=False,
+                      ngas_push=False,
+                      filename_ngas=None,
                       *args,
                       **kwargs):
         """
@@ -211,6 +214,7 @@ class Camera(AbstractCamera):
             dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
+            ngas_push (bool, optional): Push file to NGAS database?
 
         Returns:
             threading.Event: Event that will be set when exposure is complete
@@ -241,16 +245,18 @@ class Camera(AbstractCamera):
         
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name} in {dir_name}')
         
-        # Remote method call to start the exposure
+        #Remote method call to start the exposure
+        #Once this finishes, the filename is returned
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     base_name=base_name,
                                                     dir_name=dir_name,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs) 
-        exposure_result
+                                                    **kwargs
+                    #Once exposure is completed, push file to NGAS if necessary
+                    ).then(self._NGASpush, filename_ngas, ngas_push) 
 
-        # Start a thread that will set an event once exposure has completed
+        #Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=seconds + self.readout_time,
                                 function=self._async_wait,
                                 args=(exposure_result,
@@ -489,8 +495,56 @@ class Camera(AbstractCamera):
             raise error.Timeout(msg)
 
         return result
+    
+    
+    def _NGASpush(self, filename, filename_ngas=None, ngas_push=True,
+                  port=7778):
+        '''
+        Parameters
+        ----------
+        filename (str):
+            The local filename.
+        filename_ngas (str, optional):
+            The NGAS filename. If None, assumes filename_ngas=filename.
+        ngas_push (bool, optional):
+            Will attempt the push only if True. Else, does nothing!
+        port (int, optional):
+            The port of the NGAS server. Defaults to the TCP port.
+            
+        Returns
+        -------
+        bool:
+            True if success, False if not.
+        '''
+        if not ngas_push: #No need to do anything
+            return True
+                
+        if filename_ngas is None:
+            filename_ngas = filename
+        
+        #Get the IP address of the NGAS server
+        ngas_ip = self.config['messaging']['ngas_server_ip']
+        
+        #Post the file to the NGAS server
+        url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}'
+        with open(filename, 'rb') as f:
+            files = {'file':f}
+            self.logger.debug(f'Pushing {filename} to NGAS as {filename_ngas}.')
+            try: 
+                #Post the file
+                r = requests.post(url, files=files)
+                
+                #Confirm success
+                r.raise_for_status()
+                
+            except Exception as e: 
+                self.logger.debug('Error while performing NGAS push.')
+                self.logger.error(e)
+                return False
 
-
+        return True
+        
+    
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class CameraServer(object):
