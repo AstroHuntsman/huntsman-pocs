@@ -216,7 +216,7 @@ class Camera(AbstractCamera):
             dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
-            ngas_push (bool, optional): Push file to NGAS database?
+            ngas_push (bool, optional): Push file to NGAS database? Default is False.
 
         Returns:
             threading.Event: Event that will be set when exposure is complete
@@ -499,8 +499,7 @@ class Camera(AbstractCamera):
         return result
     
     
-    def _NGASpush(self, filename, filename_ngas=None, ngas_push=True,
-                  port=7778):
+    def _NGASpush(self, filename, filename_ngas, ngas_push=True, port=7778):
         '''
         Parameters
         ----------
@@ -521,10 +520,14 @@ class Camera(AbstractCamera):
         '''
         if not ngas_push: #No need to do anything
             return True
-                
-        if filename_ngas is None:
-            filename_ngas = os.path.basename(filename)
         
+        #Make sure a valid filename is given
+        try:
+            assert(type(filename_ngas)==str)
+        except AssertionError as e:
+            self.logger.error('NGAS filename needs to be specified for NGAS push.')
+            raise e
+                                    
         #Get the IP address of the NGAS server
         ngas_ip = self.config['messaging']['ngas_server_ip']
         
@@ -589,10 +592,7 @@ class Camera(AbstractCamera):
             
             #Replace slashes by underscores
             filename_ngas = filename_ngas[1:].replace(os.sep, '_')
-            
-            self.logger.debug(file_path)
-            self.logger.debug(filename_ngas)
-                    
+                                
         #Take the exposure, passing the NGAS filename
         exposure_event = self.take_exposure(seconds=exptime,filename=file_path,
                                             filename_ngas=filename_ngas,
