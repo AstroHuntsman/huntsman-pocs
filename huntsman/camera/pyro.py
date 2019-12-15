@@ -404,7 +404,7 @@ class Camera(AbstractCamera):
         # Start a thread that will set an event once autofocus has completed
         autofocus_event = Event()
         autofocus_thread = Thread(target=self._async_wait,
-                                  args=(autofocus_result, 'autofocus', autofocus_event, timeout))
+                args=(autofocus_result, 'autofocus', autofocus_event, timeout))
         autofocus_thread.start()
 
         if blocking:
@@ -508,7 +508,7 @@ class Camera(AbstractCamera):
             The local filename, the basename of which is the default NGAS
             filename.
         filename_ngas (str, optional):
-            The NGAS filename. If None, filename_ngas=basename(filename)
+            The NGAS filename. If None, auto-assign based on filename.
         ngas_push (bool, optional):
             Will attempt the push only if True. Else, does nothing!
         port (int, optional):
@@ -550,10 +550,8 @@ class Camera(AbstractCamera):
     
     #Might be a good idea to override _setup_observation to output filename
     #suitible for NGAS...
-    
-    """
     def take_observation(self, observation, headers=None, filename=None,
-                         **kwargs):
+                         filename_ngas=None, **kwargs):
         '''
         Take an observation.
         Gathers various header information, sets the file path, and calls
@@ -582,8 +580,23 @@ class Camera(AbstractCamera):
         exptime, file_path, image_id, metadata = self._setup_observation(
                                     observation, headers, filename, **kwargs)
         
+        #Define the NGAS filename as the collapsed filename?
+        if filename_ngas is None:
+            
+            #Remove the directory prefix specified in _setup_observation
+            prefix = os.path.normpath(observation.directory)
+            filename_ngas = os.path.normpath(file_path).split(prefix)[1]
+            
+            #Replace slashes by underscores
+            filename_ngas = filename_ngas[1:].replace(os.sep, '_')
+            
+            self.logger.debug(file_path)
+            self.logger.debug(filename_ngas)
+                    
+        #Take the exposure, passing the NGAS filename
         exposure_event = self.take_exposure(seconds=exptime,filename=file_path,
-                                            **kwargs)
+                                            filename_ngas=filename_ngas,
+                                            ngas_push=True, **kwargs)
 
         # Add most recent exposure to list
         if self.is_primary:
@@ -601,7 +614,7 @@ class Camera(AbstractCamera):
         t.start()
 
         return observation_event
-    """
+
 #==============================================================================
         
 @Pyro4.expose
