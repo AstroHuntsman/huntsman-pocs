@@ -12,7 +12,7 @@ from huntsman.utils import load_config
 
 #==============================================================================
 
-def Mount(local, remote, ServerAliveInterval=20, ServerAliveCountMax=3):
+def _Mount(local, remote, ServerAliveInterval=20, ServerAliveCountMax=3):
     '''
     Mount remote on local.
     '''
@@ -29,7 +29,7 @@ def Mount(local, remote, ServerAliveInterval=20, ServerAliveCountMax=3):
         raise(e)
     
     
-def AttemptUnmount(local):
+def _AttemptUnmount(local):
     '''
     Unmount remote from local.
     '''
@@ -41,10 +41,11 @@ def AttemptUnmount(local):
             pass
         
 #==============================================================================
-#==============================================================================
 
-if __name__ == '__main__':
+def MountSSHFS():
+    '''
     
+    '''
     #Specify the mount point as ~/Huntsmans-Pro (for huntsman user)
     home = os.path.expandvars('$HOME')
     local = os.path.join(home, 'huntsman', 'Huntsmans-Pro')
@@ -57,11 +58,11 @@ if __name__ == '__main__':
     
     #Check if the remote is already mounted, if so, unmount
     print(f'Attempting to unmount {local}...')
-    AttemptUnmount(local)
+    _AttemptUnmount(local)
     
     #Mount
     print(f'Mounting {remote} on {local}...')
-    Mount(local, remote)
+    _Mount(local, remote)
     
     #Symlink the directories
     original = os.path.join(local, 'images')
@@ -82,6 +83,10 @@ if __name__ == '__main__':
         os.symlink(original, link, target_is_directory=True)
     
     print('Done!')
+        
+#==============================================================================
+#==============================================================================
+
+if __name__ == '__main__':
     
-    
-    
+    MountSSHFS()

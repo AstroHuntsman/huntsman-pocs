@@ -5,11 +5,19 @@ distributed camera. The configuration for the camera is read from the pyro_camer
 pyro_camera_local.yaml config file. The camera servers should be started after the name server,
 but before POCS.
 """
+import os, sys
 import argparse
-
 from huntsman.utils.pyro import run_camera_server
 
 if __name__ == "__main__":
+    
+    #Mount the SSHFS 
+    sys.path.append(
+            os.path.join(os.path.expandvars('$HUNTSMAN_POCS'), 'scripts'))
+    from auto_sshfs_mount import MountSSHFS
+    MountSSHFS()
+    
+    #Run the camera server
     parser = argparse.ArgumentParser()
     parser.add_argument("--ignore_local",
                         help="ignore pyro_camera_local.yaml config file",
