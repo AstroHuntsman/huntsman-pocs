@@ -82,9 +82,9 @@ def on_enter(event_data):
                 broad_band_cameras = list()
                 for cam_name, cam in pocs.observatory.cameras.items():
                     if cam.filter_type.lower().startswith('ha'):
-                        narrow_band_cameras.append(cam.name)
+                        narrow_band_cameras.append(cam_name)
                     else:
-                        broad_band_cameras.append(cam.name)
+                        broad_band_cameras.append(cam_name)
 
                 if len(narrow_band_cameras) > 0:
                     pocs.say("Starting narrow band flat fields")
