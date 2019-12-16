@@ -17,7 +17,7 @@ def Mount(local, remote, ServerAliveInterval=20, ServerAliveCountMax=3):
     Mount remote on local.
     '''
     if not os.path.isdir(local):
-        os.mkdirs(local)
+        os.makedirs(local)
         
     options = f'ServerAliveInterval={ServerAliveInterval},' + \
               f'ServerAliveCountMax={ServerAliveCountMax}'
