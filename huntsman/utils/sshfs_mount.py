@@ -58,9 +58,10 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
     else:
         user = default
         msg = f'{key} environment variable not found. Using f{default} as user.'
-        print(msg)
         if logger is not None:
-            logger.warn(msg)
+            logger.warning(msg)
+        else:
+            print(msg)
     return user
 
 
