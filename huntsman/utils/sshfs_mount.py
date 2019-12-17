@@ -18,13 +18,12 @@ def mount(mountpoint, remote, server_alive_interval=20,
     Mount remote on local.
     '''
     if logger is None:
-        logger = print
+        logger = DummyLogger()
         
-    if not os.path.isdir(mountpoint):
-        try:
-            os.makedirs(mountpoint, exist_ok=True)
-        except FileExistsError:
-            pass #For some reason this is necessary
+    try:
+        os.makedirs(mountpoint, exist_ok=True)
+    except FileExistsError:
+        pass #For some reason this is necessary
         
     options = f'ServerAliveInterval={server_alive_interval},' + \
               f'ServerAliveCountMax={server_alive_count_max}'
@@ -32,11 +31,11 @@ def mount(mountpoint, remote, server_alive_interval=20,
     try:
         subprocess.run(options, shell=False, check=True)
     except Exception as e:
-        logger(f'Failed to mount {remote} on {mountpoint}.')
+        logger.error(f'Failed to mount {remote} on {mountpoint}: {e}')
         raise(e)
     
     
-def unmount(mountpoint):
+def unmount(mountpoint, logger=None):
     '''
     Unmount remote from local.
     '''
@@ -45,7 +44,9 @@ def unmount(mountpoint):
         try:
             subprocess.run(options, shell=False, check=True)
         except:
-            pass
+            if logger is None:
+                logger = DummyLogger()
+            logger.warning('Unable to unmount existing mountpoint.')
         
 #==============================================================================
      
@@ -58,10 +59,9 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
     else:
         user = default
         msg = f'{key} environment variable not found. Using f{default} as user.'
-        if logger is not None:
-            logger.warning(msg)
-        else:
-            print(msg)
+        if logger is None:
+            logger = DummyLogger()
+        logger.warning(msg)
     return user
 
 
@@ -101,7 +101,7 @@ def mount_sshfs(logger=None, user=None, mountpoint=None):
         
     #Get SSH username from environment?
     if user is None:
-          user = get_user(logger=logger)
+        user = get_user(logger=logger)
         
     #Specify the mount point as ~/Huntsmans-Pro 
     if mountpoint is None:
@@ -115,11 +115,11 @@ def mount_sshfs(logger=None, user=None, mountpoint=None):
     
     #Check if the remote is already mounted, if so, unmount
     logger.debug(f'Attempting to unmount {mountpoint}...')
-    unmount(mountpoint)
+    unmount(mountpoint, logger=logger)
     
     #Mount
     logger.debug(f'Mounting {remote} on {mountpoint}...')
-    mount(mountpoint, remote)
+    mount(mountpoint, remote, logger=logger)
     
     #Symlink the directories
     original = os.path.join(mountpoint, 'images')
