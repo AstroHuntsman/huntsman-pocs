@@ -48,21 +48,63 @@ def unmount(mountpoint):
             pass
         
 #==============================================================================
+     
+def get_user(default='huntsman', key='PANUSER', logger=None):
+    '''
+    Return the default user. 
+    '''
+    if 'PANUSER' in os.environ:
+        user = os.environ[key]
+    else:
+        user = default
+        msg = f'{key} environment variable not found. Using f{default} as user.'
+        print(msg)
+        if logger is not None:
+            logger.warn(msg)
+    return user
 
-def mount_sshfs(logger=None, user=None):
+
+def get_mountpoint():
+    '''
+    Return the default mountpoint. In the future, this can use a config file.
+    '''
+    home = os.path.expandvars('$HOME')
+    mountpoint = os.path.join(home, 'Huntsmans-Pro')
+    return mountpoint
+
+#==============================================================================
+#This can be moved (or deleted) later...
+
+class DummyLogger():
     '''
     
     '''
+    def __init__(self):
+        pass
+    def warn(self, msg):
+        print(msg)
+    def error(self, msg):
+        print(msg)
+    def debug(self, msg):
+        print(msg)
+    
+#==============================================================================
+    
+def mount_sshfs(logger=None, user=None, mountpoint=None):
+    '''
+    
+    '''
+    #Get the logger
     if logger is None:
-        logger = print
-
+        logger = DummyLogger()
+        
     #Get SSH username from environment?
     if user is None:
-          user = os.environ['PANUSER']
+          user = get_user(logger=logger)
         
     #Specify the mount point as ~/Huntsmans-Pro 
-    home = os.path.expandvars('$HOME')
-    mountpoint = os.path.join(home, 'Huntsmans-Pro')
+    if mountpoint is None:
+        mountpoint = get_mountpoint()
     
     #Specify the remote directory
     config = load_config()
@@ -71,11 +113,11 @@ def mount_sshfs(logger=None, user=None):
     remote = f"{user}@{remote_ip}:{remote_dir}"
     
     #Check if the remote is already mounted, if so, unmount
-    logger(f'Attempting to unmount {mountpoint}...')
+    logger.debug(f'Attempting to unmount {mountpoint}...')
     unmount(mountpoint)
     
     #Mount
-    logger(f'Mounting {remote} on {mountpoint}...')
+    logger.debug(f'Mounting {remote} on {mountpoint}...')
     mount(mountpoint, remote)
     
     #Symlink the directories
@@ -88,22 +130,18 @@ def mount_sshfs(logger=None, user=None):
             assert(os.path.islink(link))
             assert(os.path.normpath(os.readlink(link))==os.path.normpath(
                     original))
-            logger('Skipping link creation as it already exists.')
+            logger.debug('Skipping link creation as it already exists.')
         except:
             msg = f'Cannot create link. File already exists: {link}'
-            logger(msg)
+            logger.error(msg)
             raise FileExistsError(msg)
     else:
-        logger('Creating symlink to images directory...')
+        logger.debug('Creating symlink to images directory...')
         os.symlink(original, link, target_is_directory=True)
     
-    logger('Done mounting SSHFS!')
+    logger.debug('Done mounting SSHFS!')
     
     return mountpoint
     
 #==============================================================================
-#==============================================================================
 
-if __name__ == '__main__':
-    
-    mount_sshfs()

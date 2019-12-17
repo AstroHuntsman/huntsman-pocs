@@ -155,7 +155,7 @@ def run_camera_server(ignore_local, unmount_sshfs=True):
             name_server.remove(name=config['name'])
             print('Unregistered from name server')
 
-    #Unmount the SSHFS?
-    if unmount_sshfs:
-        sshfs_mount.unmount(mountpoint)
+            #Unmount the SSHFS?
+            if unmount_sshfs:
+                sshfs_mount.unmount(mountpoint)
         
