@@ -53,7 +53,7 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
     '''
     Return the default user. 
     '''
-    if 'PANUSER' in os.environ:
+    if key in os.environ:
         user = os.environ[key]
     else:
         user = default
