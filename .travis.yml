@@ -28,6 +28,10 @@ before_install:
   - touch ~/.ssh/authorized_keys
   - cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
   - ssh-keyscan -H localhost >> ~/.ssh/known_hosts
+addons:
+  apt:
+    packages:
+      - sshfs
 install:
   - cd $TRAVIS_BUILD_DIR
   - pip install -r requirements.txt
