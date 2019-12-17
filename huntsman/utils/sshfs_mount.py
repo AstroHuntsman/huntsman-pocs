@@ -49,14 +49,18 @@ def unmount(mountpoint):
         
 #==============================================================================
 
-def mount_sshfs(logger=None):
+def mount_sshfs(logger=None, user=None):
     '''
     
     '''
     if logger is None:
         logger = print
+
+    #Get SSH username from environment?
+    if user is None:
+          user = os.environ['PANUSER']
         
-    #Specify the mount point as ~/Huntsmans-Pro (for huntsman user)
+    #Specify the mount point as ~/Huntsmans-Pro 
     home = os.path.expandvars('$HOME')
     mountpoint = os.path.join(home, 'Huntsmans-Pro')
     
@@ -64,7 +68,7 @@ def mount_sshfs(logger=None):
     config = load_config()
     remote_ip = config['messaging']['huntsman_pro_ip']
     remote_dir= config['directories']['base']
-    remote = f"huntsman@{remote_ip}:{remote_dir}"
+    remote = f"{user}@{remote_ip}:{remote_dir}"
     
     #Check if the remote is already mounted, if so, unmount
     logger(f'Attempting to unmount {mountpoint}...')
