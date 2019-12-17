@@ -1,7 +1,6 @@
 import sys
 import os
 import requests
-import threading
 from warnings import warn
 from threading import Event
 from threading import Timer
@@ -203,8 +202,6 @@ class Camera(AbstractCamera):
                       filename=None,
                       dark=False,
                       blocking=False,
-                      ngas_push=False,
-                      filename_ngas=None,
                       *args,
                       **kwargs):
         """
@@ -216,7 +213,6 @@ class Camera(AbstractCamera):
             dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
-            ngas_push (bool, optional): Push file to NGAS database? Default is False.
 
         Returns:
             threading.Event: Event that will be set when exposure is complete
@@ -241,22 +237,16 @@ class Camera(AbstractCamera):
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
-        # Start the exposure
-        filename = os.path.abspath(filename) 
-        dir_name, base_name = os.path.split(filename)
-        
-        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name} in {dir_name}')
+        #Start the exposure
+        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
         
         #Remote method call to start the exposure
         #Once this finishes, the filename is returned
         exposure_result = self._proxy.take_exposure(seconds=seconds,
-                                                    base_name=base_name,
-                                                    dir_name=dir_name,
+                                                    filename=filename,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs
-                    #Once exposure is completed, push file to NGAS if necessary
-                    ).then(self._NGASpush, filename_ngas, ngas_push) 
+                                                    **kwargs) 
 
         #Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=seconds + self.readout_time,
@@ -498,8 +488,23 @@ class Camera(AbstractCamera):
 
         return result
     
+
+    def _process_fits(self, file_path, info, *args, **kwargs):
+        '''
+        Override _process_fits, called by process_exposure in take_observation.
+        
+        The difference is that we do an NGAS push following the processing.
+        '''
+        #Call the super method
+        result = super()._process_fits(file_path, info, *args, **kwargs)
+        
+        #Do the NGAS push
+        self._NGASpush(file_path, info)
+        
+        return result
+        
     
-    def _NGASpush(self, filename, filename_ngas, ngas_push=True, port=7778):
+    def _NGASpush(self, filename, metadata, filename_ngas=None, port=7778):
         '''
         Parameters
         ----------
@@ -508,28 +513,17 @@ class Camera(AbstractCamera):
             filename.
         filename_ngas (str, optional):
             The NGAS filename. If None, auto-assign based on filename.
-        ngas_push (bool, optional):
-            Will attempt the push only if True. Else, does nothing!
         port (int, optional):
             The port of the NGAS server. Defaults to the TCP port.
             
-        Returns
-        -------
-        bool:
-            True if success, False if not.
-        '''
-        if not ngas_push: #No need to do anything
-            return True
+        '''        
+        #Define the NGAS filename 
+        if filename_ngas is None:
+            extension = os.path.splitext(filename)[1] 
+            filename = f"{metadata['image_id']}{extension}"
         
-        #Make sure a valid filename is given
-        try:
-            assert(type(filename_ngas)==str)
-        except AssertionError as e:
-            self.logger.error('NGAS filename needs to be specified for NGAS push.')
-            raise e
-                                    
         #Get the IP address of the NGAS server
-        ngas_ip = self.config['messaging']['ngas_server_ip']
+        ngas_ip = self.config['messaging']['huntsman_pro_ip']
         
         #Post the file to the NGAS server
         url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}'
@@ -544,76 +538,8 @@ class Camera(AbstractCamera):
                 r.raise_for_status()
                 
             except Exception as e: 
-                self.logger.debug('Error while performing NGAS push.')
-                self.logger.error(e)
-                return False
-
-        return True
-    
-    
-    #Might be a good idea to override _setup_observation to output filename
-    #suitible for NGAS...
-    def take_observation(self, observation, headers=None, filename=None,
-                         filename_ngas=None, **kwargs):
-        '''
-        Take an observation.
-        Gathers various header information, sets the file path, and calls
-        `take_exposure`. Also creates a `threading.Event` object and a
-        `threading.Thread` object. The Thread calls `process_exposure`
-        after the exposure had completed and the Event is set once
-        `process_exposure` finishes.
-            
-        This overrides the default method of AbstractCamera. The only 
-        difference is that here we specify the necessary information for the 
-        NGAS push.
-        
-        Args:
-            observation (~pocs.scheduler.observation.Observation): Object
-                describing the observation
-            headers (dict, optional): Header data to be saved along with the file.
-            filename (str, optional): pass a filename for the output FITS file to
-                overrride the default file naming system
-            **kwargs (dict): Optional keyword arguments (`exptime`, dark)
-        Returns:
-            threading.Event: An event to be set when the image is done processing
-        '''
-        # To be used for marking when exposure is complete (see `process_exposure`)
-        observation_event = threading.Event()
-
-        exptime, file_path, image_id, metadata = self._setup_observation(
-                                    observation, headers, filename, **kwargs)
-        
-        #Define the NGAS filename as the collapsed filename?
-        if filename_ngas is None:
-            
-            #Remove the directory prefix specified in _setup_observation
-            prefix = os.path.normpath(observation.directory)
-            filename_ngas = os.path.normpath(file_path).split(prefix)[1]
-            
-            #Replace slashes by underscores
-            filename_ngas = filename_ngas[1:].replace(os.sep, '_')
-                                
-        #Take the exposure, passing the NGAS filename
-        exposure_event = self.take_exposure(seconds=exptime,filename=file_path,
-                                            filename_ngas=filename_ngas,
-                                            ngas_push=True, **kwargs)
-
-        # Add most recent exposure to list
-        if self.is_primary:
-            if 'POINTING' in headers:
-                observation.pointing_images[image_id] = file_path
-            else:
-                observation.exposure_list[image_id] = file_path
-
-        # Process the exposure once readout is complete
-        t = threading.Thread(
-            target=self.process_exposure,
-            args=(metadata, observation_event, exposure_event),
-            daemon=True)
-        t.name = '{}Thread'.format(self.name)
-        t.start()
-
-        return observation_event
+                self.logger.error(f'Error while performing NGAS push: {e}')
+                raise(e)
 
 #==============================================================================
         
@@ -724,31 +650,18 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, base_name, dark, dir_name=None, *args,
-                      **kwargs):
+    def take_exposure(self, seconds, filename, dark, *args, **kwargs):
         '''
         Parameters
         ----------
-        base_name (str):
-            The basename of the file.
-        dir_name (str, optional):
-            The directory in which to store the file. If None, will use
-            the images directory indicated by self.config.
+        filename (str):
+            The filename of the exposure result.
             
         Returns
         -------
         str:
             The full filename of the exposure output.
-        '''
-        #Specify the full filename
-        #This uses the camera server's "images" directory 
-        if dir_name is None:
-            filename = os.path.join(os.path.abspath(
-                        self.config['directories']['images']), base_name)
-        #This does not necessarily use the "images" directory
-        else:
-            filename = os.path.join(dir_name, base_name)
-                    
+        '''                    
         #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
@@ -757,6 +670,7 @@ class CameraServer(object):
                                    *args,
                                    **kwargs)
         return filename
+
 
     def autofocus(self, *args, **kwargs):
         if not self.has_focuser:
