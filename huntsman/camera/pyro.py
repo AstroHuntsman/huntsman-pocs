@@ -489,14 +489,14 @@ class Camera(AbstractCamera):
         return result
     
 
-    def _process_fits(self, file_path, info, *args, **kwargs):
+    def _process_fits(self, file_path, info):
         '''
         Override _process_fits, called by process_exposure in take_observation.
         
         The difference is that we do an NGAS push following the processing.
         '''
         #Call the super method
-        result = super()._process_fits(file_path, info, *args, **kwargs)
+        result = super()._process_fits(file_path, info)
         
         #Do the NGAS push
         self._NGASpush(file_path, info)
@@ -511,6 +511,8 @@ class Camera(AbstractCamera):
         filename (str):
             The local filename, the basename of which is the default NGAS
             filename.
+        metadata:
+            A dict-like object containing metadata to build the NGAS filename.
         filename_ngas (str, optional):
             The NGAS filename. If None, auto-assign based on filename.
         port (int, optional):
@@ -669,8 +671,6 @@ class CameraServer(object):
                                    blocking=True,
                                    *args,
                                    **kwargs)
-        return filename
-
 
     def autofocus(self, *args, **kwargs):
         if not self.has_focuser:
