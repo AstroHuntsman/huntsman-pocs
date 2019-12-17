@@ -48,6 +48,8 @@ install:
   # Download just the IERS index.
   - python $POCS/pocs/utils/data.py --no-narrow-field --no-wide-field
   - python setup.py install
+before_script:
+  - echo -e "Host 127.0.0.1\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 script:
   - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
   - export COVERAGE_PROCESS_START=.coveragerc
