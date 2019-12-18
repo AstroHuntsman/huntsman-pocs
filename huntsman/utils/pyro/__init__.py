@@ -4,7 +4,7 @@ import netifaces
 import Pyro4
 from Pyro4 import naming, errors
 
-from huntsman.utils import load_config
+from huntsman.utils import load_config, sshfs_mount
 
 from huntsman.camera.pyro import CameraServer
 
@@ -111,7 +111,7 @@ def run_name_server(host=None, port=None, autoclean=0):
         print("Pyro name server {} already running! Exiting...".format(name_server))
 
 
-def run_camera_server(ignore_local):
+def run_camera_server(ignore_local, unmount_sshfs=True):
     """
     Runs a Pyro camera server.
 
@@ -124,6 +124,9 @@ def run_camera_server(ignore_local):
         $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override the default configuration.
         Default False.
     """
+    #Mount the SSHFS
+    mountpoint = sshfs_mount.mount_sshfs()
+    
     Pyro4.config.SERVERTYPE = "multiplex"
     config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
     host = config.get('host', None)
@@ -151,3 +154,8 @@ def run_camera_server(ignore_local):
             print('\nShutting down...')
             name_server.remove(name=config['name'])
             print('Unregistered from name server')
+
+            #Unmount the SSHFS?
+            if unmount_sshfs:
+                sshfs_mount.unmount(mountpoint)
+        
