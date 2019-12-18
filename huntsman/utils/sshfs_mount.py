@@ -82,7 +82,7 @@ class DummyLogger():
     '''
     def __init__(self):
         pass
-    def warn(self, msg):
+    def warning(self, msg):
         print(msg)
     def error(self, msg):
         print(msg)
