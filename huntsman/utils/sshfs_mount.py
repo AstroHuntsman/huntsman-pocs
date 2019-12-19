@@ -107,10 +107,13 @@ def mount_sshfs(logger=None, user=None, mountpoint=None):
     if mountpoint is None:
         mountpoint = get_mountpoint()
     
+    #Retrieve the IP of the remote
+    config_camera = load_config(config_files=['pyro_camera.yaml'])
+    remote_ip = config_camera['messaging']['huntsman_pro_ip']
+    
     #Specify the remote directory
-    config = load_config()
-    remote_ip = config['messaging']['huntsman_pro_ip']
-    remote_dir= config['directories']['base']
+    config_huntsman = load_config()    
+    remote_dir = config_huntsman['directories']['base']
     remote = f"{user}@{remote_ip}:{remote_dir}"
     
     #Check if the remote is already mounted, if so, unmount
@@ -123,7 +126,7 @@ def mount_sshfs(logger=None, user=None, mountpoint=None):
     
     #Symlink the directories
     original = os.path.join(mountpoint, 'images')
-    link = config['directories']['images']
+    link = config_huntsman['directories']['images']
     
     #If link already exists, make sure it is pointing to the right place
     if os.path.exists(link):
