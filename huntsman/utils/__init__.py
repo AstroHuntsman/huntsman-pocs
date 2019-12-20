@@ -13,7 +13,6 @@ def query_config_server(logger=None, *args, **kwargs):
     try:
         key = get_own_ip()
         config = client.get_config(key, *args, **kwargs)
-        return config
     except Exception as e:
         msg = f'Unable to retrieve config file from server: {e}'
         if logger is not None:
@@ -21,6 +20,7 @@ def query_config_server(logger=None, *args, **kwargs):
         else:
             print(msg)
         raise(e)
+    return config
         
         
 def load_config(config_files=None, **kwargs):

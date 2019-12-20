@@ -128,10 +128,8 @@ def run_camera_server(ignore_local, unmount_sshfs=True):
     mountpoint = sshfs_mount.mount_sshfs()
     
     Pyro4.config.SERVERTYPE = "multiplex"
-    
-    
-    #config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
-    #Load the config file
+        
+    #Load the config file from remote server
     config = query_config_server()
     
     host = config.get('host', None)
