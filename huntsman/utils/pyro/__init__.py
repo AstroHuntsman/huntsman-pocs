@@ -4,7 +4,7 @@ import netifaces
 import Pyro4
 from Pyro4 import naming, errors
 
-from huntsman.utils import load_config, sshfs_mount
+from huntsman.utils import load_config, sshfs_mount, query_config_server
 
 from huntsman.camera.pyro import CameraServer
 
@@ -128,7 +128,12 @@ def run_camera_server(ignore_local, unmount_sshfs=True):
     mountpoint = sshfs_mount.mount_sshfs()
     
     Pyro4.config.SERVERTYPE = "multiplex"
-    config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
+    
+    
+    #config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
+    #Load the config file
+    config = query_config_server()
+    
     host = config.get('host', None)
     if not host:
         host = get_own_ip(verbose=True)
