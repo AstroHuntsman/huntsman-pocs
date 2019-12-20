@@ -4,7 +4,7 @@ import netifaces
 import Pyro4
 from Pyro4 import naming, errors
 
-from huntsman.utils import load_config, sshfs_mount, query_config_server
+from huntsman.utils import sshfs_mount, query_config_server
 
 from huntsman.camera.pyro import CameraServer
 
