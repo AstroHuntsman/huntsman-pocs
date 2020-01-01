@@ -5,8 +5,8 @@ import Pyro4
 from Pyro4 import naming, errors
 
 from huntsman.utils import load_config, sshfs_mount
-
 from huntsman.camera.pyro import CameraServer
+from panoptes.utils.config import client
 
 
 def get_own_ip(verbose=False, logger=None):
@@ -111,7 +111,7 @@ def run_name_server(host=None, port=None, autoclean=0):
         print("Pyro name server {} already running! Exiting...".format(name_server))
 
 
-def run_camera_server(ignore_local, unmount_sshfs=True):
+def run_camera_server(ignore_local, unmount_sshfs=True, use_server=False):
     """
     Runs a Pyro camera server.
 
@@ -123,12 +123,27 @@ def run_camera_server(ignore_local, unmount_sshfs=True):
         $HUNTSMAN_POCS/conf_files/pyro_camera.yaml only. If False will allow
         $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override the default configuration.
         Default False.
+        
+        unmount_sshfs (bool, optional): If True, unmounts the sshfs upon 
+            termination of the camera server.
+            
+        use_server (bool, optional): If True, queries the config server for the
+            config file using the local IP address. This will override any other 
+            config file.
     """
     #Mount the SSHFS
     mountpoint = sshfs_mount.mount_sshfs()
     
     Pyro4.config.SERVERTYPE = "multiplex"
-    config = load_config(config_files=['pyro_camera.yaml'], ignore_local=ignore_local)
+        
+    #Load the config file 
+    if use_server:
+        ip_address = get_own_ip()
+        config = client.get_config(ip_address)
+    else:
+        config = load_config(config_files=['pyro_camera.yaml'],
+                             ignore_local=ignore_local)
+    
     host = config.get('host', None)
     if not host:
         host = get_own_ip(verbose=True)
