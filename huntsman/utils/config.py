@@ -98,8 +98,8 @@ def query_config_server(key=None, name='config_server'):
     dict:
         The config dictionary.
     '''
-    camera_server = Pyro4.Proxy(f'PYRONAME:{name}')
-    return camera_server.get_config(key=key)
+    config_server = Pyro4.Proxy(f'PYRONAME:{name}')
+    return config_server.get_config(key=key)
             
 #==============================================================================
 
