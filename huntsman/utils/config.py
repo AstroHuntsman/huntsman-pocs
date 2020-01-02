@@ -15,10 +15,9 @@ from huntsman.utils import load_config, get_own_ip
 
 @Pyro4.expose
 class ConfigServer():
-    """
+    '''
     Class representing the config server.
-    """
-
+    '''
     def __init__(self, config_file=None, **kwargs):
         '''
         
@@ -44,7 +43,17 @@ class ConfigServer():
 def start_config_server(host=None, port=6563, name='config_server',
                         *args, **kwargs):
     '''
+    Start the config server by creating a ConfigServer instance and registering
+    it with the Pyro name server.
     
+    Parameters
+    ----------
+    host (str):
+        The host name or IP address. If none, uses the IP of the local machine.
+    port (int):
+        The port with which to expose the server.
+    name (str):
+        The name of the config server used by the Pyro name server.       
     '''
     if host is None:
         host = get_own_ip()
@@ -61,15 +70,33 @@ def start_config_server(host=None, port=6563, name='config_server',
         uri = daemon.register(config_server)
         name_server.register(name, uri)
         
+        print(f'ConfigServer object registered as: {uri}')
+        
         #Request loop
         try:
+            print('Entering request loop... ')
             daemon.requestLoop()
         finally:
+            print('Unregistering from name server...')
             name_server.remove(name=name)
+        
         
 def query_config_server(key=None, name='config_server'):
     '''
+    Query the config server.
     
+    Parameters
+    ----------
+    key (str):
+        The key used to query the config file. If none, the whole config is 
+        returned.
+    name (str):
+        The name used to locate the config server from the Pyro name server.
+    
+    Returns
+    -------
+    dict:
+        The config dictionary.
     '''
     camera_server = Pyro4.Proxy(f'PYRONAME:{name}')
     return camera_server.get_config(key=key)
