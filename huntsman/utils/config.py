@@ -7,7 +7,7 @@ Created on Thu Jan  2 12:04:11 2020
 
 Code to provide a config server using pyro.
 """
-import os
+import os, time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip
 
@@ -40,8 +40,36 @@ class ConfigServer():
     
 #==============================================================================
 
+def locate_name_server(wait=None, logger=None):
+    '''
+    Locate and return the name server, waiting if necessary.
+    
+    Parameters
+    ----------
+    wait (float or None) [seconds]:
+        If not None, attempt to locate the NS at this frequency. 
+
+    Returns
+    -------
+    Pyro name server.        
+    '''
+    if wait is None:
+        return Pyro4.locateNS()
+    
+    while True:
+        try:
+            return Pyro4.locateNS()
+        except Pyro4.errors.PyroError:
+            msg = 'Unable to locate name server. Waiting...'
+            if logger is None:
+                print(msg)
+            else:
+                logger.debug(msg)
+            time.sleep(wait)
+        
+        
 def start_config_server(host=None, port=6563, name='config_server',
-                        *args, **kwargs):
+                        wait=120, *args, **kwargs):
     '''
     Start the config server by creating a ConfigServer instance and registering
     it with the Pyro name server.
@@ -53,7 +81,9 @@ def start_config_server(host=None, port=6563, name='config_server',
     port (int):
         The port with which to expose the server.
     name (str):
-        The name of the config server used by the Pyro name server.       
+        The name of the config server used by the Pyro name server. 
+    wait (float or None) [seconds]:
+        If not None, attempt to locate the NS at this frequency. 
     '''
     if host is None:
         host = get_own_ip()
@@ -61,7 +91,7 @@ def start_config_server(host=None, port=6563, name='config_server',
     with Pyro4.Daemon(host=host, port=port) as daemon:
         
         #Locate the name server
-        name_server = Pyro4.locateNS()
+        name_server = locate_name_server(wait=wait)
         
         #Create a ConfigServer object
         config_server = ConfigServer(*args, **kwargs)
