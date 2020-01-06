@@ -7,7 +7,7 @@ Created on Thu Jan  2 12:04:11 2020
 
 Code to provide a config server using pyro.
 """
-import os, time
+import os, sys, time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip
 
@@ -56,16 +56,27 @@ def locate_name_server(wait=None, logger=None):
     if wait is None:
         return Pyro4.locateNS()
     
-    while True:
-        try:
-            return Pyro4.locateNS()
-        except Pyro4.errors.PyroError:
-            msg = 'Unable to locate name server. Waiting...'
-            if logger is None:
-                print(msg)
-            else:
-                logger.debug(msg)
-            time.sleep(wait)
+    try:
+        #Look for NS periodically until it is found
+        while True:
+            try:
+                return Pyro4.locateNS()
+            except Pyro4.errors.PyroError:
+                msg = 'Unable to locate name server. Waiting...'
+                if logger is None:
+                    print(msg)
+                else:
+                    logger.debug(msg)
+                time.sleep(wait)
+    
+    #Catch keyboard interrupt
+    except KeyboardInterrupt:
+        msg = 'Keyboard interupt while locating name server. Terminating!'
+        if logger is None:
+            print(msg)
+        else:
+            logger.debug(msg)        
+        sys.exit(0)
         
         
 def start_config_server(host=None, port=6563, name='config_server',
