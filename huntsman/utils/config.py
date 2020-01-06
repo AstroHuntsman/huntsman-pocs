@@ -24,7 +24,7 @@ class ConfigServer():
         '''
         if config_file is None:
             config_file = os.path.join(os.environ['HUNTSMAN_POCS'],
-                                       'conf_files', 'camera_info_local.yaml')
+                                       'conf_files', 'device_info.yaml')
             
         #Read the config file
         self.config = load_config(config_files=[config_file], **kwargs)
@@ -42,7 +42,7 @@ class ConfigServer():
 
 def locate_name_server(wait=None, logger=None):
     '''
-    Locate and return the name server, waiting if necessary.
+    Locate and return the name server (NS), waiting if necessary.
     
     Parameters
     ----------
