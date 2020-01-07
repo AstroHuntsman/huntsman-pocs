@@ -12,7 +12,7 @@ from pocs.utils.logger import get_root_logger
 from pocs.utils.database import PanDB
 from pocs.utils.messaging import PanMessaging
 
-from huntsman.utils import load_config
+from huntsman.utils import load_config, get_own_ip
 from huntsman.utils.config import query_config_server
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
@@ -245,6 +245,11 @@ def config_server(request):
             '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
+    
+    #Need to mimic the correct IP address in the config file
+    config_server = Pyro4.Proxy(f'PYRONAME:config_server')
+    key = get_own_ip()
+    config_server.config[key] = config_server.config['localhost']
         
     #Check the config server works
     waited = 0
