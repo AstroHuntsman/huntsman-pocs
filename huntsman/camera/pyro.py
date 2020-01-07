@@ -18,7 +18,7 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 
-from huntsman.utils import load_config
+from huntsman.utils.config import load_device_config
 
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
@@ -555,9 +555,9 @@ class CameraServer(object):
     Wrapper for the camera class for use as a Pyro camera server
     """
 
-    def __init__(self, config_files=['pyro_camera.yaml']):
+    def __init__(self, config_files=None):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
-        self.config = load_config(config_files=config_files)
+        self.config = load_device_config(config_files=config_files)
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
 
