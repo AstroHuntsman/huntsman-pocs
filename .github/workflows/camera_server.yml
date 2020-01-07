@@ -1,0 +1,17 @@
+name: Docker Image CI for camera server
+
+on: 
+  push:
+    branches: 
+      - develop
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: docker_build_cameraserver
+      run: docker build . --file docker/camera_server.docker --tag camera_server:$(date +%s)
