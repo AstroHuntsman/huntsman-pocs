@@ -1,0 +1,88 @@
+#==============================================================================
+#Install everything required to run the camera server and run it
+#==============================================================================
+#Specify the OS
+FROM raspbian/jessie
+
+#Environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+
+#Update apt-get 
+RUN apt-get -y upgrade
+RUN apt-get update
+RUN apt-get -y dist-upgrade
+
+#Some initial packages
+RUN apt-get -y install bzip2
+RUN apt-get -y install git
+RUN apt-get -y install gcc
+RUN apt-get -y install sshfs 
+
+#==============================================================================
+#Berryconda
+
+ENV CONDA_URL=https://github.com/jjhelmus/berryconda/releases/download/v2.0.0/Berryconda3-2.0.0-Linux-armv7l.sh
+ENV CONDA_PATH=/root/berryconda3
+RUN wget $CONDA_URL
+RUN chmod +x Berryconda3-2.0.0-Linux-armv7l.sh
+RUN ./Berryconda3-2.0.0-Linux-armv7l.sh -b -p $CONDA_PATH
+
+RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/
+RUN ln -s $CONDA_PATH/bin/python3.6 /usr/local/bin/python
+RUN ln -s $CONDA_PATH/bin/pip /usr/local/bin/
+
+RUN pip install --upgrade pip
+
+#==============================================================================
+#Huntsman-POCS
+
+RUN useradd huntsman
+
+#Huntsman-POCS variables
+ENV PANUSER=huntsman
+ENV PANDIR=/var/huntsman
+ENV POCS=${PANDIR}/POCS
+ENV PAWS=${PANDIR}/PAWS
+ENV HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
+
+#POCs folders
+RUN mkdir $PANDIR && chown $PANUSER $PANDIR
+RUN mkdir -p $PANDIR/logs
+RUN mkdir -p $PANDIR/images
+
+#Clone necessary repos
+WORKDIR $PANDIR
+RUN git clone https://github.com/panoptes/POCS.git
+RUN git clone https://github.com/AstroHuntsman/huntsman-pocs.git
+
+WORKDIR $POCS
+RUN python setup.py develop
+
+WORKDIR $HUNTSMAN_POCS
+RUN python setup.py develop
+
+#==============================================================================
+#Install python deps
+
+RUN conda install astropy
+RUN conda install matplotlib
+RUN conda install requests
+RUN conda install scipy
+
+RUN pip install pymongo
+RUN pip install netifaces
+RUN pip install pyro4
+RUN pip install pyyaml
+#RUN pip install panoptes-utils
+
+#==============================================================================
+
+#For some reason this is necessary
+RUN rm -r $PANDIR/images
+
+#COPY pyro_camera_local.yaml $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml
+
+#Mount the SSHFS & start pyro camera server (blocking)
+CMD python $HUNTSMAN_POCS/scripts/pyro_camera_server.py 
+
+
