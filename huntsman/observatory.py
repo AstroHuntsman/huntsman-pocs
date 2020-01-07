@@ -434,18 +434,17 @@ class HuntsmanObservatory(Observatory):
                     camera.file_extension)
 
                 # Take picture and get event
-                if exptimes[cam_name][-1].value < max_exptime:
-                    camera_event = camera.take_observation(
-                        dark_obs,
-                        fits_headers,
-                        filename=filename,
-                        exptime=exptimes[cam_name][-1]
-                    )
+                camera_event = camera.take_observation(
+                    dark_obs,
+                    fits_headers,
+                    filename=filename,
+                    exptime=exptimes[cam_name][-1]
+                )
 
-                    camera_events[cam_name] = {
-                        'event': camera_event,
-                        'filename': filename,
-                    }
+                camera_events[cam_name] = {
+                    'event': camera_event,
+                    'filename': filename,
+                }
 
             # Block until done exposing on all cameras
             while not all([info['event'].is_set() for info in camera_events.values()]):
