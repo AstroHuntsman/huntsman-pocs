@@ -268,10 +268,10 @@ def config_server(name_server, request):
             
             return proc
         
-        except Exception as e:
-            print(e)
+        except:
             time.sleep(1)
             waited += 1
+            
     raise TimeoutError("Timeout waiting for config server.")
     
     
