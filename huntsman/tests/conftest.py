@@ -241,8 +241,8 @@ def name_server(request):
 def config_server(request):
     
     #Start the config server
-    cmd = [os.path.expandvars('$HUNTSMAN_POCS/scripts/start_config_server.py'),
-           '--host', 'localhost']
+    cmd = [os.path.expandvars(
+            '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
     
@@ -256,7 +256,6 @@ def config_server(request):
         except:
             time.sleep(1)
             waited += 1
-
     raise TimeoutError("Timeout waiting for config server.")
     
 
