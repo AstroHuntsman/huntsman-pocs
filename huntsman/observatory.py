@@ -408,9 +408,6 @@ class HuntsmanObservatory(Observatory):
 
         # Loop until conditions are met for dark fields
         while True:
-            # self.logger.debug("Slewing to parked-mount coords: {}".format(dark_obs.field))
-            # self.mount.set_target_coordinates(dark_obs.field)
-            # self.mount.slew_to_target()
             self.status()  # Seems to help with reading coords
 
             fits_headers = self.get_standard_headers(observation=dark_obs)
