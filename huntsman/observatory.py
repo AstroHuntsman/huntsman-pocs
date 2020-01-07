@@ -134,11 +134,11 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("HDR Targets: {}".format(hdr_targets))
 
             fields = [Field(target['name'], target['position']) for target in hdr_targets]
-            exp_times = [target['exp_time'][0]
-                         for target in hdr_targets]  # Not sure why exp_time is in tuple
+            exptimes = [target['exptime'][0]
+                         for target in hdr_targets]  # Not sure why exptime is in tuple
 
             observation.field = fields
-            observation.exp_time = exp_times
+            observation.exptime = exptimes
 
             self.logger.debug("New Dithered Observation: {}".format(observation))
 
@@ -230,7 +230,7 @@ class HuntsmanObservatory(Observatory):
         image_dir = self.config['directories']['images']
 
         flat_obs = self._create_flat_field_observation(alt=alt, az=az)
-        exp_times = {cam_name: [1. * u.second] for cam_name in camera_list}
+        exptimes = {cam_name: [1. * u.second] for cam_name in camera_list}
 
         # Loop until conditions are met for flat-fielding
         while True:
@@ -259,12 +259,12 @@ class HuntsmanObservatory(Observatory):
                     'flat_{:02d}'.format(flat_obs.current_exp_num), camera.file_extension)
 
                 # Take picture and get event
-                if exp_times[cam_name][-1].value < max_exptime:
+                if exptimes[cam_name][-1].value < max_exptime:
                     camera_event = camera.take_observation(
                         flat_obs,
                         fits_headers,
                         filename=filename,
-                        exp_time=exp_times[cam_name][-1]
+                        exptime=exptimes[cam_name][-1]
                     )
 
                     camera_events[cam_name] = {
@@ -311,27 +311,27 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Elapsed time: {}".format(elapsed_time))
 
                 # Get suggested exposure time
-                exp_time = int(exp_times[cam_name][-1].value * (target_adu / counts) *
+                exptime = int(exptimes[cam_name][-1].value * (target_adu / counts) *
                                (2.0 ** (elapsed_time / 180.0)) + 0.5)
-                if exp_time < 1:
-                    exp_time = 1
-                self.logger.debug("Suggested exp_time for {}: {}".format(cam_name, exp_time))
-                exp_times[cam_name].append(exp_time * u.second)
+                if exptime < 1:
+                    exptime = 1
+                self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
+                exptimes[cam_name].append(exptime * u.second)
 
             self.logger.debug("Checking for long exposures")
             # Stop flats if any time is greater than max
-            if all([t[-1].value >= max_exptime for t in exp_times.values()]):
+            if all([t[-1].value >= max_exptime for t in exptimes.values()]):
                 self.logger.debug("Exposure times greater than max, stopping flat fields")
                 break
 
             # Stop flats if we are going on too long
             self.logger.debug("Checking for too many exposures")
-            if any([len(t) >= max_num_exposures for t in exp_times.values()]):
+            if any([len(t) >= max_num_exposures for t in exptimes.values()]):
                 self.logger.debug("Too many flats, quitting")
                 break
 
             self.logger.debug("Checking for saturation")
-            if is_saturated and exp_times[cam_name][-1].value < 2:
+            if is_saturated and exptimes[cam_name][-1].value < 2:
                 self.logger.debug(
                     "Saturated with short exposure, waiting 30 seconds before next exposure")
                 max_num_exposures += 1
@@ -339,7 +339,7 @@ class HuntsmanObservatory(Observatory):
 
         # Add a bias exposure
         for cam_name in camera_list:
-            exp_times[cam_name].append(0 * u.second)
+            exptimes[cam_name].append(0 * u.second)
 
         # Record how many exposures we took
         num_exposures = flat_obs.current_exp_num
@@ -354,7 +354,7 @@ class HuntsmanObservatory(Observatory):
             for cam_name in camera_list:
 
                 try:
-                    exp_time = exp_times[cam_name][i]
+                    exptime = exptimes[cam_name][i]
                 except KeyError:
                     break
 
@@ -372,7 +372,7 @@ class HuntsmanObservatory(Observatory):
                     flat_obs,
                     fits_headers,
                     filename=filename,
-                    exp_time=exp_time,
+                    exptime=exptime,
                     dark=True
                 )
 
@@ -512,7 +512,7 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug("Creating dithered observation")
         field = Field('Evening Flats', flat_coords.to_string('hmsdms'))
-        flat_obs = DitheredObservation(field, exp_time=1. * u.second)
+        flat_obs = DitheredObservation(field, exptime=1. * u.second)
         flat_obs.seq_time = utils.current_time(flatten=True)
 
         if isinstance(flat_obs, DitheredObservation):
@@ -527,10 +527,10 @@ class HuntsmanObservatory(Observatory):
 
             fields = [Field('Dither{:02d}'.format(i), coord)
                       for i, coord in enumerate(dither_coords)]
-            exp_times = [flat_obs.exp_time for coord in dither_coords]
+            exptimes = [flat_obs.exptime for coord in dither_coords]
 
             flat_obs.field = fields
-            flat_obs.exp_time = exp_times
+            flat_obs.exptime = exptimes
             flat_obs.min_nexp = len(fields)
             flat_obs.exp_set_size = len(fields)
 

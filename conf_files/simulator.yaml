@@ -2,6 +2,6 @@
    name: NGC6744
    position: 19h09m46.1s -63d51m27s
    priority: 100
-   exp_time: 300
+   exptime: 300
    min_nexp: 5
    exp_set_size: 5
