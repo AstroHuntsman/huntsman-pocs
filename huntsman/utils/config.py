@@ -24,8 +24,7 @@ class ConfigServer():
         '''
         if config_file is None:
             config_file = os.path.join(os.environ['HUNTSMAN_POCS'],
-                                       'conf_files', 'device_info.yaml')
-            
+                                       'conf_files', 'device_info.yaml')           
         #Read the config file
         self.config_ = load_config(config_files=[config_file], **kwargs)
         

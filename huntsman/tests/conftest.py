@@ -257,11 +257,13 @@ def config_server(name_server, request):
             
             config = query_config_server()
             assert(isinstance(config, dict))  
-                        
+                                    
             #This is the hack...
             config_server = Pyro4.Proxy('PYRONAME:config_server')
             key = get_own_ip()
-            config_server.config[key] = config_server.config['localhost']
+            config = {}
+            config[key] = config_server.config['localhost']
+            config_server.config = config
             
             return proc
         
