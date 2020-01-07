@@ -3,19 +3,27 @@ name: huntsman
 initial: sleeping
 location: states
 states:
-    - parked
-    - sleeping
-    - housekeeping
-    - ready
-    - calibrating
-    - scheduling
-    - preparing
-    - slewing
-    - focusing
-    - observing
-    - analyzing
-    - dithering
-    - parking
+    parking:
+        tags: always_safe
+    parked:
+        tags: always_safe
+    sleeping:
+        tags: always_safe
+    housekeeping:
+        tags: always_safe
+    ready:
+        tags: always_safe
+    scheduling:
+        tags: always_safe
+    calibrating:
+        tags: at_twilight
+    focusing:
+        tags: at_twilight
+    preparing:
+    slewing:
+    observing:
+    analyzing:
+    dithering:
 transitions:
     -
         source:
@@ -46,12 +54,12 @@ transitions:
         source: housekeeping
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized 
+        conditions: mount_is_initialized
     -
         source: sleeping
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized 
+        conditions: mount_is_initialized
     -
         source: ready
         dest: calibrating
@@ -59,7 +67,7 @@ transitions:
     -
         source: ready
         dest: scheduling
-        trigger: schedule        
+        trigger: schedule
     -
         source: calibrating
         dest: scheduling

@@ -27,7 +27,7 @@ def get_target_list(target_name,
             pattern, either a SkyCoord or an object that can be converted to one
             by the SkyCoord constructor (e.g. string).
         exposure_parameters (dict): dictionary of keyword parameters to pass to
-            `Imager.exp_time_sequence()`. See that method's docstring for
+            `Imager.exptime_sequence()`. See that method's docstring for
             details of all the accepted parameters.
         dither_parameters (dict): dictionary of keyword parameters to pass to
             `dither.get_dither_positions()``. See that function's docstring for
@@ -50,7 +50,7 @@ def get_target_list(target_name,
             raise ValueError(
                 "Base position '{}' could not be converted to a SkyCoord object!", base_position)
 
-    explist = imager.exp_time_sequence(**exposure_parameters)
+    explist = imager.exptime_sequence(**exposure_parameters)
 
     target_list = []
 
@@ -67,7 +67,7 @@ def get_target_list(target_name,
         target['name'] = target_name
         target['position'] = position_list[i].to_string('hmsdms')
         target['priority'] = priority
-        target['exp_time'] = explist[i].value,
+        target['exptime'] = explist[i].value,
         target_list.append(target)
 
     return target_list

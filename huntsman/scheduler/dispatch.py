@@ -19,9 +19,9 @@ class Scheduler(dispatch.Scheduler):
         assert field_config['name'] not in self._observations.keys(), \
             self.logger.error("Cannot add duplicate field name")
 
-        if 'exp_time' in field_config:
-            field_config['exp_time'] = float(
-                field_config['exp_time']) * u.second
+        if 'exptime' in field_config:
+            field_config['exptime'] = float(
+                field_config['exptime']) * u.second
 
         field = Field(field_config['name'], field_config['position'])
 
@@ -49,10 +49,10 @@ class Scheduler(dispatch.Scheduler):
 
                 fields = [Field(field_config['name'], coord)
                           for i, coord in enumerate(dither_coords)]
-                exp_times = [obs.exp_time for coord in dither_coords]
+                exptimes = [obs.exptime for coord in dither_coords]
 
                 obs.field = fields
-                obs.exp_time = exp_times
+                obs.exptime = exptimes
                 obs.min_nexp = len(fields)
                 obs.exp_set_size = len(fields)
 
