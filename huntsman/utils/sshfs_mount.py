@@ -76,8 +76,7 @@ def get_mountpoint():
     
 #==============================================================================
     
-def mount_sshfs(logger=None, user=None, mountpoint=None, config_files=None,
-                **kwargs):
+def mount_sshfs(logger=None, user=None, mountpoint=None, **kwargs):
     '''
     
     '''
@@ -94,8 +93,7 @@ def mount_sshfs(logger=None, user=None, mountpoint=None, config_files=None,
         mountpoint = get_mountpoint()
     
     #Retrieve the IP of the remote
-    config_camera = load_device_config(config_files=config_files, **kwargs)
-    remote_ip = config_camera['messaging']['huntsman_pro_ip']
+    remote_ip=load_device_config(key='messaging', **kwargs)['huntsman_pro_ip']
     
     #Specify the remote directory
     config_huntsman = load_config()    

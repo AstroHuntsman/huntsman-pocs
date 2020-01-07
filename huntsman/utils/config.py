@@ -146,12 +146,15 @@ def query_config_server(key=None, name='config_server'):
             
 #==============================================================================
 
-def load_device_config(config_files=None, logger=None, **kwargs):
+def load_device_config(key=None, config_files=None, logger=None, **kwargs):
     '''
     Load the device config from either the config server or local files.
     
     Parameters
     ----------
+    key:
+        The key used to query the config server. Only used if config_files
+        is None.
     config_files:
         List of config file names. If None (default), use the config server.
         
@@ -174,10 +177,11 @@ def load_device_config(config_files=None, logger=None, **kwargs):
     
     #Load config from the config server?
     else:
-        ip = get_own_ip()
-        logger.debug(f'Loading remote config with key: {ip}')
+        if key is None:
+            key = get_own_ip()
+        logger.debug(f'Loading remote config with key: {key}')
         try:
-            config = query_config_server(key=ip)
+            config = query_config_server(key=key)
         except Exception as e:
             logger.error(f'Unable to load remote config: {e}')
             raise(e)
