@@ -238,26 +238,22 @@ def name_server(request):
 
 
 @pytest.fixture(scope='session')
-def config_server(request):
+def config_server(name_server, request):
     
     #Start the config server
     cmd = [os.path.expandvars(
             '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
-    
-    #Need to mimic the correct IP address in the config file
-    config_server = Pyro4.Proxy(f'PYRONAME:config_server')
-    key = get_own_ip()
-    config_server.config[key] = config_server.config['localhost']
-        
+            
     #Check the config server works
     waited = 0
     while waited <= 20:
         try:
             config = query_config_server()
-            assert(isinstance(config, dict))
+            assert(isinstance(config, dict))            
             return proc
+        
         except:
             time.sleep(1)
             waited += 1
@@ -267,7 +263,7 @@ def config_server(request):
 @pytest.fixture(scope='session')
 def camera_server(name_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
-               '--ignore_local']
+               '--ignore_local', '--key', 'localhost']
     cs_proc = subprocess.Popen(cs_cmds)
     request.addfinalizer(lambda: end_process(cs_proc))
     # Give camera server time to start up

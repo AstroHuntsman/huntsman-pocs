@@ -49,8 +49,8 @@ def run_name_server(host=None, port=None, autoclean=0, logger=None):
 
 #==============================================================================
 
-def run_camera_server(ignore_local, unmount_sshfs=True, config_files=None,
-                      logger=None):
+def run_camera_server(ignore_local, unmount_sshfs=True, logger=None,
+                      **kwargs):
     """
     Runs a Pyro camera server.
 
@@ -66,8 +66,6 @@ def run_camera_server(ignore_local, unmount_sshfs=True, config_files=None,
         unmount_sshfs (bool, optional): If True, unmounts the sshfs upon 
             termination of the camera server.
             
-        config_files (list of filenames): If given, read local config files.
-                                        Else (default), use the config server.
     """
     if logger is None:
         logger = DummyLogger()
@@ -78,7 +76,7 @@ def run_camera_server(ignore_local, unmount_sshfs=True, config_files=None,
     Pyro4.config.SERVERTYPE = "multiplex"
         
     #Load the config file 
-    config = load_device_config(config_files=config_files)
+    config = load_device_config(**kwargs)
 
     #Specify address
     host = config.get('host', None)

@@ -106,6 +106,7 @@ def start_config_server(host=None, port=6563, name='config_server',
         
         #Locate the name server
         name_server = locate_name_server(wait=wait)
+        logger.info('Found name server.')
         
         #Create a ConfigServer object
         config_server = ConfigServer(*args, **kwargs)
