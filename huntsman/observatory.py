@@ -135,7 +135,7 @@ class HuntsmanObservatory(Observatory):
 
             fields = [Field(target['name'], target['position']) for target in hdr_targets]
             exptimes = [target['exptime'][0]
-                         for target in hdr_targets]  # Not sure why exptime is in tuple
+                        for target in hdr_targets]  # Not sure why exptime is in tuple
 
             observation.field = fields
             observation.exptime = exptimes
