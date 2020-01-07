@@ -312,7 +312,7 @@ class HuntsmanObservatory(Observatory):
 
                 # Get suggested exposure time
                 exptime = int(exptimes[cam_name][-1].value * (target_adu / counts) *
-                               (2.0 ** (elapsed_time / 180.0)) + 0.5)
+                              (2.0 ** (elapsed_time / 180.0)) + 0.5)
                 if exptime < 1:
                     exptime = 1
                 self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
@@ -389,7 +389,6 @@ class HuntsmanObservatory(Observatory):
     def take_dark_fields(self,
                          max_exptime=60.,
                          camera_list=None,
-                         max_num_exposures=10,
                          *args, **kwargs
                          ):
         """Take dark fields
@@ -397,7 +396,6 @@ class HuntsmanObservatory(Observatory):
         Args:
             max_exptime (float, optional): Maximum exposure time before stopping
             camera_list (list, optional): List of cameras to use for darks
-            max_num_exposures (int, optional): Maximum number of darks to take
             *args (TYPE): Description
             **kwargs (TYPE): Description
 
@@ -406,7 +404,7 @@ class HuntsmanObservatory(Observatory):
         image_dir = self.config['directories']['images']
 
         dark_obs = self._create_dark_observation()
-        exp_times = {cam_name: [1. * u.second] for cam_name in camera_list}
+        exptimes = {cam_name: [1. * u.second] for cam_name in camera_list}
 
         # Loop until conditions are met for dark fields
         while True:
@@ -436,12 +434,12 @@ class HuntsmanObservatory(Observatory):
                     camera.file_extension)
 
                 # Take picture and get event
-                if exp_times[cam_name][-1].value < max_exptime:
+                if exptimes[cam_name][-1].value < max_exptime:
                     camera_event = camera.take_observation(
                         dark_obs,
                         fits_headers,
                         filename=filename,
-                        exp_time=exp_times[cam_name][-1]
+                        exptime=exptimes[cam_name][-1]
                     )
 
                     camera_events[cam_name] = {
@@ -543,7 +541,7 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug("Creating darks observation")
         dark_field = Field('Darks', dark_coords)
-        dark_obs = DarkObservation(dark_field, exp_time=1. * u.second)
+        dark_obs = DarkObservation(dark_field, exptime=1. * u.second)
         dark_obs.seq_time = utils.current_time(flatten=True)
 
         if isinstance(dark_obs, DarkObservation):
@@ -552,10 +550,10 @@ class HuntsmanObservatory(Observatory):
 
             dark_fields = [Field('Dark{:02d}'.format(i), dark_coords)
                            for i in range(n_darks)]
-            exp_times = [dark_obs.exp_time for i in range(n_darks)]
+            exptimes = [dark_obs.exptime for i in range(n_darks)]
 
             dark_obs.field = dark_fields
-            dark_obs.exp_time = exp_times
+            dark_obs.exptime = exptimes
             dark_obs.min_nexp = len(dark_fields)
             dark_obs.exp_set_size = len(dark_fields)
 
