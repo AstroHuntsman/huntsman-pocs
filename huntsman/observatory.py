@@ -389,7 +389,6 @@ class HuntsmanObservatory(Observatory):
     def take_dark_fields(self,
                          max_exptime=60.,
                          camera_list=None,
-                         max_num_exposures=10,
                          *args, **kwargs
                          ):
         """Take dark fields
@@ -397,7 +396,6 @@ class HuntsmanObservatory(Observatory):
         Args:
             max_exptime (float, optional): Maximum exposure time before stopping
             camera_list (list, optional): List of cameras to use for darks
-            max_num_exposures (int, optional): Maximum number of darks to take
             *args (TYPE): Description
             **kwargs (TYPE): Description
 
