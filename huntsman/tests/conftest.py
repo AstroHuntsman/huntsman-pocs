@@ -246,6 +246,8 @@ def config_server(request):
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
     
+    assert(False)
+    
     #Check the config server works
     waited = 0
     while waited <= 20:
