@@ -236,10 +236,14 @@ def name_server(request):
 
     raise TimeoutError("Timeout waiting for name server to start")
 
-
+    
 @pytest.fixture(scope='session')
 def config_server(name_server, request):
-    
+    '''
+    The annoyance of this is that the test code may have a different IP
+    from those in the actual device_info.yaml and can vary between runtime
+    environments. So, here is a hack to make it work.
+    '''
     #Start the config server
     cmd = [os.path.expandvars(
             '$HUNTSMAN_POCS/scripts/start_config_server.py')]
@@ -250,20 +254,28 @@ def config_server(name_server, request):
     waited = 0
     while waited <= 20:
         try:
+            
             config = query_config_server()
-            assert(isinstance(config, dict))            
+            assert(isinstance(config, dict))  
+                        
+            #This is the hack...
+            config_server = Pyro4.Proxy('PYRONAME:config_server')
+            key = get_own_ip()
+            config_server.config[key] = config_server.config['localhost']
+            
             return proc
         
-        except:
+        except Exception as e:
+            print(e)
             time.sleep(1)
             waited += 1
     raise TimeoutError("Timeout waiting for config server.")
     
-
+    
 @pytest.fixture(scope='session')
 def camera_server(name_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
-               '--ignore_local', '--key', 'localhost']
+               '--ignore_local']
     cs_proc = subprocess.Popen(cs_cmds)
     request.addfinalizer(lambda: end_process(cs_proc))
     # Give camera server time to start up

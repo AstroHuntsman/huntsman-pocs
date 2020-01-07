@@ -27,8 +27,15 @@ class ConfigServer():
                                        'conf_files', 'device_info.yaml')
             
         #Read the config file
-        self.config = load_config(config_files=[config_file], **kwargs)
+        self.config_ = load_config(config_files=[config_file], **kwargs)
         
+    @property
+    def config(self):
+        return self.config_
+        
+    @config.setter
+    def config(self, config):
+        self.config_ = config
         
     def get_config(self, key=None):
         '''
