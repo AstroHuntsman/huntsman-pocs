@@ -13,6 +13,7 @@ from pocs.utils.database import PanDB
 from pocs.utils.messaging import PanMessaging
 
 from huntsman.utils import load_config
+from huntsman.utils.config import query_config_server
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
 _one_time_config = None
@@ -235,6 +236,29 @@ def name_server(request):
 
     raise TimeoutError("Timeout waiting for name server to start")
 
+
+@pytest.fixture(scope='session')
+def config_server(request):
+    
+    #Start the config server
+    cmd = [os.path.expandvars('$HUNTSMAN_POCS/scripts/start_config_server.py'),
+           '--host', 'localhost']
+    proc = subprocess.Popen(cmd)
+    request.addfinalizer(lambda: end_process(proc))
+    
+    #Check the config server works
+    waited = 0
+    while waited <= 20:
+        try:
+            config = query_config_server()
+            assert(isinstance(config, dict))
+            return config
+        except:
+            time.sleep(1)
+            waited += 1
+
+    raise TimeoutError("Timeout waiting for config server.")
+    
 
 @pytest.fixture(scope='session')
 def camera_server(name_server, request):
