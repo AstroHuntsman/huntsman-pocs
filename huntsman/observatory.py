@@ -312,7 +312,7 @@ class HuntsmanObservatory(Observatory):
 
                 # Get suggested exposure time
                 exptime = int(exptimes[cam_name][-1].value * (target_adu / counts) *
-                               (2.0 ** (elapsed_time / 180.0)) + 0.5)
+                              (2.0 ** (elapsed_time / 180.0)) + 0.5)
                 if exptime < 1:
                     exptime = 1
                 self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
