@@ -124,7 +124,7 @@ def start_config_server(host=None, port=6563, name='config_server',
             name_server.remove(name=name)
         
         
-def query_config_server(key=None, name='config_server'):
+def query_config_server(key=None, name='config_server', logger=None):
     '''
     Query the config server.
     
@@ -141,9 +141,17 @@ def query_config_server(key=None, name='config_server'):
     dict:
         The config dictionary.
     '''
-    config_server = Pyro4.Proxy(f'PYRONAME:{name}')
-    return config_server.get_config(key=key)
-            
+    if logger is None:
+        logger = DummyLogger()
+        
+    try:
+        config_server = Pyro4.Proxy(f'PYRONAME:{name}')
+        return config_server.get_config(key=key)
+    
+    except Exception as e:
+        logger.error(f'Unable to load remote config: {e}')
+        raise(e)
+                
 #==============================================================================
 
 def load_device_config(key=None, config_files=None, logger=None, **kwargs):
@@ -154,7 +162,7 @@ def load_device_config(key=None, config_files=None, logger=None, **kwargs):
     ----------
     key:
         The key used to query the config server. Only used if config_files
-        is None.
+        is None. If None, use the IP of the current device.
     config_files:
         List of config file names. If None (default), use the config server.
         
@@ -166,26 +174,19 @@ def load_device_config(key=None, config_files=None, logger=None, **kwargs):
     if logger is None:
         logger = DummyLogger()
         
+    if key is None:
+        key = get_own_ip()
+        
     #Load config from local files?
     if config_files is not None:
         logger.debug(f'Loading config from local file(s).')
-        try:
-            config = load_config(config_files, **kwargs)
-        except Exception as e:
-            logger.error(f'Unable to load local config file(s): {e}')
-            raise(e)
+        config = load_config(config_files, **kwargs)[key]
     
     #Load config from the config server?
     else:
-        if key is None:
-            key = get_own_ip()
         logger.debug(f'Loading remote config with key: {key}')
-        try:
-            config = query_config_server(key=key)
-        except Exception as e:
-            logger.error(f'Unable to load remote config: {e}')
-            raise(e)
-            
+        config = query_config_server(key=key, logger=logger)
+                    
     return config
     
 #==============================================================================
