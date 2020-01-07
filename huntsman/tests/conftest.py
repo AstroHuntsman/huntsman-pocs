@@ -261,8 +261,9 @@ def config_server(name_server, request):
             #This is the hack...
             config_server = Pyro4.Proxy('PYRONAME:config_server')
             key = get_own_ip()
-            config = {}
-            config[key] = config_server.config['localhost']
+            config = config_server.config
+            config[key] = config['localhost']
+            
             config_server.config = config
             
             return proc
