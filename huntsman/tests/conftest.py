@@ -245,16 +245,14 @@ def config_server(request):
             '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
-    
-    assert(False)
-    
+        
     #Check the config server works
     waited = 0
     while waited <= 20:
         try:
             config = query_config_server()
             assert(isinstance(config, dict))
-            return config
+            return proc
         except:
             time.sleep(1)
             waited += 1

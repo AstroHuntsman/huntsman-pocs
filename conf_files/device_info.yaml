@@ -1,0 +1,32 @@
+#Config file for distributed devices
+#Do not include sensitive information like IP addresses in this file.
+#This file is a place holder for device_info_local.yaml
+
+#Simulated camera and focusers:
+localhost:
+    name: camera.simulator.001
+    host: localhost
+    camera:
+      model: simulator_sdk
+      serial_number: SSC101
+      target_temperature: 20
+      filter_type: r2_6
+      focuser:
+        model: simulator
+        port: /dev/ttyFAKE02
+        initial_position: 21706
+        autofocus_keep_files: False
+        autofocus_range:
+          - 50
+          - 250
+        autofocus_step:
+          - 5
+          - 25
+        autofocus_seconds: 1
+        autofocus_size: 500
+    directories:
+        base: /var/panoptes
+        images: temp
+        data: data
+messaging:
+    huntsman_pro_ip: localhost #This should be updated in pyro_camera_local.yaml
