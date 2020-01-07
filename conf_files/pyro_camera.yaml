@@ -31,6 +31,8 @@ directories:
     base: /var/panoptes
     images: temp
     data: data
+messaging:
+    huntsman_pro_ip: localhost #This should be updated in pyro_camera_local.yaml
 #
 # SBIG camera with Birger focuser:
 # name: camera.sbig.001

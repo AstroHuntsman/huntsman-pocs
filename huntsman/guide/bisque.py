@@ -126,7 +126,7 @@ class Guide(PanBase):
 
         return self.is_connected
 
-    def start_guiding(self, bin_size=None, exp_time=3):
+    def start_guiding(self, bin_size=None, exptime=3):
         """ Start autoguiding
 
         Returns:
@@ -139,7 +139,7 @@ class Guide(PanBase):
                 if bin_size is None:
                     bin_size = self.bin_size
 
-                response = self.query('start_guiding', {'bin': bin_size, 'exptime': exp_time})
+                response = self.query('start_guiding', {'bin': bin_size, 'exptime': exptime})
                 self._is_guiding = response['success']
 
         return self.is_guiding
@@ -199,12 +199,12 @@ class Guide(PanBase):
 
         return response.get('success', False)
 
-    def take_exposure(self, bin_size=None, exp_time=3, filename=None):
+    def take_exposure(self, bin_size=None, exptime=3, filename=None):
         """ Take an image with the guider
 
         Args:
             bin_size (None, optional): Description
-            exp_time (float, optional): Number of seconds to expose
+            exptime (float, optional): Number of seconds to expose
             filename (str, optional): Pathname for guide image
 
         Returns:
@@ -220,11 +220,11 @@ class Guide(PanBase):
                 filename = self.image_path
 
             self.logger.debug("Taking {} sec guide exposure with {}x{} binning".format(
-                exp_time, bin_size, bin_size))
+                exptime, bin_size, bin_size))
 
             response = self.query('take_image', {
                 'bin': bin_size,
-                'exptime': exp_time,
+                'exptime': exptime,
                 'path': filename,
             })
             self.logger.debug("Got response from taking guide image: {}".format(response))
