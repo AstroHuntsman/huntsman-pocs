@@ -4,7 +4,7 @@ on:
   push:
     branches: 
       - develop
-      - huntsman_docker
+
 jobs:
   buildx:
     runs-on: ubuntu-latest
