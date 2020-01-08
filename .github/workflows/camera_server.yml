@@ -32,6 +32,5 @@ jobs:
       -
          name: Push docker image
          run: |
-           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} && \
-           docker push huntsmanarray/huntsman:v1
+           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} && docker image ls
            
