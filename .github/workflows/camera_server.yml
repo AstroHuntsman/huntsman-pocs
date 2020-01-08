@@ -1,19 +1,17 @@
-name: Publish Docker image for CI camera server
-on: 
+on:
   push:
     branches: 
       - develop
       - huntsman_docker
+  
+
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@master
-    - name: Publish to Registry
-      uses: elgohr/Publish-Docker-Github-Action@master
-      with:
-        name: huntsmanarray/huntsman
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        dockerfile: huntsman_cameraserver.docker
-        workdir: docker
+    - uses: actions/checkout@v1
+    - name: Build the Docker image
+      run: docker build . --file docker/huntsman_cameraserver.docker --tag test
