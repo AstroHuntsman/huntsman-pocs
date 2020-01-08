@@ -26,7 +26,7 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/arm64 \
-            --tag huntsmanarray/huntsman:latest \
+            --tag huntsmanarray/huntsman \
             --output "type=image,push=false" \
             --file docker/huntsman_cameraserver.docker . 
       -
