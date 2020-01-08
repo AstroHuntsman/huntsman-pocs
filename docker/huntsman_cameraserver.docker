@@ -3,7 +3,7 @@
 #==============================================================================
 #Specify the OS
 #FROM raspbian/jessie
-FROM ubuntu-latest
+FROM ubuntu:latest
 
 #Environment variables
 ENV DEBIAN_FRONTEND=noninteractive
