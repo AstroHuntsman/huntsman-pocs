@@ -22,9 +22,15 @@ jobs:
         name: Available platforms
         run: echo ${{ steps.buildx.outputs.platforms }}
       -
-        name: Run Buildx
+        name: Build docker image
         run: |
           docker buildx build . \
             --platform linux/arm64 \
             --output "type=image,push=false" \
             --file docker/huntsman_cameraserver.docker
+      -
+         name: Push docker image
+         run: docker login --username=${{ secrets.DOCKER_USERNAME }} \
+              --password=${{ secrets.DOCKER_PASSWORD }} && docker push huntsmanarray/huntsman
+        
+        
