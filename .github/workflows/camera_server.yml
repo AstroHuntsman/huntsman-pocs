@@ -26,11 +26,12 @@ jobs:
         run: |
           docker buildx build \
             --platform linux/arm64 \
-            --tag huntsmanarray/huntsman \
+            --tag huntsmanarray/huntsman:v1 \
             --output "type=image,push=false" \
             --file docker/huntsman_cameraserver.docker . 
       -
          name: Push docker image
          run: |
-           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} 
+           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} && \
+           docker push huntsmanarray/huntsman:v1
            
