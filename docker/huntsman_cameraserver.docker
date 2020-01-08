@@ -9,7 +9,7 @@ FROM raspbian/jessie
 ENV DEBIAN_FRONTEND=noninteractive
 
 #Update apt-get 
-RUN apt-get -y upgrade
+RUN echo "hello world"
 
 
 
