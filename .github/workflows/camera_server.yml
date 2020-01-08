@@ -24,11 +24,11 @@ jobs:
       -
         name: Build docker image
         run: |
-          docker buildx build . \
+          docker buildx build \
             --platform linux/arm64 \
             --tag huntsmanarray/huntsman:latest
             --output "type=image,push=false" \
-            --file docker/huntsman_cameraserver.docker \
+            --file docker/huntsman_cameraserver.docker . \
       -
          name: Push docker image
          run: |
