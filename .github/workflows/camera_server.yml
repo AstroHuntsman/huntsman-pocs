@@ -24,7 +24,7 @@ jobs:
       -
         name: Run Buildx
         run: |
-          docker buildx build \
+          docker buildx build . \
             --platform linux/arm64 \
             --output "type=image,push=false" \
-            --file docker/huntsman_cameraserver.docker ./test
+            --file docker/huntsman_cameraserver.docker
