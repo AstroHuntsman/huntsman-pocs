@@ -26,6 +26,6 @@ jobs:
             --platform linux/arm64 \
             --tag huntsmanarray/camera_server:latest \
             --output "type=image,push=true" \
-            --file docker/huntsman_cameraserver.docker . 
+            --file docker/camera_server.docker . 
 
            
