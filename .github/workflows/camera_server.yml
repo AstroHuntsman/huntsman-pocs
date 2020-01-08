@@ -1,19 +1,30 @@
-name: Publish Docker image for CI camera server
-on: 
+name: buildx
+
+on:
   push:
     branches: 
-      - develop
       - huntsman_docker
+
 jobs:
-  build:
-    runs-on: macos-latest
+  buildx:
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - name: Publish to Registry
-      uses: elgohr/Publish-Docker-Github-Action@master
-      with:
-        name: huntsmanarray/huntsman
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        dockerfile: huntsman_cameraserver.docker
-        workdir: docker
+      -
+        name: Checkout
+        uses: actions/checkout@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      -
+        name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
+      -
+        name: Run Buildx
+        run: |
+          docker buildx build \
+            --platform linux/arm64,
+            --output "type=image,push=false" \
+            --file docker/huntsman_cameraserver.docker ./test
