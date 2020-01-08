@@ -87,3 +87,19 @@ def get_own_ip(verbose=False, logger=None):
 
 #==============================================================================
 
+class DummyLogger():
+    '''
+    
+    '''
+    def __init__(self):
+        pass
+    def warning(self, msg):
+        print(msg)
+    def error(self, msg):
+        print(msg)
+    def debug(self, msg):
+        print(msg)
+    def info(self, msg):
+        print(msg)
+
+#==============================================================================

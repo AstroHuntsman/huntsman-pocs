@@ -8,7 +8,8 @@ Created on Tue Dec  3 07:16:00 2019
 Run this on the pis (not the main computer).
 """
 import os, subprocess
-from huntsman.utils import load_config
+from huntsman.utils import load_config, DummyLogger
+from huntsman.utils.config import load_device_config
 
 #==============================================================================
 
@@ -72,26 +73,10 @@ def get_mountpoint():
     home = os.path.expandvars('$HOME')
     mountpoint = os.path.join(home, 'Huntsmans-Pro')
     return mountpoint
-
-#==============================================================================
-#This can be moved (or deleted) later...
-
-class DummyLogger():
-    '''
-    
-    '''
-    def __init__(self):
-        pass
-    def warning(self, msg):
-        print(msg)
-    def error(self, msg):
-        print(msg)
-    def debug(self, msg):
-        print(msg)
     
 #==============================================================================
     
-def mount_sshfs(logger=None, user=None, mountpoint=None):
+def mount_sshfs(logger=None, user=None, mountpoint=None, **kwargs):
     '''
     
     '''
@@ -108,8 +93,7 @@ def mount_sshfs(logger=None, user=None, mountpoint=None):
         mountpoint = get_mountpoint()
     
     #Retrieve the IP of the remote
-    config_camera = load_config(config_files=['pyro_camera.yaml'])
-    remote_ip = config_camera['messaging']['huntsman_pro_ip']
+    remote_ip=load_device_config(key='messaging', **kwargs)['huntsman_pro_ip']
     
     #Specify the remote directory
     config_huntsman = load_config()    

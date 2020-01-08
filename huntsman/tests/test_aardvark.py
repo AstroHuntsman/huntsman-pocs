@@ -33,6 +33,11 @@ def test_name_server(name_server):
 def test_locate_name_server(name_server):
     # Check that we can connect to the name server
     Pyro4.locateNS()
+    
+
+def test_config_server(config_server):
+    #Check we can get a config
+    assert config_server.poll() is None
 
 
 def test_camera_server(camera_server):
