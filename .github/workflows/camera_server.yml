@@ -1,10 +1,10 @@
-name: buildx
+name: Docker camera server build/push
 
 on:
   push:
     branches: 
+      - develop
       - huntsman_docker
-
 jobs:
   buildx:
     runs-on: ubuntu-latest
@@ -19,19 +19,13 @@ jobs:
         with:
           version: latest
       -
-        name: Available platforms
-        run: echo ${{ steps.buildx.outputs.platforms }}
-      -
-        name: Build docker image
+        name: Build and push docker image
         run: |
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker buildx build \
             --platform linux/arm64 \
-            --tag huntsmanarray/huntsman:v1 \
+            --tag huntsmanarray/camera_server:latest \
             --output "type=image,push=true" \
             --file docker/huntsman_cameraserver.docker . 
-      -
-         name: Push docker image
-         run: |
-           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }} && docker image ls
+
            
