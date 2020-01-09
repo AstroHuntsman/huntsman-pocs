@@ -81,10 +81,3 @@ RUN rm -r $PANDIR/images
 
 #Mount the SSHFS & start pyro camera server (blocking)
 CMD python $HUNTSMAN_POCS/scripts/pyro_camera_server.py 
-
-
-
-
-
-
-
