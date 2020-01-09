@@ -73,16 +73,11 @@ RUN pip install pymongo
 RUN pip install netifaces
 RUN pip install pyro4
 RUN pip install pyyaml
-#RUN pip install panoptes-utils
 
 #==============================================================================
 
 #For some reason this is necessary
 RUN rm -r $PANDIR/images
 
-#COPY pyro_camera_local.yaml $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml
-
 #Mount the SSHFS & start pyro camera server (blocking)
 CMD python $HUNTSMAN_POCS/scripts/pyro_camera_server.py 
-
-

@@ -1,17 +1,31 @@
-name: Docker Image CI for camera server
+name: Docker camera server build/push
 
-on: 
+on:
   push:
     branches: 
       - develop
 
 jobs:
-
-  build:
-
+  buildx:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v1
-    - name: docker_build_cameraserver
-      run: docker build . --file docker/camera_server.docker --tag camera_server:$(date +%s)
+      -
+        name: Checkout
+        uses: actions/checkout@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      -
+        name: Build and push docker image
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag huntsmanarray/camera_server:latest \
+            --output "type=image,push=true" \
+            --file docker/camera_server.docker . 
+
+           
