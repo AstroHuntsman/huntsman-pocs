@@ -80,4 +80,4 @@ RUN pip install pyyaml
 RUN rm -r $PANDIR/images
 
 #Startup the device
-CMD python $HUNTSMAN_POCS/scripts/startup_device.py 
+CMD ["python", "$HUNTSMAN_POCS/scripts/startup_device.py"]
