@@ -79,5 +79,5 @@ RUN pip install pyyaml
 #For some reason this is necessary
 RUN rm -r $PANDIR/images
 
-#Mount the SSHFS & start pyro camera server (blocking)
-CMD python $HUNTSMAN_POCS/scripts/pyro_camera_server.py 
+#Startup the device
+CMD ["python", "$HUNTSMAN_POCS/scripts/startup_device.py"]
