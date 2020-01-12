@@ -24,8 +24,8 @@ jobs:
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker buildx build \
             --platform linux/arm64 \
-            --tag huntsmanarray/camera_server:latest \
+            --tag huntsmanarray/device_startup:latest \
             --output "type=image,push=true" \
-            --file docker/camera_server.docker . 
+            --file docker/device_startup.docker . 
 
            
