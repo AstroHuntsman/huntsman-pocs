@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#This script should be all any device (other than the control computer)
+#needs to run. The Pyro name server and config server should ideally be
+#initialised beforehand (e.g. on the control computer).
+
 #Download the latest docker image from docker hub
 docker pull huntsmanarray/device_startup
 
