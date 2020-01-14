@@ -13,10 +13,16 @@ from huntsman.utils.config import load_device_config
 
 #==============================================================================
 
-def mount(mountpoint, remote, server_alive_interval=20,
-          server_alive_count_max=3, logger=None):
+def mount(mountpoint, remote, server_alive_interval=20, logger=None,
+          server_alive_count_max=3, strict_host_key_checking=False):
     '''
     Mount remote on local.
+    
+    Arguments
+    ---------
+    strict_host_key_checking: 
+        Should be False to avoid user interaction when running in a docker 
+        container.
     '''
     if logger is None:
         logger = DummyLogger()
@@ -26,9 +32,13 @@ def mount(mountpoint, remote, server_alive_interval=20,
     except FileExistsError:
         pass #For some reason this is necessary
         
+    #SSH options
+    strict_host_key_checking = 'yes' if strict_host_key_checking else 'no'
     options = f'ServerAliveInterval={server_alive_interval},' + \
-              f'ServerAliveCountMax={server_alive_count_max}'
+              f'ServerAliveCountMax={server_alive_count_max}' + \
+              f'StrictHostKeyChecking {strict_host_key_checking}'
     options = ['sshfs', remote, mountpoint, '-o', options]
+    
     try:
         subprocess.run(options, shell=False, check=True)
     except Exception as e:
