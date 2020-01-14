@@ -59,6 +59,8 @@ def locate_name_server(wait=None, logger=None):
     -------
     Pyro name server.        
     '''
+    if logger is None:
+        logger = DummyLogger()
     if wait is None:
         return Pyro4.locateNS()
     
@@ -68,20 +70,13 @@ def locate_name_server(wait=None, logger=None):
             try:
                 return Pyro4.locateNS()
             except Pyro4.errors.PyroError:
-                msg = 'Unable to locate name server. Waiting...'
-                if logger is None:
-                    print(msg)
-                else:
-                    logger.debug(msg)
+                logger.info('Unable to locate name server. Waiting...')
                 time.sleep(wait)
     
     #Catch keyboard interrupt
     except KeyboardInterrupt:
-        msg = 'Keyboard interupt while locating name server. Terminating!'
-        if logger is None:
-            print(msg)
-        else:
-            logger.debug(msg)        
+        logger.debug('Keyboard interupt while locating name server.\
+                     Terminating!')
         sys.exit(0)
         
         
