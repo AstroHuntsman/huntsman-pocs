@@ -131,7 +131,7 @@ def start_config_server(host=None, port=6563, name='config_server',
             name_server.remove(name=name)
         
         
-def query_config_server(key=None, name='config_server', logger=None):
+def query_config_server(key=None, name='config_server', logger=None, wait=None):
     '''
     Query the config server.
     
@@ -142,6 +142,8 @@ def query_config_server(key=None, name='config_server', logger=None):
         returned.
     name (str):
         The name used to locate the config server from the Pyro name server.
+    wait (float or None) [seconds]:
+        If not None, attempt to locate the NS at this frequency.
     
     Returns
     -------
@@ -151,17 +153,30 @@ def query_config_server(key=None, name='config_server', logger=None):
     if logger is None:
         logger = DummyLogger()
         
-    try:
-        config_server = Pyro4.Proxy(f'PYRONAME:{name}')
-        return config_server.get_config(key=key)
-    
-    except Exception as e:
-        logger.error(f'Unable to load remote config: {e}')
-        raise(e)
+    while True:
+        
+        try:
+            config_server = Pyro4.Proxy(f'PYRONAME:{name}')
+            return config_server.get_config(key=key)
+        
+        except Pyro4.errors.NamingError as e:
+            
+            if wait is not None:
+                logger.info('Failed to locate config server. \
+                            Waiting %is before retrying.'%wait)
+                time.sleep(wait)
+            else:
+                logger.error('Failed to locate config server!')
+                raise(e)
+        
+        except Exception as e:
+            logger.error(f'Unable to load remote config: {e}')
+            raise(e)
                 
 #==============================================================================
 
-def load_device_config(key=None, config_files=None, logger=None, **kwargs):
+def load_device_config(key=None, config_files=None, logger=None, wait=None,
+                       **kwargs):
     '''
     Load the device config from either the config server or local files.
     
@@ -172,6 +187,8 @@ def load_device_config(key=None, config_files=None, logger=None, **kwargs):
         is None. If None, use the IP of the current device.
     config_files:
         List of config file names. If None (default), use the config server.
+    wait (float or None) [seconds]:
+        If not None, attempt to locate the NS at this frequency.
         
     Returns
     -------
@@ -192,7 +209,7 @@ def load_device_config(key=None, config_files=None, logger=None, **kwargs):
     #Load config from the config server?
     else:
         logger.debug(f'Loading remote config with key: {key}')
-        config = query_config_server(key=key, logger=logger)
+        config = query_config_server(key=key, logger=logger, wait=wait)
                     
     return config
     
