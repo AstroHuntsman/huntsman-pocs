@@ -4,6 +4,7 @@ conf_files/*_local_*.yaml
 conf_files/*.bk
 conf_files_test/huntsman_archive/*.yaml
 *.patch
+docker/*_local.docker
 config_local.yaml
 .pytest_cache
 Running Huntsman.ipynb
