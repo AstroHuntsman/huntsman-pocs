@@ -49,7 +49,7 @@ def run_name_server(host=None, port=None, autoclean=0, logger=None):
 
 #==============================================================================
 
-def run_camera_server(ignore_local, unmount_sshfs=True, logger=None,
+def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
                       **kwargs):
     """
     Runs a Pyro camera server.
