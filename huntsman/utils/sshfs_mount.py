@@ -33,10 +33,10 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
         pass #For some reason this is necessary
         
     #SSH options
-    strict_host_key_checking = 'yes' if strict_host_key_checking else 'no'
+    strict_host_key_checking = "'yes'" if strict_host_key_checking else "'no'"
     options = f'ServerAliveInterval={server_alive_interval},' + \
-              f'ServerAliveCountMax={server_alive_count_max}' + \
-              f'StrictHostKeyChecking {strict_host_key_checking}'
+              f'ServerAliveCountMax={server_alive_count_max},' + \
+              f'StrictHostKeyChecking={strict_host_key_checking}'
     options = ['sshfs', remote, mountpoint, '-o', options]
     
     try:
