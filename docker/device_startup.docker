@@ -1,10 +1,17 @@
 #==============================================================================
-#Install everything required to run the camera server and run it
+#Install everything required to run a Huntsman device.
 #==============================================================================
 #Specify the OS
 FROM raspbian/jessie
 
-#Environment variables
+#Add the huntsman user
+ENV PANUSER=huntsman
+RUN useradd $PANUSER
+
+ENV PANDIR=/var/huntsman
+RUN mkdir $PANDIR && chown $PANUSER $PANDIR
+
+#Extra environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
 #Update apt-get 
@@ -19,14 +26,17 @@ RUN apt-get -y install gcc
 RUN apt-get -y install sshfs 
 
 #==============================================================================
-#Berryconda
+#Berryconda (install as $PANUSER)
 
+USER $PANUSER
+WORKDIR $PANDIR
 ENV CONDA_URL=https://github.com/jjhelmus/berryconda/releases/download/v2.0.0/Berryconda3-2.0.0-Linux-armv7l.sh
-ENV CONDA_PATH=/root/berryconda3
+ENV CONDA_PATH=/$PANDIR/berryconda3
 RUN wget $CONDA_URL
 RUN chmod +x Berryconda3-2.0.0-Linux-armv7l.sh
 RUN ./Berryconda3-2.0.0-Linux-armv7l.sh -b -p $CONDA_PATH
 
+USER root
 RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/
 RUN ln -s $CONDA_PATH/bin/python3.6 /usr/local/bin/python
 RUN ln -s $CONDA_PATH/bin/pip /usr/local/bin/
@@ -36,17 +46,12 @@ RUN pip install --upgrade pip
 #==============================================================================
 #Huntsman-POCS
 
-RUN useradd huntsman
-
 #Huntsman-POCS variables
-ENV PANUSER=huntsman
-ENV PANDIR=/var/huntsman
 ENV POCS=${PANDIR}/POCS
 ENV PAWS=${PANDIR}/PAWS
 ENV HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 
 #POCs folders
-RUN mkdir $PANDIR && chown $PANUSER $PANDIR
 RUN mkdir -p $PANDIR/logs
 RUN mkdir -p $PANDIR/images
 
@@ -75,13 +80,17 @@ RUN pip install pyro4
 RUN pip install pyyaml
 
 #==============================================================================
+#Setup permissions for $PANUSER; specify $PANUSER as default user
+
+RUN chmod 1777 /tmp 
+RUN chown -R $PANUSER $PANDIR
+RUN mkdir /home/$PANUSER && chown -R $PANUSER /home/$PANUSER
+USER $PANUSER
+
+#==============================================================================
 
 #For some reason this is necessary
 RUN rm -r $PANDIR/images
-
-RUN chmod 1777 /tmp 
-
-USER $PANUSER
 
 #Startup the device, using the shell to expand variables
 CMD [ "sh", "-c", "python $HUNTSMAN_POCS/scripts/startup_device.py" ]
