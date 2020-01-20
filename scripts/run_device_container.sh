@@ -29,9 +29,6 @@ docker pull huntsmanarray/device_startup:latest
 CONTAINER_ID=$(docker create -it --network host --cap-add SYS_ADMIN \
         --device /dev/fuse huntsmanarray/device_startup:latest /bin/bash)
 
-#Copy the ssh credentials from the host to the container
-docker cp ~/.ssh $CONTAINER_ID:/home/huntsman/.ssh
-
 #Start the container
 docker start $CONTAINER_ID
 
@@ -39,6 +36,9 @@ docker start $CONTAINER_ID
 CONTAINER_USER=$(docker exec $CONTAINER_ID echo $USER)
 CONTAINER_HOME=$(docker exec $CONTAINER_ID echo $HOME)
 CONTAINER_PANDIR=$(docker exec $CONTAINER_ID echo $PANDIR)
+
+#Copy the ssh credentials from the host to the container
+docker cp ~/.ssh $CONTAINER_ID:$CONTAINER_HOME/.ssh
 
 #Allow ssh credentials to be accessed by huntsman user
 docker exec -u root -it $CONTAINER_ID chown -R $CONTAINER_USER $CONTAINER_HOME/.ssh
