@@ -21,5 +21,27 @@ docker pull huntsmanarray/device_startup:latest
 #login to the control computer, ***which must already be setup between the host
 #device and the control computer***.
 
-docker run -it --network host --cap-add SYS_ADMIN --device /dev/fuse \
-        -v ~/.ssh:/root/.ssh huntsmanarray/device_startup:latest  
+#docker run -it --network host --cap-add SYS_ADMIN --device /dev/fuse \
+#        -v ~/.ssh:/root/.ssh:ro huntsmanarray/device_startup:latest 
+#^Unable to set permissions properly this way 
+
+#Create a container 
+CONTAINER_ID=$(docker create -it --network host --cap-add SYS_ADMIN \
+        --device /dev/fuse huntsmanarray/device_startup:latest /bin/bash)
+
+#Copy the ssh credentials from the host to the container
+docker cp ~/.ssh $CONTAINER_ID:/home/huntsman/.ssh
+
+#Start the container
+docker start $CONTAINER_ID
+
+#Extract some environment variables from the container
+CONTAINER_USER=$(docker exec $CONTAINER_ID echo $USER)
+CONTAINER_HOME=$(docker exec $CONTAINER_ID echo $HOME)
+CONTAINER_PANDIR=$(docker exec $CONTAINER_ID echo $PANDIR)
+
+#Allow ssh credentials to be accessed by huntsman user
+docker exec -u root -it $CONTAINER_ID chown -R $CONTAINER_USER $CONTAINER_HOME/.ssh
+
+#Run the startup script
+docker exec -it $CONTAINER_ID python $CONTAINER_PANDIR/huntsman-pocs/scripts/startup_device.py

@@ -79,5 +79,9 @@ RUN pip install pyyaml
 #For some reason this is necessary
 RUN rm -r $PANDIR/images
 
+RUN chmod 1777 /tmp 
+
+USER $PANUSER
+
 #Startup the device, using the shell to expand variables
 CMD [ "sh", "-c", "python $HUNTSMAN_POCS/scripts/startup_device.py" ]
