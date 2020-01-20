@@ -41,7 +41,10 @@ CONTAINER_PANDIR=$(docker exec $CONTAINER_ID echo $PANDIR)
 docker cp ~/.ssh $CONTAINER_ID:$CONTAINER_HOME/.ssh
 
 #Allow ssh credentials to be accessed by huntsman user
-docker exec -u root -it $CONTAINER_ID chown -R $CONTAINER_USER $CONTAINER_HOME/.ssh
+docker exec -u root $CONTAINER_ID chown -R $CONTAINER_USER $CONTAINER_HOME/.ssh
 
-#Run the startup script
+#Run the device script
 docker exec -it $CONTAINER_ID python $CONTAINER_PANDIR/huntsman-pocs/scripts/startup_device.py
+
+#Finally, kill the container
+docker exec -u root $CONTAINER_ID pkill bash
