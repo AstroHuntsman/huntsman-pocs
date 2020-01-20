@@ -6,24 +6,17 @@ FROM raspbian/jessie
 
 #Add the huntsman user
 ENV PANUSER=huntsman
-RUN useradd $PANUSER
-
 ENV PANDIR=/var/huntsman
-RUN mkdir $PANDIR && chown $PANUSER $PANDIR
+RUN useradd $PANUSER && mkdir $PANDIR && chown $PANUSER $PANDIR
 
 #Extra environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
 #Update apt-get 
-RUN apt-get -y upgrade
-RUN apt-get update
-RUN apt-get -y dist-upgrade
+RUN apt-get -y upgrade && apt-get update && apt-get -y dist-upgrade
 
 #Some initial packages
-RUN apt-get -y install bzip2
-RUN apt-get -y install git
-RUN apt-get -y install gcc
-RUN apt-get -y install sshfs 
+RUN apt-get -y install bzip2 git gcc sshfs 
 
 #==============================================================================
 #Berryconda (install as $PANUSER)
@@ -32,14 +25,13 @@ USER $PANUSER
 WORKDIR $PANDIR
 ENV CONDA_URL=https://github.com/jjhelmus/berryconda/releases/download/v2.0.0/Berryconda3-2.0.0-Linux-armv7l.sh
 ENV CONDA_PATH=/$PANDIR/berryconda3
-RUN wget $CONDA_URL
-RUN chmod +x Berryconda3-2.0.0-Linux-armv7l.sh
-RUN ./Berryconda3-2.0.0-Linux-armv7l.sh -b -p $CONDA_PATH
+RUN wget $CONDA_URL && chmod +x Berryconda3-2.0.0-Linux-armv7l.sh && \
+    ./Berryconda3-2.0.0-Linux-armv7l.sh -b -p $CONDA_PATH
 
 USER root
-RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/
-RUN ln -s $CONDA_PATH/bin/python3.6 /usr/local/bin/python
-RUN ln -s $CONDA_PATH/bin/pip /usr/local/bin/
+RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/ && \
+    ln -s $CONDA_PATH/bin/python3.6 /usr/local/bin/python && \
+    ln -s $CONDA_PATH/bin/pip /usr/local/bin/
 
 RUN pip install --upgrade pip
 
@@ -52,8 +44,7 @@ ENV PAWS=${PANDIR}/PAWS
 ENV HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 
 #POCs folders
-RUN mkdir -p $PANDIR/logs
-RUN mkdir -p $PANDIR/images
+RUN mkdir -p $PANDIR/logs && mkdir -p $PANDIR/images
 
 #Clone necessary repos
 WORKDIR $PANDIR
@@ -69,22 +60,15 @@ RUN python setup.py develop
 #==============================================================================
 #Install python deps
 
-RUN conda install astropy
-RUN conda install matplotlib
-RUN conda install requests
-RUN conda install scipy
-
-RUN pip install pymongo
-RUN pip install netifaces
-RUN pip install pyro4
-RUN pip install pyyaml
+RUN conda install astropy matplotlib requests scipy
+RUN pip install pymongo netifaces pyro4 pyyaml
 
 #==============================================================================
 #Setup permissions for $PANUSER; specify $PANUSER as default user
 
 RUN chmod 1777 /tmp 
-RUN chown -R $PANUSER $PANDIR
-RUN mkdir /home/$PANUSER && chown -R $PANUSER /home/$PANUSER
+RUN chown -R $PANUSER $PANDIR && mkdir /home/$PANUSER \
+    && chown -R $PANUSER /home/$PANUSER
 USER $PANUSER
 
 #==============================================================================
