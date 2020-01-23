@@ -407,7 +407,7 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.config['directories']['images']
 
-        dark_obs = self._create_dark_observation(n_darks)
+        dark_obs = self._create_dark_observation(n_darks, exptimes_list)
         exptimes = {cam_name: exptimes_list * u.second for cam_name in camera_list}
 
         # Loop until conditions are met for dark fields
@@ -542,12 +542,12 @@ class HuntsmanObservatory(Observatory):
 
         return flat_obs
 
-    def _create_dark_observation(self, n_darks):
+    def _create_dark_observation(self, n_darks, exptimes):
         dark_coords = self.mount.get_current_coordinates().to_string('hmsdms')
 
         self.logger.debug("Creating darks observation")
         dark_field = Field('Darks', dark_coords)
-        dark_obs = DarkObservation(dark_field, exptime=1. * u.second)
+        dark_obs = DarkObservation(dark_field)
         dark_obs.seq_time = utils.current_time(flatten=True)
 
         if isinstance(dark_obs, DarkObservation):
@@ -556,7 +556,6 @@ class HuntsmanObservatory(Observatory):
 
             dark_fields = [Field('Dark{:02d}'.format(i), dark_coords)
                            for i in range(n_darks)]
-            exptimes = [dark_obs.exptime for i in range(n_darks)]
 
             dark_obs.field = dark_fields
             dark_obs.exptime = exptimes
