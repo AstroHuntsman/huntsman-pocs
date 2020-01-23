@@ -389,6 +389,8 @@ class HuntsmanObservatory(Observatory):
     def take_dark_fields(self,
                          wait_interval=5,
                          camera_list=None,
+                         exptimes_list=[],
+                         n_darks=10,
                          *args, **kwargs
                          ):
         """Take dark fields
@@ -396,6 +398,8 @@ class HuntsmanObservatory(Observatory):
         Args:
             wait_interval (float, optional): Time in between dark exposures
             camera_list (list, optional): List of cameras to use for darks
+            exptimes_list (list, optional): List of exposure times for darks
+            n_darks (int, optional): Number of darks to be taken per exptime
             *args (TYPE): Description
             **kwargs (TYPE): Description
 
@@ -403,8 +407,8 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.config['directories']['images']
 
-        dark_obs = self._create_dark_observation()
-        exptimes = {cam_name: [1. * u.second] for cam_name in camera_list}
+        dark_obs = self._create_dark_observation(n_darks)
+        exptimes = {cam_name: exptimes_list * u.second for cam_name in camera_list}
 
         # Loop until conditions are met for dark fields
         while True:
@@ -447,6 +451,12 @@ class HuntsmanObservatory(Observatory):
             while not all([info['event'].is_set() for info in camera_events.values()]):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(wait_interval)
+
+            # Stop taking darks when we reach the total number
+            self.logger.debug("Checking for total number of darks")
+            if all([len(cam.event) >= len(exptimes_list) * n_darks for cam_name, cam in camera_events.items()]):
+                self.logger.debug("Total number of darks has been achieved, quitting")
+                break
 
 ##########################################################################
 # Private Methods
@@ -532,7 +542,7 @@ class HuntsmanObservatory(Observatory):
 
         return flat_obs
 
-    def _create_dark_observation(self, n_darks=9):
+    def _create_dark_observation(self, n_darks):
         dark_coords = self.mount.get_current_coordinates().to_string('hmsdms')
 
         self.logger.debug("Creating darks observation")
