@@ -21,9 +21,14 @@ def on_enter(event_data):
             pocs.say("I'm going to take next dark field")
 
             cameras = list()
-            exptimes = pocs.observatory.targets["exptime"].values()
             for cam_name, camera in pocs.observatory.cameras.items():
                 cameras.append(cam_name)
+
+            exptimes = list()
+            for target in pocs.scheduler.fields_list:
+                exp = target["exptime"].value
+                if exp not in exptimes:
+                    exptimes.append(exp)
 
             if len(cameras) > 0:
                 pocs.say("Starting narrow band flat fields")
