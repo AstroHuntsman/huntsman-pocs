@@ -27,7 +27,7 @@ def on_enter(event_data):
 
         # Take pointing picture and wait for result
         camera_event = primary_camera.take_observation(
-            observation, fits_headers, exp_time=30., filename='pointing')
+            observation, fits_headers, exptime=30., filename='pointing')
 
         wait_time = 0.
         while not camera_event.is_set():

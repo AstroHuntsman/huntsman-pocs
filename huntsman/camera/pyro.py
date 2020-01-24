@@ -1,5 +1,6 @@
 import sys
 import os
+import requests
 from warnings import warn
 from threading import Event
 from threading import Timer
@@ -17,11 +18,12 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 
-from huntsman.utils import load_config
+from huntsman.utils.config import load_device_config
 
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
 
+#==============================================================================
 
 class Camera(AbstractCamera):
     """
@@ -113,6 +115,33 @@ class Camera(AbstractCamera):
     @property
     def is_exposing(self):
         return not self._exposure_event.is_set()
+    
+    @property
+    def is_ready(self):
+        '''
+        True if camera is ready to start another exposure, otherwise False.
+        
+        Check self.is_exposing first to side-step so-far unexplained
+        hanging possibly caused by is_temperature_stable.
+        '''
+        # Make sure there isn't an exposure already in progress.
+        if self.is_exposing:
+            self.logger.debug('Camera not ready: exposing!')
+            return False
+        
+        # For cooled camera expect stable temperature before taking exposure
+        if self.is_cooled_camera and not self.is_temperature_stable:
+            self.logger.debug('Camera not ready: temperature not stable!')
+            return False
+
+        # Check all the subcomponents too, e.g. make sure filterwheel/focuser 
+        #aren't moving.
+        for sub_name in self._subcomponent_names:
+            if getattr(self, sub_name) and not getattr(self,sub_name).is_ready:
+                self.logger.debug(f'Camera not ready: {sub_name} not ready!')
+                return False
+
+        return True
 
 # Methods
 
@@ -169,7 +198,8 @@ class Camera(AbstractCamera):
             self.focuser = None
 
         self.filterwheel = None  # Remote filterwheels not supported yet.
-
+        
+        
     def take_exposure(self,
                       seconds=1.0 * u.second,
                       filename=None,
@@ -210,22 +240,18 @@ class Camera(AbstractCamera):
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
-        # Start the exposure
-        filename = os.path.abspath(filename) 
-        dir_name, base_name = os.path.split(filename)
+        #Start the exposure
+        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
         
-        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {base_name} in {dir_name}')
-        
-        # Remote method call to start the exposure
+        #Remote method call to start the exposure
+        #Once this finishes, the filename is returned
         exposure_result = self._proxy.take_exposure(seconds=seconds,
-                                                    base_name=base_name,
-                                                    dir_name=dir_name,
+                                                    filename=filename,
                                                     dark=bool(dark),
                                                     *args,
                                                     **kwargs) 
-        exposure_result
 
-        # Start a thread that will set an event once exposure has completed
+        #Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=seconds + self.readout_time,
                                 function=self._async_wait,
                                 args=(exposure_result,
@@ -371,7 +397,7 @@ class Camera(AbstractCamera):
         # Start a thread that will set an event once autofocus has completed
         autofocus_event = Event()
         autofocus_thread = Thread(target=self._async_wait,
-                                  args=(autofocus_result, 'autofocus', autofocus_event, timeout))
+                args=(autofocus_result, 'autofocus', autofocus_event, timeout))
         autofocus_thread.start()
 
         if blocking:
@@ -464,8 +490,64 @@ class Camera(AbstractCamera):
             raise error.Timeout(msg)
 
         return result
+    
 
+    def _process_fits(self, file_path, info):
+        '''
+        Override _process_fits, called by process_exposure in take_observation.
+        
+        The difference is that we do an NGAS push following the processing.
+        '''
+        #Call the super method
+        result = super()._process_fits(file_path, info)
+        
+        #Do the NGAS push
+        self._NGASpush(file_path, info)
+        
+        return result
+        
+    
+    def _NGASpush(self, filename, metadata, filename_ngas=None, port=7778):
+        '''
+        Parameters
+        ----------
+        filename (str):
+            The local filename, the basename of which is the default NGAS
+            filename.
+        metadata:
+            A dict-like object containing metadata to build the NGAS filename.
+        filename_ngas (str, optional):
+            The NGAS filename. If None, auto-assign based on filename.
+        port (int, optional):
+            The port of the NGAS server. Defaults to the TCP port.
+            
+        '''        
+        #Define the NGAS filename 
+        if filename_ngas is None:
+            extension = os.path.splitext(filename)[1] 
+            filename = f"{metadata['image_id']}{extension}"
+        
+        #Get the IP address of the NGAS server
+        ngas_ip = self.config['messaging']['huntsman_pro_ip']
+        
+        #Post the file to the NGAS server
+        url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}'
+        with open(filename, 'rb') as f:
+            files = {'file':f}
+            self.logger.debug(f'Pushing {filename} to NGAS as {filename_ngas}.')
+            try: 
+                #Post the file
+                r = requests.post(url, files=files)
+                
+                #Confirm success
+                r.raise_for_status()
+                
+            except Exception as e: 
+                self.logger.error(f'Error while performing NGAS push: {e}')
+                raise(e)
 
+#==============================================================================
+        
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class CameraServer(object):
@@ -473,9 +555,9 @@ class CameraServer(object):
     Wrapper for the camera class for use as a Pyro camera server
     """
 
-    def __init__(self, config_files=['pyro_camera.yaml']):
+    def __init__(self, config_files=None):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
-        self.config = load_config(config_files=config_files)
+        self.config = load_device_config(config_files=config_files)
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
 
@@ -573,18 +655,18 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, base_name, dark, dir_name=None, *args,
-                      **kwargs):
-        
-        #Specify the full filename
-        #This uses the camera server's "images" directory 
-        if dir_name is None:
-            filename = os.path.join(os.path.abspath(
-                        self.config['directories']['images']), base_name)
-        #This does not necessarily use the "images" directory
-        else:
-            filename = os.path.join(dir_name, base_name)
-                    
+    def take_exposure(self, seconds, filename, dark, *args, **kwargs):
+        '''
+        Parameters
+        ----------
+        filename (str):
+            The filename of the exposure result.
+            
+        Returns
+        -------
+        str:
+            The full filename of the exposure output.
+        '''                    
         #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
@@ -592,7 +674,6 @@ class CameraServer(object):
                                    blocking=True,
                                    *args,
                                    **kwargs)
-        return filename
 
     def autofocus(self, *args, **kwargs):
         if not self.has_focuser:
