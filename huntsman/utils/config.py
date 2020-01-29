@@ -157,8 +157,8 @@ def query_config_server(key=None, name='config_server', logger=None, wait=None):
         except Pyro4.errors.NamingError as e:
             
             if wait is not None:
-                logger.info('Failed to locate config server. \
-                            Waiting %is before retrying.'%wait)
+                logger.info(f'Failed to locate config server. \
+                            Waiting {wait}s before retrying.')
                 time.sleep(wait)
             else:
                 logger.error('Failed to locate config server!')
