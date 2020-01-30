@@ -68,7 +68,7 @@ byobu send-keys "echo grc tail -F -n 1000 ipython-all.log"
 byobu send-keys Enter
 
 # create shutter and weather window
-byobu select-window -t Huntsman-Control:"shutter-and-weather"
+byobu select-window -t "${SESSION_NAME}":"shutter-and-weather"
 byobu split-window -h
 byobu select-pane -t 0
 byobu send-keys "ipython"
