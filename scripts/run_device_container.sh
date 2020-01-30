@@ -33,9 +33,9 @@ CONTAINER_ID=$(docker create -it --network host --cap-add SYS_ADMIN \
 docker start $CONTAINER_ID
 
 #Extract some environment variables from the container
-CONTAINER_USER=$(docker exec container bash -c 'echo "$USER"')
-CONTAINER_HOME=$(docker exec container bash -c 'echo "$HOME"')
-CONTAINER_PANDIR=$(docker exec container bash -c 'echo "$PANDIR"')
+CONTAINER_USER=$(docker exec $CONTAINER_ID bash -c 'echo "$PANUSER"')
+CONTAINER_HOME=$(docker exec $CONTAINER_ID bash -c 'echo "$HOME"')
+CONTAINER_PANDIR=$(docker exec $CONTAINER_ID bash -c 'echo "$PANDIR"')
 
 #Copy the ssh credentials from the host to the container
 docker cp ~/.ssh $CONTAINER_ID:$CONTAINER_HOME/.ssh
