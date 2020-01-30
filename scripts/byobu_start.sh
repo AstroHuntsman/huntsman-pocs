@@ -20,7 +20,7 @@ byobu new-window
 byobu rename-window "camera-logs"
 byobu new-window
 byobu rename-window "dome-control"
-byobu select-window -t Huntsman-Control:"main-control"
+byobu select-window -t "${SESSION_NAME}":"main-control"
 
 # setup the main-control window
 # Select default pane. Probably an unnecessary line of code
