@@ -120,7 +120,7 @@ for _pane in $(byobu list-panes -F '#P'); do
 done
 
 # create camera server logs window
-byobu select-window -t Huntsman-Control:"camera-logs"
+byobu select-window -t "${SESSION_NAME}":"camera-logs"
 byobu split-window -h
 byobu select-pane -t 0
 byobu split-window -v
