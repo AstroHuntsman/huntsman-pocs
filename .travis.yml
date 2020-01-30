@@ -10,6 +10,8 @@ cache:
 env:
   - PANDIR=/var/huntsman POCS=${PANDIR}/POCS PANUSER=$USER HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 before_install:
+  #Update setuptools
+  - pip install setuptools --upgrade 
   # Set up directories.
   - sudo mkdir $PANDIR && sudo chmod 777 $PANDIR
   - mkdir -p $PANDIR/logs
