@@ -146,7 +146,7 @@ for _pane in $(byobu list-panes -F '#P'); do
 done
 
 # create dome control window
-byobu select-window -t Huntsman-Control:"dome-control"
+byobu select-window -t "${SESSION_NAME}":"dome-control"
 byobu split-window -h
 # start up dome control server
 byobu select-pane -t 0
