@@ -7,7 +7,7 @@ byobu new-session -d -s "${SESSION_NAME}"
 
 # To be able to actually see anything, you need to launch a terminal for the session
 #gnome-terminal --full-screen -- byobu attach -t Huntsman-Control
-gnome-terminal --window --maximize -- byobu attach -t Huntsman-Control
+gnome-terminal --window --maximize -- byobu attach -t "${SESSION_NAME}"
 
 # Create required window
 byobu new-window
@@ -160,4 +160,3 @@ byobu send-keys "echo cd ~/huntsman-dome/domehunter/logs/"
 byobu send-keys Enter
 byobu send-keys "echo tail -F -n 1000 server_log_yyyy_mm_dd.log"
 byobu send-keys Enter
-
