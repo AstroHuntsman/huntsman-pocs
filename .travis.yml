@@ -16,6 +16,7 @@ before_install:
   - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
   # Install testing dependencies.
   - pip install -U pip
+  - pip install setuptools --upgrade 
   - pip install coveralls
   - cd $PANDIR
   # Install POCS
