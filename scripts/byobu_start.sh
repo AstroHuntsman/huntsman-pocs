@@ -91,7 +91,7 @@ byobu send-keys "echo PEAS LOGS GOES HERE"
 byobu send-keys Enter
 
 # create camera server window
-byobu select-window -t Huntsman-Control:"camera-servers"
+byobu select-window -t "${SESSION_NAME}":"camera-servers"
 byobu split-window -h
 byobu select-pane -t 0
 byobu split-window -v
