@@ -18,7 +18,7 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 
-from huntsman.utils.config import load_device_config
+from huntsman.utils.config import load_device_config, query_config_server
 
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
@@ -527,7 +527,7 @@ class Camera(AbstractCamera):
             filename = f"{metadata['image_id']}{extension}"
         
         #Get the IP address of the NGAS server
-        ngas_ip = self.config['messaging']['huntsman_pro_ip']
+        ngas_ip = self.config['ngas_ip']
         
         #Post the file to the NGAS server
         url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
@@ -566,6 +566,11 @@ class CameraServer(object):
 
         camera_config = self.config.get('camera')
         camera_config.update({'config': self.config})
+        
+        #Also provide the IP address of the NGAS server
+        ngas_ip = query_config_server(key='messaging')['huntsman_pro_ip']
+        camera_config['ngas_ip'] = ngas_ip
+        
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
