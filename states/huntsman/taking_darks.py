@@ -3,7 +3,7 @@ def on_enter(event_data):
     """
     pocs = event_data.model
 
-    pocs.next_state = 'parking'
+    pocs.next_state = 'parked'
 
     try:
         pocs.say("It's time to take darks!")
@@ -38,4 +38,4 @@ def on_enter(event_data):
     except Exception as e:
         pocs.logger.warning("Problem with preparing: {}".format(e))
 
-    pocs.next_state = 'parked'
+    pocs.next_state = 'housekeeping'
