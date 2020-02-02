@@ -35,7 +35,7 @@ def on_enter(event_data):
                 pocs.observatory.take_dark_fields(camera_list=cameras,
                                                   exptimes_list=exptimes)
 
-            pocs.next_state = 'parked'
-
     except Exception as e:
         pocs.logger.warning("Problem with preparing: {}".format(e))
+
+    pocs.next_state = 'parked'
