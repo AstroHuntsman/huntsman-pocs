@@ -76,9 +76,11 @@ RUN export BUILD_DIR=$(pwd)/ASIBuild && \
     tar xvjf $TARGET && \
     cd lib && \
     cp armv7/libASICamera2.so /usr/local/lib/ && \
+    chmod +rx /usr/local/lib/libASICamera2.so && \
     install asi.rules /etc/udev/rules.d && \
 
     #ZWO filterwheel
+    apt-get -y install libudev-dev && \
     cd $BUILD_DIR && \
     mkdir BUILD_EFW && \
     cd BUILD_EFW && \
@@ -87,6 +89,7 @@ RUN export BUILD_DIR=$(pwd)/ASIBuild && \
     tar xvjf $TARGET && \
     cd lib && \
     cp armv7/libEFWFilter.so /usr/local/lib/ && \
+    chmod +rx /usr/local/lib/libEFWFilter.so && \
     install efw.rules /etc/udev/rules.d && \
 
     #Clean up
