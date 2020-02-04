@@ -78,7 +78,7 @@ RUN mkdir ASIBuild && \
     cd lib && \
     cp armv7/libASICamera2.so /usr/local/lib/ && \
     install asi.rules /etc/udev/rules.d && \
-    cd $BUILD_DIR && \
+    cd ../../ && \
     rm -rf ASIBuild
 
 #==============================================================================
