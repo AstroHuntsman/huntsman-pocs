@@ -14,11 +14,11 @@ RUN usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio huntsman
 #Extra environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-#Update apt-get 
+#Update apt-get
 RUN apt-get -y upgrade && apt-get update && apt-get -y dist-upgrade
 
 #Some initial packages
-RUN apt-get -y install bzip2 git gcc sshfs 
+RUN apt-get -y install bzip2 git gcc sshfs
 
 #==============================================================================
 #Berryconda (install as $PANUSER)
@@ -67,9 +67,24 @@ WORKDIR $HUNTSMAN_POCS
 RUN python setup.py develop
 
 #==============================================================================
+#Install camera-specific software - move to camera server image in future?
+
+#ZWO camera library
+ENV TARGET=ASI_linux_mac_SDK_V1.14.1119.tar.bz2
+RUN mkdir ASIBuild && \
+    cd ASIBuild && \
+    wget https://astronomy-imaging-camera.com/software/$TARGET && \
+    tar xvjf $TARGET && \
+    cd lib && \
+    cp armv7/libASICamera2.so /usr/local/lib/ && \
+    install asi.rules /etc/udev/rules.d && \
+    cd $BUILD_DIR && \
+    rm -rf ASIBuild
+
+#==============================================================================
 #Setup permissions for $PANUSER; specify $PANUSER as default user
 
-RUN chmod 1777 /tmp 
+RUN chmod 1777 /tmp
 RUN chown -R $PANUSER $PANDIR && mkdir /home/$PANUSER \
     && chown -R $PANUSER /home/$PANUSER
 USER $PANUSER
