@@ -4,21 +4,19 @@
 #Specify the OS
 FROM raspbian/jessie
 
-#Add the huntsman user
-ENV PANUSER=huntsman
-ENV PANDIR=/var/huntsman
-RUN useradd $PANUSER && mkdir $PANDIR && chown $PANUSER $PANDIR
-RUN echo dialout plugdev netdev users input spi i2c gpio | xargs -n 1 groupadd -f
-RUN usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio huntsman
-
 #Extra environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-#Update apt-get 
-RUN apt-get -y upgrade && apt-get update && apt-get -y dist-upgrade
+#Add the huntsman user
+ENV PANUSER=huntsman
+ENV PANDIR=/var/huntsman
+RUN useradd $PANUSER && mkdir $PANDIR && chown $PANUSER $PANDIR && \
+    echo dialout plugdev netdev users input spi i2c gpio | xargs -n 1 groupadd -f && \
+    usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio huntsman
 
-#Some initial packages
-RUN apt-get -y install bzip2 git gcc sshfs 
+#Update apt-get
+RUN apt-get -y upgrade && apt-get update && apt-get -y dist-upgrade && \
+    apt-get -y install bzip2 git gcc sshfs
 
 #==============================================================================
 #Berryconda (install as $PANUSER)
@@ -38,11 +36,10 @@ RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/ && \
 #==============================================================================
 #Install python deps
 
-RUN pip install --upgrade pip
-RUN pip install setuptools --upgrade
-
-RUN conda install astropy matplotlib requests scipy
-RUN pip install pymongo netifaces pyro4 pyyaml
+RUN pip install --upgrade pip && \
+    pip install setuptools --upgrade && \
+    conda install astropy matplotlib requests scipy && \
+    pip install pymongo netifaces pyro4 pyyaml
 
 #==============================================================================
 #Huntsman-POCS
@@ -53,23 +50,35 @@ ENV PAWS=${PANDIR}/PAWS
 ENV HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 
 #POCs folders
-RUN mkdir -p $PANDIR/logs && mkdir -p $PANDIR/images
+RUN mkdir -p $PANDIR/logs && \
+    mkdir -p $PANDIR/images && \
+    cd $PANDIR && \
+    git clone https://github.com/panoptes/POCS.git && \
+    git clone https://github.com/AstroHuntsman/huntsman-pocs.git && \
+    cd $POCS && \
+    python setup.py develop --no-deps && \
+    cd $HUNTSMAN_POCS && \
+    python setup.py develop
 
-#Clone necessary repos
-WORKDIR $PANDIR
-RUN git clone https://github.com/panoptes/POCS.git
-RUN git clone https://github.com/AstroHuntsman/huntsman-pocs.git
+#==============================================================================
+#Install camera-specific software - move to camera server image in future?
 
-WORKDIR $POCS
-RUN python setup.py develop --no-deps
-
-WORKDIR $HUNTSMAN_POCS
-RUN python setup.py develop
+#ZWO camera library
+ENV TARGET=ASI_linux_mac_SDK_V1.14.1119.tar.bz2
+RUN mkdir ASIBuild && \
+    cd ASIBuild && \
+    wget https://astronomy-imaging-camera.com/software/$TARGET && \
+    tar xvjf $TARGET && \
+    cd lib && \
+    cp armv7/libASICamera2.so /usr/local/lib/ && \
+    install asi.rules /etc/udev/rules.d && \
+    cd ../../ && \
+    rm -rf ASIBuild
 
 #==============================================================================
 #Setup permissions for $PANUSER; specify $PANUSER as default user
 
-RUN chmod 1777 /tmp 
+RUN chmod 1777 /tmp
 RUN chown -R $PANUSER $PANDIR && mkdir /home/$PANUSER \
     && chown -R $PANUSER /home/$PANUSER
 USER $PANUSER
@@ -80,4 +89,5 @@ USER $PANUSER
 RUN rm -r $PANDIR/images
 
 #Startup the device, using the shell to expand variables
+WORKDIR $HUNTSMAN_POCS
 CMD [ "sh", "-c", "python $HUNTSMAN_POCS/scripts/startup_device.py" ]
