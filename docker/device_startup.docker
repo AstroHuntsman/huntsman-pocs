@@ -1,83 +1,115 @@
 #==============================================================================
-#Install everything required to run the camera server and run it
+#Install everything required to run a Huntsman device.
 #==============================================================================
 #Specify the OS
 FROM raspbian/jessie
 
-#Environment variables
+#Extra environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-#Update apt-get 
-RUN apt-get -y upgrade
-RUN apt-get update
-RUN apt-get -y dist-upgrade
+#Add the huntsman user
+ENV PANUSER=huntsman
+ENV PANDIR=/var/huntsman
+RUN useradd $PANUSER && mkdir $PANDIR && chown $PANUSER $PANDIR && \
+    echo dialout plugdev netdev users input spi i2c gpio | xargs -n 1 groupadd -f && \
+    usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio huntsman
 
-#Some initial packages
-RUN apt-get -y install bzip2
-RUN apt-get -y install git
-RUN apt-get -y install gcc
-RUN apt-get -y install sshfs 
+#Update apt-get
+RUN apt-get -y upgrade && apt-get update && apt-get -y dist-upgrade && \
+    apt-get -y install bzip2 git gcc sshfs
 
 #==============================================================================
-#Berryconda
+#Berryconda (install as $PANUSER)
 
+USER $PANUSER
+WORKDIR $PANDIR
 ENV CONDA_URL=https://github.com/jjhelmus/berryconda/releases/download/v2.0.0/Berryconda3-2.0.0-Linux-armv7l.sh
-ENV CONDA_PATH=/root/berryconda3
-RUN wget $CONDA_URL
-RUN chmod +x Berryconda3-2.0.0-Linux-armv7l.sh
-RUN ./Berryconda3-2.0.0-Linux-armv7l.sh -b -p $CONDA_PATH
+ENV CONDA_PATH=/$PANDIR/berryconda3
+RUN wget $CONDA_URL && chmod +x Berryconda3-2.0.0-Linux-armv7l.sh && \
+    ./Berryconda3-2.0.0-Linux-armv7l.sh -b -p $CONDA_PATH
 
-RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/
-RUN ln -s $CONDA_PATH/bin/python3.6 /usr/local/bin/python
-RUN ln -s $CONDA_PATH/bin/pip /usr/local/bin/
+USER root
+RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/ && \
+    ln -s $CONDA_PATH/bin/python3.6 /usr/local/bin/python && \
+    ln -s $CONDA_PATH/bin/pip /usr/local/bin/
 
-RUN pip install --upgrade pip
+#==============================================================================
+#Install python deps
+
+RUN pip install --upgrade pip && \
+    pip install setuptools --upgrade && \
+    conda install astropy matplotlib requests scipy && \
+    pip install pymongo netifaces pyro4 pyyaml
 
 #==============================================================================
 #Huntsman-POCS
 
-RUN useradd huntsman
-
 #Huntsman-POCS variables
-ENV PANUSER=huntsman
-ENV PANDIR=/var/huntsman
 ENV POCS=${PANDIR}/POCS
 ENV PAWS=${PANDIR}/PAWS
 ENV HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 
 #POCs folders
-RUN mkdir $PANDIR && chown $PANUSER $PANDIR
-RUN mkdir -p $PANDIR/logs
-RUN mkdir -p $PANDIR/images
-
-#Clone necessary repos
-WORKDIR $PANDIR
-RUN git clone https://github.com/panoptes/POCS.git
-RUN git clone https://github.com/AstroHuntsman/huntsman-pocs.git
-
-WORKDIR $POCS
-RUN python setup.py develop
-
-WORKDIR $HUNTSMAN_POCS
-RUN python setup.py develop
+RUN mkdir -p $PANDIR/logs && \
+    mkdir -p $PANDIR/images && \
+    cd $PANDIR && \
+    git clone https://github.com/panoptes/POCS.git && \
+    git clone https://github.com/AstroHuntsman/huntsman-pocs.git && \
+    cd $POCS && \
+    python setup.py develop --no-deps && \
+    cd $HUNTSMAN_POCS && \
+    python setup.py develop
 
 #==============================================================================
-#Install python deps
+#Install camera-specific software - move to camera server image in future?
 
-RUN conda install astropy
-RUN conda install matplotlib
-RUN conda install requests
-RUN conda install scipy
+#ZWO camera & EFW libraries
+RUN export BUILD_DIR=$(pwd)/ASIBuild && \
+    mkdir $BUILD_DIR && \
 
-RUN pip install pymongo
-RUN pip install netifaces
-RUN pip install pyro4
-RUN pip install pyyaml
+    #ZWO camera
+    cd $BUILD_DIR && \
+    mkdir BUILD_CAM && \
+    cd BUILD_CAM && \
+    export TARGET=ASI_linux_mac_SDK_V1.14.1119.tar.bz2 && \
+    wget https://astronomy-imaging-camera.com/software/$TARGET && \
+    tar xvjf $TARGET && \
+    cd lib && \
+    cp armv7/libASICamera2.so /usr/local/lib/ && \
+    chmod a+rx /usr/local/lib/libASICamera2.so && \
+    install asi.rules /etc/udev/rules.d && \
+
+    #ZWO filterwheel
+    apt-get -y install libudev-dev && \
+    cd $BUILD_DIR && \
+    mkdir BUILD_EFW && \
+    cd BUILD_EFW && \
+    export TARGET=EFW_linux_mac_SDK_V0.4.1022.tar.bz2 && \
+    wget https://astronomy-imaging-camera.com/software/$TARGET && \
+    tar xvjf $TARGET && \
+    cd lib && \
+    cp armv7/libEFWFilter.so /usr/local/lib/ && \
+    chmod a+rx /usr/local/lib/libEFWFilter.so && \
+    install efw.rules /etc/udev/rules.d && \
+
+    #Clean up
+    rm -rf $BUILD_DIR
+
+#==============================================================================
+#Setup permissions for $PANUSER; specify $PANUSER as default user
+
+RUN chmod 1777 /tmp && \
+    chown -R $PANUSER $PANDIR && \
+    mkdir /home/$PANUSER && \
+    chown -R $PANUSER /home/$PANUSER
+
+USER $PANUSER
 
 #==============================================================================
 
 #For some reason this is necessary
 RUN rm -r $PANDIR/images
 
-#Startup the device
-CMD ["python", "$HUNTSMAN_POCS/scripts/startup_device.py"]
+#Startup the device, using the shell to expand variables
+WORKDIR $HUNTSMAN_POCS
+CMD [ "sh", "-c", "python $HUNTSMAN_POCS/scripts/startup_device.py" ]

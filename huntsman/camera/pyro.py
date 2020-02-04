@@ -18,7 +18,7 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 
-from huntsman.utils.config import load_device_config
+from huntsman.utils.config import load_device_config, query_config_server
 
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
@@ -512,32 +512,35 @@ class Camera(AbstractCamera):
         Parameters
         ----------
         filename (str):
-            The local filename, the basename of which is the default NGAS
-            filename.
+            The name of the local file to be pushed.
         metadata:
             A dict-like object containing metadata to build the NGAS filename.
         filename_ngas (str, optional):
-            The NGAS filename. If None, auto-assign based on filename.
+            The NGAS filename. If None, auto-assign based on metadata.
         port (int, optional):
             The port of the NGAS server. Defaults to the TCP port.
             
         '''        
         #Define the NGAS filename 
         if filename_ngas is None:
-            extension = os.path.splitext(filename)[1] 
+            extension = os.path.splitext(filename)[-1] 
             filename = f"{metadata['image_id']}{extension}"
         
         #Get the IP address of the NGAS server
-        ngas_ip = self.config['messaging']['huntsman_pro_ip']
+        ngas_ip = self.config['ngas_ip']
         
         #Post the file to the NGAS server
-        url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}'
+        url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
         with open(filename, 'rb') as f:
-            files = {'file':f}
-            self.logger.debug(f'Pushing {filename} to NGAS as {filename_ngas}.')
+            
+            self.logger.info(
+                    f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
+            
             try: 
                 #Post the file
-                r = requests.post(url, files=files)
+                r = requests.post(url, data=f)
+                
+                self.logger.debug(f'NGAS response: {r.text}')
                 
                 #Confirm success
                 r.raise_for_status()
@@ -563,6 +566,11 @@ class CameraServer(object):
 
         camera_config = self.config.get('camera')
         camera_config.update({'config': self.config})
+        
+        #Also provide the IP address of the NGAS server
+        ngas_ip = query_config_server(key='messaging')['huntsman_pro_ip']
+        camera_config['ngas_ip'] = ngas_ip
+        
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
