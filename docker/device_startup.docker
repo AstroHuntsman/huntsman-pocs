@@ -68,6 +68,7 @@ RUN export BUILD_DIR=$(pwd)/ASIBuild && \
     mkdir $BUILD_DIR && \
 
     #ZWO camera
+    apt-get -y install libusb-1.0-0-dev && \
     cd $BUILD_DIR && \
     mkdir BUILD_CAM && \
     cd BUILD_CAM && \
