@@ -22,12 +22,12 @@ docker pull huntsmanarray/device_startup:latest
 #device and the control computer***.
 
 #docker run -it --network host --cap-add SYS_ADMIN --device /dev/fuse \
-#        -v ~/.ssh:/root/.ssh:ro huntsmanarray/device_startup:latest 
-#^Unable to set permissions properly this way 
+#        -v ~/.ssh:/root/.ssh:ro huntsmanarray/device_startup:latest
+#^Unable to set permissions properly this way
 
-#Create a container 
-CONTAINER_ID=$(docker create -it --network host --cap-add SYS_ADMIN \
-        --device /dev/fuse huntsmanarray/device_startup:latest /bin/bash)
+#Create a container
+CONTAINER_ID=$(docker create -it --network host --privileged \
+               huntsmanarray/device_startup:latest /bin/bash)
 
 #Start the container
 docker start $CONTAINER_ID
