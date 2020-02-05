@@ -25,24 +25,31 @@ dice5 = ((0, 0),
          (-1, 1))
 
 
-def get_dither_positions(base_position, n_positions, pattern=None, pattern_offset=None, random_offset=None, plot=False):
+def get_dither_positions(base_position,
+                         n_positions,
+                         pattern=None,
+                         pattern_offset=None,
+                         random_offset=None,
+                         plot=False):
     """
-    Given a base position creates a SkyCoord list of dithered sky positions, applying a dither pattern and/or
-    random dither offsets.
+    Given a base position creates a SkyCoord list of dithered sky positions, applying a dither
+    pattern and/or random dither offsets.
 
     Args:
-         base_position (SkyCoord or compatible): base position for the dither pattern, either a SkyCoord or an object
-             that can be converted to one by the SkyCoord constructor (e.g. string)
+         base_position (SkyCoord or compatible): base position for the dither pattern, either a
+            SkyCoord or an object that can be converted to one by the SkyCoord constructor
+            (e.g. string)
          n_positions (int): number of dithered sky positions to generate
-         pattern (sequence of 2-tuples, optional): sequence of (RA offset, dec offset) tuples, in units of the
-             pattern_offset. If given pattern_offset must also be specified.
-         pattern_offset (Quantity, optional): scale for the dither pattern. Should be a Quantity with angular
-             units, if a numeric type is passed instead it will be assumed to be in arceconds. If pattern offset is
-             given pattern must be given too.
-         random_offset (Quantity, optional): scale of the random offset to apply to both RA and dec. Should be a
-             Quantity with angular units, if numeric type passed instead it will be assumed to be in arcseconds.
-         plots (optional, default False): If False no plots will be created, otherwise plots will be generated and
-             written to filename `plots`.
+         pattern (sequence of 2-tuples, optional): sequence of (RA offset, dec offset) tuples,
+            in units of the pattern_offset. If given pattern_offset must also be specified.
+         pattern_offset (Quantity, optional): scale for the dither pattern. Should be a Quantity
+            with angular units, if a numeric type is passed instead it will be assumed to be in
+            arceconds. If pattern offset is given pattern must be given too.
+         random_offset (Quantity, optional): scale of the random offset to apply to both RA and
+            dec. Should be a Quantity with angular units, if numeric type passed instead it will
+            be assumed to be in arcseconds.
+         plots (optional, default False): If False no plots will be created, otherwise plots will
+            be generated and written to filename `plots`.
 
     Returns:
         SkyCoord: list of n_positions dithered sky positions
@@ -52,10 +59,11 @@ def get_dither_positions(base_position, n_positions, pattern=None, pattern_offse
             base_position = SkyCoord(base_position)
         except ValueError:
             raise ValueError(
-                "Base position '{}' could not be converted to a SkyCoord object!".format(base_position))
+                "Base position '{}' could not be converted to a SkyCoord object!".format(
+                    base_position))
 
-    if pattern:
-        if not pattern_offset:
+    if pattern is not None:
+        if pattern_offset is None:
             raise ValueError("`pattern` specified but no `pattern_offset` given!")
 
         if not isinstance(pattern_offset, u.Quantity):
@@ -72,7 +80,7 @@ def get_dither_positions(base_position, n_positions, pattern=None, pattern_offse
         RA_offsets = np.zeros(n_positions) * u.arcsec
         dec_offsets = np.zeros(n_positions) * u.arcsec
 
-    if random_offset:
+    if random_offset is not None:
         if not isinstance(random_offset, u.Quantity):
             random_offset = random_offset * u.arcsec
 
