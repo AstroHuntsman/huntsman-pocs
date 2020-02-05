@@ -250,9 +250,10 @@ def test_pyro_camera(config, camera_server):
 
 
 def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
-    os.environ['POCSTIME'] = '2016-09-09 10:00:00'
+    os.environ['POCSTIME'] = '2016-09-09 08:00:00'
 
-    observatory.db.insert_current('weather', {'safe': False})
+    # Make sure DB is clear for current weather
+    observatory.db.clear_current('weather')
 
     def start_pocs():
         observatory.logger.info('start_pocs ENTER')
@@ -276,7 +277,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         pocs.logger.info('Sending RUNNING message')
         pocs.send_message('RUNNING')
         pocs.run(run_once=True, exit_when_done=True)
-        assert pocs.observatory.is_weather_safe() is True
+        assert pocs.is_weather_safe() is True
         pocs.power_down()
         pocs.observatory.logger.info('start_pocs EXIT')
 
@@ -288,7 +289,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         assert wait_for_running(msg_subscriber)
         observatory.logger.info('Got RUNNING message')
 
-        time.sleep(5)
+        time.sleep(2)
         # Insert a dummy weather record to break wait
         observatory.db.insert_current('weather', {'safe': True})
 
