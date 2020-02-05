@@ -181,7 +181,7 @@ def test_default_lookup_trigger(pocs):
 
 
 def test_free_space(pocs):
-    assert pocs.has_free_space() is True
+    assert pocs.has_free_space(required_space=0.1 * u.gigabyte) is True
 
     # Test something ridiculous
     assert pocs.has_free_space(required_space=1e9 * u.gigabyte) is False
