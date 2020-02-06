@@ -104,7 +104,8 @@ RUN chmod 1777 /tmp && \
     mkdir /home/$PANUSER && \
     chown -R $PANUSER /home/$PANUSER
 
-USER $PANUSER
+USER ROOT
+RUN ldconfig
 
 #==============================================================================
 
@@ -112,5 +113,6 @@ USER $PANUSER
 RUN rm -r $PANDIR/images
 
 #Startup the device, using the shell to expand variables
+USER $PANUSER
 WORKDIR $HUNTSMAN_POCS
 CMD [ "sh", "-c", "python $HUNTSMAN_POCS/scripts/startup_device.py" ]
