@@ -165,12 +165,12 @@ def test_simple_simulator(pocs):
 
     assert pocs._lookup_trigger() == 'parking'
 
-    assert pocs.has_free_space() is True
+    assert pocs.has_free_space()
 
     # Test something ridiculous
     assert pocs.has_free_space(required_space=1e9 * u.gigabyte) is False
 
-    assert pocs.is_safe() is True
+    assert pocs.is_safe()
 
 
 def test_is_weather_and_dark_simulator(pocs):
