@@ -168,7 +168,7 @@ def test_simple_simulator(pocs):
     assert pocs.has_free_space()
 
     # Test something ridiculous
-    assert pocs.has_free_space(required_space=1e9 * u.gigabyte) is False
+    assert not pocs.has_free_space(required_space=1e9 * u.gigabyte)
 
     assert pocs.is_safe()
 
