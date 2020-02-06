@@ -104,7 +104,7 @@ RUN chmod 1777 /tmp && \
     mkdir /home/$PANUSER && \
     chown -R $PANUSER /home/$PANUSER
 
-USER ROOT
+USER root
 RUN ldconfig
 
 #==============================================================================
