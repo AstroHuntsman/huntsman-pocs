@@ -5,7 +5,6 @@ from warnings import warn
 from threading import Event
 from threading import Timer
 from threading import Thread
-import subprocess
 from contextlib import suppress
 
 from astropy import units as u
