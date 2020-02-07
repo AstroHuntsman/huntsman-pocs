@@ -322,44 +322,6 @@ class Camera(AbstractCamera):
         assert self.focuser.is_connected, \
             self.logger.error("Focuser must be connected for autofocus.")
 
-        # Make certain that all the argument are builtin types for easy Pyro serialisation
-        if isinstance(seconds, u.Quantity):
-            seconds = seconds.to(u.second).value
-        if seconds is not None:
-            seconds = float(seconds)
-
-        if focus_range is not None:
-            focus_range = (int(limit) for limit in focus_range)
-
-        if focus_step is not None:
-            focus_step = (int(step) for step in focus_step)
-
-        if keep_files is not None:
-            keep_files = bool(keep_files)
-
-        if take_dark is not None:
-            take_dark = bool(take_dark)
-
-        if thumbnail_size is not None:
-            thumbnail_size = int(thumbnail_size)
-
-        merit_function = str(merit_function)
-        merit_function_kwargs = dict(merit_function_kwargs)
-
-        if mask_dilations is not None:
-            mask_dilations = int(mask_dilations)
-
-        if coarse is not None:
-            coarse = bool(coarse)
-
-        if make_plots is not None:
-            make_plots = bool(make_plots)
-
-        if isinstance(timeout, u.Quantity):
-            timeout = timeout.to(u.second).value
-        if timeout is not None:
-            timeout = float(timeout)
-
         # Compile aruments into a dictionary
         autofocus_kwargs = {'seconds': seconds,
                             'focus_range': focus_range,
@@ -373,8 +335,6 @@ class Camera(AbstractCamera):
                             'coarse': coarse,
                             'make_plots': make_plots}
         autofocus_kwargs.update(kwargs)
-
-        focus_dir = os.path.join(os.path.abspath(self.config['directories']['images']), 'focus/')
 
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)

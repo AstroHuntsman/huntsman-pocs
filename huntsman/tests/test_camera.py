@@ -9,6 +9,7 @@ import os
 import time
 import glob
 import sys
+import shutil
 
 import astropy.units as u
 
@@ -41,14 +42,10 @@ def camera(request, images_dir, camera_server):
 
 
 @pytest.fixture(scope='module')
-def counter(camera):
-    return {'value': 0}
-
-
-@pytest.fixture(scope='module')
 def patterns(camera):
     images_dir = "/tmp/images"
-    patterns = {'final': os.path.join(images_dir, 'focus', camera.uid, '*',
+    patterns = {'base': os.path.join(images_dir, 'focus', camera.uid),
+                'final': os.path.join(images_dir, 'focus', camera.uid, '*',
                                       ('*_final.' + camera.file_extension)),
                 'fine_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
                                           'fine_focus.png'),
@@ -309,60 +306,72 @@ def test_observation(camera, images_dir):
     assert len(glob.glob(observation_pattern)) == 1
 
 
-def test_autofocus_coarse(camera, patterns, counter):
+def test_autofocus_coarse(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    autofocus_event = camera.autofocus(coarse=True)
-    autofocus_event.wait()
-    counter['value'] += 1
-    assert len(glob.glob(patterns['final'])) == counter['value']
+    try:
+        autofocus_event = camera.autofocus(coarse=True)
+        autofocus_event.wait()
+        assert len(glob.glob(patterns['final'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_fine(camera, patterns, counter):
+def test_autofocus_fine(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    autofocus_event = camera.autofocus()
-    autofocus_event.wait()
-    counter['value'] += 1
-    assert len(glob.glob(patterns['final'])) == counter['value']
+    try:
+        autofocus_event = camera.autofocus()
+        autofocus_event.wait()
+        assert len(glob.glob(patterns['final'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_fine_blocking(camera, patterns, counter):
+def test_autofocus_fine_blocking(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    autofocus_event = camera.autofocus(blocking=True)
-    assert autofocus_event.is_set()
-    counter['value'] += 1
-    assert len(glob.glob(patterns['final'])) == counter['value']
+    try:
+        autofocus_event = camera.autofocus(blocking=True)
+        assert autofocus_event.is_set()
+        assert len(glob.glob(patterns['final'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_with_plots(camera, patterns, counter):
+def test_autofocus_with_plots(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    autofocus_event = camera.autofocus(make_plots=True)
-    autofocus_event.wait()
-    counter['value'] += 1
-    assert len(glob.glob(patterns['final'])) == counter['value']
-    assert len(glob.glob(patterns['fine_plot'])) == 1
+    try:
+        autofocus_event = camera.autofocus(make_plots=True)
+        autofocus_event.wait()
+        assert len(glob.glob(patterns['final'])) == 1
+        assert len(glob.glob(patterns['fine_plot'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_coarse_with_plots(camera, patterns, counter):
+def test_autofocus_coarse_with_plots(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    autofocus_event = camera.autofocus(coarse=True, make_plots=True)
-    autofocus_event.wait()
-    counter['value'] += 1
-    assert len(glob.glob(patterns['final'])) == counter['value']
-    assert len(glob.glob(patterns['coarse_plot'])) == 1
+    try:
+        autofocus_event = camera.autofocus(coarse=True, make_plots=True)
+        autofocus_event.wait()
+        assert len(glob.glob(patterns['final'])) == 1
+        assert len(glob.glob(patterns['coarse_plot'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_keep_files(camera, patterns, counter):
+def test_autofocus_keep_files(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    autofocus_event = camera.autofocus(keep_files=True)
-    autofocus_event.wait()
-    counter['value'] += 1
-    assert len(glob.glob(patterns['final'])) == counter['value']
+    try:
+        autofocus_event = camera.autofocus(keep_files=True)
+        autofocus_event.wait()
+        assert len(glob.glob(patterns['final'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
 def test_autofocus_no_size(camera, caplog):
