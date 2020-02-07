@@ -63,17 +63,11 @@ class Camera(AbstractCamera):
 
     @property
     def egain(self):
-        if self._egain is not None:
-            return self._egain
-        else:
-            raise NotImplementedError
+        self._proxy.egain
 
     @property
     def bit_depth(self):
-        if self._bit_depth is not None:
-            return self._bit_depth
-        else:
-            raise NotImplementedError
+        return self._proxy.bit_depth
 
     @property
     def temperature(self):
@@ -174,22 +168,15 @@ class Camera(AbstractCamera):
             self.logger.error(msg)
             return
 
-        self._connected = True
+        # Retrieve and locally cache camera properties that won't change.
         self._serial_number = uid
         self.name = self._proxy.name
         self.model = self._proxy.model
         self._readout_time = self._proxy.readout_time
         self._file_extension = self._proxy.file_extension
-        try:
-            self._egain = self._proxy.egain
-        except NotImplementedError:
-            self._egain = None
-        try:
-            self._bit_depth = self._proxy.bit_depth
-        except NotImplementedError:
-            self._bit_depth = None
-        self._filter_type = self._proxy.filter_type
         self._is_cooled_camera = self._proxy.is_cooled_camera
+        self._filter_type = self._proxy.filter_type
+        self._connected = True
         self.logger.debug("{} connected".format(self))
 
         if self._proxy.has_focuser:
@@ -239,7 +226,6 @@ class Camera(AbstractCamera):
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
 
         #Remote method call to start the exposure
-        #Once this finishes, the filename is returned
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     filename=filename,
                                                     dark=bool(dark),
