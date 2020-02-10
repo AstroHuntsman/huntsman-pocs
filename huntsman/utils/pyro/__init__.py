@@ -2,7 +2,7 @@ import Pyro4
 from Pyro4 import naming, errors
 
 from huntsman.camera.pyro import CameraServer
-from huntsman.utils import get_own_ip, sshfs_mount, DummyLogger
+from huntsman.utils import get_own_ip, sshfs, DummyLogger
 from huntsman.utils.config import load_device_config
 
 #==============================================================================
@@ -71,7 +71,7 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
         logger = DummyLogger()
 
     #Mount the SSHFS images directory
-    mountpoint = sshfs_mount.mount_images_dir(logger=logger)
+    mountpoint = sshfs.mount_images_dir(logger=logger)
 
     Pyro4.config.SERVERTYPE = "multiplex"
 
@@ -109,7 +109,7 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
 
             #Unmount the SSHFS
             if unmount_sshfs:
-                sshfs_mount.unmount(mountpoint, logger=logger)
+                sshfs.unmount(mountpoint, logger=logger)
 
 #==============================================================================
 
