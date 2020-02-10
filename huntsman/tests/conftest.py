@@ -286,7 +286,7 @@ def config_server(name_server, request, images_dir, images_dir_local):
 
 
 @pytest.fixture(scope='session')
-def camera_server(name_server, request):
+def camera_server(name_server, config_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
                '--ignore_local']
     cs_proc = subprocess.Popen(cs_cmds)

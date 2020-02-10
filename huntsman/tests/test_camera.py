@@ -36,7 +36,7 @@ def images_dir(tmpdir_factory):
 
 # Ugly hack to access id inside fixture
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
-def camera(request, images_dir, camera_server):
+def camera(request, images_dir, camera_server, config_server):
     if request.param[0] == PyroCamera:
         ns = Pyro4.locateNS()
         cameras = ns.list(metadata_all={'POCS', 'Camera'})
