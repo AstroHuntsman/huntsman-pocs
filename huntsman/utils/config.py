@@ -40,6 +40,30 @@ class ConfigServer():
     def config(self, config):
         self.config_ = config
 
+
+    def _load_config(self, device_kwargs={}, control_kwargs={}):
+        '''
+        Load the config files for devices and control.
+
+        Parameters
+        ----------
+        device_kwargs (dict):
+            Additional kwargs for device_config.
+
+        control_kwargs (dict):
+            Additional kwargs for control config.
+        '''
+        #Specify the device config files
+        config_files = device_kwargs.pop('config_files', ['device_info.yaml'])
+
+        #Load the device config
+        self.config_ = load_config(parse=self.parse, config_files=config_files,
+                                   **device_kwargs)
+
+        #Also load the control config
+        self.config_['control'] = load_config(parse=self.parse, **control_kwargs)
+
+
     def get_config(self, key=None):
         '''
         Retrieve the config file.
