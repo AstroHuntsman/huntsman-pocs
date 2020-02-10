@@ -67,15 +67,24 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(skip_hardware)
 
 
+@pytest.fixture(scope='session')
+def _images_dir():
+    return os.expandvars('$PANDIR/images')
+
+@pytest.fixture(scope='session')
+def _images_dir_local():
+    return os.expandvars('$PANDIR/images_local')
+
 @pytest.fixture(scope='module')
-def images_dir(tmpdir_factory):
-    directory = tmpdir_factory.mktemp(os.expandvars('$PANDIR/images'))
+def images_dir(tmpdir_factory, _images_dir):
+    directory = tmpdir_factory.mktemp(_images_dir)
     return str(directory)
 
 @pytest.fixture(scope='module')
-def images_dir_local(tmpdir_factory):
-    directory = tmpdir_factory.mktemp(os.expandvars('$PANDIR/images_local'))
+def images_dir_local(tmpdir_factory, _images_dir_local):
+    directory = tmpdir_factory.mktemp(_images_dir_local)
     return str(directory)
+
 
 @pytest.fixture(scope='function')
 def config(images_dir, messaging_ports):
@@ -242,7 +251,7 @@ def name_server(request):
 
 
 @pytest.fixture(scope='session')
-def config_server(name_server, request, images_dir, images_dir_local):
+def config_server(name_server, request, _images_dir, _images_dir_local):
     '''
     The annoyance of this is that the test code may have a different IP
     from those in the actual device_info.yaml and can vary between runtime
@@ -269,8 +278,8 @@ def config_server(name_server, request, images_dir, images_dir_local):
             config[key] = config['localhost']
 
             # Modify some additional entries to facilitate tests
-            config[key]['directories']['images'] = images_dir_local
-            config['control']['directories']['images'] = images_dir
+            config[key]['directories']['images'] = _images_dir_local
+            config['control']['directories']['images'] = _images_dir
 
             # Update the config in the config server
             config_server.config = config
