@@ -248,7 +248,7 @@ def test_pyro_camera(config, camera_server):
     assert isinstance(obs.cameras['camera.simulator.001'], PyroCamera)
     assert obs.cameras['camera.simulator.001'].is_connected
 
-"""
+
 def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
 
@@ -397,4 +397,3 @@ def test_run_power_down_interrupt(observatory, msg_subscriber, cmd_publisher):
         pocs_thread.join(timeout=30)
 
     assert pocs_thread.is_alive() is False
-"""
