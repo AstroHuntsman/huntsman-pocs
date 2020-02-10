@@ -71,12 +71,12 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
         logger = DummyLogger()
 
     #Mount the SSHFS images directory
-    mountpoint = sshfs_mount.mount_images_dir()
+    mountpoint = sshfs_mount.mount_images_dir(logger=logger)
 
     Pyro4.config.SERVERTYPE = "multiplex"
 
     #Load the config file
-    config = load_device_config(**kwargs)
+    config = load_device_config(logger=logger, **kwargs)
 
     #Specify address
     host = config.get('host', None)
@@ -109,7 +109,7 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
 
             #Unmount the SSHFS
             if unmount_sshfs:
-                sshfs_mount.unmount(mountpoint)
+                sshfs_mount.unmount(mountpoint, logger=logger)
 
 #==============================================================================
 

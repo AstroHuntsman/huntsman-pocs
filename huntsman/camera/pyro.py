@@ -511,7 +511,7 @@ class CameraServer(object):
         camera_config.update({'config': self.config})
 
         #Also provide the IP address of the NGAS server
-        camera_config['ngas_ip'] = query_config_server(key='control')['control_ip']
+        camera_config['ngas_ip'] = query_config_server(key='control')['ip_address']
 
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)

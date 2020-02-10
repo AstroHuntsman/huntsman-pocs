@@ -92,7 +92,7 @@ def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
 
     # Load the config
     if config is None:
-        config = load_device_config(**kwargs)
+        config = load_device_config(logger=logger, **kwargs)
 
     # Specify user for SSHFS connection
     if user is None:
@@ -103,10 +103,12 @@ def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
         mountpoint = config['directories']['images']
 
     # Retrieve the IP of the remote
-    remote_ip = query_config_server(key='control')['control_ip']
+    remote_ip = query_config_server(key='control', logger=logger,
+                                    )['ip_address']
 
     # Specify the remote directory
-    remote_dir = query_config_server(key='control')['directories']['images']
+    remote_dir = query_config_server(key='control',
+                                     logger=logger)['directories']['images']
     remote = f"{user}@{remote_ip}:{remote_dir}"
 
     # Mount

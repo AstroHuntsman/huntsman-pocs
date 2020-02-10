@@ -29,7 +29,7 @@ localhost:
         images: temp
         data: data
 control:
-    control_ip: localhost
+    ip_address: localhost
     directories:
-        base: /var/panoptes
+        base: /var/huntsman
         images: images

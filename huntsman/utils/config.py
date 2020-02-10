@@ -7,7 +7,7 @@ Created on Thu Jan  2 12:04:11 2020
 
 Code to provide a config server using pyro.
 """
-import os, sys, time
+import sys, time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip, DummyLogger
 from pocs.utils.config import _parse_config
