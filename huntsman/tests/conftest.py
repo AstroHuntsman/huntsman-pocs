@@ -285,7 +285,7 @@ def config_server(name_server, request, images_dir, images_dir_local):
     raise TimeoutError("Timeout waiting for config server.")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def camera_server(name_server, config_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
                '--ignore_local']
