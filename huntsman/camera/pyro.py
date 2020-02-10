@@ -115,12 +115,12 @@ class Camera(AbstractCamera):
     @property
     def is_exposing(self):
         return not self._exposure_event.is_set()
-    
+
     @property
     def is_ready(self):
         '''
         True if camera is ready to start another exposure, otherwise False.
-        
+
         Check self.is_exposing first to side-step so-far unexplained
         hanging possibly caused by is_temperature_stable.
         '''
@@ -128,13 +128,13 @@ class Camera(AbstractCamera):
         if self.is_exposing:
             self.logger.debug('Camera not ready: exposing!')
             return False
-        
+
         # For cooled camera expect stable temperature before taking exposure
         if self.is_cooled_camera and not self.is_temperature_stable:
             self.logger.debug('Camera not ready: temperature not stable!')
             return False
 
-        # Check all the subcomponents too, e.g. make sure filterwheel/focuser 
+        # Check all the subcomponents too, e.g. make sure filterwheel/focuser
         #aren't moving.
         for sub_name in self._subcomponent_names:
             if getattr(self, sub_name) and not getattr(self,sub_name).is_ready:
@@ -198,8 +198,8 @@ class Camera(AbstractCamera):
             self.focuser = None
 
         self.filterwheel = None  # Remote filterwheels not supported yet.
-        
-        
+
+
     def take_exposure(self,
                       seconds=1.0 * u.second,
                       filename=None,
@@ -242,14 +242,14 @@ class Camera(AbstractCamera):
 
         #Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
-        
+
         #Remote method call to start the exposure
         #Once this finishes, the filename is returned
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     filename=filename,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs) 
+                                                    **kwargs)
 
         #Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=seconds + self.readout_time,
@@ -490,23 +490,23 @@ class Camera(AbstractCamera):
             raise error.Timeout(msg)
 
         return result
-    
+
 
     def _process_fits(self, file_path, info):
         '''
         Override _process_fits, called by process_exposure in take_observation.
-        
+
         The difference is that we do an NGAS push following the processing.
         '''
         #Call the super method
         result = super()._process_fits(file_path, info)
-        
+
         #Do the NGAS push
         self._NGASpush(file_path, info)
-        
+
         return result
-        
-    
+
+
     def _NGASpush(self, filename, metadata, filename_ngas=None, port=7778):
         '''
         Parameters
@@ -519,38 +519,38 @@ class Camera(AbstractCamera):
             The NGAS filename. If None, auto-assign based on metadata.
         port (int, optional):
             The port of the NGAS server. Defaults to the TCP port.
-            
-        '''        
-        #Define the NGAS filename 
+
+        '''
+        #Define the NGAS filename
         if filename_ngas is None:
-            extension = os.path.splitext(filename)[-1] 
+            extension = os.path.splitext(filename)[-1]
             filename = f"{metadata['image_id']}{extension}"
-        
+
         #Get the IP address of the NGAS server
         ngas_ip = self.config['ngas_ip']
-        
+
         #Post the file to the NGAS server
         url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
         with open(filename, 'rb') as f:
-            
+
             self.logger.info(
                     f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
-            
-            try: 
+
+            try:
                 #Post the file
                 r = requests.post(url, data=f)
-                
+
                 self.logger.debug(f'NGAS response: {r.text}')
-                
+
                 #Confirm success
                 r.raise_for_status()
-                
-            except Exception as e: 
+
+            except Exception as e:
                 self.logger.error(f'Error while performing NGAS push: {e}')
                 raise(e)
 
 #==============================================================================
-        
+
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class CameraServer(object):
@@ -566,11 +566,10 @@ class CameraServer(object):
 
         camera_config = self.config.get('camera')
         camera_config.update({'config': self.config})
-        
+
         #Also provide the IP address of the NGAS server
-        ngas_ip = query_config_server(key='messaging')['huntsman_pro_ip']
-        camera_config['ngas_ip'] = ngas_ip
-        
+        camera_config['ngas_ip'] = query_config_server(key='control')['control_ip']
+
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
@@ -669,12 +668,12 @@ class CameraServer(object):
         ----------
         filename (str):
             The filename of the exposure result.
-            
+
         Returns
         -------
         str:
             The full filename of the exposure output.
-        '''                    
+        '''
         #Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,

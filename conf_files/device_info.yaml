@@ -28,5 +28,8 @@ localhost:
         base: /var/panoptes
         images: temp
         data: data
-messaging:
-    huntsman_pro_ip: localhost 
+control:
+    control_ip: localhost
+    directories:
+        base: /var/panoptes
+        images: images

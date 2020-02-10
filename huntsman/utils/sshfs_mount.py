@@ -8,8 +8,8 @@ Created on Tue Dec  3 07:16:00 2019
 Run this on the pis (not the main computer).
 """
 import os, subprocess
-from huntsman.utils import load_config, DummyLogger
-from huntsman.utils.config import load_device_config
+from huntsman.utils import DummyLogger
+from huntsman.utils.config import query_config_server, load_device_config
 
 #==============================================================================
 
@@ -17,35 +17,39 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
           server_alive_count_max=3, strict_host_key_checking=False):
     '''
     Mount remote on local.
-    
+
     Arguments
     ---------
-    strict_host_key_checking: 
-        Should be False to avoid user interaction when running in a docker 
+    strict_host_key_checking:
+        Should be False to avoid user interaction when running in a docker
         container.
     '''
     if logger is None:
         logger = DummyLogger()
-        
+    logger.debug(f'Mounting {remote} on {mountpoint}...')
+
     try:
         os.makedirs(mountpoint, exist_ok=True)
     except FileExistsError:
         pass #For some reason this is necessary
-        
+
     #SSH options
     strict_host_key_checking = "yes" if strict_host_key_checking else "no"
     options = f'ServerAliveInterval={server_alive_interval},' + \
               f'ServerAliveCountMax={server_alive_count_max},' + \
               f'StrictHostKeyChecking={strict_host_key_checking}'
     options = ['sshfs', remote, mountpoint, '-o', options]
-    
+
     try:
         subprocess.run(options, shell=False, check=True)
+
+        logger.info(f'Successfully mounted {remote} at {mountpoint}!')
+
     except Exception as e:
-        logger.error(f'Failed to mount {remote} on {mountpoint}: {e}')
+        logger.error(f'Failed to mount {remote} at {mountpoint}: {e}')
         raise(e)
-    
-    
+
+
 def unmount(mountpoint, logger=None):
     '''
     Unmount remote from local.
@@ -57,13 +61,13 @@ def unmount(mountpoint, logger=None):
         except:
             if logger is None:
                 logger = DummyLogger()
-            logger.warning('Unable to unmount existing mountpoint.')
-        
+            logger.warning(f'Unable to unmount {mountpoint}.')
+
 #==============================================================================
-     
+
 def get_user(default='huntsman', key='PANUSER', logger=None):
     '''
-    Return the default user. 
+    Return the user.
     '''
     if key in os.environ:
         user = os.environ[key]
@@ -75,71 +79,40 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
         logger.warning(msg)
     return user
 
-
-def get_mountpoint():
-    '''
-    Return the default mountpoint. In the future, this can use a config file.
-    '''
-    home = os.path.expandvars('$HOME')
-    mountpoint = os.path.join(home, 'Huntsmans-Pro')
-    return mountpoint
-    
 #==============================================================================
-    
-def mount_sshfs(logger=None, user=None, mountpoint=None, **kwargs):
+
+def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
+                     **kwargs):
     '''
-    
+    Mount the images directory from the NGAS server to the local device.
     '''
-    #Get the logger
+    # Setup the logger
     if logger is None:
         logger = DummyLogger()
-        
-    #Get SSH username from environment?
+
+    # Load the config
+    if config is None:
+        config = load_device_config(**kwargs)
+
+    # Specify user for SSHFS connection
     if user is None:
         user = get_user(logger=logger)
-        
-    #Specify the mount point as ~/Huntsmans-Pro 
+
+    # Specify the mount point on the local device
     if mountpoint is None:
-        mountpoint = get_mountpoint()
-    
-    #Retrieve the IP of the remote
-    remote_ip=load_device_config(key='messaging', **kwargs)['huntsman_pro_ip']
-    
-    #Specify the remote directory
-    config_huntsman = load_config()    
-    remote_dir = config_huntsman['directories']['base']
+        mountpoint = config['directories']['images']
+
+    # Retrieve the IP of the remote
+    remote_ip = query_config_server(key='control')['control_ip']
+
+    # Specify the remote directory
+    remote_dir = query_config_server(key='control')['directories']['images']
     remote = f"{user}@{remote_ip}:{remote_dir}"
-    
-    #Check if the remote is already mounted, if so, unmount
-    logger.debug(f'Attempting to unmount {mountpoint}...')
-    unmount(mountpoint, logger=logger)
-    
-    #Mount
-    logger.debug(f'Mounting {remote} on {mountpoint}...')
+
+    # Mount
     mount(mountpoint, remote, logger=logger)
-    
-    #Symlink the directories
-    original = os.path.join(mountpoint, 'images')
-    link = config_huntsman['directories']['images']
-    
-    #If link already exists, make sure it is pointing to the right place
-    if os.path.exists(link):
-        try:
-            assert(os.path.islink(link))
-            assert(os.path.normpath(os.readlink(link))==os.path.normpath(
-                    original))
-            logger.debug('Skipping link creation as it already exists.')
-        except:
-            msg = f'Cannot create link. File already exists: {link}'
-            logger.error(msg)
-            raise FileExistsError(msg)
-    else:
-        logger.debug('Creating symlink to images directory...')
-        os.symlink(original, link, target_is_directory=True)
-    
-    logger.debug('Done mounting SSHFS!')
-    
+
     return mountpoint
-    
+
 #==============================================================================
 
