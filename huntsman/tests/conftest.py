@@ -83,7 +83,6 @@ def config(images_dir, messaging_ports):
         _one_time_config['db']['name'] = 'huntsman_testing'
         _one_time_config['name'] = 'HuntsmanTest'
         _one_time_config['scheduler']['fields_file'] = 'simulator.yaml'
-        _one_time_config['scheduler']['check_file'] = False
 
     # Make a copy before we modify based on test fixtures.
     result = copy.deepcopy(_one_time_config)
@@ -101,11 +100,8 @@ def config(images_dir, messaging_ports):
 
     # We don't want to use the same production messaging ports, just in case
     # these tests are running on a working scope.
-    try:
-        result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
-        result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
-    except KeyError:
-        pass
+    result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
+    result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
 
     get_root_logger().debug('config fixture: {!r}', result)
     return result
@@ -236,7 +232,7 @@ def name_server(request):
 
     raise TimeoutError("Timeout waiting for name server to start")
 
-    
+
 @pytest.fixture(scope='session')
 def config_server(name_server, request):
     '''
@@ -249,34 +245,34 @@ def config_server(name_server, request):
             '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
-            
+
     #Check the config server works
     waited = 0
     while waited <= 20:
         try:
-            
+
             config = query_config_server()
-            assert(isinstance(config, dict))  
-                                    
+            assert(isinstance(config, dict))
+
             #This is the hack...
             config_server = Pyro4.Proxy('PYRONAME:config_server')
             key = get_own_ip()
             config = config_server.config
             config[key] = config['localhost']
-            
+
             config_server.config = config
-            
+
             return proc
-        
+
         except:
             time.sleep(1)
             waited += 1
-            
+
     raise TimeoutError("Timeout waiting for config server.")
-    
-    
+
+
 @pytest.fixture(scope='session')
-def camera_server(name_server, request):
+def camera_server(name_server, config_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
                '--ignore_local']
     cs_proc = subprocess.Popen(cs_cmds)

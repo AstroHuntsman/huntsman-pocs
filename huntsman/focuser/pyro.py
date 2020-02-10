@@ -1,7 +1,5 @@
-import astropy.units as u
-
 from pocs.focuser import AbstractFocuser
-from pocs.utils import get_quantity_value
+
 
 class Focuser(AbstractFocuser):
     """ Class representing the client side interface to the Focuser of a distributed camera. """
@@ -25,7 +23,6 @@ class Focuser(AbstractFocuser):
     @position.setter
     def position(self, position):
         """ Move focusser to new encoder position """
-        position = int(position)
         self._proxy.focuser_position = position
 
     @property
@@ -49,8 +46,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_range.setter
     def autofocus_range(self, autofocus_ranges):
-        if autofocus_ranges is not None:
-            autofocus_ranges = (int(autofocus_ranges[0]), int(autofocus_ranges[1]))
         self._proxy.focuser_autofocus_range = autofocus_ranges
 
     @property
@@ -59,8 +54,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_step.setter
     def autofocus_step(self, steps):
-        if steps is not None:
-            steps = (int(steps[0]), int(steps[1]))
         self._proxy.focuser_autofocus_step = steps
 
     @property
@@ -69,8 +62,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_seconds.setter
     def autofocus_seconds(self, seconds):
-        if seconds is not None:
-            seconds = float(get_quantity_value(seconds, u.second))
         self._proxy.focuser_autofocus_seconds = seconds
 
     @property
@@ -79,8 +70,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_size.setter
     def autofocus_size(self, size):
-        if size is not None:
-            size = int(size)
         self._proxy.focuser_autofocus_size = size
 
     @property
@@ -89,7 +78,7 @@ class Focuser(AbstractFocuser):
 
     @autofocus_keep_files.setter
     def autofocus_keep_files(self, keep_files):
-        self._proxy.focuser_autofocus_keep_files = bool(keep_files)
+        self._proxy.focuser_autofocus_keep_files = keep_files
 
     @property
     def autofocus_take_dark(self):
@@ -97,7 +86,7 @@ class Focuser(AbstractFocuser):
 
     @autofocus_take_dark.setter
     def autofocus_take_dark(self, take_dark):
-        self._proxy.focuser_autofocus_take_dark = bool(take_dark)
+        self._proxy.focuser_autofocus_take_dark = take_dark
 
     @property
     def autofocus_merit_function(self):
@@ -105,8 +94,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_merit_function.setter
     def autofocus_merit_function(self, merit_function):
-        if merit_function is not None:
-            merit_function = str(merit_function)
         self._proxy.focuser_autofocus_merit_function = merit_function
 
     @property
@@ -115,8 +102,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_merit_function_kwargs.setter
     def autofocus_merit_function_kwargs(self, kwargs):
-        if kwargs is not None:
-            kwargs = dict(kwargs)
         self._proxy.focuser_autofocus_merit_function_kwargs =kwargs
 
     @property
@@ -125,8 +110,6 @@ class Focuser(AbstractFocuser):
 
     @autofocus_mask_dilations.setter
     def autofocus_mask_dilations(self, dilations):
-        if dilations is not None:
-            dilations = int(dilations)
         self._proxy.focuser_autofocus_mask_dilations = dilations
 
 ##################################################################################################
@@ -146,12 +129,10 @@ class Focuser(AbstractFocuser):
 
     def move_to(self, position):
         """ Move focuser to new encoder position """
-        position = int(position)
         return self._proxy.focuser_move_to(position)
 
     def move_by(self, increment):
         """ Move focuser by a given amount """
-        increment = int(increment)
         return self._proxy.focuser_move_by(increment)
 
     def autofocus(self, *args, **kwargs):
