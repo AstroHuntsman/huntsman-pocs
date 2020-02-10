@@ -29,8 +29,7 @@ class ConfigServer():
             config_file = os.path.join(os.environ['HUNTSMAN_POCS'],
                                        'conf_files', 'device_info.yaml')
         #Read the config file
-        self.config_ = load_config(config_files=[config_file], parse=self.parse,
-                                   **kwargs)
+        self.config_ = self._load_config(**kwargs)
 
     @property
     def config(self):
@@ -61,7 +60,7 @@ class ConfigServer():
                                    **device_kwargs)
 
         #Also load the control config
-        self.config_['control'] = load_config(parse=self.parse, **control_kwargs)
+        self.config_['control'] = load_config(parse=False, **control_kwargs)
 
 
     def get_config(self, key=None):
