@@ -270,8 +270,8 @@ def config_server(name_server, request, images_dir, images_dir_local):
             config[key] = config['localhost']
 
             # Modify some additional entries to facilitate tests
-            config[key]['directories']['images'] = images_dir
-            config['control']['directories']['images'] = images_dir_local
+            config[key]['directories']['images'] = images_dir_local
+            config['control']['directories']['images'] = images_dir
 
             # Update the config in the config server
             config_server.config = config
