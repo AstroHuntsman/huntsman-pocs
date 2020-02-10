@@ -253,7 +253,6 @@ def test_pyro_camera(config, camera_server):
 def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
 
-    # Make sure DB is clear for current weather
     observatory.db.insert_current('weather', {'safe': False})
 
     def start_pocs():
