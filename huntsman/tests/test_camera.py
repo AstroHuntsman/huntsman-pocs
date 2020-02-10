@@ -27,12 +27,12 @@ sys.excepthook = Pyro4.util.excepthook
 params = [PyroCamera]
 ids = ['pyro']
 
-
+"""
 @pytest.fixture(scope='module')
 def images_dir(tmpdir_factory):
     directory = tmpdir_factory.mktemp('images')
     return str(directory)
-
+"""
 
 # Ugly hack to access id inside fixture
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
@@ -43,7 +43,7 @@ def camera(request, images_dir, camera_server, config_server):
         cam_name, cam_uri = cameras.popitem()
         camera = PyroCamera(port=cam_name, uri=cam_uri)
 
-    camera.config['directories']['images'] = images_dir
+    #camera.config['directories']['images'] = images_dir
     return camera
 
 
