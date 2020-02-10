@@ -28,8 +28,8 @@ class ConfigServer():
         if config_file is None:
             config_file = os.path.join(os.environ['HUNTSMAN_POCS'],
                                        'conf_files', 'device_info.yaml')
-        #Read the config file
-        self.config_ = self._load_config(**kwargs)
+        #Read the config file(s)
+        self._load_config(**kwargs)
 
     @property
     def config(self):
