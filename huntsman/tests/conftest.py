@@ -69,11 +69,11 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope='session')
 def _images_dir():
-    return os.expandvars('$PANDIR/images')
+    return os.path.expandvars('$PANDIR/images')
 
 @pytest.fixture(scope='session')
 def _images_dir_local():
-    return os.expandvars('$PANDIR/images_local')
+    return os.path.expandvars('$PANDIR/images_local')
 
 @pytest.fixture(scope='module')
 def images_dir(tmpdir_factory, _images_dir):
