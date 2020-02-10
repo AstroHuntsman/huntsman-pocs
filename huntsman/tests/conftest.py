@@ -250,7 +250,7 @@ def name_server(request):
     raise TimeoutError("Timeout waiting for name server to start")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def config_server(name_server, request, _images_dir, _images_dir_local):
     '''
     The annoyance of this is that the test code may have a different IP
