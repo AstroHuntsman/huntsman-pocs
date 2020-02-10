@@ -254,7 +254,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
 
     # Make sure DB is clear for current weather
-    observatory.db.clear_current('weather')
+    observatory.db.insert_current('weather', {'safe': False})
 
     def start_pocs():
         observatory.logger.info('start_pocs ENTER')
@@ -290,7 +290,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         assert wait_for_running(msg_subscriber)
         observatory.logger.info('Got RUNNING message')
 
-        time.sleep(2)
+        time.sleep(5)
         # Insert a dummy weather record to break wait
         observatory.db.insert_current('weather', {'safe': True})
 
