@@ -379,8 +379,6 @@ class Camera(AbstractCamera):
                             'make_plots': make_plots}
         autofocus_kwargs.update(kwargs)
 
-        focus_dir = os.path.join(os.path.abspath(self.config['directories']['images']), 'focus/')
-
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
@@ -389,10 +387,6 @@ class Camera(AbstractCamera):
         self.logger.debug('Starting autofocus on {}'.format(self.name))
         # Remote method call to start the autofocus
         autofocus_result = self._proxy.autofocus(*args, **autofocus_kwargs)
-        # Tag the file transfer on the end.
-        autofocus_result = autofocus_result.then(self._file_transfer, focus_dir)
-        # Tag empty directory cleanup on the end & keep future result to check for completion
-        autofocus_result = autofocus_result.then(self._clean_directories)
 
         # Start a thread that will set an event once autofocus has completed
         autofocus_event = Event()
@@ -414,57 +408,6 @@ class Camera(AbstractCamera):
     def _readout(self, filename=None):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
-
-    def _clean_directories(self, source):
-        """
-        Clean up empty directories left behind by rsysc.
-
-        Args:
-            source (str): remote path to clean up empty directories from, in
-                user@host:/directory/subdirectory format.
-        """
-        user_at_host, path = source.split(':')
-        path_root = path.split('/./')[0]
-        try:
-            result = subprocess.run(['ssh',
-                                     user_at_host,
-                                     'find {} -empty -delete'.format(path_root)],
-                                    check=True)
-            self.logger.debug(f'_clean_directories result: {result!r}')
-        except subprocess.CalledProcessError as err:
-            msg = "Clean up of empty directories in {}:{} failed".format(user_at_host, path_root)
-            warn(msg)
-            self.logger.error(msg)
-            raise err
-        self.logger.debug("Clean up of empty directories in {}:{} complete".format(user_at_host,
-                                                                                   path_root))
-        return source
-
-    def _file_transfer(self, source, destination):
-        """
-        Used rsync to move a file from source to destination.
-        """
-        # Need to make sure the destination directory already exists because rsync isn't
-        # very good at creating directories.
-        os.makedirs(os.path.dirname(destination), mode=0o775, exist_ok=True)
-        try:
-            result = subprocess.run(['rsync',
-                                     '--archive',
-                                     '--relative',
-                                     '--recursive',
-                                     '--remove-source-files',
-                                     source,
-                                     destination],
-                                    check=True)
-            self.logger.debug(f'_file_transfer result: {result!r}')
-        except subprocess.CalledProcessError as err:
-            msg = "File transfer {} -> {} failed".format(source, destination)
-            warn(msg)
-            self.logger.error(msg)
-            raise err
-        self.logger.debug("File transfer {} -> {} complete".format(source.split('/./')[1],
-                                                                   destination))
-        return source
 
     def _async_wait(self, future_result, name='?', event=None, timeout=None):
         # For now not checking for any problems, just wait for everything to return (or timeout)

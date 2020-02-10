@@ -43,7 +43,9 @@ def camera(request, images_dir, camera_server, config_server):
         cam_name, cam_uri = cameras.popitem()
         camera = PyroCamera(port=cam_name, uri=cam_uri)
 
+    # Modify the client-side camera config
     camera.config['directories']['images'] = images_dir
+
     return camera
 
 
