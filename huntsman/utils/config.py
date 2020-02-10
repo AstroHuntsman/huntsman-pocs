@@ -25,9 +25,6 @@ class ConfigServer():
         '''
         self.parse = parse
 
-        if config_file is None:
-            config_file = os.path.join(os.environ['HUNTSMAN_POCS'],
-                                       'conf_files', 'device_info.yaml')
         #Read the config file(s)
         self._load_config(**kwargs)
 
@@ -73,9 +70,9 @@ class ConfigServer():
         # Need to run _parse_config if querying by key, as load_config
         # only checks top-level keys.
         if self.parse:
-            config = _parse_config(self.config[key])
+            config = _parse_config(self.config_[key])
         else:
-            config = self.config[key]
+            config = self.config_[key]
 
         return config
 
