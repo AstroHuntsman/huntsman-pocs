@@ -37,6 +37,8 @@ def camera(request, images_dir, camera_server):
         cam_name, cam_uri = cameras.popitem()
         camera = PyroCamera(port=cam_name, uri=cam_uri)
 
+    assert('ngas_ip' in camera.config.keys())
+
     return camera
 
 
