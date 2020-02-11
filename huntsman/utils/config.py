@@ -45,12 +45,15 @@ class ConfigServer():
         '''
         Retrieve the config file.
         '''
-        # Need to run _parse_config if querying by key, as load_config
-        # only checks top-level keys.
-        if self.parse:
-            config = _parse_config(self.config[key])
-        else:
-            config = self.config[key]
+        config = self.config
+
+        if key is not None:
+            config = config[key]
+
+            # Need to run _parse_config if querying by key, as load_config
+            # only checks top-level keys.
+            if self.parse:
+                config = _parse_config(config)
 
         return config
 
