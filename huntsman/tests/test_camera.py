@@ -307,7 +307,7 @@ def test_observation(camera, images_dir):
                                        camera.uid, observation.seq_time, '*.fits*')
     assert len(glob.glob(observation_pattern)) == 1
 
-
+@pytest.mark.skip
 def test_autofocus_coarse(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
