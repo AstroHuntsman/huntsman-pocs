@@ -318,7 +318,7 @@ def test_autofocus_coarse(camera, patterns):
     finally:
         shutil.rmtree(patterns['base'])
 
-"""
+
 def test_autofocus_fine(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
@@ -482,4 +482,3 @@ def test_autofocus_no_focuser(camera):
         camera.autofocus()
     camera.focuser = focuser
     assert camera.focuser.position == initial_focus
-"""
