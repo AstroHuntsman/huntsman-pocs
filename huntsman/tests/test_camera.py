@@ -313,7 +313,7 @@ def test_autofocus_coarse(camera, patterns):
         pytest.skip("Camera does not have a focuser")
     try:
         autofocus_event = camera.autofocus(coarse=True)
-        autofocus_event.wait()
+        autofocus_event.wait(timeout=30)
         assert len(glob.glob(patterns['final'])) == 1
     finally:
         shutil.rmtree(patterns['base'])
@@ -322,12 +322,12 @@ def test_autofocus_coarse(camera, patterns):
 def test_autofocus_fine(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
-    #try:
-    autofocus_event = camera.autofocus()
-    autofocus_event.wait()
-    assert len(glob.glob(patterns['final'])) == 1
-    #finally:
-    #    shutil.rmtree(patterns['base'])
+    try:
+        autofocus_event = camera.autofocus()
+        autofocus_event.wait(timeout=30)
+        assert len(glob.glob(patterns['final'])) == 1
+    finally:
+        shutil.rmtree(patterns['base'])
 
 
 def test_autofocus_fine_blocking(camera, patterns):
