@@ -45,13 +45,13 @@ def camera(request, images_dir, camera_server):
 
 
 @pytest.fixture(scope='module')
-def patterns(camera, images_dir):
-    patterns = {'base': os.path.join(images_dir, 'focus', camera.uid),
-                'final': os.path.join(images_dir, 'focus', camera.uid, '*',
+def patterns(camera, images_dir_local):
+    patterns = {'base': os.path.join(images_dir_local, 'focus', camera.uid),
+                'final': os.path.join(images_dir_local, 'focus', camera.uid, '*',
                                       ('*_final.' + camera.file_extension)),
-                'fine_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
+                'fine_plot': os.path.join(images_dir_local, 'focus', camera.uid, '*',
                                           'fine_focus.png'),
-                'coarse_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
+                'coarse_plot': os.path.join(images_dir_local, 'focus', camera.uid, '*',
                                             'coarse_focus.png')}
     return patterns
 
@@ -313,7 +313,7 @@ def test_autofocus_coarse(camera, patterns):
         pytest.skip("Camera does not have a focuser")
     try:
         autofocus_event = camera.autofocus(coarse=True)
-        autofocus_event.wait(timeout=30)
+        autofocus_event.wait()
         assert len(glob.glob(patterns['final'])) == 1
     finally:
         shutil.rmtree(patterns['base'])
@@ -324,7 +324,7 @@ def test_autofocus_fine(camera, patterns):
         pytest.skip("Camera does not have a focuser")
     try:
         autofocus_event = camera.autofocus()
-        autofocus_event.wait(timeout=30)
+        autofocus_event.wait()
         assert len(glob.glob(patterns['final'])) == 1
     finally:
         shutil.rmtree(patterns['base'])
