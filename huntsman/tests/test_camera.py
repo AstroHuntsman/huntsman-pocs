@@ -30,7 +30,7 @@ ids = ['pyro']
 
 # Ugly hack to access id inside fixture
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
-def camera(request, images_dir_local, camera_server):
+def camera(request, images_dir, camera_server):
     if request.param[0] == PyroCamera:
         ns = Pyro4.locateNS()
         cameras = ns.list(metadata_all={'POCS', 'Camera'})
@@ -39,7 +39,7 @@ def camera(request, images_dir_local, camera_server):
 
     #This is a client-side pyro.Camera instance.
     #Currently it does not get its config from the config server.
-    camera.config['directories']['images'] = images_dir_local
+    camera.config['directories']['images'] = images_dir
 
     return camera
 
