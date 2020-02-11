@@ -55,7 +55,7 @@ def get_dither_positions(base_position, n_positions, pattern=None, pattern_offse
                 "Base position '{}' could not be converted to a SkyCoord object!".format(base_position))
 
     if pattern:
-        if not pattern_offset:
+        if pattern_offset is None:
             raise ValueError("`pattern` specified but no `pattern_offset` given!")
 
         if not isinstance(pattern_offset, u.Quantity):
@@ -72,7 +72,7 @@ def get_dither_positions(base_position, n_positions, pattern=None, pattern_offse
         RA_offsets = np.zeros(n_positions) * u.arcsec
         dec_offsets = np.zeros(n_positions) * u.arcsec
 
-    if random_offset:
+    if random_offset is not None:
         if not isinstance(random_offset, u.Quantity):
             random_offset = random_offset * u.arcsec
 

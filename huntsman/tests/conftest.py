@@ -88,7 +88,6 @@ def config(images_dir, messaging_ports):
         _one_time_config['db']['name'] = 'huntsman_testing'
         _one_time_config['name'] = 'HuntsmanTest'
         _one_time_config['scheduler']['fields_file'] = 'simulator.yaml'
-        _one_time_config['scheduler']['check_file'] = False
 
     # Make a copy before we modify based on test fixtures.
     result = copy.deepcopy(_one_time_config)
@@ -106,11 +105,8 @@ def config(images_dir, messaging_ports):
 
     # We don't want to use the same production messaging ports, just in case
     # these tests are running on a working scope.
-    try:
-        result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
-        result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
-    except KeyError:
-        pass
+    result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
+    result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
 
     get_root_logger().debug('config fixture: {!r}', result)
     return result
