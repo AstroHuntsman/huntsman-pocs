@@ -44,8 +44,8 @@ def camera(request, images_dir, camera_server, config_server):
 
 
 @pytest.fixture(scope='module')
-def patterns(camera):
-    images_dir = "/tmp/images"
+def patterns(camera, images_dir):
+    #images_dir = "/tmp/images"
     patterns = {'base': os.path.join(images_dir, 'focus', camera.uid),
                 'final': os.path.join(images_dir, 'focus', camera.uid, '*',
                                       ('*_final.' + camera.file_extension)),
