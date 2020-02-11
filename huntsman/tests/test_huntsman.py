@@ -249,7 +249,6 @@ def test_pyro_camera(config, camera_server):
     assert obs.cameras['camera.simulator.001'].is_connected
 
 
-@pytest.mark.skip
 def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
 
@@ -289,7 +288,11 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         assert wait_for_running(msg_subscriber)
         observatory.logger.info('Got RUNNING message')
 
-        time.sleep(5)
+        # Give us time to get into the observing state.
+        observatory.logger.info('Pretending to run for 10 seconds')
+        time.sleep(10)
+        observatory.logger.info('Done with pretend run, marking weather unsafe')
+
         # Insert a dummy weather record to break wait
         observatory.db.insert_current('weather', {'safe': True})
 

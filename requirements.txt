@@ -1,5 +1,4 @@
--e git+git://github.com/AstroHuntsman/gunagala@master#egg=gunagala
--e git+git://github.com/panoptes/POCS@develop#egg=panoptes
+#-e git+git://github.com/panoptes/POCS@develop#egg=panoptes
 astroplan
 astropy >= 4.0.0
 astroquery
@@ -8,17 +7,14 @@ codecov
 coloredlogs >= 5.0
 coveralls
 dateparser
-ffmpy
-gcloud
 healpy
-matplotlib >= 2.0.0
+matplotlib >= 3.0.0
 netifaces
-numpy >= 1.12.1
+numpy >= 1.17.0
 pandas >= 0.18.0
 panoptes-utils
 photutils
 pycodestyle
-pymongo >= 3.2.2
 Pyro4
 pyserial >= 3.1.1
 pytest >= 2.8.5
@@ -27,7 +23,6 @@ python-dateutil >= 2.5.3
 PyYAML >= 3.11
 pyzmq >= 15.3.0
 readline
-scikit_image >= 0.12.3
-scipy >= 0.17.1
+scipy >= 1.4.0
 transitions >= 0.4.0
 wcsaxes

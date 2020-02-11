@@ -17,8 +17,6 @@ from huntsman.utils.config import query_config_server
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
 _one_time_config = None
-# Global variable set to a bool by can_connect_to_mongo().
-_can_connect_to_mongo = None
 _all_databases = ['file']
 
 
@@ -113,7 +111,7 @@ def config_with_simulated_stuff(config):
         'dome': {
             'brand': 'Simulacrum',
             'driver': 'simulator',
-            },
+        },
         'mount': {
             'model': 'simulator',
             'driver': 'simulator',
@@ -123,19 +121,6 @@ def config_with_simulated_stuff(config):
         },
     })
     return config
-
-
-def can_connect_to_mongo(db_name):
-    global _can_connect_to_mongo
-    if _can_connect_to_mongo is None:
-        logger = get_root_logger()
-        try:
-            PanDB(db_type='mongo', db_name=db_name, logger=logger, connect=True)
-            _can_connect_to_mongo = True
-        except Exception:
-            _can_connect_to_mongo = False
-        logger.info('can_connect_to_mongo = {}', _can_connect_to_mongo)
-    return _can_connect_to_mongo
 
 
 @pytest.fixture(scope="session")
@@ -150,9 +135,6 @@ def db_type(request, db_name):
     if request.param not in db_list and 'all' not in db_list:
         pytest.skip("Skipping {} DB, set --test-all-databases=True".format(request.param))
 
-    # If testing mongo, make sure we can connect, otherwise skip.
-    if request.param == 'mongo' and not can_connect_to_mongo(db_name):
-        pytest.skip("Can't connect to {} DB, skipping".format(request.param))
     PanDB.permanently_erase_database(request.param, db_name, really='Yes', dangerous='Totally')
     return request.param
 
@@ -240,13 +222,13 @@ def config_server(name_server, request):
     from those in the actual device_info.yaml and can vary between runtime
     environments. So, here is a hack to make it work.
     '''
-    #Start the config server
+    # Start the config server
     cmd = [os.path.expandvars(
-            '$HUNTSMAN_POCS/scripts/start_config_server.py')]
+        '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
 
-    #Check the config server works
+    # Check the config server works
     waited = 0
     while waited <= 20:
         try:
@@ -254,7 +236,7 @@ def config_server(name_server, request):
             config = query_config_server()
             assert(isinstance(config, dict))
 
-            #This is the hack...
+            # This is the hack...
             config_server = Pyro4.Proxy('PYRONAME:config_server')
             key = get_own_ip()
             config = config_server.config
