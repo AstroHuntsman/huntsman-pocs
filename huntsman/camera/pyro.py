@@ -129,9 +129,6 @@ class Camera(AbstractCamera):
     def is_ready(self):
         '''
         True if camera is ready to start another exposure, otherwise False.
-
-        Check self.is_exposing first to side-step so-far unexplained
-        hanging possibly caused by is_temperature_stable.
         '''
         # First check if exposing, because if so remote camera won't respond to
         # is_ready query until after it has finished.

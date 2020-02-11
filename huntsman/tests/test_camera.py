@@ -30,22 +30,18 @@ ids = ['pyro']
 
 # Ugly hack to access id inside fixture
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
-def camera(request, images_dir, camera_server, config_server):
+def camera(request, images_dir, camera_server):
     if request.param[0] == PyroCamera:
         ns = Pyro4.locateNS()
         cameras = ns.list(metadata_all={'POCS', 'Camera'})
         cam_name, cam_uri = cameras.popitem()
         camera = PyroCamera(port=cam_name, uri=cam_uri)
 
-    # Modify the client-side camera config
-    camera.config['directories']['images'] = images_dir
-
     return camera
 
 
 @pytest.fixture(scope='module')
 def patterns(camera, images_dir):
-    #images_dir = "/tmp/images"
     patterns = {'base': os.path.join(images_dir, 'focus', camera.uid),
                 'final': os.path.join(images_dir, 'focus', camera.uid, '*',
                                       ('*_final.' + camera.file_extension)),

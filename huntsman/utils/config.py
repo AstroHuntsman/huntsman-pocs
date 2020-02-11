@@ -7,7 +7,7 @@ Created on Thu Jan  2 12:04:11 2020
 
 Code to provide a config server using pyro.
 """
-import os, sys, time
+import sys, time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip, DummyLogger
 from pocs.utils.config import _parse_config
@@ -26,20 +26,19 @@ class ConfigServer():
         self.parse = parse
 
         if config_file is None:
-            config_file = os.path.expandvars(os.path.join('$HUNTSMAN_POCS',
-                                            'conf_files', 'device_info.yaml'))
+            config_file = 'device_info.yaml'
 
         #Read the config file
-        self.config_ = load_config(config_files=[config_file], parse=self.parse,
+        self._config = load_config(config_files=[config_file], parse=self.parse,
                                    **kwargs)
 
     @property
     def config(self):
-        return self.config_
+        return self._config
 
     @config.setter
     def config(self, config):
-        self.config_ = config
+        self._config = config
 
     def get_config(self, key=None):
         '''
