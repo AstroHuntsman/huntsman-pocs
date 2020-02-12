@@ -55,6 +55,11 @@ class Camera(AbstractCamera):
                  *args, **kwargs):
         super().__init__(name=name, port=port, model=model, *args, **kwargs)
         self._uri = uri
+
+        # Obtain the NGAS server IP
+        if 'ngas_ip' not in self.config.keys():
+            self.config['ngas_ip'] = query_config_server(key='control')['ip_address']
+
         # Connect to camera
         self.connect()
 
@@ -451,10 +456,6 @@ class CameraServer(object):
 
         camera_config = self.config.get('camera')
         camera_config.update({'config': self.config})
-
-        #Also provide the IP address of the NGAS server
-        ngas_ip = query_config_server(key='messaging')['huntsman_pro_ip']
-        camera_config['ngas_ip'] = ngas_ip
 
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
