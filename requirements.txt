@@ -1,4 +1,4 @@
-#-e git+git://github.com/panoptes/POCS@develop#egg=panoptes
+-e git+git://github.com/panoptes/panoptes-utils@develop#egg=panoptes-utils
 astroplan
 astropy >= 4.0.0
 astroquery
