@@ -255,7 +255,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     observatory.db.insert_current('weather', {'safe': False})
 
     def start_pocs():
-        observatory.logger.info('start_pocs ENTER')
+        print('start_pocs ENTER')
         # Remove weather simulator, else it would always be safe.
         observatory.config['simulator'] = hardware.get_all_names(without=['weather'])
 
@@ -271,9 +271,9 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
                                                     })
 
         pocs.initialize()
-        pocs.logger.info('Starting observatory run')
+        print('Starting observatory run')
         assert pocs.is_weather_safe() is False
-        pocs.logger.info('Sending RUNNING message')
+        print('Sending RUNNING message')
         pocs.send_message('RUNNING')
         pocs.run(run_once=True, exit_when_done=True)
         assert pocs.observatory.is_weather_safe() is True
@@ -286,7 +286,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     try:
         # Wait for the RUNNING message,
         assert wait_for_running(msg_subscriber)
-        observatory.logger.info('Got RUNNING message')
+        print('Got RUNNING message')
 
         # Give us time to get into the observing state.
         time.sleep(5)
