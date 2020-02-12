@@ -30,7 +30,7 @@ ids = ['pyro']
 
 # Ugly hack to access id inside fixture
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
-def camera(request, images_dir, camera_server):
+def camera(request, images_dir_control, camera_server):
     if request.param[0] == PyroCamera:
         ns = Pyro4.locateNS()
         cameras = ns.list(metadata_all={'POCS', 'Camera'})
@@ -39,19 +39,23 @@ def camera(request, images_dir, camera_server):
 
     #This is a client-side pyro.Camera instance.
     #Currently it does not get its config from the config server.
-    camera.config['directories']['images'] = images_dir
+    camera.config['directories']['images'] = images_dir_control
 
     return camera
 
 
 @pytest.fixture(scope='module')
-def patterns(camera, images_dir_local):
-    patterns = {'base': os.path.join(images_dir_local, 'focus', camera.uid),
-                'final': os.path.join(images_dir_local, 'focus', camera.uid, '*',
+def patterns(camera, images_dir_device):
+
+    #It would be better to replace images_dir_device by images_dir_control.
+    #However, problems with rmtree and SSHFS causes the autofocus code to hang.
+
+    patterns = {'base': os.path.join(images_dir_device, 'focus', camera.uid),
+                'final': os.path.join(images_dir_device, 'focus', camera.uid, '*',
                                       ('*_final.' + camera.file_extension)),
-                'fine_plot': os.path.join(images_dir_local, 'focus', camera.uid, '*',
+                'fine_plot': os.path.join(images_dir_device, 'focus', camera.uid, '*',
                                           'fine_focus.png'),
-                'coarse_plot': os.path.join(images_dir_local, 'focus', camera.uid, '*',
+                'coarse_plot': os.path.join(images_dir_device, 'focus', camera.uid, '*',
                                             'coarse_focus.png')}
     return patterns
 
@@ -294,7 +298,7 @@ def test_exposure_timeout(camera, tmpdir, caplog):
     time.sleep(5)
 
 
-def test_observation(camera, images_dir):
+def test_observation(camera, images_dir_control):
     """
     Tests functionality of take_observation()
     """
@@ -303,7 +307,7 @@ def test_observation(camera, images_dir):
     observation.seq_time = '19991231T235959'
     camera.take_observation(observation, headers={})
     time.sleep(7)
-    observation_pattern = os.path.join(images_dir, 'fields', 'TestObservation',
+    observation_pattern = os.path.join(images_dir_control, 'fields', 'TestObservation',
                                        camera.uid, observation.seq_time, '*.fits*')
     assert len(glob.glob(observation_pattern)) == 1
 
