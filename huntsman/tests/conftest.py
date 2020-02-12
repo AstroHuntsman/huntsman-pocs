@@ -13,6 +13,9 @@ from pocs.utils.database import PanDB
 from pocs.utils.messaging import PanMessaging
 
 from huntsman.utils import load_config, get_own_ip
+# This import is needed to set up the custom (de)serialisers in the same scope
+# as the pyro test server proxy creation.
+from huntsman.utils import pyro as pyro_utils
 from huntsman.utils.config import query_config_server
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
@@ -298,6 +301,30 @@ def camera_server(name_server, config_server, request):
         waited += 1
 
     raise TimeoutError("Timeout waiting for camera server to start")
+
+@pytest.fixture(scope='module')
+def test_server(name_server, request):
+    cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_test_server.py'),]
+    cs_proc = subprocess.Popen(cs_cmds)
+    request.addfinalizer(lambda: end_process(cs_proc))
+    # Give test server time to start up
+    waited = 0
+    while waited <= 20:
+        with Pyro4.locateNS(host='localhost') as ns:
+            test_servers = ns.list(metadata_all={'POCS', 'Test'})
+        if len(test_servers) == 1:
+            return cs_proc
+        time.sleep(1)
+        waited += 1
+
+    raise TimeoutError("Timeout waiting for camera server to start")
+
+
+@pytest.fixture(scope='module')
+def test_proxy(test_server):
+    proxy = Pyro4.Proxy("PYRONAME:test_server")
+    return proxy
+
 
 # -----------------------------------------------------------------------
 # Messaging support fixtures. It is important that tests NOT use the same
