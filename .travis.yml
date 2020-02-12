@@ -52,7 +52,7 @@ before_script:
 script:
   - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
   - export COVERAGE_PROCESS_START=.coveragerc
-  - coverage run $(which pytest) -v
+  - coverage run $(which pytest) -xvrst
   - coverage combine
 after_success:
   - bash <(curl -s https://codecov.io/bash)
