@@ -66,13 +66,19 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope='module')
-def images_dir(tmpdir_factory):
+def images_dir_control(tmpdir_factory):
     directory = tmpdir_factory.mktemp('images')
     return str(directory)
 
 
+@pytest.fixture(scope='module')
+def images_dir_device(tmpdir_factory):
+    directory = tmpdir_factory.mktemp('images_local')
+    return str(directory)
+
+
 @pytest.fixture(scope='function')
-def config(images_dir, messaging_ports):
+def config(images_dir_control, messaging_ports):
     pocs.base.reset_global_config()
 
     global _one_time_config
@@ -87,7 +93,7 @@ def config(images_dir, messaging_ports):
 
     # We allow for each test to have its own images directory, and thus
     # to not conflict with each other.
-    result['directories']['images'] = images_dir
+    result['directories']['images'] = images_dir_control
 
     # For now (October 2018), POCS assumes that the pub and sub ports are
     # sequential. Make sure that is what the test fixtures have in them.
@@ -164,7 +170,7 @@ def end_process(proc):
         proc.send_signal(signal.SIGINT)
         try:
             proc.wait(timeout=10)
-        except subprocess.TimeoutExpired as err:
+        except subprocess.TimeoutExpired:
             warn("Timeout waiting for {} to exit!".format(proc.pid))
             if proc.poll() is None:
                 # I'm getting better!
@@ -173,7 +179,7 @@ def end_process(proc):
                 proc.terminate()
                 try:
                     proc.wait(timeout=10)
-                except subprocess.TimeoutExpired as err:
+                except subprocess.TimeoutExpired:
                     warn("Timeout waiting for {} to terminate!".format(proc.pid))
                     if proc.poll() is None:
                         # I feel fine!
@@ -215,8 +221,8 @@ def name_server(request):
     raise TimeoutError("Timeout waiting for name server to start")
 
 
-@pytest.fixture(scope='session')
-def config_server(name_server, request):
+@pytest.fixture(scope='module')
+def config_server(name_server, request, images_dir_control, images_dir_device):
     '''
     The annoyance of this is that the test code may have a different IP
     from those in the actual device_info.yaml and can vary between runtime
@@ -236,24 +242,29 @@ def config_server(name_server, request):
             config = query_config_server()
             assert(isinstance(config, dict))
 
-            # This is the hack...
+            # Add an entry for the IP used by the test machine
             config_server = Pyro4.Proxy('PYRONAME:config_server')
             key = get_own_ip()
             config = config_server.config
             config[key] = config['localhost']
 
+            # Modify some additional entries to facilitate tests
+            config[key]['directories']['images'] = images_dir_device
+            config['control']['directories']['images'] = images_dir_control
+
+            # Update the config in the config server
             config_server.config = config
 
             return proc
 
-        except:
+        except Exception:
             time.sleep(1)
             waited += 1
 
     raise TimeoutError("Timeout waiting for config server.")
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def camera_server(name_server, config_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
                '--ignore_local']

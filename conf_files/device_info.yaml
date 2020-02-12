@@ -28,5 +28,8 @@ localhost:
         base: /var/huntsman
         images: /tmp/images
         data: data
-messaging:
-    huntsman_pro_ip: localhost
+control:
+    ip_address: localhost
+    directories:
+        base: /var/huntsman
+        images: images
