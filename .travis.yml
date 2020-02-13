@@ -52,10 +52,7 @@ before_script:
 script:
   - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
   - export COVERAGE_PROCESS_START=.coveragerc
-  - coverage run $(which pytest) -xvrst
+  - coverage run $(which pytest) -vrst
   - coverage combine
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-after_failure:
-  - ls -l $PANDIR/logs
-  - tail -fn1000 $PANDIR/logs/coverage-all.log
