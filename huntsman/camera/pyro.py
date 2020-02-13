@@ -1,4 +1,3 @@
-import sys
 import os
 import requests
 from warnings import warn
@@ -8,39 +7,21 @@ from threading import Thread
 from contextlib import suppress
 
 from astropy import units as u
-from astropy.io.misc import yaml as ayaml
 import Pyro4
 import Pyro4.util
-from Pyro4.util import SerializerBase
 
 from pocs.utils import load_module
 from pocs.utils import get_quantity_value
 from pocs.utils import error
 from pocs.camera import AbstractCamera
-from huntsman.focuser.pyro import Focuser as PyroFocuser
 
+from huntsman.focuser.pyro import Focuser as PyroFocuser
+# This import is needed to set up the custom (de)serialisers in the same scope
+# as the pyro test server proxy creation.
+from huntsman.utils import pyro as pyro_utils
 from huntsman.utils.config import load_device_config, query_config_server
 
-# Enable local display of remote tracebacks
-sys.excepthook = Pyro4.util.excepthook
-
-# Set up custom Pyro serialisers/de-serialisers for Astropy objects (Quantity, etc.)
-
-def astropy_to_dict(obj):
-    """Serializer function for Astropy objects using astropy.io.misc.yaml.dump()."""
-    return {"__class__": "astropy_yaml",
-            "yaml_dump": ayaml.dump(obj)}
-
-
-def dict_to_astropy(class_name, d):
-    """De-serialiser function for Astropy objects using astropy.io.misc.yaml.load()."""
-    return ayaml.load(d["yaml_dump"])
-
-SerializerBase.register_class_to_dict(u.Quantity, astropy_to_dict)
-SerializerBase.register_dict_to_class("astropy_yaml", dict_to_astropy)
-
 #==============================================================================
-
 
 class Camera(AbstractCamera):
     """
