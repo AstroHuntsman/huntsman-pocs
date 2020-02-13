@@ -17,6 +17,11 @@ before_install:
   - pip install setuptools --upgrade
   - pip install coveralls
   - cd $PANDIR
+  # Install panoptes-utils
+  - git clone https://github.com/panoptes/panoptes-utils.git
+  - cd panoptes-utils
+  - pip install -r requirements.txt
+  - python setup.py install
   # Install POCS
   - git clone https://github.com/panoptes/POCS.git
   - cd POCS
