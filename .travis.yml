@@ -1,8 +1,6 @@
 dist: trusty
 sudo: required
 language: python
-services:
-  - mongodb
 python:
   - "3.6"
 cache:
@@ -16,7 +14,7 @@ before_install:
   - ln -s $TRAVIS_BUILD_DIR $PANDIR/huntsman-pocs
   # Install testing dependencies.
   - pip install -U pip
-  - pip install setuptools --upgrade 
+  - pip install setuptools --upgrade
   - pip install coveralls
   - cd $PANDIR
   # Install POCS
@@ -54,7 +52,7 @@ before_script:
 script:
   - export PYTHONPATH="$PYTHONPATH:$POCS/scripts/coverage"
   - export COVERAGE_PROCESS_START=.coveragerc
-  - coverage run $(which pytest) -v
+  - coverage run $(which pytest) -vrst
   - coverage combine
 after_success:
   - bash <(curl -s https://codecov.io/bash)
