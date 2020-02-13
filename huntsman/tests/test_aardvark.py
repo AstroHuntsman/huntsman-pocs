@@ -1,7 +1,6 @@
 # Named after an African nocturnal insectivore because for mysterious reasons these
 # tests were failing if run towards the end of the test suite.
 import logging
-import os
 
 import pytest
 import Pyro4
@@ -82,7 +81,7 @@ def test_undeserialisable(test_proxy):
 
 
 def test_config_server(config_server):
-    #Check we can get a config
+    # Check we can get a config
     assert config_server.poll() is None
 
 

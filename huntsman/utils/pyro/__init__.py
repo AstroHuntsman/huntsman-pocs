@@ -17,12 +17,12 @@ from huntsman.utils.config import load_device_config
 sys.excepthook = Pyro4.util.excepthook
 
 # Serialisers/deserialisers
-name_pattern = re.compile(r"error\.(\w+)'>$")
+error_pattern = re.compile(r"error\.(\w+)'>$")
 
 
 def panerror_to_dict(obj):
     """Serialiser function for POCS custom exceptions."""
-    name_match = name_pattern.search(str(obj.__class__))
+    name_match = error_pattern.search(str(obj.__class__))
     if name_match:
         exception_name = name_match.group(1)
     else:
@@ -39,7 +39,7 @@ def dict_to_panerror(class_name, d):
     try:
         exception_class = getattr(error, d['exception_name'])
     except AttributeError:
-        msg = f"error module has no exception class {exception_name}."
+        msg = f"error module has no exception class {d['exception_name']}."
         raise AttributeError(msg)
 
     return exception_class(*d["args"])
@@ -97,6 +97,7 @@ class TestServer(object):
         raise NewError("Pyro can't de-serialise this.")
 
 #==============================================================================
+
 
 def run_name_server(host=None, port=None, autoclean=0, logger=None):
     """
@@ -193,15 +194,15 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
     if logger is None:
         logger = DummyLogger()
 
-    #Mount the SSHFS images directory
+    # Mount the SSHFS images directory
     mountpoint = sshfs.mount_images_dir(logger=logger)
 
     Pyro4.config.SERVERTYPE = "multiplex"
 
-    #Load the config file
+    # Load the config file
     config = load_device_config(logger=logger, **kwargs)
 
-    #Specify address
+    # Specify address
     host = config.get('host', None)
     if not host:
         host = get_own_ip(verbose=True)
@@ -230,7 +231,7 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
             name_server.remove(name=config['name'])
             logger.info('Unregistered from name server')
 
-            #Unmount the SSHFS
+            # Unmount the SSHFS
             if unmount_sshfs:
                 sshfs.unmount(mountpoint, logger=logger)
 
