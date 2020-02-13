@@ -3,8 +3,8 @@ from collections import OrderedDict
 import Pyro4
 
 from pocs.camera import create_cameras_from_config as create_local_cameras
-from pocs.utils import error
-from pocs.utils import logger as logger_module
+from panoptes.utils import error
+from panoptes.utils import logger as logger_module
 
 from huntsman.camera.pyro import Camera as PyroCamera
 from huntsman.utils import load_config

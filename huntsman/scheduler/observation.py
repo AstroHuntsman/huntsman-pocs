@@ -4,7 +4,7 @@ from contextlib import suppress
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
 
-from pocs.utils import listify
+from panoptes.utils import listify
 
 
 class DitheredObservation(Observation):

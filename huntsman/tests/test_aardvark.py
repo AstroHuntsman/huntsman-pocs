@@ -7,7 +7,7 @@ import Pyro4
 import Pyro4.errors
 from astropy import units as u
 
-from pocs.utils import error
+from panoptes.utils import error
 
 from huntsman.utils import get_own_ip
 

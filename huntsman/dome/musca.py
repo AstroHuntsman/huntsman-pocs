@@ -4,7 +4,7 @@ import threading
 import time
 
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
-from pocs.utils import CountdownTimer
+from panoptes.utils import CountdownTimer
 
 
 class Protocol:

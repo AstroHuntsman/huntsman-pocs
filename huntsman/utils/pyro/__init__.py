@@ -7,7 +7,7 @@ from Pyro4.util import SerializerBase
 from astropy import units as u
 from astropy.io.misc import yaml as ayaml
 
-from pocs.utils import error
+from panoptes.utils import error
 
 from huntsman.camera.pyro import CameraServer
 from huntsman.utils import get_own_ip, sshfs, DummyLogger

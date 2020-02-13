@@ -10,9 +10,9 @@ from astropy import units as u
 import Pyro4
 import Pyro4.util
 
-from pocs.utils import load_module
-from pocs.utils import get_quantity_value
-from pocs.utils import error
+from panoptes.utils import load_module
+from panoptes.utils import get_quantity_value
+from panoptes.utils import error
 from pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser

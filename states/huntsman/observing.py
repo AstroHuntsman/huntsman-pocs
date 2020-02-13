@@ -1,4 +1,4 @@
-from pocs.utils import error
+from panoptes.utils import error
 from time import sleep
 
 wait_interval = 15.
@@ -22,7 +22,7 @@ def on_enter(event_data):
             sleep(wait_interval)
             wait_time += wait_interval
 
-    except error.Timeout as e:
+    except error.Timeout:
         pocs.logger.warning("Timeout while waiting for images. Something wrong with camera, going to park.")
     except Exception as e:
         pocs.logger.warning("Problem with imaging: {}".format(e))

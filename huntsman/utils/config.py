@@ -10,7 +10,7 @@ Code to provide a config server using pyro.
 import sys, time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip, DummyLogger
-from pocs.utils.config import _parse_config
+from panoptes.utils.config import _parse_config
 
 #==============================================================================
 

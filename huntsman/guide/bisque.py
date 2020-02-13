@@ -8,8 +8,8 @@ from photutils import DAOStarFinder
 from string import Template
 
 from pocs.base import PanBase
-from pocs.utils import error
-from pocs.utils.theskyx import TheSkyX
+from panoptes.utils import error
+from panoptes.utils.theskyx import TheSkyX
 
 
 class Guide(PanBase):

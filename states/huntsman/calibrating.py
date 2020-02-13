@@ -1,7 +1,7 @@
 from astropy.coordinates import get_sun
 from astropy import units as u
 
-from pocs.utils import current_time
+from panoptes.utils import current_time
 
 
 def wait_for_sun_alt(pocs,

@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 import os
-import readline
 import time
-import zmq
 
 from cmd import Cmd
-from pprint import pprint
 
 from astropy.utils import console
 
 from pocs import POCS
-from pocs.utils import error
-from pocs.utils import listify
-from pocs.utils.messaging import PanMessaging
+from panoptes.utils import error
+from panoptes.utils import listify
+from panoptes.utils.messaging import PanMessaging
 
 from huntsman.observatory import HuntsmanObservatory as Observatory
 

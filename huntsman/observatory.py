@@ -9,9 +9,9 @@ from astropy import stats
 from pocs.observatory import Observatory
 from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
-from pocs.utils import error
+from panoptes.utils import error
 from pocs import utils
-from pocs.utils.images import fits as fits_utils
+from panoptes.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation

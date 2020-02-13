@@ -45,7 +45,7 @@ install:
     iers_auto_url_mirror = https://storage.googleapis.com/panoptes-resources/iers/ser7.dat
     " >> $HOME/.astropy/config/astropy.cfg
   # Download just the IERS index.
-  - python $POCS/pocs/utils/data.py --no-narrow-field --no-wide-field
+  - python $PANDIR/panoptes-utils/utils/data.py --no-narrow-field --no-wide-field
   - python setup.py install
 before_script:
   - echo -e "Host 127.0.0.1\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
