@@ -68,13 +68,18 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(scope='module')
-def images_dir(tmpdir_factory):
+def images_dir_control(tmpdir_factory):
     directory = tmpdir_factory.mktemp('images')
+    return str(directory)
+
+@pytest.fixture(scope='module')
+def images_dir_device(tmpdir_factory):
+    directory = tmpdir_factory.mktemp('images_local')
     return str(directory)
 
 
 @pytest.fixture(scope='function')
-def config(images_dir, messaging_ports):
+def config(images_dir_control, messaging_ports):
     pocs.base.reset_global_config()
 
     global _one_time_config
@@ -83,14 +88,13 @@ def config(images_dir, messaging_ports):
         _one_time_config['db']['name'] = 'huntsman_testing'
         _one_time_config['name'] = 'HuntsmanTest'
         _one_time_config['scheduler']['fields_file'] = 'simulator.yaml'
-        _one_time_config['scheduler']['check_file'] = False
 
     # Make a copy before we modify based on test fixtures.
     result = copy.deepcopy(_one_time_config)
 
     # We allow for each test to have its own images directory, and thus
     # to not conflict with each other.
-    result['directories']['images'] = images_dir
+    result['directories']['images'] = images_dir_control
 
     # For now (October 2018), POCS assumes that the pub and sub ports are
     # sequential. Make sure that is what the test fixtures have in them.
@@ -101,11 +105,8 @@ def config(images_dir, messaging_ports):
 
     # We don't want to use the same production messaging ports, just in case
     # these tests are running on a working scope.
-    try:
-        result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
-        result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
-    except KeyError:
-        pass
+    result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
+    result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
 
     get_root_logger().debug('config fixture: {!r}', result)
     return result
@@ -236,9 +237,9 @@ def name_server(request):
 
     raise TimeoutError("Timeout waiting for name server to start")
 
-    
-@pytest.fixture(scope='session')
-def config_server(name_server, request):
+
+@pytest.fixture(scope='module')
+def config_server(name_server, request, images_dir_control, images_dir_device):
     '''
     The annoyance of this is that the test code may have a different IP
     from those in the actual device_info.yaml and can vary between runtime
@@ -249,34 +250,39 @@ def config_server(name_server, request):
             '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
-            
+
     #Check the config server works
     waited = 0
     while waited <= 20:
         try:
-            
+
             config = query_config_server()
-            assert(isinstance(config, dict))  
-                                    
-            #This is the hack...
+            assert(isinstance(config, dict))
+
+            # Add an entry for the IP used by the test machine
             config_server = Pyro4.Proxy('PYRONAME:config_server')
             key = get_own_ip()
             config = config_server.config
             config[key] = config['localhost']
-            
+
+            # Modify some additional entries to facilitate tests
+            config[key]['directories']['images'] = images_dir_device
+            config['control']['directories']['images'] = images_dir_control
+
+            # Update the config in the config server
             config_server.config = config
-            
+
             return proc
-        
+
         except:
             time.sleep(1)
             waited += 1
-            
+
     raise TimeoutError("Timeout waiting for config server.")
-    
-    
-@pytest.fixture(scope='session')
-def camera_server(name_server, request):
+
+
+@pytest.fixture(scope='module')
+def camera_server(name_server, config_server, request):
     cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_camera_server.py'),
                '--ignore_local']
     cs_proc = subprocess.Popen(cs_cmds)

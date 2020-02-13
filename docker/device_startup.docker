@@ -39,7 +39,7 @@ RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/ && \
 RUN pip install --upgrade pip && \
     pip install setuptools --upgrade && \
     conda install astropy matplotlib requests scipy && \
-    pip install pymongo netifaces pyro4 pyyaml
+    pip install pymongo netifaces pyro4 pyyaml pyserial
 
 #==============================================================================
 #Huntsman-POCS
@@ -68,6 +68,7 @@ RUN export BUILD_DIR=$(pwd)/ASIBuild && \
     mkdir $BUILD_DIR && \
 
     #ZWO camera
+    apt-get -y install libusb-1.0-0-dev && \
     cd $BUILD_DIR && \
     mkdir BUILD_CAM && \
     cd BUILD_CAM && \
@@ -103,7 +104,8 @@ RUN chmod 1777 /tmp && \
     mkdir /home/$PANUSER && \
     chown -R $PANUSER /home/$PANUSER
 
-USER $PANUSER
+USER root
+RUN ldconfig
 
 #==============================================================================
 
@@ -111,5 +113,6 @@ USER $PANUSER
 RUN rm -r $PANDIR/images
 
 #Startup the device, using the shell to expand variables
+USER $PANUSER
 WORKDIR $HUNTSMAN_POCS
 CMD [ "sh", "-c", "python $HUNTSMAN_POCS/scripts/startup_device.py" ]
