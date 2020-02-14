@@ -18,8 +18,8 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
     Args:
         ignore_local (bool, optional): If True use the default
         $HUNTSMAN_POCS/conf_files/pyro_camera.yaml only. If False will allow
-        $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override the default configuration.
-        Default False.
+            $HUNTSMAN_POCS/conf_files/pyro_camera_local.yaml to override the default configuration.
+            Default False.
 
         unmount_sshfs (bool, optional): If True, unmounts the sshfs upon
             termination of the camera server.
