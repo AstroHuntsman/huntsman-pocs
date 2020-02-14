@@ -1,6 +1,6 @@
-"""Import this module to register the required custom (de)serialisers with Pyro.
+"""Import this module to register the required custom (de)serializers with Pyro.
 
-This needs to be done for the server and the client. Currently custom serialisers
+This needs to be done for the server and the client. Currently custom serializers
 included for astropy Quantities and the custom exceptions from POCS (pocs.utils.error).
 """
 import re
@@ -16,7 +16,7 @@ from pocs.utils import error
 # Enable local display of remote tracebacks
 sys.excepthook = Pyro4.util.excepthook
 
-# Serialisers/deserialisers
+# serializers/deserializers
 error_pattern = re.compile(r"error\.(\w+)'>$")
 
 

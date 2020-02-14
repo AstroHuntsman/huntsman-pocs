@@ -1,12 +1,14 @@
+import sys
+
 import astropy.units as u
 import Pyro4
 from Pyro4 import errors
 
 from pocs.utils import error
 
-# This import is needed to set up the custom (de)serialisers in the same scope
+# This import is needed to set up the custom (de)serializers in the same scope
 # as the TestServer.
-from huntsman.utils.pyro import serialisers
+from huntsman.utils.pyro import serializers
 from huntsman.utils import get_own_ip, DummyLogger
 
 
@@ -59,7 +61,7 @@ def run_test_server(logger=None):
             name_server = Pyro4.locateNS()
         except errors.NamingError as err:
             logger.error('Failed to locate Pyro name server: {}'.format(err))
-            exit(1)
+            sys.exit(1)
 
         logger.info('Found Pyro name server.')
         uri = daemon.register(TestServer)

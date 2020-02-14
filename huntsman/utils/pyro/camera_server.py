@@ -1,3 +1,5 @@
+import sys
+
 import Pyro4
 from Pyro4 import errors
 
@@ -47,7 +49,7 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
             name_server = Pyro4.locateNS()
         except errors.NamingError as err:
             logger.error('Failed to locate Pyro name server: {}'.format(err))
-            exit(1)
+            sys.exit(1)
 
         logger.info('Found Pyro name server.')
         uri = daemon.register(CameraServer)
