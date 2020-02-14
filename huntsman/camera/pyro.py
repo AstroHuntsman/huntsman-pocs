@@ -17,8 +17,8 @@ from pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 # This import is needed to set up the custom (de)serialisers in the same scope
-# as the pyro test server proxy creation.
-from huntsman.utils import pyro as pyro_utils
+# as the CameraServer and the Camera client's proxy.
+from huntsman.utils.pyro import serialisers
 from huntsman.utils.config import load_device_config, query_config_server
 
 #==============================================================================
