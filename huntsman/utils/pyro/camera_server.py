@@ -42,8 +42,8 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
     host = config.get('host', None)
     if not host:
         host = get_own_ip(verbose=True)
-    # If port is not in config Pyro will choose a random one.
-    port = config.get('port')
+    # If port is not in config set to 0 so that Pyro will choose a random one.
+    port = config.get('port', 0)
 
     with Pyro4.Daemon(host=host, port=port) as daemon:
         try:
