@@ -14,16 +14,16 @@ class FilterWheelEvent(Event):
         self._proxy = proxy
 
     def set(self):
-        self._proxy.filterwheel_event_set()
+        self._proxy._filterwheel_event_set()
 
     def clear(self):
-        self._proxy.filterwheel_event_clear()
+        self._proxy._filterwheel_event_clear()
 
     def is_set(self):
-        return self._proxy.filterwheel_event_is_set()
+        return self._proxy._filterwheel_event_is_set()
 
     def wait(self, timeout=None):
-        return self._proxy.filterwheel_event_wait(timeout)
+        return self._proxy._filterwheel_event_wait(timeout)
 
 
 class FilterWheel(AbstractFilterWheel):
@@ -35,7 +35,7 @@ class FilterWheel(AbstractFilterWheel):
                  **kwargs):
 
         # Need to get filter names before calling base class constructor.
-        filter_names = camera._proxy.filternames
+        filter_names = camera._proxy.filterwheel_filternames
         kwargs['filter_names'] = filter_names
         super().__init__(name=name, model=model, camera=camera, **kwargs)
         self.connect()

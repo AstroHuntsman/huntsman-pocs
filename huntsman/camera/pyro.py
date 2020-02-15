@@ -584,6 +584,14 @@ class CameraServer(object):
         return self._camera.focuser.is_connected
 
     @property
+    def focuser_is_moving(self):
+        return self._camera.focuser.is_moving
+
+    @property
+    def focuser_is_ready(self):
+        return self._camera.focuser.is_ready
+
+    @property
     def focuser_position(self):
         return self._camera.focuser.position
 
@@ -598,14 +606,6 @@ class CameraServer(object):
     @property
     def focuser_max_position(self):
         return self._camera.focuser.max_position
-
-    @property
-    def focuser_is_moving(self):
-        return self._camera.focuser.is_moving
-
-    @property
-    def focuser_is_ready(self):
-        return self._camera.focuser.is_ready
 
     @property
     def focuser_autofocus_range(self):
@@ -684,3 +684,65 @@ class CameraServer(object):
 
     def focuser_move_by(self, increment):
         return self._camera.focuser.move_by(increment)
+
+# Filterwheel methods - these are used by the remote filterwheel client,
+# huntsman.filterwheel.pyro.FIlterWheel
+
+    @property
+    def has_filterwheel(self):
+        return self._camera.filterwheel is not None
+
+    @property
+    def filterwheel_name(self):
+        return self._camera.filterwheel.name
+
+    @property
+    def filterwheel_model(self):
+        return self._camera.filterwheel.model
+
+    @property
+    def filterwheel_uid(self):
+        return self._camera.filterwheel.uid
+
+    @property
+    def filterwheel_is_connected(self):
+        return self._camera.filterwheel.focuser_is_connected
+
+    @property
+    def filterwheel_is_moving(self):
+        return self._camera.filterwheel.focuser_is_moving
+
+    @property
+    def filterwheel_is_ready(self):
+        return self._camera.filterwheel.is_ready
+
+    @property
+    def filterwheel_filternames(self):
+        return self._camera.filterwheel.filter_names
+
+    @property
+    def filterwheel_position(self):
+        return self._camera.filterwheel.position
+
+    @property
+    def filterwheel_current_filter(self):
+        return self._camera.filterwheel.current_filter
+
+    @property
+    def filterwheel_is_unidirectional(self):
+        return self._camera.filterwheel.is_unidirectional
+
+    def _filterwheel_move_to(self, position):
+        self._camera.filterwheel._move_to(position)
+
+    def _filterwheel_event_set(self):
+        self._camera.filterwheel._move_event.set()
+
+    def _filterwheel_event_clear(self):
+        self._camera.filterwheel._move_event.clear()
+
+    def _filterwheel_event_is_set(self):
+        return self._camera.filterwheel._move_event.is_set()
+
+    def _filterwheel_event_wait(self, timeout=None):
+        return self._camera.filterwheel._move_event.wait(timeout)
