@@ -16,6 +16,7 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser
+from huntsman.filterwhee.pyro import FilterWheel a PyroFilterWheel
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
 from huntsman.utils.pyro import serializers
@@ -169,7 +170,10 @@ class Camera(AbstractCamera):
         else:
             self.focuser = None
 
-        self.filterwheel = None  # Remote filterwheels not supported yet.
+        if self._proxy.has_filterwheel:
+            self.filterwheel = PyroFilterWheel(camera=self)
+        else:
+            self.filterwheel = None
 
 
     def take_exposure(self,
