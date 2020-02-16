@@ -10,7 +10,6 @@ localhost:
       model: simulator_sdk
       serial_number: SSC101
       target_temperature: 20
-      filter_type: r2_6
       focuser:
         model: simulator
         port: /dev/ttyFAKE02
@@ -24,6 +23,15 @@ localhost:
           - 25
         autofocus_seconds: 1
         autofocus_size: 500
+      filterwheel:
+        model: simulator
+        filter_names:
+          - one
+          - deux
+          - drei
+          - quattro
+        move_time: 0.1
+        timeout: 0.5
     directories:
         base: /var/huntsman
         images: /tmp/images

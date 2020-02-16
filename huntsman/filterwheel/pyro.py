@@ -14,16 +14,16 @@ class FilterWheelEvent(Event):
         self._proxy = proxy
 
     def set(self):
-        self._proxy._filterwheel_event_set()
+        self._proxy.filterwheel_event_set()
 
     def clear(self):
-        self._proxy._filterwheel_event_clear()
+        self._proxy.filterwheel_event_clear()
 
     def is_set(self):
-        return self._proxy._filterwheel_event_is_set()
+        return self._proxy.filterwheel_event_is_set()
 
     def wait(self, timeout=None):
-        return self._proxy._filterwheel_event_wait(timeout)
+        return self._proxy.filterwheel_event_wait(timeout)
 
 
 class FilterWheel(AbstractFilterWheel):
@@ -59,19 +59,19 @@ class FilterWheel(AbstractFilterWheel):
         # A filterwheel is 'ready' if it is connected and isn't currently moving.
         return self._proxy.filterwheel_is_ready
 
-    @property
+    @AbstractFilterWheel.position.getter
     def position(self):
         """ Current integer position of the filter wheel """
-        raise self._proxy.filterwheel_position
+        return self._proxy.filterwheel_position
 
-    @property
+    @AbstractFilterWheel.current_filter.getter
     def current_filter(self):
         """ Name of the filter in the current position """
         return self._proxy.filterwheel_current_filter
 
     @property
     def is_unidirectional(self):
-        raise self._proxy.filterwheel_is_unidirectional
+        return self._proxy.filterwheel_is_unidirectional
 
 ##################################################################################################
 # Methods
@@ -95,4 +95,4 @@ class FilterWheel(AbstractFilterWheel):
 ##################################################################################################
 
     def _move_to(self, position):
-        self._proxy._filterwheel_move_to(position)
+        self._proxy.filterwheel_move_to(position)

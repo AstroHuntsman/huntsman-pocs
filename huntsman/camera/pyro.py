@@ -16,7 +16,7 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser
-from huntsman.filterwhee.pyro import FilterWheel a PyroFilterWheel
+from huntsman.filterwheel.pyro import FilterWheel as PyroFilterWheel
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
 from huntsman.utils.pyro import serializers
@@ -211,23 +211,23 @@ class Camera(AbstractCamera):
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
-        #Start the exposure
+        # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
 
-        #Remote method call to start the exposure
+        # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     filename=filename,
                                                     dark=bool(dark),
                                                     *args,
                                                     **kwargs)
 
-        #Start a thread that will set an event once exposure has completed
-        exposure_thread = Timer(interval=get_quantity_value(seconds, u.s) + self.readout_time,
-                                function=self._async_wait,
-                                args=(exposure_result,
-                                      'exposure',
-                                      self._exposure_event,
-                                      self._timeout))
+        # Start a thread that will set an event once exposure has completed
+        exposure_thread = Thread(target=self._async_wait,
+                                 args=(exposure_result,
+                                       'exposure',
+                                       self._exposure_event,
+                                       get_quantity_value(seconds, u.s) +
+                                       self.readout_time + self._timeout))
         exposure_thread.start()
 
         if blocking:
@@ -710,11 +710,11 @@ class CameraServer(object):
 
     @property
     def filterwheel_is_connected(self):
-        return self._camera.filterwheel.focuser_is_connected
+        return self._camera.filterwheel.is_connected
 
     @property
     def filterwheel_is_moving(self):
-        return self._camera.filterwheel.focuser_is_moving
+        return self._camera.filterwheel.is_moving
 
     @property
     def filterwheel_is_ready(self):
@@ -736,17 +736,17 @@ class CameraServer(object):
     def filterwheel_is_unidirectional(self):
         return self._camera.filterwheel.is_unidirectional
 
-    def _filterwheel_move_to(self, position):
+    def filterwheel_move_to(self, position):
         self._camera.filterwheel._move_to(position)
 
-    def _filterwheel_event_set(self):
+    def filterwheel_event_set(self):
         self._camera.filterwheel._move_event.set()
 
-    def _filterwheel_event_clear(self):
+    def filterwheel_event_clear(self):
         self._camera.filterwheel._move_event.clear()
 
-    def _filterwheel_event_is_set(self):
+    def filterwheel_event_is_set(self):
         return self._camera.filterwheel._move_event.is_set()
 
-    def _filterwheel_event_wait(self, timeout=None):
+    def filterwheel_event_wait(self, timeout=None):
         return self._camera.filterwheel._move_event.wait(timeout)
