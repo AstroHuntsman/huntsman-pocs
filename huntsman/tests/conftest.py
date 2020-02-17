@@ -15,6 +15,7 @@ from pocs.utils.messaging import PanMessaging
 from huntsman.utils import load_config, get_own_ip
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the pyro test server proxy creation.
+from huntsman.utils import pyro as pyro_utils
 from huntsman.utils.config import query_config_server
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
