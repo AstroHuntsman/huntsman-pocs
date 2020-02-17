@@ -7,11 +7,11 @@ Created on Tue Dec  3 07:16:00 2019
 
 Run this on the pis (not the main computer).
 """
-import os, subprocess
+import os
+import subprocess
 from huntsman.utils import DummyLogger
 from huntsman.utils.config import query_config_server, load_device_config
 
-#==============================================================================
 
 def mount(mountpoint, remote, server_alive_interval=20, logger=None,
           server_alive_count_max=3, strict_host_key_checking=False):
@@ -31,9 +31,9 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
     try:
         os.makedirs(mountpoint, exist_ok=True)
     except FileExistsError:
-        pass #For some reason this is necessary
+        pass  # For some reason this is necessary
 
-    #SSH options
+    # SSH options
     strict_host_key_checking = "yes" if strict_host_key_checking else "no"
     options = f'ServerAliveInterval={server_alive_interval},' + \
               f'ServerAliveCountMax={server_alive_count_max},' + \
@@ -58,12 +58,11 @@ def unmount(mountpoint, logger=None):
         options = ['fusermount', '-u', mountpoint]
         try:
             subprocess.run(options, shell=False, check=True)
-        except:
+        except Exception:
             if logger is None:
                 logger = DummyLogger()
             logger.warning(f'Unable to unmount {mountpoint}.')
 
-#==============================================================================
 
 def get_user(default='huntsman', key='PANUSER', logger=None):
     '''
@@ -79,7 +78,6 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
         logger.warning(msg)
     return user
 
-#==============================================================================
 
 def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
                      **kwargs):
@@ -115,6 +113,3 @@ def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
     mount(mountpoint, remote, logger=logger)
 
     return mountpoint
-
-#==============================================================================
-

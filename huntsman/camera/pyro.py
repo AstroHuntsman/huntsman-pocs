@@ -18,10 +18,8 @@ from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
-from huntsman.utils.pyro import serializers
 from huntsman.utils.config import load_device_config, query_config_server
 
-#==============================================================================
 
 class Camera(AbstractCamera):
     """
@@ -171,7 +169,6 @@ class Camera(AbstractCamera):
 
         self.filterwheel = None  # Remote filterwheels not supported yet.
 
-
     def take_exposure(self,
                       seconds=1.0 * u.second,
                       filename=None,
@@ -207,17 +204,17 @@ class Camera(AbstractCamera):
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
-        #Start the exposure
+        # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
 
-        #Remote method call to start the exposure
+        # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     filename=filename,
                                                     dark=bool(dark),
                                                     *args,
                                                     **kwargs)
 
-        #Start a thread that will set an event once exposure has completed
+        # Start a thread that will set an event once exposure has completed
         exposure_thread = Timer(interval=get_quantity_value(seconds, u.s) + self.readout_time,
                                 function=self._async_wait,
                                 args=(exposure_result,
@@ -319,7 +316,7 @@ class Camera(AbstractCamera):
         # Start a thread that will set an event once autofocus has completed
         autofocus_event = Event()
         autofocus_thread = Thread(target=self._async_wait,
-                args=(autofocus_result, 'autofocus', autofocus_event, timeout))
+                                  args=(autofocus_result, 'autofocus', autofocus_event, timeout))
         autofocus_thread.start()
 
         if blocking:
@@ -362,21 +359,19 @@ class Camera(AbstractCamera):
 
         return result
 
-
     def _process_fits(self, file_path, info):
         '''
         Override _process_fits, called by process_exposure in take_observation.
 
         The difference is that we do an NGAS push following the processing.
         '''
-        #Call the super method
+        # Call the super method
         result = super()._process_fits(file_path, info)
 
-        #Do the NGAS push
+        # Do the NGAS push
         self._NGASpush(file_path, info)
 
         return result
-
 
     def _NGASpush(self, filename, metadata, filename_ngas=None, port=7778):
         '''
@@ -392,35 +387,34 @@ class Camera(AbstractCamera):
             The port of the NGAS server. Defaults to the TCP port.
 
         '''
-        #Define the NGAS filename
+        # Define the NGAS filename
         if filename_ngas is None:
             extension = os.path.splitext(filename)[-1]
             filename = f"{metadata['image_id']}{extension}"
 
-        #Get the IP address of the NGAS server
+        # Get the IP address of the NGAS server
         ngas_ip = self.config['ngas_ip']
 
-        #Post the file to the NGAS server
+        # Post the file to the NGAS server
         url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
         with open(filename, 'rb') as f:
 
             self.logger.info(
-                    f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
+                f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
 
             try:
-                #Post the file
+                # Post the file
                 r = requests.post(url, data=f)
 
                 self.logger.debug(f'NGAS response: {r.text}')
 
-                #Confirm success
+                # Confirm success
                 r.raise_for_status()
 
             except Exception as e:
                 self.logger.error(f'Error while performing NGAS push: {e}')
                 raise(e)
 
-#==============================================================================
 
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
@@ -544,7 +538,7 @@ class CameraServer(object):
         str:
             The full filename of the exposure output.
         '''
-        #Start the exposure and wait for it complete
+        # Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
                                    dark=dark,
