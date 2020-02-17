@@ -29,6 +29,8 @@ params = [PyroCamera]
 ids = ['pyro']
 
 # Ugly hack to access id inside fixture
+
+
 @pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
 def camera(request, images_dir_control, camera_server):
     if request.param[0] == PyroCamera:
@@ -37,8 +39,8 @@ def camera(request, images_dir_control, camera_server):
         cam_name, cam_uri = cameras.popitem()
         camera = PyroCamera(port=cam_name, uri=cam_uri)
 
-    #This is a client-side pyro.Camera instance.
-    #Currently it does not get its config from the config server.
+    # This is a client-side pyro.Camera instance.
+    # Currently it does not get its config from the config server.
     camera.config['directories']['images'] = images_dir_control
 
     return camera
@@ -47,8 +49,8 @@ def camera(request, images_dir_control, camera_server):
 @pytest.fixture(scope='module')
 def patterns(camera, images_dir_device):
 
-    #It would be better to replace images_dir_device by images_dir_control.
-    #However, problems with rmtree and SSHFS causes the autofocus code to hang.
+    # It would be better to replace images_dir_device by images_dir_control.
+    # However, problems with rmtree and SSHFS causes the autofocus code to hang.
 
     patterns = {'base': os.path.join(images_dir_device, 'focus', camera.uid),
                 'final': os.path.join(images_dir_device, 'focus', camera.uid, '*',
@@ -233,7 +235,7 @@ def test_exposure_scaling(camera, tmpdir):
     else:
         fits_path = str(tmpdir.join('test_exposure_scaling.fits'))
         camera.take_exposure(filename=fits_path, dark=True, blocking=True)
-        image_data, image_header = fits.getdata(fits_path, header=True)
+        image_data, image_header = fits_utils.getdata(fits_path, header=True)
         assert bit_depth == image_header['BITDEPTH'] * u.bit
         pad_bits = image_header['BITPIX'] - image_header['BITDEPTH']
         assert (image_data % 2**pad_bits).any()
