@@ -6,13 +6,13 @@ pyro_camera_local.yaml config file. The camera servers should be started after t
 but before POCS.
 """
 import argparse
-from huntsman.utils.pyro import run_camera_server
+from huntsman.utils.pyro.camera_server import run_camera_server
 
 #==============================================================================
 
 if __name__ == "__main__":
-        
-    #Parse the args
+
+    # Parse the args
     parser = argparse.ArgumentParser()
     parser.add_argument("--ignore_local",
                         help="ignore pyro_camera_local.yaml config file",
@@ -21,6 +21,6 @@ if __name__ == "__main__":
                         help="override default config key",
                         default=None)
     args = parser.parse_args()
-    
-    #Run the camera server
+
+    # Run the camera server
     run_camera_server(args.ignore_local, key=args.key)
