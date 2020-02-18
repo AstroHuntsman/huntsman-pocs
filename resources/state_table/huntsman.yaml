@@ -16,9 +16,9 @@ states:
     scheduling:
         tags: always_safe
     calibrating:
-        tags: at_twilight
+        horizon: flat
     focusing:
-        tags: at_twilight
+        horizon: focus
     preparing:
     slewing:
     observing:

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 import os
-import readline
 import time
-import zmq
 
 from cmd import Cmd
-from pprint import pprint
 
 from astropy.utils import console
 

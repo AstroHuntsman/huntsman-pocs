@@ -8,9 +8,7 @@ now.
 """
 from huntsman.utils.config import start_config_server
 
-#==============================================================================
-
 if __name__ == "__main__":
-            
-    #Start the config server
+
+    # Start the config server
     start_config_server()

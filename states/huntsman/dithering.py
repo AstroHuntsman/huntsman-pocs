@@ -25,4 +25,4 @@ def on_enter(event_data):
             pocs.next_state = 'observing'
 
     except Exception as e:
-        pocs.logger.warning("Problem with preparing: {}".format())
+        pocs.logger.warning("Problem with preparing: {}".format(e))

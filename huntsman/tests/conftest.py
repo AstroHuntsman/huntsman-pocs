@@ -13,12 +13,13 @@ from pocs.utils.database import PanDB
 from pocs.utils.messaging import PanMessaging
 
 from huntsman.utils import load_config, get_own_ip
+# This import is needed to set up the custom (de)serializers in the same scope
+# as the pyro test server proxy creation.
+from huntsman.utils import pyro as pyro_utils
 from huntsman.utils.config import query_config_server
 
 # Global variable with the default config; we read it once, copy it each time it is needed.
 _one_time_config = None
-# Global variable set to a bool by can_connect_to_mongo().
-_can_connect_to_mongo = None
 _all_databases = ['file']
 
 
@@ -72,6 +73,7 @@ def images_dir_control(tmpdir_factory):
     directory = tmpdir_factory.mktemp('images')
     return str(directory)
 
+
 @pytest.fixture(scope='module')
 def images_dir_device(tmpdir_factory):
     directory = tmpdir_factory.mktemp('images_local')
@@ -118,7 +120,7 @@ def config_with_simulated_stuff(config):
         'dome': {
             'brand': 'Simulacrum',
             'driver': 'simulator',
-            },
+        },
         'mount': {
             'model': 'simulator',
             'driver': 'simulator',
@@ -128,19 +130,6 @@ def config_with_simulated_stuff(config):
         },
     })
     return config
-
-
-def can_connect_to_mongo(db_name):
-    global _can_connect_to_mongo
-    if _can_connect_to_mongo is None:
-        logger = get_root_logger()
-        try:
-            PanDB(db_type='mongo', db_name=db_name, logger=logger, connect=True)
-            _can_connect_to_mongo = True
-        except Exception:
-            _can_connect_to_mongo = False
-        logger.info('can_connect_to_mongo = {}', _can_connect_to_mongo)
-    return _can_connect_to_mongo
 
 
 @pytest.fixture(scope="session")
@@ -155,9 +144,6 @@ def db_type(request, db_name):
     if request.param not in db_list and 'all' not in db_list:
         pytest.skip("Skipping {} DB, set --test-all-databases=True".format(request.param))
 
-    # If testing mongo, make sure we can connect, otherwise skip.
-    if request.param == 'mongo' and not can_connect_to_mongo(db_name):
-        pytest.skip("Can't connect to {} DB, skipping".format(request.param))
     PanDB.permanently_erase_database(request.param, db_name, really='Yes', dangerous='Totally')
     return request.param
 
@@ -187,7 +173,7 @@ def end_process(proc):
         proc.send_signal(signal.SIGINT)
         try:
             proc.wait(timeout=10)
-        except subprocess.TimeoutExpired as err:
+        except subprocess.TimeoutExpired:
             warn("Timeout waiting for {} to exit!".format(proc.pid))
             if proc.poll() is None:
                 # I'm getting better!
@@ -196,7 +182,7 @@ def end_process(proc):
                 proc.terminate()
                 try:
                     proc.wait(timeout=10)
-                except subprocess.TimeoutExpired as err:
+                except subprocess.TimeoutExpired:
                     warn("Timeout waiting for {} to terminate!".format(proc.pid))
                     if proc.poll() is None:
                         # I feel fine!
@@ -245,13 +231,13 @@ def config_server(name_server, request, images_dir_control, images_dir_device):
     from those in the actual device_info.yaml and can vary between runtime
     environments. So, here is a hack to make it work.
     '''
-    #Start the config server
+    # Start the config server
     cmd = [os.path.expandvars(
-            '$HUNTSMAN_POCS/scripts/start_config_server.py')]
+        '$HUNTSMAN_POCS/scripts/start_config_server.py')]
     proc = subprocess.Popen(cmd)
     request.addfinalizer(lambda: end_process(proc))
 
-    #Check the config server works
+    # Check the config server works
     waited = 0
     while waited <= 20:
         try:
@@ -274,7 +260,7 @@ def config_server(name_server, request, images_dir_control, images_dir_device):
 
             return proc
 
-        except:
+        except Exception:
             time.sleep(1)
             waited += 1
 
@@ -298,6 +284,31 @@ def camera_server(name_server, config_server, request):
         waited += 1
 
     raise TimeoutError("Timeout waiting for camera server to start")
+
+
+@pytest.fixture(scope='module')
+def test_server(name_server, request):
+    cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_test_server.py'), ]
+    cs_proc = subprocess.Popen(cs_cmds)
+    request.addfinalizer(lambda: end_process(cs_proc))
+    # Give test server time to start up
+    waited = 0
+    while waited <= 20:
+        with Pyro4.locateNS(host='localhost') as ns:
+            test_servers = ns.list(metadata_all={'POCS', 'Test'})
+        if len(test_servers) == 1:
+            return cs_proc
+        time.sleep(1)
+        waited += 1
+
+    raise TimeoutError("Timeout waiting for camera server to start")
+
+
+@pytest.fixture(scope='module')
+def test_proxy(test_server):
+    proxy = Pyro4.Proxy("PYRONAME:test_server")
+    return proxy
+
 
 # -----------------------------------------------------------------------
 # Messaging support fixtures. It is important that tests NOT use the same

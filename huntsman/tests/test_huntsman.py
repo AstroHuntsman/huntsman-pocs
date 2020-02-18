@@ -249,7 +249,6 @@ def test_pyro_camera(config, camera_server):
     assert obs.cameras['camera.simulator.001'].is_connected
 
 
-@pytest.mark.skip
 def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
 
@@ -272,9 +271,9 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
                                                     })
 
         pocs.initialize()
-        pocs.logger.info('Starting observatory run')
+        observatory.logger.info('Starting observatory run')
         assert pocs.is_weather_safe() is False
-        pocs.logger.info('Sending RUNNING message')
+        observatory.logger.info('Sending RUNNING message')
         pocs.send_message('RUNNING')
         pocs.run(run_once=True, exit_when_done=True)
         assert pocs.observatory.is_weather_safe() is True
@@ -289,7 +288,9 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         assert wait_for_running(msg_subscriber)
         observatory.logger.info('Got RUNNING message')
 
+        # Give us time to get into the observing state.
         time.sleep(5)
+
         # Insert a dummy weather record to break wait
         observatory.db.insert_current('weather', {'safe': True})
 
@@ -350,7 +351,7 @@ def test_run_no_targets_and_exit(pocs):
     pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 
-@pytest.mark.skip
+
 def test_run(pocs):
     os.environ['POCSTIME'] = '2016-09-09 10:00:00'
     pocs.config['simulator'] = hardware.get_all_names()

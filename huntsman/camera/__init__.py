@@ -2,17 +2,12 @@ from collections import OrderedDict
 
 import Pyro4
 
-from pocs.utils import error
-
-from huntsman.utils import load_config
-
 from pocs.camera import create_cameras_from_config as create_local_cameras
-from pocs.camera.camera import AbstractCamera  # pragma: no flakes
-from pocs.camera.camera import AbstractGPhotoCamera  # pragma: no flakes
+from pocs.utils import error
+from pocs.utils import logger as logger_module
 
 from huntsman.camera.pyro import Camera as PyroCamera
-
-from pocs.utils import logger as logger_module
+from huntsman.utils import load_config
 
 
 def list_distributed_cameras(ns_host=None, logger=None):
@@ -157,10 +152,8 @@ def create_distributed_cameras(camera_info, logger=None):
     for cam_name, cam_uri in camera_uris.items():
         logger.debug('Creating camera: {}'.format(cam_name))
         cam = PyroCamera(port=cam_name, uri=cam_uri)
-        is_primary = ''
         if primary_id == cam.uid or primary_id == cam.name:
             cam.is_primary = True
-            is_primary = ' [Primary]'
 
         logger.debug(f"Camera created: {cam}")
 
