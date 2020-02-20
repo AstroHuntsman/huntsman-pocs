@@ -8,7 +8,6 @@ but before POCS.
 import argparse
 from huntsman.utils.pyro.camera_server import run_camera_server
 
-#==============================================================================
 
 if __name__ == "__main__":
 

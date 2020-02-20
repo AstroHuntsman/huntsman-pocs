@@ -2,7 +2,7 @@ import yaml
 import os
 import datetime
 import ipywidgets as widgets
-from ipywidgets import interact, interactive, fixed, interact_manual
+from ipywidgets import interactive
 from IPython.display import display
 import sys
 
