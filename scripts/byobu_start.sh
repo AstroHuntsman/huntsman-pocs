@@ -1,13 +1,15 @@
 #!/bin/bash
 
 # Create new session.
-SESSION_NAME=${1-Huntsman-Control)
-
+SESSION_NAME=${1-Huntsman-Control}
 byobu new-session -d -s "${SESSION_NAME}"
 
 # To be able to actually see anything, you need to launch a terminal for the session
-#gnome-terminal --full-screen -- byobu attach -t Huntsman-Control
-gnome-terminal --window --maximize -- byobu attach -t "${SESSION_NAME}"
+# normally this script will be run over ssh so normally we wont want to start a
+# terminal window. If desired this behaviour can be enabled by uncommenting one
+# of the lines below 
+#gnome-terminal --window --maximize -- byobu attach -t "${SESSION_NAME}"
+#xfce4-terminal --maximize -e "byobu attach -t '${SESSION_NAME}'
 
 # Create required window
 byobu new-window
@@ -31,13 +33,22 @@ byobu split-window -h
 byobu select-pane -t 0
 # split selected pane vertically
 byobu split-window -v
+# select the top pane
+byobu select-pane -t 0
+# split top pane vertically again
+byobu split-window -v
+# select the top pane
 byobu select-pane -t 0
 # run a command in selected pane, must end with 'Enter'
-byobu send-keys "echo cd $HUNTSMAN_POCS"
+# in first pane we will setup the name server
+byobu send-keys "echo $HUNTSMAN_POCS/scripts/pyro_name_server"
 byobu send-keys Enter
-byobu send-keys "echo scripts/pyro_name_server.py"
-byobu send-keys Enter
+# in second pane we will setup the config server
 byobu select-pane -t 1
+byobu send-keys "echo python $HUNTSMAN_POCS/scripts/start_config_server.py"
+byobu send-keys Enter
+# in the third pane we will set up the POCS ipython session
+byobu select-pane -t 2
 byobu send-keys "ipython"
 byobu send-keys Enter
 # pocs start up steps
@@ -59,12 +70,12 @@ pocsstart=("from pocs.mount import create_mount_from_config"
 for ((i = 0; i < ${#pocsstart[@]}; i++)); do
     # sending command through as a comment for testing purposes
     byobu send-keys "#[step ${i}] >${pocsstart[$i]}"
+    sleep .1
     byobu send-keys Enter
 done
-byobu select-pane -t 2
-byobu send-keys "echo cd $PANLOG"
-byobu send-keys Enter
-byobu send-keys "echo grc tail -F -n 1000 ipython-all.log"
+# in fourth pane we will set up the POCS logging window
+byobu select-pane -t 3
+byobu send-keys "echo grc tail -F -n 1000 $PANDIR/logs/ipython-all.log"
 byobu send-keys Enter
 
 # create shutter and weather window
@@ -73,24 +84,39 @@ byobu split-window -h
 byobu select-pane -t 0
 byobu send-keys "ipython"
 byobu send-keys Enter
-byobu send-keys "print('This is where shutter control happens')"
+# some times commands seem to get skipped over unless a pause is inserted
+sleep .1
+byobu send-keys "#from huntsman.dome.musca import HuntsmanDome"
+byobu send-keys Enter
+sleep .1
+byobu send-keys "#from huntsman.utils import load_config"
+byobu send-keys Enter
+sleep .1
+byobu send-keys "#config = load_config()"
+byobu send-keys Enter
+byobu send-keys "#dome = HuntsmanDome(config=config)"
+byobu send-keys Enter
+byobu send-keys "#dome.status()"
+byobu send-keys Enter
+byobu send-keys "#dome.open()"
 byobu send-keys Enter
 byobu select-pane -t 1
 byobu split-window -v
 byobu select-pane -t 1
-byobu send-keys "echo cd $POCS"
-byobu send-keys Enter
-byobu send-keys "echo bin/peas_shell"
+byobu send-keys "echo $POCS/bin/peas_shell"
 byobu send-keys Enter
 byobu send-keys "echo load_weather"
 byobu send-keys Enter
 byobu send-keys "echo start"
 byobu send-keys Enter
+byobu send-keys "echo last_reading weather"
+byobu send-keys Enter
 byobu select-pane -t 2
-byobu send-keys "echo PEAS LOGS GOES HERE"
+byobu send-keys "echo grc tail -F $PANDIR/logs/peas_shell_all.log"
 byobu send-keys Enter
 
 # create camera server window
+# TODO rewrite this so it can create n equal size panes for n cameras
 byobu select-window -t "${SESSION_NAME}":"camera-servers"
 byobu split-window -h
 byobu select-pane -t 0
@@ -103,19 +129,16 @@ byobu split-window -v
 byobu select-layout tiled
 # now start all the camera servers
 ipprefix="192.168.80."
-ipsuffix=("140" "141" "143" "144" "145" "146")
+ipsuffix=("141" "144" "145" "146" "149" "148")
 for _pane in $(byobu list-panes -F '#P'); do
     # ssh into the pi
     byobu send-keys -t ${_pane} "echo ssh huntsman@$ipprefix${ipsuffix[${_pane}]}"
     byobu send-keys -t ${_pane} Enter
     # create a persistent byobu session on the pi
-    byobu send-keys -t ${_pane} "echo byobu"
-    byobu send-keys -t ${_pane} Enter
-    # change to huntsman pocs directory
-    byobu send-keys -t ${_pane} "echo cd $HUNTSMAN_POCS"
-    byobu send-keys -t ${_pane} Enter
-    # run camera server start up script
-    byobu send-keys -t ${_pane} "echo scripts/pyro-camera-server.py"
+    # byobu send-keys -t ${_pane} "echo byobu"
+    # byobu send-keys -t ${_pane} Enter
+    # run camera server docker start up script
+    byobu send-keys -t ${_pane} "echo $HUNTSMAN_POCSscripts/run_device_container.sh"
     byobu send-keys -t ${_pane} Enter
 done
 
@@ -129,7 +152,7 @@ byobu select-pane -t 3
 byobu split-window -v
 byobu split-window -v
 byobu select-layout tiled
-# now start all the camera servers
+# now to display all the camera logs
 for _pane in $(byobu list-panes -F '#P'); do
     # ssh into the pi
     byobu send-keys -t ${_pane} "echo ssh huntsman@$ipprefix${ipsuffix[${_pane}]}"
@@ -137,11 +160,8 @@ for _pane in $(byobu list-panes -F '#P'); do
     # create a persistent byobu session on the pi
     byobu send-keys -t ${_pane} "echo byobu"
     byobu send-keys -t ${_pane} Enter
-    # change to huntsman pocs directory
-    byobu send-keys -t ${_pane} "echo cd $PANLOG"
-    byobu send-keys -t ${_pane} Enter
-    # run camera server start up script
-    byobu send-keys -t ${_pane} "echo grc tail -F -n 1000 pyro_camera_server.py-all.log"
+    # display camera server logs
+    byobu send-keys -t ${_pane} "echo grc tail -F -n 1000 $PANDIR/logspyro_camera_server.py-all.log"
     byobu send-keys -t ${_pane} Enter
 done
 
@@ -150,13 +170,9 @@ byobu select-window -t "${SESSION_NAME}":"dome-control"
 byobu split-window -h
 # start up dome control server
 byobu select-pane -t 0
-byobu send-keys "echo cd ~/huntsman-dome/domehunter/gRPC-server/"
-byobu send-keys Enter
-byobu send-keys "echo python huntsman_dome_server.py -r"
+byobu send-keys "echo python ~/huntsman-dome/domehunter/gRPC-server/huntsman_dome_server.py -r"
 byobu send-keys Enter
 # set up dome control log
 byobu select-pane -t 1
-byobu send-keys "echo cd ~/huntsman-dome/domehunter/logs/"
-byobu send-keys Enter
-byobu send-keys "echo tail -F -n 1000 server_log_yyyy_mm_dd.log"
+byobu send-keys "echo grc tail -F -n 1000 ~/huntsman-dome/domehunter/logs/server_log_yyyy_mm_dd.log"
 byobu send-keys Enter
