@@ -6,7 +6,7 @@ necessary processes automatically.
 
 This code is ideally run from inside the latest huntsman docker container.
 """
-from huntsman.utils.config import load_device_config
+from huntsman.utils.pyro.config import load_device_config
 
 
 def get_device_type(**kwargs):
