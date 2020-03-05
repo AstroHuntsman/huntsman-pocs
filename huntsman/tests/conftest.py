@@ -284,9 +284,10 @@ def camera_server(name_server, config_server, request):
 
     raise TimeoutError("Timeout waiting for camera server to start")
 
+
 @pytest.fixture(scope='module')
 def test_server(name_server, request):
-    cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_test_server.py'),]
+    cs_cmds = [os.path.expandvars('$HUNTSMAN_POCS/scripts/pyro_test_server.py'), ]
     cs_proc = subprocess.Popen(cs_cmds)
     request.addfinalizer(lambda: end_process(cs_proc))
     # Give test server time to start up

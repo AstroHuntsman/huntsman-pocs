@@ -7,18 +7,19 @@ Created on Thu Jan  2 12:04:11 2020
 
 Code to provide a config server using pyro.
 """
-import sys, time
+import sys
+import time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip, DummyLogger
 from panoptes.utils.config import _parse_config
 
-#==============================================================================
 
 @Pyro4.expose
 class ConfigServer():
     '''
     Class representing the config server.
     '''
+
     def __init__(self, config_file=None, parse=True, **kwargs):
         '''
 
@@ -28,7 +29,7 @@ class ConfigServer():
         if config_file is None:
             config_file = 'device_info.yaml'
 
-        #Read the config file
+        # Read the config file
         self._config = load_config(config_files=[config_file], parse=self.parse,
                                    **kwargs)
 
@@ -56,7 +57,6 @@ class ConfigServer():
 
         return config
 
-#==============================================================================
 
 def locate_name_server(wait=None, logger=None):
     '''
@@ -77,7 +77,7 @@ def locate_name_server(wait=None, logger=None):
         return Pyro4.locateNS()
 
     try:
-        #Look for NS periodically until it is found
+        # Look for NS periodically until it is found
         while True:
             try:
                 return Pyro4.locateNS()
@@ -85,7 +85,7 @@ def locate_name_server(wait=None, logger=None):
                 logger.info('Unable to locate name server. Waiting...')
                 time.sleep(wait)
 
-    #Catch keyboard interrupt
+    # Catch keyboard interrupt
     except KeyboardInterrupt:
         logger.debug('Keyboard interupt while locating name server.\
                      Terminating!')
@@ -117,19 +117,19 @@ def start_config_server(host=None, port=6563, name='config_server',
 
     with Pyro4.Daemon(host=host, port=port) as daemon:
 
-        #Locate the name server
+        # Locate the name server
         name_server = locate_name_server(wait=wait)
         logger.info('Found name server.')
 
-        #Create a ConfigServer object
+        # Create a ConfigServer object
         config_server = ConfigServer(*args, **kwargs)
 
-        #Register with pyro & the name server
+        # Register with pyro & the name server
         uri = daemon.register(config_server)
         name_server.register(name, uri)
         logger.info(f'ConfigServer object registered as: {uri}')
 
-        #Request loop
+        # Request loop
         try:
             logger.info('Entering request loop... ')
             daemon.requestLoop()
@@ -180,7 +180,6 @@ def query_config_server(key=None, name='config_server', logger=None, wait=None):
             logger.error(f'Unable to load remote config: {e}')
             raise(e)
 
-#==============================================================================
 
 def load_device_config(key=None, config_files=None, logger=None, wait=None,
                        **kwargs):
@@ -208,17 +207,14 @@ def load_device_config(key=None, config_files=None, logger=None, wait=None,
     if key is None:
         key = get_own_ip()
 
-    #Load config from local files?
+    # Load config from local files?
     if config_files is not None:
         logger.debug(f'Loading config from local file(s).')
         config = load_config(config_files, **kwargs)[key]
 
-    #Load config from the config server?
+    # Load config from the config server?
     else:
         logger.debug(f'Loading remote config with key: {key}')
         config = query_config_server(key=key, logger=logger, wait=wait)
 
     return config
-
-#==============================================================================
-

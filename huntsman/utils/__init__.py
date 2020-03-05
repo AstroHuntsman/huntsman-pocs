@@ -3,7 +3,6 @@ import netifaces
 from panoptes.utils import listify
 from panoptes.utils.config import load_config as config_loader
 
-#==============================================================================
 
 def load_config(config_files=None, **kwargs):
     '''
@@ -20,7 +19,6 @@ def load_config(config_files=None, **kwargs):
     config = config_loader(config_files=config_files, **kwargs)
     return config
 
-#==============================================================================
 
 def get_own_ip(verbose=False, logger=None):
     """
@@ -85,21 +83,23 @@ def get_own_ip(verbose=False, logger=None):
         logger.debug(msg)
     return host
 
-#==============================================================================
 
 class DummyLogger():
     '''
 
     '''
+
     def __init__(self):
         pass
+
     def warning(self, msg):
         print(msg)
+
     def error(self, msg):
         print(msg)
+
     def debug(self, msg):
         print(msg)
+
     def info(self, msg):
         print(msg)
-
-#==============================================================================

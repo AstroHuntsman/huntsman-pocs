@@ -3,6 +3,7 @@ from pocs.focuser import AbstractFocuser
 
 class Focuser(AbstractFocuser):
     """ Class representing the client side interface to the Focuser of a distributed camera. """
+
     def __init__(self,
                  name='Pyro Focuser',
                  model='pyro',
@@ -102,7 +103,7 @@ class Focuser(AbstractFocuser):
 
     @autofocus_merit_function_kwargs.setter
     def autofocus_merit_function_kwargs(self, kwargs):
-        self._proxy.focuser_autofocus_merit_function_kwargs =kwargs
+        self._proxy.focuser_autofocus_merit_function_kwargs = kwargs
 
     @property
     def autofocus_mask_dilations(self):
