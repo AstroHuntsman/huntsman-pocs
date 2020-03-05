@@ -81,7 +81,6 @@ def images_dir_device(tmpdir_factory):
 
 @pytest.fixture(scope='function')
 def config(images_dir_control, messaging_ports):
-    pocs.base.reset_global_config()
 
     global _one_time_config
     if not _one_time_config:
