@@ -90,57 +90,6 @@ def pocs(config_with_simulated_stuff, observatory):
     pocs.power_down()
 
 
-def test_check_config1(config):
-    del config['mount']
-    base = PanBase()
-    with pytest.raises(SystemExit):
-        base._check_config(config)
-
-
-def test_check_config2(config):
-    del config['directories']
-    base = PanBase()
-    with pytest.raises(SystemExit):
-        base._check_config(config)
-
-
-def test_check_config3(config):
-    del config['state_machine']
-    base = PanBase()
-    with pytest.raises(SystemExit):
-        base._check_config(config)
-
-
-def test_bad_pandir_env(pocs):
-    pandir = os.getenv('PANDIR')
-    os.environ['PANDIR'] = '/foo/bar'
-    with pytest.raises(SystemExit):
-        pocs.check_environment()
-    os.environ['PANDIR'] = pandir
-
-
-def test_bad_pocs_env(pocs):
-    pocs_dir = os.getenv('POCS')
-    os.environ['POCS'] = '/foo/bar'
-    with pytest.raises(SystemExit):
-        pocs.check_environment()
-    os.environ['POCS'] = pocs_dir
-
-
-def test_make_log_dir(pocs):
-    log_dir = "{}/logs".format(os.getcwd())
-    assert os.path.exists(log_dir) is False
-
-    old_pandir = os.environ['PANDIR']
-    os.environ['PANDIR'] = os.getcwd()
-    pocs.check_environment()
-
-    assert os.path.exists(log_dir) is True
-    os.removedirs(log_dir)
-
-    os.environ['PANDIR'] = old_pandir
-
-
 def test_simple_simulator(pocs):
     assert isinstance(pocs, POCS)
 

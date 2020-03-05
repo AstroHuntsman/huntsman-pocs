@@ -7,7 +7,6 @@ import copy
 from warnings import warn
 import Pyro4
 
-import pocs.base
 from panoptes.utils.logger import logger
 from panoptes.utils.database import PanDB
 from panoptes.utils.messaging import PanMessaging
