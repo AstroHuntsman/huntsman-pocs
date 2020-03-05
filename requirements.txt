@@ -12,7 +12,7 @@ matplotlib >= 3.0.0
 netifaces
 numpy >= 1.17.0
 pandas >= 0.18.0
-panoptes-utils>=0.2.0
+panoptes-utils>=0.2.1
 photutils
 pycodestyle
 Pyro4
