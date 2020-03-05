@@ -12,7 +12,7 @@ from panoptes.utils import error
 from panoptes.utils import CountdownTimer
 
 from huntsman.camera import create_cameras_from_config
-from panoptes.utils.location import create_location_from_config
+from pocs.utils.location import create_location_from_config
 from pocs.scheduler import create_scheduler_from_config
 from pocs.dome import create_dome_from_config
 from pocs.mount import create_mount_from_config

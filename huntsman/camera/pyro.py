@@ -10,7 +10,7 @@ from astropy import units as u
 import Pyro4
 import Pyro4.util
 
-from panoptes.utils import load_module
+from panoptes.utils.library import load_module
 from panoptes.utils import get_quantity_value
 from panoptes.utils import error
 from pocs.camera import AbstractCamera
@@ -18,7 +18,6 @@ from pocs.camera import AbstractCamera
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
-from huntsman.utils.pyro import serializers
 from huntsman.utils.config import load_device_config, query_config_server
 
 

@@ -11,7 +11,7 @@ import sys
 import time
 import Pyro4
 from huntsman.utils import load_config, get_own_ip, DummyLogger
-from panoptes.utils.config import _parse_config
+from panoptes.utils.config import parse_config
 
 
 @Pyro4.expose
@@ -50,10 +50,10 @@ class ConfigServer():
         if key is not None:
             config = config[key]
 
-            # Need to run _parse_config if querying by key, as load_config
+            # Need to run parse_config if querying by key, as load_config
             # only checks top-level keys.
             if self.parse:
-                config = _parse_config(config)
+                config = parse_config(config)
 
         return config
 
