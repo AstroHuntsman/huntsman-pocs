@@ -8,7 +8,7 @@ from warnings import warn
 import Pyro4
 
 import pocs.base
-from panoptes.utils.logger import get_root_logger
+from panoptes.utils.logger import logger
 from panoptes.utils.database import PanDB
 from panoptes.utils.messaging import PanMessaging
 
@@ -109,7 +109,7 @@ def config(images_dir_control, messaging_ports):
     result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
     result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
 
-    get_root_logger().debug('config fixture: {!r}', result)
+    logger.debug(f'config fixture: {result!r}')
     return result
 
 
@@ -149,8 +149,7 @@ def db_type(request, db_name):
 
 @pytest.fixture(scope='function')
 def db(db_type, db_name):
-    return PanDB(
-        db_type=db_type, db_name=db_name, logger=get_root_logger(), connect=True)
+    return PanDB(db_type=db_type, db_name=db_name, connect=True)
 
 
 @pytest.fixture
@@ -336,7 +335,7 @@ def message_forwarder(messaging_ports):
         args.append(str(sub))
         args.append(str(pub))
 
-    get_root_logger().info('message_forwarder fixture starting: {}', args)
+    logger.info(f'message_forwarder fixture starting: {args}')
     proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # It takes a while for the forwarder to start, so allow for that.
     # TODO(jamessynge): Come up with a way to speed up these fixtures.
