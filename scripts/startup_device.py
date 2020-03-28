@@ -28,7 +28,7 @@ if __name__ == '__main__':
     if device_type == 'camera':
 
         # Only attempt imports here to be as lightweight as possible
-        from huntsman.utils.pyro import run_camera_server
+        from huntsman.utils.pyro.camera_server import run_camera_server
         run_camera_server()
 
     # Dome server...

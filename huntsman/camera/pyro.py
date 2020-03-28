@@ -370,11 +370,11 @@ class Camera(AbstractCamera):
         result = super()._process_fits(file_path, info)
 
         # Do the NGAS push
-        self._NGASpush(file_path, info)
+        self._ngas_push(file_path, info)
 
         return result
 
-    def _NGASpush(self, filename, metadata, filename_ngas=None, port=7778):
+    def _ngas_push(self, filename, metadata, filename_ngas=None, port=7778):
         '''
         Parameters
         ----------
@@ -391,7 +391,7 @@ class Camera(AbstractCamera):
         # Define the NGAS filename
         if filename_ngas is None:
             extension = os.path.splitext(filename)[-1]
-            filename = f"{metadata['image_id']}{extension}"
+            filename_ngas = f"{metadata['image_id']}{extension}"
 
         # Get the IP address of the NGAS server
         ngas_ip = self.config['ngas_ip']
