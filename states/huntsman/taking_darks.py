@@ -31,7 +31,7 @@ def on_enter(event_data):
                     exptimes.append(exp)
 
             if len(cameras) > 0:
-                pocs.say("Starting narrow band flat fields")
+                pocs.say("Starting dark fields")
                 pocs.observatory.take_dark_fields(camera_list=cameras,
                                                   exptimes_list=exptimes)
 
