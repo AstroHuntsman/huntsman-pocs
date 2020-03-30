@@ -181,10 +181,10 @@ def test_default_lookup_trigger(pocs):
 
 
 def test_free_space(pocs):
-    assert pocs.has_free_space() is True
+    assert pocs.has_free_space()
 
     # Test something ridiculous
-    assert pocs.has_free_space(required_space=1e9 * u.gigabyte) is False
+    assert not pocs.has_free_space(required_space=1e9 * u.gigabyte)
 
 
 def test_is_dark_simulator(pocs):
@@ -271,9 +271,9 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
                                                     })
 
         pocs.initialize()
-        pocs.logger.info('Starting observatory run')
+        observatory.logger.info('Starting observatory run')
         assert pocs.is_weather_safe() is False
-        pocs.logger.info('Sending RUNNING message')
+        observatory.logger.info('Sending RUNNING message')
         pocs.send_message('RUNNING')
         pocs.run(run_once=True, exit_when_done=True)
         assert pocs.observatory.is_weather_safe() is True
@@ -288,7 +288,9 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         assert wait_for_running(msg_subscriber)
         observatory.logger.info('Got RUNNING message')
 
+        # Give us time to get into the observing state.
         time.sleep(5)
+
         # Insert a dummy weather record to break wait
         observatory.db.insert_current('weather', {'safe': True})
 

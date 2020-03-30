@@ -1,11 +1,9 @@
-import sys
 import os
 import requests
 from warnings import warn
 from threading import Event
 from threading import Timer
 from threading import Thread
-import subprocess
 from contextlib import suppress
 
 from astropy import units as u
@@ -16,14 +14,13 @@ from pocs.utils import load_module
 from pocs.utils import get_quantity_value
 from pocs.utils import error
 from pocs.camera import AbstractCamera
-from huntsman.focuser.pyro import Focuser as PyroFocuser
 
+from huntsman.focuser.pyro import Focuser as PyroFocuser
+# This import is needed to set up the custom (de)serializers in the same scope
+# as the CameraServer and the Camera client's proxy.
+from huntsman.utils.pyro import serializers
 from huntsman.utils.config import load_device_config, query_config_server
 
-# Enable local display of remote tracebacks
-sys.excepthook = Pyro4.util.excepthook
-
-#==============================================================================
 
 class Camera(AbstractCamera):
     """
@@ -38,6 +35,11 @@ class Camera(AbstractCamera):
                  *args, **kwargs):
         super().__init__(name=name, port=port, model=model, *args, **kwargs)
         self._uri = uri
+
+        # Obtain the NGAS server IP
+        if 'ngas_ip' not in self.config.keys():
+            self.config['ngas_ip'] = query_config_server(key='control')['ip_address']
+
         # Connect to camera
         self.connect()
 
@@ -45,24 +47,18 @@ class Camera(AbstractCamera):
 
     @property
     def egain(self):
-        if self._egain is not None:
-            return self._egain
-        else:
-            raise NotImplementedError
+        self._proxy.egain
 
     @property
     def bit_depth(self):
-        if self._bit_depth is not None:
-            return self._bit_depth
-        else:
-            raise NotImplementedError
+        return self._proxy.bit_depth
 
     @property
     def temperature(self):
         """
         Current temperature of the camera's image sensor.
         """
-        return self._proxy.temperature * u.Celsius
+        return self._proxy.temperature
 
     @property
     def target_temperature(self):
@@ -72,24 +68,22 @@ class Camera(AbstractCamera):
 
         Can be set by assigning an astropy.units.Quantity.
         """
-        return self._proxy.target_temperature * u.Celsius
+        return self._proxy.target_temperature
 
     @target_temperature.setter
     def target_temperature(self, target):
-        target = get_quantity_value(target, u.Celsius)
-        self._proxy.target_temperature = float(target)
+        self._proxy.target_temperature = target
 
     @property
     def temperature_tolerance(self):
-        return self._proxy.temperature_tolerance * u.Celsius
+        return self._proxy.temperature_tolerance
 
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
-        tolerance = get_quantity_value(tolerance, u.Celsius)
         with suppress(AttributeError):
             # Base class constructor is trying to set a default temperature temperature
             # before self._proxy exists, & it's up to the remote camera to do that anyway.
-            self._proxy.temperature_tolerance = float(tolerance)
+            self._proxy.temperature_tolerance = tolerance
 
     @property
     def cooling_enabled(self):
@@ -115,33 +109,17 @@ class Camera(AbstractCamera):
     @property
     def is_exposing(self):
         return not self._exposure_event.is_set()
-    
+
     @property
     def is_ready(self):
         '''
         True if camera is ready to start another exposure, otherwise False.
-        
-        Check self.is_exposing first to side-step so-far unexplained
-        hanging possibly caused by is_temperature_stable.
         '''
-        # Make sure there isn't an exposure already in progress.
+        # First check if exposing, because if so remote camera won't respond to
+        # is_ready query until after it has finished.
         if self.is_exposing:
-            self.logger.debug('Camera not ready: exposing!')
             return False
-        
-        # For cooled camera expect stable temperature before taking exposure
-        if self.is_cooled_camera and not self.is_temperature_stable:
-            self.logger.debug('Camera not ready: temperature not stable!')
-            return False
-
-        # Check all the subcomponents too, e.g. make sure filterwheel/focuser 
-        #aren't moving.
-        for sub_name in self._subcomponent_names:
-            if getattr(self, sub_name) and not getattr(self,sub_name).is_ready:
-                self.logger.debug(f'Camera not ready: {sub_name} not ready!')
-                return False
-
-        return True
+        return self._proxy.is_ready
 
 # Methods
 
@@ -174,22 +152,15 @@ class Camera(AbstractCamera):
             self.logger.error(msg)
             return
 
-        self._connected = True
+        # Retrieve and locally cache camera properties that won't change.
         self._serial_number = uid
         self.name = self._proxy.name
         self.model = self._proxy.model
         self._readout_time = self._proxy.readout_time
         self._file_extension = self._proxy.file_extension
-        try:
-            self._egain = self._proxy.egain * u.electron / u.adu
-        except NotImplementedError:
-            self._egain = None
-        try:
-            self._bit_depth = self._proxy.bit_depth * u.bit
-        except NotImplementedError:
-            self._bit_depth = None
-        self._filter_type = self._proxy.filter_type
         self._is_cooled_camera = self._proxy.is_cooled_camera
+        self._filter_type = self._proxy.filter_type
+        self._connected = True
         self.logger.debug("{} connected".format(self))
 
         if self._proxy.has_focuser:
@@ -198,8 +169,7 @@ class Camera(AbstractCamera):
             self.focuser = None
 
         self.filterwheel = None  # Remote filterwheels not supported yet.
-        
-        
+
     def take_exposure(self,
                       seconds=1.0 * u.second,
                       filename=None,
@@ -232,27 +202,21 @@ class Camera(AbstractCamera):
         # Clear event now to prevent any other exposures starting before this one is finished.
         self._exposure_event.clear()
 
-        # Want exposure time as a builtin type for Pyro serialisation
-        if isinstance(seconds, u.Quantity):
-            seconds = seconds.to(u.second).value
-        seconds = float(seconds)
-
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
-        #Start the exposure
+        # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
-        
-        #Remote method call to start the exposure
-        #Once this finishes, the filename is returned
+
+        # Remote method call to start the exposure
         exposure_result = self._proxy.take_exposure(seconds=seconds,
                                                     filename=filename,
                                                     dark=bool(dark),
                                                     *args,
-                                                    **kwargs) 
+                                                    **kwargs)
 
-        #Start a thread that will set an event once exposure has completed
-        exposure_thread = Timer(interval=seconds + self.readout_time,
+        # Start a thread that will set an event once exposure has completed
+        exposure_thread = Timer(interval=get_quantity_value(seconds, u.s) + self.readout_time,
                                 function=self._async_wait,
                                 args=(exposure_result,
                                       'exposure',
@@ -327,44 +291,6 @@ class Camera(AbstractCamera):
         assert self.focuser.is_connected, \
             self.logger.error("Focuser must be connected for autofocus.")
 
-        # Make certain that all the argument are builtin types for easy Pyro serialisation
-        if isinstance(seconds, u.Quantity):
-            seconds = seconds.to(u.second).value
-        if seconds is not None:
-            seconds = float(seconds)
-
-        if focus_range is not None:
-            focus_range = (int(limit) for limit in focus_range)
-
-        if focus_step is not None:
-            focus_step = (int(step) for step in focus_step)
-
-        if keep_files is not None:
-            keep_files = bool(keep_files)
-
-        if take_dark is not None:
-            take_dark = bool(take_dark)
-
-        if thumbnail_size is not None:
-            thumbnail_size = int(thumbnail_size)
-
-        merit_function = str(merit_function)
-        merit_function_kwargs = dict(merit_function_kwargs)
-
-        if mask_dilations is not None:
-            mask_dilations = int(mask_dilations)
-
-        if coarse is not None:
-            coarse = bool(coarse)
-
-        if make_plots is not None:
-            make_plots = bool(make_plots)
-
-        if isinstance(timeout, u.Quantity):
-            timeout = timeout.to(u.second).value
-        if timeout is not None:
-            timeout = float(timeout)
-
         # Compile aruments into a dictionary
         autofocus_kwargs = {'seconds': seconds,
                             'focus_range': focus_range,
@@ -379,8 +305,6 @@ class Camera(AbstractCamera):
                             'make_plots': make_plots}
         autofocus_kwargs.update(kwargs)
 
-        focus_dir = os.path.join(os.path.abspath(self.config['directories']['images']), 'focus/')
-
         # Make sure proxy is in async mode
         Pyro4.asyncproxy(self._proxy, asynchronous=True)
 
@@ -389,15 +313,11 @@ class Camera(AbstractCamera):
         self.logger.debug('Starting autofocus on {}'.format(self.name))
         # Remote method call to start the autofocus
         autofocus_result = self._proxy.autofocus(*args, **autofocus_kwargs)
-        # Tag the file transfer on the end.
-        autofocus_result = autofocus_result.then(self._file_transfer, focus_dir)
-        # Tag empty directory cleanup on the end & keep future result to check for completion
-        autofocus_result = autofocus_result.then(self._clean_directories)
 
         # Start a thread that will set an event once autofocus has completed
         autofocus_event = Event()
         autofocus_thread = Thread(target=self._async_wait,
-                args=(autofocus_result, 'autofocus', autofocus_event, timeout))
+                                  args=(autofocus_result, 'autofocus', autofocus_event, timeout))
         autofocus_thread.start()
 
         if blocking:
@@ -414,57 +334,6 @@ class Camera(AbstractCamera):
     def _readout(self, filename=None):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
-
-    def _clean_directories(self, source):
-        """
-        Clean up empty directories left behind by rsysc.
-
-        Args:
-            source (str): remote path to clean up empty directories from, in
-                user@host:/directory/subdirectory format.
-        """
-        user_at_host, path = source.split(':')
-        path_root = path.split('/./')[0]
-        try:
-            result = subprocess.run(['ssh',
-                                     user_at_host,
-                                     'find {} -empty -delete'.format(path_root)],
-                                    check=True)
-            self.logger.debug(f'_clean_directories result: {result!r}')
-        except subprocess.CalledProcessError as err:
-            msg = "Clean up of empty directories in {}:{} failed".format(user_at_host, path_root)
-            warn(msg)
-            self.logger.error(msg)
-            raise err
-        self.logger.debug("Clean up of empty directories in {}:{} complete".format(user_at_host,
-                                                                                   path_root))
-        return source
-
-    def _file_transfer(self, source, destination):
-        """
-        Used rsync to move a file from source to destination.
-        """
-        # Need to make sure the destination directory already exists because rsync isn't
-        # very good at creating directories.
-        os.makedirs(os.path.dirname(destination), mode=0o775, exist_ok=True)
-        try:
-            result = subprocess.run(['rsync',
-                                     '--archive',
-                                     '--relative',
-                                     '--recursive',
-                                     '--remove-source-files',
-                                     source,
-                                     destination],
-                                    check=True)
-            self.logger.debug(f'_file_transfer result: {result!r}')
-        except subprocess.CalledProcessError as err:
-            msg = "File transfer {} -> {} failed".format(source, destination)
-            warn(msg)
-            self.logger.error(msg)
-            raise err
-        self.logger.debug("File transfer {} -> {} complete".format(source.split('/./')[1],
-                                                                   destination))
-        return source
 
     def _async_wait(self, future_result, name='?', event=None, timeout=None):
         # For now not checking for any problems, just wait for everything to return (or timeout)
@@ -490,24 +359,22 @@ class Camera(AbstractCamera):
             raise error.Timeout(msg)
 
         return result
-    
 
     def _process_fits(self, file_path, info):
         '''
         Override _process_fits, called by process_exposure in take_observation.
-        
+
         The difference is that we do an NGAS push following the processing.
         '''
-        #Call the super method
+        # Call the super method
         result = super()._process_fits(file_path, info)
-        
-        #Do the NGAS push
-        self._NGASpush(file_path, info)
-        
+
+        # Do the NGAS push
+        self._ngas_push(file_path, info)
+
         return result
-        
-    
-    def _NGASpush(self, filename, metadata, filename_ngas=None, port=7778):
+
+    def _ngas_push(self, filename, metadata, filename_ngas=None, port=7778):
         '''
         Parameters
         ----------
@@ -519,38 +386,37 @@ class Camera(AbstractCamera):
             The NGAS filename. If None, auto-assign based on metadata.
         port (int, optional):
             The port of the NGAS server. Defaults to the TCP port.
-            
-        '''        
-        #Define the NGAS filename 
+
+        '''
+        # Define the NGAS filename
         if filename_ngas is None:
-            extension = os.path.splitext(filename)[-1] 
-            filename = f"{metadata['image_id']}{extension}"
-        
-        #Get the IP address of the NGAS server
+            extension = os.path.splitext(filename)[-1]
+            filename_ngas = f"{metadata['image_id']}{extension}"
+
+        # Get the IP address of the NGAS server
         ngas_ip = self.config['ngas_ip']
-        
-        #Post the file to the NGAS server
+
+        # Post the file to the NGAS server
         url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
         with open(filename, 'rb') as f:
-            
+
             self.logger.info(
-                    f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
-            
-            try: 
-                #Post the file
+                f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
+
+            try:
+                # Post the file
                 r = requests.post(url, data=f)
-                
+
                 self.logger.debug(f'NGAS response: {r.text}')
-                
-                #Confirm success
+
+                # Confirm success
                 r.raise_for_status()
-                
-            except Exception as e: 
+
+            except Exception as e:
                 self.logger.error(f'Error while performing NGAS push: {e}')
                 raise(e)
 
-#==============================================================================
-        
+
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
 class CameraServer(object):
@@ -566,11 +432,7 @@ class CameraServer(object):
 
         camera_config = self.config.get('camera')
         camera_config.update({'config': self.config})
-        
-        #Also provide the IP address of the NGAS server
-        ngas_ip = query_config_server(key='messaging')['huntsman_pro_ip']
-        camera_config['ngas_ip'] = ngas_ip
-        
+
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
@@ -598,21 +460,19 @@ class CameraServer(object):
 
     @property
     def egain(self):
-        return get_quantity_value(self._camera.egain, u.electron / u.adu)
+        return self._camera.egain
 
     @property
     def bit_depth(self):
-        return get_quantity_value(self._camera.bit_depth, u.bit)
+        return self._camera.bit_depth
 
     @property
     def temperature(self):
-        temperature = self._camera.temperature
-        return get_quantity_value(temperature, u.Celsius)
+        return self._camera.temperature
 
     @property
     def target_temperature(self):
-        temperature = self._camera.target_temperature
-        return get_quantity_value(temperature, u.Celsius)
+        return self._camera.target_temperature
 
     @target_temperature.setter
     def target_temperature(self, target):
@@ -620,7 +480,7 @@ class CameraServer(object):
 
     @property
     def temperature_tolerance(self):
-        return get_quantity_value(self._camera.temperature_tolerance, u.Celsius)
+        return self._camera.temperature_tolerance
 
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
@@ -654,6 +514,10 @@ class CameraServer(object):
     def is_exposing(self):
         return self._camera.is_exposing
 
+    @property
+    def is_ready(self):
+        return self._camera.is_ready
+
 # Methods
 
     def get_uid(self):
@@ -669,13 +533,13 @@ class CameraServer(object):
         ----------
         filename (str):
             The filename of the exposure result.
-            
+
         Returns
         -------
         str:
             The full filename of the exposure output.
-        '''                    
-        #Start the exposure and wait for it complete
+        '''
+        # Start the exposure and wait for it complete
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
                                    dark=dark,
@@ -691,14 +555,6 @@ class CameraServer(object):
         # Start the autofocus and wait for it to completed
         kwargs['blocking'] = True
         self._camera.focuser.autofocus(*args, **kwargs)
-        # Find where the resulting files are. Need to cast a wide net to get both
-        # coarse and fine focus files, anything in focus directory should be fair game.
-        focus_path = os.path.join(os.path.abspath(self.config['directories']['images']),
-                                  'focus/./',
-                                  self.uid,
-                                  '*')
-        # Return the user@host:/path for created files to enable them to be moved over the network.
-        return "{}@{}:{}".format(self.user, self.host, focus_path)
 
 # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
