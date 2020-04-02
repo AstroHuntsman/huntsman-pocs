@@ -180,6 +180,17 @@ def test_default_lookup_trigger(pocs):
     assert pocs._lookup_trigger() == 'parking'
 
 
+def test_darks_collection(pocs):
+    pocs.state = 'observing'
+
+    pocs.is_dark(horizon="flat") is True
+    pocs.is_weather_safe is False
+
+    pocs.next_state = 'parking'
+
+    assert pocs._lookup_trigger() == 'taking_darks'
+
+
 def test_free_space(pocs):
     assert pocs.has_free_space()
 
