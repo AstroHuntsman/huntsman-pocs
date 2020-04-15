@@ -18,10 +18,10 @@ before_install:
   - pip install coveralls
   - cd $PANDIR
   # Install POCS
-  #- git clone https://github.com/panoptes/POCS.git
-  #- cd POCS
-  #- pip install -r requirements.txt
-  #- python setup.py install
+  - git clone https://github.com/panoptes/POCS.git
+  - cd POCS
+  - pip install -r requirements.txt
+  - python setup.py install
   # Create SSH key for Pyro nameservers
   - ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -N ''
   - touch ~/.ssh/authorized_keys
