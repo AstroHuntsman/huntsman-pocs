@@ -12,6 +12,7 @@ import sys
 import shutil
 
 import astropy.units as u
+from astropy.io import fits
 
 import Pyro4
 import Pyro4.util
@@ -85,13 +86,13 @@ def test_get_temp(camera):
 
 def test_is_cooled(camera):
     cooled_camera = camera.is_cooled_camera
-    assert cooled_camera is not None
+    assert cooled_camera in {True, False}
 
 
 def test_set_target_temperature(camera):
     if camera.is_cooled_camera:
-        camera._target_temperature = 10 * u.Celsius
-        assert abs(camera._target_temperature - 10 * u.Celsius) < 0.5 * u.Celsius
+        camera.target_temperature = 10 * u.Celsius
+        assert abs(camera.target_temperature - 10 * u.Celsius) < 0.5 * u.Celsius
     else:
         pytest.skip("Camera {} doesn't implement temperature control".format(camera.name))
 
@@ -235,7 +236,7 @@ def test_exposure_scaling(camera, tmpdir):
     else:
         fits_path = str(tmpdir.join('test_exposure_scaling.fits'))
         camera.take_exposure(filename=fits_path, dark=True, blocking=True)
-        image_data, image_header = fits_utils.getdata(fits_path, header=True)
+        image_data, image_header = fits.getdata(fits_path, header=True)
         assert bit_depth == image_header['BITDEPTH'] * u.bit
         pad_bits = image_header['BITPIX'] - image_header['BITDEPTH']
         assert (image_data % 2**pad_bits).any()

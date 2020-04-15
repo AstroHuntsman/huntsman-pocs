@@ -22,4 +22,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Run the camera server
-    run_camera_server(args.ignore_local, key=args.key)
+    run_camera_server(ignore_local=args.ignore_local,
+                      key=args.key)

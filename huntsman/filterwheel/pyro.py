@@ -2,28 +2,7 @@ from threading import Event
 
 from pocs.filterwheel import AbstractFilterWheel
 
-
-class FilterWheelEvent(Event):
-    """Interface to the move_event of a remote filterwheel.
-
-    Methods of the AbstractFilterWheel base class make use of a _move_event. In order
-    for those methods to work with a Pyro filterwheel we need to replace that Event with
-    an inteface to the event of the remote filterwheel.
-    """
-    def __init__(self, proxy):
-        self._proxy = proxy
-
-    def set(self):
-        self._proxy.filterwheel_event_set()
-
-    def clear(self):
-        self._proxy.filterwheel_event_clear()
-
-    def is_set(self):
-        return self._proxy.filterwheel_event_is_set()
-
-    def wait(self, timeout=None):
-        return self._proxy.filterwheel_event_wait(timeout)
+from huntsman.utils.pyro.event import RemoteEvent
 
 
 class FilterWheel(AbstractFilterWheel):
@@ -82,7 +61,7 @@ class FilterWheel(AbstractFilterWheel):
         self._proxy = self.camera._proxy
         # Replace _move_event created by base class constructor with
         # an interface to the remote one.
-        self._move_event = FilterWheelEvent(self._proxy)
+        self._move_event = RemoteEvent(self._proxy, event_type="filterwheel")
         # Fetch and locally cache properties that won't change.
         self._name = self._proxy.filterwheel_name
         self._model = self._proxy.filterwheel_model

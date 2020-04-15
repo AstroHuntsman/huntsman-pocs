@@ -17,6 +17,7 @@ from pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 from huntsman.filterwheel.pyro import FilterWheel as PyroFilterWheel
+from huntsman.utils.pyro.event import RemoteEvent
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
 from huntsman.utils.pyro import serializers
@@ -48,18 +49,18 @@ class Camera(AbstractCamera):
 
     @property
     def egain(self):
-        self._proxy.egain
+        return self._proxy.get("egain")
 
     @property
     def bit_depth(self):
-        return self._proxy.bit_depth
+        return self._proxy.get("bit_depth")
 
     @property
     def temperature(self):
         """
         Current temperature of the camera's image sensor.
         """
-        return self._proxy.temperature
+        return self._proxy.get("temperature")
 
     @property
     def target_temperature(self):
@@ -69,22 +70,22 @@ class Camera(AbstractCamera):
 
         Can be set by assigning an astropy.units.Quantity.
         """
-        return self._proxy.target_temperature
+        return self._proxy.get("target_temperature")
 
     @target_temperature.setter
     def target_temperature(self, target):
-        self._proxy.target_temperature = target
+        self._proxy.set("target_temperature", target)
 
     @property
     def temperature_tolerance(self):
-        return self._proxy.temperature_tolerance
+        return self._proxy.get("temperature_tolerance")
 
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
         with suppress(AttributeError):
             # Base class constructor is trying to set a default temperature temperature
             # before self._proxy exists, & it's up to the remote camera to do that anyway.
-            self._proxy.temperature_tolerance = tolerance
+            self._proxy.set("temperature_tolerance", tolerance)
 
     @property
     def cooling_enabled(self):
@@ -93,11 +94,11 @@ class Camera(AbstractCamera):
 
         For some cameras it is possible to change this by assigning a boolean
         """
-        return self._proxy.cooling_enabled
+        return self._proxy.get("cooling_enabled")
 
     @cooling_enabled.setter
     def cooling_enabled(self, enabled):
-        self._proxy.cooling_enabled = bool(enabled)
+        self._proxy.set("cooling_enabled", bool(enabled))
 
     @property
     def cooling_power(self):
@@ -105,22 +106,22 @@ class Camera(AbstractCamera):
         Current power level of the camera's image sensor cooling system (typically as
         a percentage of the maximum).
         """
-        return self._proxy.cooling_power
+        return self._proxy.get("cooling_power")
 
     @property
     def is_exposing(self):
-        return not self._exposure_event.is_set()
+        return self._proxy.get("is_exposing")
+
+    @property
+    def is_temperature_stable(self):
+        return self._proxy.get("is_temperature_stable")
 
     @property
     def is_ready(self):
         '''
         True if camera is ready to start another exposure, otherwise False.
         '''
-        # First check if exposing, because if so remote camera won't respond to
-        # is_ready query until after it has finished.
-        if self.is_exposing:
-            return False
-        return self._proxy.is_ready
+        return self._proxy.get("is_ready")
 
 # Methods
 
@@ -155,12 +156,16 @@ class Camera(AbstractCamera):
 
         # Retrieve and locally cache camera properties that won't change.
         self._serial_number = uid
-        self.name = self._proxy.name
-        self.model = self._proxy.model
-        self._readout_time = self._proxy.readout_time
-        self._file_extension = self._proxy.file_extension
-        self._is_cooled_camera = self._proxy.is_cooled_camera
-        self._filter_type = self._proxy.filter_type
+        self.name = self._proxy.get("name")
+        self.model = self._proxy.get("model")
+        self._readout_time = self._proxy.get("readout_time")
+        self._file_extension = self._proxy.get("file_extension")
+        self._is_cooled_camera = self._proxy.get("is_cooled_camera")
+        self._filter_type = self._proxy.get("filter_type")
+
+        # Set up proxy for remote camera's _exposure_event
+        self._exposure_event = RemoteEvent(self._proxy, event_type="camera")
+
         self._connected = True
         self.logger.debug("{} connected".format(self))
 
@@ -195,41 +200,28 @@ class Camera(AbstractCamera):
             threading.Event: Event that will be set when exposure is complete
 
         """
-        assert self.is_connected, self.logger.error("Camera must be connected for take_exposure!")
-
-        assert filename is not None, self.logger.warning("Must pass filename for take_exposure")
-
-        if not self._exposure_event.is_set():
-            msg = "Attempt to take exposure on {} while one already in progress.".format(self)
-            raise error.PanError(msg)
-
-        # Clear event now to prevent any other exposures starting before this one is finished.
-        self._exposure_event.clear()
-
-        # Make sure proxy is in async mode
-        Pyro4.asyncproxy(self._proxy, asynchronous=True)
-
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
 
         # Remote method call to start the exposure
-        exposure_result = self._proxy.take_exposure(seconds=seconds,
-                                                    filename=filename,
-                                                    dark=bool(dark),
-                                                    *args,
-                                                    **kwargs)
+        self._proxy.take_exposure(seconds=seconds,
+                                  filename=filename,
+                                  dark=bool(dark),
+                                  *args,
+                                  **kwargs)
 
-        # Start a thread that will set an event once exposure has completed
-        exposure_thread = Thread(target=self._async_wait,
-                                 args=(exposure_result,
-                                       'exposure',
-                                       self._exposure_event,
-                                       get_quantity_value(seconds, u.s) +
-                                       self.readout_time + self._timeout))
-        exposure_thread.start()
-
+        max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
         if blocking:
-            self._exposure_event.wait()
+            success = self._exposure_event.wait(timeout=max_wait)
+            if not success:
+                self._timeout_response()
+        else:
+            # If the remote exposure fails after starting in such a way that the event doesn't
+            # doesn't get set then calling code could wait forever. Have a local timeout thread
+            # to be safe.
+            timeout_thread = Timer(interval=max_wait,
+                                   function=self._timeout_response)
+            timeout_thread.start()
 
         return self._exposure_event
 
@@ -339,6 +331,11 @@ class Camera(AbstractCamera):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
+    def _timeout_response(self):
+        if not self._exposure_event.is_set():
+            self._exposure_event.set()
+            raise error.Timeout(f"Timeout waiting for blocking exposure on {self.name}.")
+
     def _async_wait(self, future_result, name='?', event=None, timeout=None):
         # For now not checking for any problems, just wait for everything to return (or timeout)
         if future_result.wait(timeout):
@@ -427,6 +424,8 @@ class CameraServer(object):
     """
     Wrapper for the camera class for use as a Pyro camera server
     """
+    _event_locations = {"camera": ("_exposure_event",),
+                        "filterwheel": ("filterwheel", "_move_event")}
 
     def __init__(self, config_files=None):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
@@ -440,87 +439,14 @@ class CameraServer(object):
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
-# Properties
+# Properties - rather than labouriously wrapping every camera property individually expose
+# them all with generic get and set methods.
 
-    @property
-    def name(self):
-        return self._camera.name
+    def get(self, property_name):
+        return getattr(self._camera, property_name)
 
-    @property
-    def model(self):
-        return self._camera.model
-
-    @property
-    def uid(self):
-        return self._camera.uid
-
-    @property
-    def readout_time(self):
-        return self._camera.readout_time
-
-    @property
-    def file_extension(self):
-        return self._camera.file_extension
-
-    @property
-    def egain(self):
-        return self._camera.egain
-
-    @property
-    def bit_depth(self):
-        return self._camera.bit_depth
-
-    @property
-    def temperature(self):
-        return self._camera.temperature
-
-    @property
-    def target_temperature(self):
-        return self._camera.target_temperature
-
-    @target_temperature.setter
-    def target_temperature(self, target):
-        self._camera.target_temperature = target
-
-    @property
-    def temperature_tolerance(self):
-        return self._camera.temperature_tolerance
-
-    @temperature_tolerance.setter
-    def temperature_tolerance(self, tolerance):
-        self._camera.temperature_tolerance = tolerance
-
-    @property
-    def cooling_enabled(self):
-        return self._camera.cooling_enabled
-
-    @cooling_enabled.setter
-    def cooling_enabled(self, enabled):
-        self._camera.cooling_enabled = enabled
-
-    @property
-    def cooling_power(self):
-        return self._camera.cooling_power
-
-    @property
-    def filter_type(self):
-        return self._camera.filter_type
-
-    @property
-    def is_cooled_camera(self):
-        return self._camera.is_cooled_camera
-
-    @property
-    def is_temperature_stable(self):
-        return self._camera.is_temperature_stable
-
-    @property
-    def is_exposing(self):
-        return self._camera.is_exposing
-
-    @property
-    def is_ready(self):
-        return self._camera.is_ready
+    def set(self, property_name, value):
+        setattr(self._camera, property_name, value)
 
 # Methods
 
@@ -543,11 +469,12 @@ class CameraServer(object):
         str:
             The full filename of the exposure output.
         '''
-        # Start the exposure and wait for it complete
+        # Start the exposure non-blocking so that camera server can still respond to
+        # status requests.
         self._camera.take_exposure(seconds=seconds,
                                    filename=filename,
                                    dark=dark,
-                                   blocking=True,
+                                   blocking=False,
                                    *args,
                                    **kwargs)
 
@@ -556,8 +483,8 @@ class CameraServer(object):
             msg = "Camera must have a focuser for autofocus!"
             self.logger.error(msg)
             raise AttributeError(msg)
-        # Start the autofocus and wait for it to completed
-        kwargs['blocking'] = True
+        # Start the autofocus
+        kwargs['blocking'] = False
         self._camera.focuser.autofocus(*args, **kwargs)
 
 # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
@@ -734,14 +661,22 @@ class CameraServer(object):
     def filterwheel_move_to(self, position):
         self._camera.filterwheel._move_to(position)
 
-    def filterwheel_event_set(self):
-        self._camera.filterwheel._move_event.set()
+    # Event access
+    def _get_event(self, event_type):
+        event_location = self._event_locations[event_type]
+        obj = self._camera
+        for attr_name in event_location:
+            obj = getattr(obj, attr_name)
+        return obj
 
-    def filterwheel_event_clear(self):
-        self._camera.filterwheel._move_event.clear()
+    def event_set(self, event_type):
+        return self._get_event(event_type).set()
 
-    def filterwheel_event_is_set(self):
-        return self._camera.filterwheel._move_event.is_set()
+    def event_clear(self, event_type):
+        return self._get_event(event_type).clear()
 
-    def filterwheel_event_wait(self, timeout=None):
-        return self._camera.filterwheel._move_event.wait(timeout)
+    def event_is_set(self, event_type):
+        return self._get_event(event_type).is_set()
+
+    def event_wait(self, event_type, timeout):
+        return self._get_event(event_type).wait(timeout)

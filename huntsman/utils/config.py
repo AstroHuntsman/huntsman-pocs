@@ -204,17 +204,32 @@ def load_device_config(key=None, config_files=None, logger=None, wait=None,
     if logger is None:
         logger = DummyLogger()
 
-    if key is None:
-        key = get_own_ip()
-
     # Load config from local files?
     if config_files is not None:
         logger.debug(f'Loading config from local file(s).')
-        config = load_config(config_files, **kwargs)[key]
+        if key is None:
+            try:
+                config = load_config(config_files, **kwargs)[get_own_ip()]
+            except KeyError:
+                # Should only get to this fallback when doing local testing with simulated
+                # camera and default config files.
+                logger.warning("No config for own IP address, falling back to localhost.")
+                config = load_config(config_files, **kwargs)['localhost']
+        else:
+            config = load_config(config_files, **kwargs)[key]
 
     # Load config from the config server?
     else:
-        logger.debug(f'Loading remote config with key: {key}')
-        config = query_config_server(key=key, logger=logger, wait=wait)
+        if key is None:
+            try:
+                config = query_config_server(key=get_own_ip(), logger=logger, wait=wait)
+            except KeyError:
+                # Should only get to this fallback when doing local testing with simulated
+                # camera and default config files.
+                logger.warning("No config for own IP address, falling back to localhost.")
+                config = query_config_server(key='localhost', logger=logger, wait=wait)
+        else:
+            logger.debug(f'Loading remote config with key: {key}')
+            config = query_config_server(key=key, logger=logger, wait=wait)
 
     return config
