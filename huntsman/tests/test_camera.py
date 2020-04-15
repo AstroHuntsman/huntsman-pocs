@@ -383,7 +383,7 @@ def test_autofocus_keep_files(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_no_size(camera, caplog):
+def test_autofocus_no_size(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -391,16 +391,13 @@ def test_autofocus_no_size(camera, caplog):
     initial_focus = camera.focuser.position
     thumbnail_size = camera.focuser.autofocus_size
     camera.focuser.autofocus_size = None
-    camera.autofocus()
-    # Will be an ValueError raised, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_size = thumbnail_size
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_seconds(camera, caplog):
+def test_autofocus_no_seconds(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -408,16 +405,13 @@ def test_autofocus_no_seconds(camera, caplog):
     initial_focus = camera.focuser.position
     seconds = camera.focuser.autofocus_seconds
     camera.focuser.autofocus_seconds = None
-    camera.autofocus()
-    # Will be an ValueError raise, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_seconds = seconds
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_step(camera, caplog):
+def test_autofocus_no_step(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -425,16 +419,13 @@ def test_autofocus_no_step(camera, caplog):
     initial_focus = camera.focuser.position
     autofocus_step = camera.focuser.autofocus_step
     camera.focuser.autofocus_step = None
-    camera.autofocus()
-    # Will be an ValueError raise, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_step = autofocus_step
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_range(camera, caplog):
+def test_autofocus_no_range(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -442,11 +433,8 @@ def test_autofocus_no_range(camera, caplog):
     initial_focus = camera.focuser.position
     autofocus_range = camera.focuser.autofocus_range
     camera.focuser.autofocus_range = None
-    camera.autofocus()
-    # Will be an ValueError raise, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_range = autofocus_range
     assert camera.focuser.position == initial_focus
 
@@ -457,10 +445,10 @@ def test_autofocus_camera_disconnected(camera):
     except AttributeError:
         pytest.skip("Camera does not have an exposed focuser attribute")
     initial_focus = camera.focuser.position
-    camera._connected = False
+    camera._proxy.set("_connected",  False)
     with pytest.raises(AssertionError):
         camera.autofocus()
-    camera._connected = True
+    camera._proxy.set("_connected", True)
     assert camera.focuser.position == initial_focus
 
 
@@ -470,10 +458,10 @@ def test_autofocus_focuser_disconnected(camera):
     except AttributeError:
         pytest.skip("Camera does not have an exposed focuser attribute")
     initial_focus = camera.focuser.position
-    camera.focuser._connected = False
+    camera._proxy.set("_connected", False, subcomponent="focuser")
     with pytest.raises(AssertionError):
         camera.autofocus()
-    camera.focuser._connected = True
+    camera._proxy.set("_connected", True, subcomponent="focuser")
     assert camera.focuser.position == initial_focus
 
 

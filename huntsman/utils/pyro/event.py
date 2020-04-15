@@ -1,6 +1,7 @@
 from threading import Event
 
 event_types = {"camera",
+               "focuser",
                "filterwheel"}
 
 

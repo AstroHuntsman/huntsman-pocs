@@ -1,14 +1,13 @@
 import os
 import requests
 from warnings import warn
-from threading import Event
 from threading import Timer
-from threading import Thread
 from contextlib import suppress
 
 from astropy import units as u
 import Pyro4
 import Pyro4.util
+import Pyro4.errors
 
 from pocs.utils import load_module
 from pocs.utils import get_quantity_value
@@ -186,22 +185,26 @@ class Camera(AbstractCamera):
                       blocking=False,
                       *args,
                       **kwargs):
-        """
-        Take exposure for a given number of seconds and saves to provided filename.
+        """Take an exposure for given number of seconds and saves to provided filename.
 
         Args:
-            seconds (u.second, optional): Length of exposure
-            filename (str, optional): Image is saved to this filename
-            dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
+            seconds (u.second, optional): Length of exposure.
+            filename (str, optional): Image is saved to this filename.
+            dark (bool, optional): Exposure is a dark frame, default False. On cameras that support
+                taking dark frames internally (by not opening a mechanical shutter) this will be
+                done, for other cameras the light must be blocked by some other means. In either
+                case setting dark to True will cause the `IMAGETYP` FITS header keyword to have
+                value 'Dark Frame' instead of 'Light Frame'. Set dark to None to disable the
+                `IMAGETYP` keyword entirely.
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
 
         Returns:
-            threading.Event: Event that will be set when exposure is complete
+            threading.Event: Event that will be set when exposure is complete.
 
         """
         # Start the exposure
-        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
+        self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
 
         # Remote method call to start the exposure
         self._proxy.take_exposure(seconds=seconds,
@@ -214,32 +217,19 @@ class Camera(AbstractCamera):
         if blocking:
             success = self._exposure_event.wait(timeout=max_wait)
             if not success:
-                self._timeout_response()
+                self._timeout_response("exposure")
         else:
             # If the remote exposure fails after starting in such a way that the event doesn't
             # doesn't get set then calling code could wait forever. Have a local timeout thread
             # to be safe.
             timeout_thread = Timer(interval=max_wait,
-                                   function=self._timeout_response)
+                                   function=self._timeout_response,
+                                   args=("exposure",))
             timeout_thread.start()
 
         return self._exposure_event
 
-    def autofocus(self,
-                  seconds=None,
-                  focus_range=None,
-                  focus_step=None,
-                  thumbnail_size=None,
-                  keep_files=None,
-                  take_dark=None,
-                  merit_function='vollath_F4',
-                  merit_function_kwargs={},
-                  mask_dilations=None,
-                  coarse=False,
-                  make_plots=False,
-                  blocking=False,
-                  timeout=None,
-                  *args, **kwargs):
+    def autofocus(self, blocking=False, *args, **kwargs):
         """
         Focuses the camera using the specified merit function. Optionally performs
         a coarse focus to find the approximate position of infinity focus, which
@@ -260,7 +250,7 @@ class Camera(AbstractCamera):
             take_dark (bool, optional): If True will attempt to take a dark frame
                 before the focus run, and use it for dark subtraction and hot
                 pixel masking, default True.
-            merit_function (str, optional): Merit function to use as a
+            merit_function (str/callable, optional): Merit function to use as a
                 focus metric, default vollath_F4.
             merit_function_kwargs (dict, optional): Dictionary of additional
                 keyword arguments for the merit function.
@@ -271,55 +261,44 @@ class Camera(AbstractCamera):
             make_plots (bool, optional: Whether to write focus plots to images folder, default
                 False.
             blocking (bool, optional): Whether to block until autofocus complete, default False.
-            timeout (u.second, optional): Total length of time to wait for autofocus sequences
-                to complete. If not given will wait indefinitely.
 
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
-        """
-        assert self.is_connected, self.logger.error("Camera must be connected for autofocus.")
 
+        Raises:
+            ValueError: If invalid values are passed for any of the focus parameters.
+        """
         if self.focuser is None:
             msg = "Camera must have a focuser for autofocus!"
             self.logger.error(msg)
             raise AttributeError(msg)
 
-        assert self.focuser.is_connected, \
-            self.logger.error("Focuser must be connected for autofocus.")
+        self.logger.debug(f'Starting autofocus on {self}.')
 
-        # Compile aruments into a dictionary
-        autofocus_kwargs = {'seconds': seconds,
-                            'focus_range': focus_range,
-                            'focus_step': focus_step,
-                            'keep_files': keep_files,
-                            'take_dark': take_dark,
-                            'thumbnail_size': thumbnail_size,
-                            'merit_function': merit_function,
-                            'merit_function_kwargs': merit_function_kwargs,
-                            'mask_dilations': mask_dilations,
-                            'coarse': coarse,
-                            'make_plots': make_plots}
-        autofocus_kwargs.update(kwargs)
+        # Remote method call to start the exposure
+        self._proxy.autofocus(*args, **kwargs)
 
-        # Make sure proxy is in async mode
-        Pyro4.asyncproxy(self._proxy, asynchronous=True)
+        # Proxy for remote _autofocus_event
+        self._autofocus_event = RemoteEvent(self._proxy, event_type="focuser")
 
-        # Start autofocus
-        autofocus_result = {}
-        self.logger.debug('Starting autofocus on {}'.format(self.name))
-        # Remote method call to start the autofocus
-        autofocus_result = self._proxy.autofocus(*args, **autofocus_kwargs)
-
-        # Start a thread that will set an event once autofocus has completed
-        autofocus_event = Event()
-        autofocus_thread = Thread(target=self._async_wait,
-                                  args=(autofocus_result, 'autofocus', autofocus_event, timeout))
-        autofocus_thread.start()
-
+        # In general it's very complicated to work out how long an autofocus should take
+        # because parameters can be set here or come from remote config. For not just make
+        # it 5 minutes.
+        max_wait = 300
         if blocking:
-            autofocus_event.wait()
+            success = self._autofocus_event.wait(timeout=max_wait)
+            if not success:
+                self._timeout_response("autofocus")
+        else:
+            # If the remote autofocus fails after starting in such a way that the event doesn't
+            # doesn't get set then calling code could wait forever. Have a local timeout thread
+            # to be safe.
+            timeout_thread = Timer(interval=max_wait,
+                                   function=self._timeout_response,
+                                   args=("autofocus",))
+            timeout_thread.start()
 
-        return autofocus_event
+        return self._autofocus_event
 
 # Private Methods
 
@@ -331,35 +310,21 @@ class Camera(AbstractCamera):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
-    def _timeout_response(self):
-        if not self._exposure_event.is_set():
-            self._exposure_event.set()
-            raise error.Timeout(f"Timeout waiting for blocking exposure on {self.name}.")
+    def _timeout_response(self, timeout_type):
+        # This could do more thorough checks for success, e.g. check is_exposing property,
+        # check for existence of output file, etc. It's supposed to be a last resort though,
+        # and most problems should be caught elsewhere.
+        relevant_event = getattr(self, f"_{timeout_type}_event")
+        try:
+            is_set = relevant_event.is_set()
+        except Pyro4.errors.CommunicationError:
+            # Can happen is everything has finished and shutdown before timeout,
+            # e.g. when running tests.
+            pass
 
-    def _async_wait(self, future_result, name='?', event=None, timeout=None):
-        # For now not checking for any problems, just wait for everything to return (or timeout)
-        if future_result.wait(timeout):
-            try:
-                result = future_result.value
-            except Exception as err:
-                # Add some extra text to the exception then re-raise it.
-                if len(err.args) >= 1:
-                    msg = f"Problem while waiting for {name} on {self.port}: {err.args[0]}"
-                    err.args = (msg,) + err.args[1:]
-                else:
-                    msg = f"Problem while waiting for {name} on {self.port}: {err}"
-                self.logger.error(msg)  # Make sure error makes it into the logs
-                raise err
-            finally:
-                if event is not None:
-                    event.set()
-        else:
-            if event is not None:
-                event.set()
-            msg = "Timeout while waiting for {} on {}".format(name, self.port)
-            raise error.Timeout(msg)
-
-        return result
+        if not is_set:
+            relevant_event.set()
+            raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
 
     def _process_fits(self, file_path, info):
         '''
@@ -425,7 +390,8 @@ class CameraServer(object):
     Wrapper for the camera class for use as a Pyro camera server
     """
     _event_locations = {"camera": ("_exposure_event",),
-                        "filterwheel": ("filterwheel", "_move_event")}
+                        "focuser": ("_autofocus_event",),
+                        "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
     def __init__(self, config_files=None):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
@@ -442,11 +408,17 @@ class CameraServer(object):
 # Properties - rather than labouriously wrapping every camera property individually expose
 # them all with generic get and set methods.
 
-    def get(self, property_name):
-        return getattr(self._camera, property_name)
+    def get(self, property_name, subcomponent=None):
+        obj = self._camera
+        if subcomponent:
+            obj = getattr(obj, subcomponent)
+        return getattr(obj, property_name)
 
-    def set(self, property_name, value):
-        setattr(self._camera, property_name, value)
+    def set(self, property_name, value, subcomponent=None):
+        obj = self._camera
+        if subcomponent:
+            obj = getattr(obj, subcomponent)
+        setattr(obj, property_name, value)
 
 # Methods
 
@@ -457,35 +429,17 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, filename, dark, *args, **kwargs):
-        '''
-        Parameters
-        ----------
-        filename (str):
-            The filename of the exposure result.
-
-        Returns
-        -------
-        str:
-            The full filename of the exposure output.
-        '''
+    def take_exposure(self, *args, **kwargs):
         # Start the exposure non-blocking so that camera server can still respond to
         # status requests.
-        self._camera.take_exposure(seconds=seconds,
-                                   filename=filename,
-                                   dark=dark,
-                                   blocking=False,
-                                   *args,
-                                   **kwargs)
+        kwargs['blocking'] = False
+        self._exposure_event = self._camera.take_exposure(*args, **kwargs)
 
     def autofocus(self, *args, **kwargs):
-        if not self.has_focuser:
-            msg = "Camera must have a focuser for autofocus!"
-            self.logger.error(msg)
-            raise AttributeError(msg)
-        # Start the autofocus
+        # Start the autofocus non-blocking so that camera server can still respond to
+        # status requests.
         kwargs['blocking'] = False
-        self._camera.focuser.autofocus(*args, **kwargs)
+        self._autofocus_event = self._camera.autofocus(*args, **kwargs)
 
 # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
@@ -664,7 +618,7 @@ class CameraServer(object):
     # Event access
     def _get_event(self, event_type):
         event_location = self._event_locations[event_type]
-        obj = self._camera
+        obj = self
         for attr_name in event_location:
             obj = getattr(obj, attr_name)
         return obj
