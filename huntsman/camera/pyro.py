@@ -315,6 +315,7 @@ class Camera(AbstractCamera):
         # check for existence of output file, etc. It's supposed to be a last resort though,
         # and most problems should be caught elsewhere.
         relevant_event = getattr(self, f"_{timeout_type}_event")
+        is_set = True
         try:
             is_set = relevant_event.is_set()
         except Pyro4.errors.CommunicationError:
