@@ -447,118 +447,6 @@ class CameraServer(object):
     def has_focuser(self):
         return self._camera.focuser is not None
 
-    @property
-    def focuser_name(self):
-        return self._camera.focuser.name
-
-    @property
-    def focuser_model(self):
-        return self._camera.focuser.model
-
-    @property
-    def focuser_uid(self):
-        return self._camera.focuser.uid
-
-    @property
-    def focuser_is_connected(self):
-        return self._camera.focuser.is_connected
-
-    @property
-    def focuser_is_moving(self):
-        return self._camera.focuser.is_moving
-
-    @property
-    def focuser_is_ready(self):
-        return self._camera.focuser.is_ready
-
-    @property
-    def focuser_position(self):
-        return self._camera.focuser.position
-
-    @focuser_position.setter
-    def focuser_position(self, position):
-        self._camera.focuser.position = position
-
-    @property
-    def focuser_min_position(self):
-        return self._camera.focuser.min_position
-
-    @property
-    def focuser_max_position(self):
-        return self._camera.focuser.max_position
-
-    @property
-    def focuser_autofocus_range(self):
-        return self._camera.focuser.autofocus_range
-
-    @focuser_autofocus_range.setter
-    def focuser_autofocus_range(self, autofocus_range):
-        self._camera.focuser.autofocus_range = autofocus_range
-
-    @property
-    def focuser_autofocus_step(self):
-        return self._camera.focuser.autofocus_step
-
-    @focuser_autofocus_step.setter
-    def focuser_autofocus_step(self, step):
-        self._camera.focuser.autofocus_step = step
-
-    @property
-    def focuser_autofocus_seconds(self):
-        return self._camera.focuser.autofocus_seconds
-
-    @focuser_autofocus_seconds.setter
-    def focuser_autofocus_seconds(self, seconds):
-        self._camera.focuser.autofocus_seconds = seconds
-
-    @property
-    def focuser_autofocus_size(self):
-        return self._camera.focuser.autofocus_size
-
-    @focuser_autofocus_size.setter
-    def focuser_autofocus_size(self, size):
-        self._camera.focuser.autofocus_size = size
-
-    @property
-    def focuser_autofocus_keep_files(self):
-        return self._camera.focuser.autofocus_keep_files
-
-    @focuser_autofocus_keep_files.setter
-    def focuser_autofocus_keep_files(self, keep_files):
-        self._camera.focuser.autofocus_keep_files = keep_files
-
-    @property
-    def focuser_autofocus_take_dark(self):
-        return self._camera.focuser.autofocus_take_dark
-
-    @focuser_autofocus_take_dark.setter
-    def focuser_autofocus_take_dark(self, take_dark):
-        self._camera.focuser.autofocus_take_dark = take_dark
-
-    @property
-    def focuser_autofocus_merit_function(self):
-        return self._camera.focuser.autofocus_merit_function
-
-    @focuser_autofocus_merit_function.setter
-    def focuser_autofocus_merit_function(self, merit_function):
-        self._camera.focuser.autofocus_merit_function = merit_function
-
-    @property
-    def focuser_autofocus_merit_function_kwargs(self):
-        return self._camera.focuser.autofocus_merit_function_kwargs
-
-    @focuser_autofocus_merit_function_kwargs.setter
-    def focuser_autofocus_merit_function_kwargs(self, kwargs):
-        self._camera.focuser.autofocus_merit_function_kwargs = kwargs
-
-    @property
-    def focuser_autofocus_mask_dilations(self):
-        return self._camera.focuser.autofocus_mask_dilations
-
-    @focuser_autofocus_mask_dilations.setter
-    def focuser_autofocus_mask_dilations(self, dilations):
-        self._camera.focuser.autofocus_mask_dilations = dilations
-
     def focuser_move_to(self, position):
         return self._camera.focuser.move_to(position)
 
@@ -572,50 +460,11 @@ class CameraServer(object):
     def has_filterwheel(self):
         return self._camera.filterwheel is not None
 
-    @property
-    def filterwheel_name(self):
-        return self._camera.filterwheel.name
-
-    @property
-    def filterwheel_model(self):
-        return self._camera.filterwheel.model
-
-    @property
-    def filterwheel_uid(self):
-        return self._camera.filterwheel.uid
-
-    @property
-    def filterwheel_is_connected(self):
-        return self._camera.filterwheel.is_connected
-
-    @property
-    def filterwheel_is_moving(self):
-        return self._camera.filterwheel.is_moving
-
-    @property
-    def filterwheel_is_ready(self):
-        return self._camera.filterwheel.is_ready
-
-    @property
-    def filterwheel_filternames(self):
-        return self._camera.filterwheel.filter_names
-
-    @property
-    def filterwheel_position(self):
-        return self._camera.filterwheel.position
-
-    @property
-    def filterwheel_current_filter(self):
-        return self._camera.filterwheel.current_filter
-
-    @property
-    def filterwheel_is_unidirectional(self):
-        return self._camera.filterwheel.is_unidirectional
-
     def filterwheel_move_to(self, position):
         self._camera.filterwheel._move_to(position)
 
-    # Event access
+# Event access
+
     def _get_event(self, event_type):
         event_location = self._event_locations[event_type]
         obj = self
