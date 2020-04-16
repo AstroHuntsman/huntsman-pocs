@@ -214,17 +214,7 @@ class Camera(AbstractCamera):
                                   **kwargs)
 
         max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
-        if blocking:
-            success = self._exposure_event.wait(timeout=max_wait)
-            if not success:
-                self._timeout_response("exposure")
-        else:
-            # If the remote exposure fails after starting in such a way that the event doesn't
-            # get set then calling code could wait forever. Have a local timeout thread to be safe.
-            timeout_thread = Timer(interval=max_wait,
-                                   function=self._timeout_response,
-                                   args=("exposure",))
-            timeout_thread.start()
+        self._run_timeout("exposure", blocking, max_wait)
 
         return self._exposure_event
 
@@ -249,7 +239,7 @@ class Camera(AbstractCamera):
             take_dark (bool, optional): If True will attempt to take a dark frame
                 before the focus run, and use it for dark subtraction and hot
                 pixel masking, default True.
-            merit_function (str/callable, optional): Merit function to use as a
+            merit_function (str, optional): Merit function to use as a
                 focus metric, default vollath_F4.
             merit_function_kwargs (dict, optional): Dictionary of additional
                 keyword arguments for the merit function.
@@ -284,18 +274,7 @@ class Camera(AbstractCamera):
         # because parameters can be set here or come from remote config. For now just make
         # it 5 minutes.
         max_wait = 300
-        if blocking:
-            success = self._autofocus_event.wait(timeout=max_wait)
-            if not success:
-                self._timeout_response("autofocus")
-        else:
-            # If the remote autofocus fails after starting in such a way that the event doesn't
-            # doesn't get set then calling code could wait forever. Have a local timeout thread
-            # to be safe.
-            timeout_thread = Timer(interval=max_wait,
-                                   function=self._timeout_response,
-                                   args=("autofocus",))
-            timeout_thread.start()
+        self._run_timeout("autofocus", blocking, max_wait)
 
         return self._autofocus_event
 
@@ -309,21 +288,32 @@ class Camera(AbstractCamera):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
-    def _timeout_response(self, timeout_type):
+    def _run_timeout(self, timeout_type, blocking, max_wait):
+        relevant_event = getattr(self, f"_{timeout_type}_event")
+        if blocking:
+            success = relevant_event.wait(timeout=max_wait)
+            if not success:
+                self._timeout_response(timeout_type, relevant_event)
+        else:
+            # If the remote operation fails after starting in such a way that the event doesn't
+            # get set then calling code could wait forever. Have a local timeout thread
+            # to be safe.
+            timeout_thread = Timer(interval=max_wait,
+                                   function=self._timeout_reponse,
+                                   args=(timeout_time, relevant_event))
+            timeout_thread.start()
+
+    def _timeout_response(self, timeout_type, timeout_event):
         # This could do more thorough checks for success, e.g. check is_exposing property,
         # check for existence of output file, etc. It's supposed to be a last resort though,
         # and most problems should be caught elsewhere.
-        relevant_event = getattr(self, f"_{timeout_type}_event")
         is_set = True
-        try:
-            is_set = relevant_event.is_set()
-        except Pyro4.errors.CommunicationError:
-            # Can happen is everything has finished and shutdown before timeout,
-            # e.g. when running tests.
-            pass
-
+        # Can get a comms error if everything has finished and shutdown before the timeout,
+        # e.g. when running tests.
+        with suppress(Pyro4.errors.CommunicationError):
+            is_set = timeout_event.is_set()
         if not is_set:
-            relevant_event.set()
+            timeout_event.set()
             raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
 
     def _process_fits(self, file_path, info):

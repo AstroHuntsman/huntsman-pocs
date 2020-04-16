@@ -222,7 +222,9 @@ def load_device_config(key=None, config_files=None, logger=None, wait=None,
     else:
         if key is None:
             try:
-                config = query_config_server(key=get_own_ip(), logger=logger, wait=wait)
+                my_ip = get_own_ip()
+                logger.debug(f'Loading remote config for own IP: {my_ip}')
+                config = query_config_server(key=my_ip, logger=logger, wait=wait)
             except KeyError:
                 # Should only get to this fallback when doing local testing with simulated
                 # camera and default config files.

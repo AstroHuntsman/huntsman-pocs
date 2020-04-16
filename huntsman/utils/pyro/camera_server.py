@@ -9,11 +9,7 @@ from huntsman.utils.config import load_device_config
 from huntsman.camera.pyro import CameraServer
 
 
-def run_camera_server(ignore_local=False,
-                      key=None,
-                      unmount_sshfs=True,
-                      logger=None,
-                      **kwargs):
+def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None, **kwargs):
     """
     Runs a Pyro camera server.
 
@@ -34,7 +30,7 @@ def run_camera_server(ignore_local=False,
         logger = DummyLogger()
 
     # Load the config file
-    config = load_device_config(key=key, logger=logger, **kwargs)
+    config = load_device_config(logger=logger, **kwargs)
 
     # Mount the SSHFS images directory
     mountpoint = sshfs.mount_images_dir(logger=logger, config=config)
