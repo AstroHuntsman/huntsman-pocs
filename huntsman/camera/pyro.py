@@ -220,8 +220,7 @@ class Camera(AbstractCamera):
                 self._timeout_response("exposure")
         else:
             # If the remote exposure fails after starting in such a way that the event doesn't
-            # doesn't get set then calling code could wait forever. Have a local timeout thread
-            # to be safe.
+            # get set then calling code could wait forever. Have a local timeout thread to be safe.
             timeout_thread = Timer(interval=max_wait,
                                    function=self._timeout_response,
                                    args=("exposure",))
@@ -282,7 +281,7 @@ class Camera(AbstractCamera):
         self._autofocus_event = RemoteEvent(self._proxy, event_type="focuser")
 
         # In general it's very complicated to work out how long an autofocus should take
-        # because parameters can be set here or come from remote config. For not just make
+        # because parameters can be set here or come from remote config. For now just make
         # it 5 minutes.
         max_wait = 300
         if blocking:
@@ -455,7 +454,7 @@ class CameraServer(object):
         return self._camera.focuser.move_by(increment)
 
 # Filterwheel methods - these are used by the remote filterwheel client,
-# huntsman.filterwheel.pyro.FIlterWheel
+# huntsman.filterwheel.pyro.FilterWheel
 
     @property
     def has_filterwheel(self):

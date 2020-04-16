@@ -6,7 +6,9 @@ event_types = {"camera",
 
 
 class RemoteEvent(Event):
-    """Interface for threading.Events of a remote camera or its subcomponents (e.g. filterwheel)
+    """Interface for threading.Events of a remote camera or its subcomponents.
+    
+    Current supported types are: `camera`, `focuser`, `filterwheel`.
     """
     def __init__(self, proxy, event_type):
         self._proxy = proxy
