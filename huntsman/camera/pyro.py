@@ -299,8 +299,8 @@ class Camera(AbstractCamera):
             # get set then calling code could wait forever. Have a local timeout thread
             # to be safe.
             timeout_thread = Timer(interval=max_wait,
-                                   function=self._timeout_reponse,
-                                   args=(timeout_time, relevant_event))
+                                   function=self._timeout_response,
+                                   args=(timeout_type, relevant_event))
             timeout_thread.start()
 
     def _timeout_response(self, timeout_type, timeout_event):
