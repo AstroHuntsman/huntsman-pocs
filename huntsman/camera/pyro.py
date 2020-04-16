@@ -1,14 +1,13 @@
 import os
 import requests
 from warnings import warn
-from threading import Event
 from threading import Timer
-from threading import Thread
 from contextlib import suppress
 
 from astropy import units as u
 import Pyro4
 import Pyro4.util
+import Pyro4.errors
 
 from pocs.utils import load_module
 from pocs.utils import get_quantity_value
@@ -16,6 +15,8 @@ from pocs.utils import error
 from pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser
+from huntsman.filterwheel.pyro import FilterWheel as PyroFilterWheel
+from huntsman.utils.pyro.event import RemoteEvent
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
 from huntsman.utils.pyro import serializers
@@ -47,18 +48,18 @@ class Camera(AbstractCamera):
 
     @property
     def egain(self):
-        self._proxy.egain
+        return self._proxy.get("egain")
 
     @property
     def bit_depth(self):
-        return self._proxy.bit_depth
+        return self._proxy.get("bit_depth")
 
     @property
     def temperature(self):
         """
         Current temperature of the camera's image sensor.
         """
-        return self._proxy.temperature
+        return self._proxy.get("temperature")
 
     @property
     def target_temperature(self):
@@ -68,22 +69,22 @@ class Camera(AbstractCamera):
 
         Can be set by assigning an astropy.units.Quantity.
         """
-        return self._proxy.target_temperature
+        return self._proxy.get("target_temperature")
 
     @target_temperature.setter
     def target_temperature(self, target):
-        self._proxy.target_temperature = target
+        self._proxy.set("target_temperature", target)
 
     @property
     def temperature_tolerance(self):
-        return self._proxy.temperature_tolerance
+        return self._proxy.get("temperature_tolerance")
 
     @temperature_tolerance.setter
     def temperature_tolerance(self, tolerance):
         with suppress(AttributeError):
             # Base class constructor is trying to set a default temperature temperature
             # before self._proxy exists, & it's up to the remote camera to do that anyway.
-            self._proxy.temperature_tolerance = tolerance
+            self._proxy.set("temperature_tolerance", tolerance)
 
     @property
     def cooling_enabled(self):
@@ -92,11 +93,11 @@ class Camera(AbstractCamera):
 
         For some cameras it is possible to change this by assigning a boolean
         """
-        return self._proxy.cooling_enabled
+        return self._proxy.get("cooling_enabled")
 
     @cooling_enabled.setter
     def cooling_enabled(self, enabled):
-        self._proxy.cooling_enabled = bool(enabled)
+        self._proxy.set("cooling_enabled", bool(enabled))
 
     @property
     def cooling_power(self):
@@ -104,22 +105,22 @@ class Camera(AbstractCamera):
         Current power level of the camera's image sensor cooling system (typically as
         a percentage of the maximum).
         """
-        return self._proxy.cooling_power
+        return self._proxy.get("cooling_power")
 
     @property
     def is_exposing(self):
-        return not self._exposure_event.is_set()
+        return self._proxy.get("is_exposing")
+
+    @property
+    def is_temperature_stable(self):
+        return self._proxy.get("is_temperature_stable")
 
     @property
     def is_ready(self):
         '''
         True if camera is ready to start another exposure, otherwise False.
         '''
-        # First check if exposing, because if so remote camera won't respond to
-        # is_ready query until after it has finished.
-        if self.is_exposing:
-            return False
-        return self._proxy.is_ready
+        return self._proxy.get("is_ready")
 
 # Methods
 
@@ -154,12 +155,16 @@ class Camera(AbstractCamera):
 
         # Retrieve and locally cache camera properties that won't change.
         self._serial_number = uid
-        self.name = self._proxy.name
-        self.model = self._proxy.model
-        self._readout_time = self._proxy.readout_time
-        self._file_extension = self._proxy.file_extension
-        self._is_cooled_camera = self._proxy.is_cooled_camera
-        self._filter_type = self._proxy.filter_type
+        self.name = self._proxy.get("name")
+        self.model = self._proxy.get("model")
+        self._readout_time = self._proxy.get("readout_time")
+        self._file_extension = self._proxy.get("file_extension")
+        self._is_cooled_camera = self._proxy.get("is_cooled_camera")
+        self._filter_type = self._proxy.get("filter_type")
+
+        # Set up proxy for remote camera's _exposure_event
+        self._exposure_event = RemoteEvent(self._proxy, event_type="camera")
+
         self._connected = True
         self.logger.debug("{} connected".format(self))
 
@@ -168,7 +173,10 @@ class Camera(AbstractCamera):
         else:
             self.focuser = None
 
-        self.filterwheel = None  # Remote filterwheels not supported yet.
+        if self._proxy.has_filterwheel:
+            self.filterwheel = PyroFilterWheel(camera=self)
+        else:
+            self.filterwheel = None
 
     def take_exposure(self,
                       seconds=1.0 * u.second,
@@ -177,73 +185,40 @@ class Camera(AbstractCamera):
                       blocking=False,
                       *args,
                       **kwargs):
-        """
-        Take exposure for a given number of seconds and saves to provided filename.
+        """Take an exposure for given number of seconds and saves to provided filename.
 
         Args:
-            seconds (u.second, optional): Length of exposure
-            filename (str, optional): Image is saved to this filename
-            dark (bool, optional): Exposure is a dark frame (don't open shutter), default False
+            seconds (u.second, optional): Length of exposure.
+            filename (str, optional): Image is saved to this filename.
+            dark (bool, optional): Exposure is a dark frame, default False. On cameras that support
+                taking dark frames internally (by not opening a mechanical shutter) this will be
+                done, for other cameras the light must be blocked by some other means. In either
+                case setting dark to True will cause the `IMAGETYP` FITS header keyword to have
+                value 'Dark Frame' instead of 'Light Frame'. Set dark to None to disable the
+                `IMAGETYP` keyword entirely.
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block until it completes.
 
         Returns:
-            threading.Event: Event that will be set when exposure is complete
+            threading.Event: Event that will be set when exposure is complete.
 
         """
-        assert self.is_connected, self.logger.error("Camera must be connected for take_exposure!")
-
-        assert filename is not None, self.logger.warning("Must pass filename for take_exposure")
-
-        if not self._exposure_event.is_set():
-            msg = "Attempt to take exposure on {} while one already in progress.".format(self)
-            raise error.PanError(msg)
-
-        # Clear event now to prevent any other exposures starting before this one is finished.
-        self._exposure_event.clear()
-
-        # Make sure proxy is in async mode
-        Pyro4.asyncproxy(self._proxy, asynchronous=True)
-
         # Start the exposure
-        self.logger.debug(f'Taking {seconds} second exposure on {self.name}: {filename}')
+        self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
 
         # Remote method call to start the exposure
-        exposure_result = self._proxy.take_exposure(seconds=seconds,
-                                                    filename=filename,
-                                                    dark=bool(dark),
-                                                    *args,
-                                                    **kwargs)
+        self._proxy.take_exposure(seconds=seconds,
+                                  filename=filename,
+                                  dark=bool(dark),
+                                  *args,
+                                  **kwargs)
 
-        # Start a thread that will set an event once exposure has completed
-        exposure_thread = Timer(interval=get_quantity_value(seconds, u.s) + self.readout_time,
-                                function=self._async_wait,
-                                args=(exposure_result,
-                                      'exposure',
-                                      self._exposure_event,
-                                      self._timeout))
-        exposure_thread.start()
-
-        if blocking:
-            self._exposure_event.wait()
+        max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
+        self._run_timeout("exposure", blocking, max_wait)
 
         return self._exposure_event
 
-    def autofocus(self,
-                  seconds=None,
-                  focus_range=None,
-                  focus_step=None,
-                  thumbnail_size=None,
-                  keep_files=None,
-                  take_dark=None,
-                  merit_function='vollath_F4',
-                  merit_function_kwargs={},
-                  mask_dilations=None,
-                  coarse=False,
-                  make_plots=False,
-                  blocking=False,
-                  timeout=None,
-                  *args, **kwargs):
+    def autofocus(self, blocking=False, *args, **kwargs):
         """
         Focuses the camera using the specified merit function. Optionally performs
         a coarse focus to find the approximate position of infinity focus, which
@@ -275,55 +250,33 @@ class Camera(AbstractCamera):
             make_plots (bool, optional: Whether to write focus plots to images folder, default
                 False.
             blocking (bool, optional): Whether to block until autofocus complete, default False.
-            timeout (u.second, optional): Total length of time to wait for autofocus sequences
-                to complete. If not given will wait indefinitely.
 
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
-        """
-        assert self.is_connected, self.logger.error("Camera must be connected for autofocus.")
 
+        Raises:
+            ValueError: If invalid values are passed for any of the focus parameters.
+        """
         if self.focuser is None:
             msg = "Camera must have a focuser for autofocus!"
             self.logger.error(msg)
             raise AttributeError(msg)
 
-        assert self.focuser.is_connected, \
-            self.logger.error("Focuser must be connected for autofocus.")
+        self.logger.debug(f'Starting autofocus on {self}.')
 
-        # Compile aruments into a dictionary
-        autofocus_kwargs = {'seconds': seconds,
-                            'focus_range': focus_range,
-                            'focus_step': focus_step,
-                            'keep_files': keep_files,
-                            'take_dark': take_dark,
-                            'thumbnail_size': thumbnail_size,
-                            'merit_function': merit_function,
-                            'merit_function_kwargs': merit_function_kwargs,
-                            'mask_dilations': mask_dilations,
-                            'coarse': coarse,
-                            'make_plots': make_plots}
-        autofocus_kwargs.update(kwargs)
+        # Remote method call to start the exposure
+        self._proxy.autofocus(*args, **kwargs)
 
-        # Make sure proxy is in async mode
-        Pyro4.asyncproxy(self._proxy, asynchronous=True)
+        # Proxy for remote _autofocus_event
+        self._autofocus_event = RemoteEvent(self._proxy, event_type="focuser")
 
-        # Start autofocus
-        autofocus_result = {}
-        self.logger.debug('Starting autofocus on {}'.format(self.name))
-        # Remote method call to start the autofocus
-        autofocus_result = self._proxy.autofocus(*args, **autofocus_kwargs)
+        # In general it's very complicated to work out how long an autofocus should take
+        # because parameters can be set here or come from remote config. For now just make
+        # it 5 minutes.
+        max_wait = 300
+        self._run_timeout("autofocus", blocking, max_wait)
 
-        # Start a thread that will set an event once autofocus has completed
-        autofocus_event = Event()
-        autofocus_thread = Thread(target=self._async_wait,
-                                  args=(autofocus_result, 'autofocus', autofocus_event, timeout))
-        autofocus_thread.start()
-
-        if blocking:
-            autofocus_event.wait()
-
-        return autofocus_event
+        return self._autofocus_event
 
 # Private Methods
 
@@ -335,30 +288,33 @@ class Camera(AbstractCamera):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
-    def _async_wait(self, future_result, name='?', event=None, timeout=None):
-        # For now not checking for any problems, just wait for everything to return (or timeout)
-        if future_result.wait(timeout):
-            try:
-                result = future_result.value
-            except Exception as err:
-                # Add some extra text to the exception then re-raise it.
-                if len(err.args) >= 1:
-                    msg = f"Problem while waiting for {name} on {self.port}: {err.args[0]}"
-                    err.args = (msg,) + err.args[1:]
-                else:
-                    msg = f"Problem while waiting for {name} on {self.port}: {err}"
-                self.logger.error(msg)  # Make sure error makes it into the logs
-                raise err
-            finally:
-                if event is not None:
-                    event.set()
+    def _run_timeout(self, timeout_type, blocking, max_wait):
+        relevant_event = getattr(self, f"_{timeout_type}_event")
+        if blocking:
+            success = relevant_event.wait(timeout=max_wait)
+            if not success:
+                self._timeout_response(timeout_type, relevant_event)
         else:
-            if event is not None:
-                event.set()
-            msg = "Timeout while waiting for {} on {}".format(name, self.port)
-            raise error.Timeout(msg)
+            # If the remote operation fails after starting in such a way that the event doesn't
+            # get set then calling code could wait forever. Have a local timeout thread
+            # to be safe.
+            timeout_thread = Timer(interval=max_wait,
+                                   function=self._timeout_response,
+                                   args=(timeout_type, relevant_event))
+            timeout_thread.start()
 
-        return result
+    def _timeout_response(self, timeout_type, timeout_event):
+        # This could do more thorough checks for success, e.g. check is_exposing property,
+        # check for existence of output file, etc. It's supposed to be a last resort though,
+        # and most problems should be caught elsewhere.
+        is_set = True
+        # Can get a comms error if everything has finished and shutdown before the timeout,
+        # e.g. when running tests.
+        with suppress(Pyro4.errors.CommunicationError):
+            is_set = timeout_event.is_set()
+        if not is_set:
+            timeout_event.set()
+            raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
 
     def _process_fits(self, file_path, info):
         '''
@@ -423,6 +379,9 @@ class CameraServer(object):
     """
     Wrapper for the camera class for use as a Pyro camera server
     """
+    _event_locations = {"camera": ("_exposure_event",),
+                        "focuser": ("_autofocus_event",),
+                        "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
     def __init__(self, config_files=None):
         # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
@@ -436,87 +395,20 @@ class CameraServer(object):
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
-# Properties
+# Properties - rather than labouriously wrapping every camera property individually expose
+# them all with generic get and set methods.
 
-    @property
-    def name(self):
-        return self._camera.name
+    def get(self, property_name, subcomponent=None):
+        obj = self._camera
+        if subcomponent:
+            obj = getattr(obj, subcomponent)
+        return getattr(obj, property_name)
 
-    @property
-    def model(self):
-        return self._camera.model
-
-    @property
-    def uid(self):
-        return self._camera.uid
-
-    @property
-    def readout_time(self):
-        return self._camera.readout_time
-
-    @property
-    def file_extension(self):
-        return self._camera.file_extension
-
-    @property
-    def egain(self):
-        return self._camera.egain
-
-    @property
-    def bit_depth(self):
-        return self._camera.bit_depth
-
-    @property
-    def temperature(self):
-        return self._camera.temperature
-
-    @property
-    def target_temperature(self):
-        return self._camera.target_temperature
-
-    @target_temperature.setter
-    def target_temperature(self, target):
-        self._camera.target_temperature = target
-
-    @property
-    def temperature_tolerance(self):
-        return self._camera.temperature_tolerance
-
-    @temperature_tolerance.setter
-    def temperature_tolerance(self, tolerance):
-        self._camera.temperature_tolerance = tolerance
-
-    @property
-    def cooling_enabled(self):
-        return self._camera.cooling_enabled
-
-    @cooling_enabled.setter
-    def cooling_enabled(self, enabled):
-        self._camera.cooling_enabled = enabled
-
-    @property
-    def cooling_power(self):
-        return self._camera.cooling_power
-
-    @property
-    def filter_type(self):
-        return self._camera.filter_type
-
-    @property
-    def is_cooled_camera(self):
-        return self._camera.is_cooled_camera
-
-    @property
-    def is_temperature_stable(self):
-        return self._camera.is_temperature_stable
-
-    @property
-    def is_exposing(self):
-        return self._camera.is_exposing
-
-    @property
-    def is_ready(self):
-        return self._camera.is_ready
+    def set(self, property_name, value, subcomponent=None):
+        obj = self._camera
+        if subcomponent:
+            obj = getattr(obj, subcomponent)
+        setattr(obj, property_name, value)
 
 # Methods
 
@@ -527,34 +419,17 @@ class CameraServer(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, seconds, filename, dark, *args, **kwargs):
-        '''
-        Parameters
-        ----------
-        filename (str):
-            The filename of the exposure result.
-
-        Returns
-        -------
-        str:
-            The full filename of the exposure output.
-        '''
-        # Start the exposure and wait for it complete
-        self._camera.take_exposure(seconds=seconds,
-                                   filename=filename,
-                                   dark=dark,
-                                   blocking=True,
-                                   *args,
-                                   **kwargs)
+    def take_exposure(self, *args, **kwargs):
+        # Start the exposure non-blocking so that camera server can still respond to
+        # status requests.
+        kwargs['blocking'] = False
+        self._exposure_event = self._camera.take_exposure(*args, **kwargs)
 
     def autofocus(self, *args, **kwargs):
-        if not self.has_focuser:
-            msg = "Camera must have a focuser for autofocus!"
-            self.logger.error(msg)
-            raise AttributeError(msg)
-        # Start the autofocus and wait for it to completed
-        kwargs['blocking'] = True
-        self._camera.focuser.autofocus(*args, **kwargs)
+        # Start the autofocus non-blocking so that camera server can still respond to
+        # status requests.
+        kwargs['blocking'] = False
+        self._autofocus_event = self._camera.autofocus(*args, **kwargs)
 
 # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
@@ -562,120 +437,39 @@ class CameraServer(object):
     def has_focuser(self):
         return self._camera.focuser is not None
 
-    @property
-    def focuser_name(self):
-        return self._camera.focuser.name
-
-    @property
-    def focuser_model(self):
-        return self._camera.focuser.model
-
-    @property
-    def focuser_uid(self):
-        return self._camera.focuser.uid
-
-    @property
-    def focuser_is_connected(self):
-        return self._camera.focuser.is_connected
-
-    @property
-    def focuser_position(self):
-        return self._camera.focuser.position
-
-    @focuser_position.setter
-    def focuser_position(self, position):
-        self._camera.focuser.position = position
-
-    @property
-    def focuser_min_position(self):
-        return self._camera.focuser.min_position
-
-    @property
-    def focuser_max_position(self):
-        return self._camera.focuser.max_position
-
-    @property
-    def focuser_is_moving(self):
-        return self._camera.focuser.is_moving
-
-    @property
-    def focuser_is_ready(self):
-        return self._camera.focuser.is_ready
-
-    @property
-    def focuser_autofocus_range(self):
-        return self._camera.focuser.autofocus_range
-
-    @focuser_autofocus_range.setter
-    def focuser_autofocus_range(self, autofocus_range):
-        self._camera.focuser.autofocus_range = autofocus_range
-
-    @property
-    def focuser_autofocus_step(self):
-        return self._camera.focuser.autofocus_step
-
-    @focuser_autofocus_step.setter
-    def focuser_autofocus_step(self, step):
-        self._camera.focuser.autofocus_step = step
-
-    @property
-    def focuser_autofocus_seconds(self):
-        return self._camera.focuser.autofocus_seconds
-
-    @focuser_autofocus_seconds.setter
-    def focuser_autofocus_seconds(self, seconds):
-        self._camera.focuser.autofocus_seconds = seconds
-
-    @property
-    def focuser_autofocus_size(self):
-        return self._camera.focuser.autofocus_size
-
-    @focuser_autofocus_size.setter
-    def focuser_autofocus_size(self, size):
-        self._camera.focuser.autofocus_size = size
-
-    @property
-    def focuser_autofocus_keep_files(self):
-        return self._camera.focuser.autofocus_keep_files
-
-    @focuser_autofocus_keep_files.setter
-    def focuser_autofocus_keep_files(self, keep_files):
-        self._camera.focuser.autofocus_keep_files = keep_files
-
-    @property
-    def focuser_autofocus_take_dark(self):
-        return self._camera.focuser.autofocus_take_dark
-
-    @focuser_autofocus_take_dark.setter
-    def focuser_autofocus_take_dark(self, take_dark):
-        self._camera.focuser.autofocus_take_dark = take_dark
-
-    @property
-    def focuser_autofocus_merit_function(self):
-        return self._camera.focuser.autofocus_merit_function
-
-    @focuser_autofocus_merit_function.setter
-    def focuser_autofocus_merit_function(self, merit_function):
-        self._camera.focuser.autofocus_merit_function = merit_function
-
-    @property
-    def focuser_autofocus_merit_function_kwargs(self):
-        return self._camera.focuser.autofocus_merit_function_kwargs
-
-    @focuser_autofocus_merit_function_kwargs.setter
-    def focuser_autofocus_merit_function_kwargs(self, kwargs):
-        self._camera.focuser.autofocus_merit_function_kwargs = kwargs
-
-    @property
-    def focuser_autofocus_mask_dilations(self):
-        return self._camera.focuser.autofocus_mask_dilations
-
-    @focuser_autofocus_mask_dilations.setter
-    def focuser_autofocus_mask_dilations(self, dilations):
-        self._camera.focuser.autofocus_mask_dilations = dilations
-
     def focuser_move_to(self, position):
         return self._camera.focuser.move_to(position)
 
     def focuser_move_by(self, increment):
         return self._camera.focuser.move_by(increment)
+
+# Filterwheel methods - these are used by the remote filterwheel client,
+# huntsman.filterwheel.pyro.FilterWheel
+
+    @property
+    def has_filterwheel(self):
+        return self._camera.filterwheel is not None
+
+    def filterwheel_move_to(self, position):
+        self._camera.filterwheel._move_to(position)
+
+# Event access
+
+    def _get_event(self, event_type):
+        event_location = self._event_locations[event_type]
+        obj = self
+        for attr_name in event_location:
+            obj = getattr(obj, attr_name)
+        return obj
+
+    def event_set(self, event_type):
+        return self._get_event(event_type).set()
+
+    def event_clear(self, event_type):
+        return self._get_event(event_type).clear()
+
+    def event_is_set(self, event_type):
+        return self._get_event(event_type).is_set()
+
+    def event_wait(self, event_type, timeout):
+        return self._get_event(event_type).wait(timeout)
