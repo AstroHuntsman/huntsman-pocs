@@ -46,10 +46,6 @@ def on_enter(event_data):
     pocs = event_data.model
     pocs.next_state = 'parking'
 
-    # Leave the state if not safe to take calibrations
-    if not pocs.is_safe(horizon='flat'):
-        print('Exiting calibrating state because it is no longer safe.')
-        return
 
     if pocs.observatory.take_flat_fields:
 
