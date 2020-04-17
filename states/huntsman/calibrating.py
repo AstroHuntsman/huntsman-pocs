@@ -6,7 +6,7 @@ from pocs.utils import current_time
 
 def _wait_for_twilight(pocs, horizon):
     '''
-    Wait for twighlight if safe to do so.
+    Wait for twilight if safe to do so.
     '''
     delay = pocs._safe_delay
 
