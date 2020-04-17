@@ -1,8 +1,4 @@
-from astropy.coordinates import get_sun
-from astropy import units as u
-
-from pocs.utils import current_time
-
+from huntsman.utils.states import past_midnight
 
 def _wait_for_twilight(pocs, horizon):
     '''
@@ -67,24 +63,8 @@ def on_enter(event_data):
         except Exception as err:
             pocs.logger.warning(f'Problem with flat fielding: {err}')
 
-    # This code needs to be moved to its own state
-    # Wait for twilight
-    coarse_focus_timeout = 600  # Put this in a config file
-    if not _wait_for_twilight(pocs, horizon='focus'):
-        print('Exiting calibrating state because it is no longer safe.')
-        return
-
-    try:
-        pocs.say("Coarse focusing all cameras before starting observing for the night.")
-        autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
-        pocs.logger.debug("Waiting for coarse focus to finish.")
-        pocs.wait_for_events(list(autofocus_events.values()), coarse_focus_timeout)
-
-    except Exception as e:
-        pocs.logger.warning("Problem with coarse autofocus: {}".format(e))
-
-    # Wait for astronomical twilight if needed
-    if not _wait_for_twilight(pocs, horizon='observe'):
-        return
-
-    pocs.next_state = 'scheduling'
+    # Specify the next state
+    if past_midnight:
+        pocs.next_state = 'parking'
+    else:
+        pocs.next_state = 'scheduling'
