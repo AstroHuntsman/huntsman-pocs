@@ -71,7 +71,7 @@ def on_enter(event_data):
     # Wait for twilight
     coarse_focus_timeout = 600  # Put this in a config file
     if not _wait_for_twilight(pocs, horizon='focus'):
-        print('Exiting calibrating state because it is no longer safe.')
+        pocs.logger.info('Exiting calibrating state because it is no longer safe.')
         return
 
     try:
