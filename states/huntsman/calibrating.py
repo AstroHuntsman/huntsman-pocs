@@ -61,7 +61,7 @@ def on_enter(event_data):
             pocs.say("Starting narrow band flat fields")
             pocs.observatory.take_evening_flats(camera_list=narrow_band_cameras)
 
-            pocs.say("Staring broad band flat fields")
+            pocs.say("Starting broad band flat fields")
             pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)
 
         except Exception as err:
