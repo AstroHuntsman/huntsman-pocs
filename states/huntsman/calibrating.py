@@ -48,10 +48,10 @@ def on_enter(event_data):
             narrow_band_cameras, broad_band_cameras = _get_cameras(pocs)
 
             # Take calibration frames
-            pocs.say("Starting narrow band flats.")
+            pocs.say("Starting narrow band flat fields.")
             pocs.observatory.take_evening_flats(camera_list=narrow_band_cameras)
 
-            pocs.say("Staring broad band flats.")
+            pocs.say("Starting broad band flat fields.")
             pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)
 
         except Exception as err:
