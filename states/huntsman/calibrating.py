@@ -24,8 +24,8 @@ def _past_midnight(pocs):
     '''
     Check if is morning, useful for going into either morning or evening flats.
     '''
-    time = pocs.siderial_time()
-    if (time.hour > 0) & (time.hour <= 12):
+    hour = pocs.observatory.siderial_time.hour
+    if (hour > 0) & (hour <= 12):
         return True
     return False
 
