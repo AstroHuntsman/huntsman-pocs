@@ -4,7 +4,7 @@ services:
     image: huntsmanarray/camera:latest
     user: huntsman
     privileged: true
-    network: host
+    network_mode: host
     stdin_open: true
     tty: true
     volumes:
