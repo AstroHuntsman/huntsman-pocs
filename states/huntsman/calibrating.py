@@ -56,7 +56,7 @@ def on_enter(event_data):
             pocs.logger.warning(f'Problem with flat fielding: {err}')
 
     # Specify the next state
-    if _past_midnight():
+    if _past_midnight(pocs):
         pocs.next_state = 'parking'
     else:
         pocs.next_state = 'coarse_focusing'
