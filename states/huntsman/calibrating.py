@@ -1,6 +1,7 @@
 """
 State to handle the taking of calibration frames (evening and morning).
 """
+from pocs.utils import current_time
 
 
 def _get_cameras(pocs):
@@ -24,10 +25,11 @@ def _past_midnight(pocs):
     '''
     Check if is morning, useful for going into either morning or evening flats.
     '''
-    hour = pocs.observatory.sidereal_time.hour
-    if (hour > 0) & (hour <= 12):
-        return True
-    return False
+    # Get the time of the nearest midnight to now
+    midnight = pocs.observatory.observer.midnight(current_time(), which='nearest')
+
+    # If the nearest midnight is in the past, its the morning...
+    return midnight < current_time()
 
 
 def on_enter(event_data):
