@@ -56,6 +56,8 @@ def on_enter(event_data):
 
         except Exception as err:
             pocs.logger.warning(f'Problem with flat fielding: {err}')
+    else:
+        pocs.say('Skipping calibration frames.')
 
     # Specify the next state
     if _past_midnight(pocs):
