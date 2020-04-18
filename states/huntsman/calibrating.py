@@ -59,6 +59,8 @@ def on_enter(event_data):
 
     # Specify the next state
     if _past_midnight(pocs):
+        pocs.logger.debug('Finished morning calibrations.')
         pocs.next_state = 'parking'
     else:
+        pocs.logger.debug('Finished evening calibrations.')
         pocs.next_state = 'coarse_focusing'
