@@ -1,20 +1,6 @@
-from huntsman.utils.states import past_midnight
-
-def _wait_for_twilight(pocs, horizon):
-    '''
-    Wait for twighlight if safe to do so.
-    '''
-    delay = pocs._safe_delay
-
-    while pocs.is_safe(horizon='flat'):
-
-        if not pocs.is_dark(horizon=horizon):
-            pocs.say('Not dark enough for coarse focusing. Waiting...')
-            pocs.sleep(delay=delay)
-        else:
-            return True
-
-    return False
+"""
+State to handle the taking of calibration frames (evening and morning).
+"""
 
 
 def _get_cameras(pocs):
@@ -34,37 +20,43 @@ def _get_cameras(pocs):
     return narrow_band_cameras, broad_band_cameras
 
 
+def _past_midnight(pocs):
+    '''
+    Check if is morning, useful for going into either morning or evening flats.
+    '''
+    time = pocs.siderial_time()
+    if (time.hour > 0) & (time.hour <= 12):
+        return True
+    return False
+
+
 def on_enter(event_data):
     '''
     Calibrating state. If safe to do so, take flats and darks. Should be
     called once at the beginning and end of the night.
+
+    If evening, the next state will be coarse_focusing, else, parking.
     '''
     pocs = event_data.model
     pocs.next_state = 'parking'
 
-    # Leave the state if not safe to take calibrations
-    if not pocs.is_safe(horizon='flat'):
-        print('Exiting calibrating state because it is no longer safe.')
-        return
-
     if pocs.observatory.take_flat_fields:
-
         try:
             # Identify filter types
             narrow_band_cameras, broad_band_cameras = _get_cameras(pocs)
 
             # Take calibration frames
-            pocs.say("Starting narrow band flat fields")
+            pocs.say("Starting narrow band flats.")
             pocs.observatory.take_evening_flats(camera_list=narrow_band_cameras)
 
-            pocs.say("Staring broad band flat fields")
+            pocs.say("Staring broad band flats.")
             pocs.observatory.take_evening_flats(camera_list=broad_band_cameras)
 
         except Exception as err:
             pocs.logger.warning(f'Problem with flat fielding: {err}')
 
     # Specify the next state
-    if past_midnight:
+    if _past_midnight():
         pocs.next_state = 'parking'
     else:
-        pocs.next_state = 'scheduling'
+        pocs.next_state = 'coarse_focusing'

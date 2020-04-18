@@ -1,19 +1,17 @@
-from huntsman.utils.states import wait_for_twilight
+"""
+State to handle the coarse focusing at the start of the night.
+"""
 
 
 def on_enter(event_data):
     '''
     Calibrating state. If safe to do so, take flats and darks. Should be
     called once at the beginning and end of the night.
+
+    The next state is scheduling.
     '''
     pocs = event_data.model
     pocs.next_state = 'parking'
-
-    # Wait until it is safe to do the focusing
-    msg = 'Waiting for twilight to start coarse focusing...'
-    if not wait_for_twilight(horizon='focus', message=msg):
-        print('Exiting coarse focus state because it is no longer safe.')
-        return
 
     # Start the autofocusing
     coarse_focus_timeout = pocs.config['timeout']['coarse_focus']

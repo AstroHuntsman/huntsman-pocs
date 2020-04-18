@@ -36,7 +36,7 @@ cameras:
     -
         model: simulator_sdk
     -
-        model: simulator_sdk    
+        model: simulator_sdk
 dome:
     template_dir: resources/bisque
     driver: bisque
@@ -59,6 +59,8 @@ messaging:
     cmd_port: 6500
     msg_port: 6510
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
+timeout:
+  coarse_focus: 600
 
 ########################### Flat Fields ########################################
 # Controls various aspects of flat fields, both for evening and morning.

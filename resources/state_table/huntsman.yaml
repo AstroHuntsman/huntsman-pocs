@@ -17,6 +17,8 @@ states:
         tags: always_safe
     calibrating:
         horizon: flat
+    coarse_focusing:
+        horizon: focus
     focusing:
         horizon: focus
     preparing:
@@ -33,6 +35,7 @@ transitions:
             - preparing
             - slewing
             - focusing
+            - coarse_focusing
             - observing
             - analyzing
             - dithering
@@ -69,9 +72,13 @@ transitions:
         dest: scheduling
         trigger: schedule
     -
-        source: calibrating
+        source: coarse_focusing
         dest: scheduling
         trigger: schedule
+    -
+        source: calibrating
+        dest: coarse_focusing
+        trigger: autofocus_coarse
     -
         source: scheduling
         dest: preparing
