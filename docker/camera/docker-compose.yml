@@ -9,3 +9,4 @@ services:
     tty: true
     volumes:
       - "~/.ssh:/home/huntsman/.ssh"
+      - "$PANDIR/logs:/var/huntsman/logs"

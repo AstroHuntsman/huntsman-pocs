@@ -18,15 +18,16 @@ ENV HUNTSMAN_POCS=${PANDIR}/huntsman-pocs
 
 # Add the huntsman user
 RUN useradd -m -d /home/$PANUSER $PANUSER && \
+    echo "$PANUSER:$PANUSER"|chpasswd && \
     mkdir $PANDIR && \
     chown $PANUSER $PANDIR && \
     echo dialout plugdev netdev users input spi i2c gpio | xargs -n 1 groupadd -f && \
-    usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio huntsman && \
+    usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio,sudo huntsman && \
     # Install packages
     apt-get -y upgrade && \
     apt-get update && \
     apt-get -y dist-upgrade && \
-    apt-get -y install bzip2 git gcc sshfs
+    apt-get -y install bzip2 git gcc sshfs sudo
 
 # Install Berryconda as PANUSER
 USER $PANUSER
