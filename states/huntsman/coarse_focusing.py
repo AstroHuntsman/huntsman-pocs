@@ -5,16 +5,14 @@ State to handle the coarse focusing at the start of the night.
 
 def on_enter(event_data):
     '''
-    Calibrating state. If safe to do so, take flats and darks. Should be
-    called once at the beginning and end of the night.
-
-    The next state is scheduling.
+    Coarse focusing state. Will do a coarse focus for each camera and move to
+    the scheduling state.
     '''
     pocs = event_data.model
     pocs.next_state = 'parking'
 
     # Start the autofocusing
-    coarse_focus_timeout = pocs.config['timeout']['coarse_focus']
+    coarse_focus_timeout = pocs.config['focusing']['coarse']['timeout']
     try:
         pocs.say("Coarse focusing all cameras before starting observing for the night.")
         autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
