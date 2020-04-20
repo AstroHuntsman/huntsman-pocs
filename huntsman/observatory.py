@@ -57,7 +57,7 @@ class HuntsmanObservatory(Observatory):
         self.take_flat_fields = take_flats
 
         # Attributes for focusing
-        self._last_focus_time = None
+        self.last_focus_time = None
         self._focus_frequency = config['focusing']['coarse']['frequency'] * \
             u.Unit(config['focusing']['coarse']['frequency_unit'])
 
@@ -204,9 +204,9 @@ class HuntsmanObservatory(Observatory):
         '''
         Return True if too much time has elapsed since the previous focus, else False.
         '''
-        if self._last_focus_time is None:
+        if self.last_focus_time is None:
             return True
-        if utils.current_time() - self._last_focus_time > self._focus_frequency:
+        if utils.current_time() - self.last_focus_time > self._focus_frequency:
             return True
         return False
 
