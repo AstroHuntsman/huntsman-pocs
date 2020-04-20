@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 The aim of this code is for the device to look up its own task and start the
 necessary processes automatically.

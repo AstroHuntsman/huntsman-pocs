@@ -1,0 +1,39 @@
+name: Build and push Huntsman docker images
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      -
+        name: Docker login
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      -
+        name: Build and push arm_device
+        working-directory: ./docker/arm_device
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag huntsmanarray/arm_device:latest \
+            --output "type=image,push=true" .
+      -
+        name: Build and push camera
+        working-directory: ./docker/camera
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag huntsmanarray/camera:latest \
+            --output "type=image,push=true" .

@@ -1,0 +1,12 @@
+version: '3'
+services:
+  camera:
+    image: huntsmanarray/camera:latest
+    user: huntsman
+    privileged: true
+    network_mode: host
+    stdin_open: true
+    tty: true
+    volumes:
+      - "~/.ssh:/home/huntsman/.ssh"
+      - "$PANDIR/logs:/var/huntsman/logs"
