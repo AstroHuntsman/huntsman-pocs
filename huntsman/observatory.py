@@ -401,6 +401,12 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
 
+    def take_morning_flats(*args, **kwargs):
+        '''
+
+        '''
+        raise NotImplementedError('Morning flats not implemented yet.')
+
 ##########################################################################
 # Private Methods
 ##########################################################################

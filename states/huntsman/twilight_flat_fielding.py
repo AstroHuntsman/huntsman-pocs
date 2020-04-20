@@ -47,22 +47,22 @@ def on_enter(event_data):
             # Identify filter types
             narrow_band_cameras, broad_band_cameras = _get_cameras(pocs)
 
+            # Specify which flats we are taking and in which order
             if _past_midnight():
-                raise NotImplementedError('Morning flats not implemented yet.')
+                flat_func = pocs.observatory.take_morning_flats
+                camera_lists = [broad_band_cameras, narrow_band_cameras]
             else:
                 flat_func = pocs.observatory.take_evening_flats
+                camera_lists = [narrow_band_cameras, broad_band_cameras]
 
-            # Take calibration frames
-            pocs.say("Starting narrow band flat fields.")
-            flat_func(camera_list=narrow_band_cameras)
-
-            pocs.say("Starting broad band flat fields.")
-            flat_func(camera_list=broad_band_cameras)
+            # Take flat fields
+            for camera_list in camera_lists:
+                flat_func(camera_list=camera_list)
 
         except Exception as err:
-            pocs.logger.warning(f'Problem with flat fielding: {err}')
+            pocs.logger.warning(f'Exception during twilight flat fielding: {err}')
     else:
-        pocs.say('Skipping calibration frames.')
+        pocs.say('Skipping twilight flat fields.')
 
     # Specify the next state
     if pocs.observatory.require_coarse_focus():
