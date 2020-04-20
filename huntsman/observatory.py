@@ -210,6 +210,17 @@ class HuntsmanObservatory(Observatory):
             return True
         return False
 
+    def autofocus_cameras(self, *args, **kwargs):
+        '''
+        Override autofocus_cameras to update the last focus time.
+        '''
+        result = super().autofocus_cameras(*args, **kwargs)
+
+        # Update last focus time
+        self.last_focus_time = current_time()
+
+        return result
+
     def take_evening_flats(self,
                            alt=None,
                            az=None,

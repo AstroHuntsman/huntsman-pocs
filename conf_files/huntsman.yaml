@@ -61,7 +61,7 @@ messaging:
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
 focusing:
   coarse:
-    frequency: 6
+    frequency: 2
     frequency_unit: hour
     timeout: 600
 
