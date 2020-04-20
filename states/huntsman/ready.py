@@ -9,4 +9,4 @@ def on_enter(event_data):
 
     pocs.observatory.mount.unpark()
 
-    pocs.next_state = 'calibrating'
+    pocs.next_state = 'twilight_flat_fielding'
