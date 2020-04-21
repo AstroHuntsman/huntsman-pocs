@@ -217,7 +217,8 @@ class HuntsmanObservatory(Observatory):
         result = super().autofocus_cameras(*args, **kwargs)
 
         # Update last focus time
-        self.last_focus_time = utils.current_time()
+        if not kwargs.get("coarse", False):
+            self.last_focus_time = utils.current_time()
 
         return result
 

@@ -72,6 +72,10 @@ transitions:
         dest: scheduling
         trigger: schedule
     -
+        source: ready
+        dest: coarse_focusing
+        trigger: autofocus_coarse
+    -
         source: coarse_focusing
         dest: scheduling
         trigger: schedule

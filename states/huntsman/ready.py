@@ -9,4 +9,7 @@ def on_enter(event_data):
 
     pocs.observatory.mount.unpark()
 
-    pocs.next_state = 'twilight_flat_fielding'
+    if pocs.is_dark(horizon='focus'):
+        pocs.next_state = 'coarse_focusing'
+    else:
+        pocs.next_state = 'twilight_flat_fielding'
