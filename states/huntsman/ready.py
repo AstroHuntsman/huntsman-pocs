@@ -1,6 +1,3 @@
-from huntsman.utils.states import past_midnight, wait_for_twilight
-
-
 def on_enter(event_data):
     """
     Once in the `ready` state our unit has been initialized successfully. The next step is to
@@ -20,15 +17,12 @@ def on_enter(event_data):
     elif pocs.is_dark(horizon='observe'):
         pocs.next_state = 'scheduling'
 
-    # Focusing complete, not dark enough to observe
-    elif not past_midnight(pocs):
-        if pocs.is_dark(horizon='focus'):
-            pocs.next_state = 'scheduling'
-        else:
+    # Don't need to focus, not dark enough to observe
+    elif pocs.observatory.past_midnight():
+        if pocs.is_dark(horizon='flat'):
             pocs.next_state = 'twilight_flat_fielding'
-
-    # Focusing complete, not dark enough to observe and morning
+        else:
+            # We don't want to be waiting all day to take evening flats
+            pocs.next_state = 'parking'
     else:
-        if pocs.is_dark(horizon='focus'):
-            wait_for_twilight(pocs)
         pocs.next_state = 'twilight_flat_fielding'

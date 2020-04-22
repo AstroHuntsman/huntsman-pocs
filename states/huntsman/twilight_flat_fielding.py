@@ -1,7 +1,6 @@
 """
 State to handle the taking of calibration frames (evening and morning).
 """
-from huntsman.utils.states import past_midnight
 
 
 def _get_cameras(pocs):
@@ -37,7 +36,7 @@ def on_enter(event_data):
             narrow_band_cameras, broad_band_cameras = _get_cameras(pocs)
 
             # Specify which flats we are taking and in which order
-            if past_midnight(pocs):
+            if pocs.observatory.past_midnight():
                 flat_func = pocs.observatory.take_morning_flats
                 camera_lists = [broad_band_cameras, narrow_band_cameras]
             else:
@@ -54,7 +53,7 @@ def on_enter(event_data):
         pocs.say('Skipping twilight flat fields.')
 
     # Specify the next state
-    if pocs.observatory.require_coarse_focus():
-        pocs.next_state = 'coarse_focusing'
+    if pocs.observatory.past_midnight():
+        pocs.next_state = 'parking'
     else:
-        pocs.next_state = 'scheduling'
+        pocs.next_state = 'coarse_focusing'

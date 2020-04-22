@@ -109,6 +109,15 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
 
+    def past_midnight(self):
+        """Check if its morning, useful for going into either morning or evening flats."""
+
+        # Get the time of the nearest midnight to now
+        midnight = self.observer.midnight(utils.current_time(), which='nearest')
+
+        # If the nearest midnight is in the past, its the morning...
+        return midnight < utils.current_time()
+
     def make_hdr_observation(self, observation=None):
         self.logger.debug("Getting exposure times from imager array")
 

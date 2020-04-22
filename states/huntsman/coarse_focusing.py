@@ -23,7 +23,8 @@ def on_enter(event_data):
     except Exception as err:
         pocs.logger.warning(f"Problem with coarse autofocus: {err}.")
 
-    if past_midnight(pocs) and not pocs.is_dark(horizon='observe'):
+    # Morning and not dark enough for observing...
+    if pocs.observatory.past_midnight() and not pocs.is_dark(horizon='observe'):
         pocs.next_state = 'twilight_flat_fielding'
     else:
         pocs.next_state = 'scheduling'

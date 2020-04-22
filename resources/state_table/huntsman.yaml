@@ -80,13 +80,13 @@ transitions:
         dest: scheduling
         trigger: schedule
     -
+        source: coarse_focusing
+        dest: twilight_flat_fielding
+        trigger: take_twilight_flats
+    -
         source: twilight_flat_fielding
         dest: coarse_focusing
         trigger: autofocus_coarse
-    -
-        source: twilight_flat_fielding
-        dest: scheduling
-        trigger: schedule
     -
         source: scheduling
         dest: preparing
