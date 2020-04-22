@@ -1,7 +1,6 @@
 """
 State to handle the coarse focusing at the start of the night.
 """
-from huntsman.utils.states import past_midnight
 
 
 def on_enter(event_data):
