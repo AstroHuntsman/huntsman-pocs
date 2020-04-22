@@ -1,7 +1,7 @@
 """
 State to handle the taking of calibration frames (evening and morning).
 """
-from pocs.utils import current_time
+from huntsman.utils.states import past_midnight
 
 
 def _get_cameras(pocs):
@@ -21,17 +21,6 @@ def _get_cameras(pocs):
     return narrow_band_cameras, broad_band_cameras
 
 
-def _past_midnight(pocs):
-    '''
-    Check if is morning, useful for going into either morning or evening flats.
-    '''
-    # Get the time of the nearest midnight to now
-    midnight = pocs.observatory.observer.midnight(current_time(), which='nearest')
-
-    # If the nearest midnight is in the past, its the morning...
-    return midnight < current_time()
-
-
 def on_enter(event_data):
     '''
     Calibrating state. If safe to do so, take flats and darks. Should be
@@ -48,7 +37,7 @@ def on_enter(event_data):
             narrow_band_cameras, broad_band_cameras = _get_cameras(pocs)
 
             # Specify which flats we are taking and in which order
-            if _past_midnight():
+            if past_midnight(pocs):
                 flat_func = pocs.observatory.take_morning_flats
                 camera_lists = [broad_band_cameras, narrow_band_cameras]
             else:

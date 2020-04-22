@@ -1,7 +1,7 @@
 """
 State to handle the coarse focusing at the start of the night.
 """
-from pocs.utils import current_time
+from huntsman.utils.states import past_midnight
 
 
 def on_enter(event_data):
@@ -23,4 +23,7 @@ def on_enter(event_data):
     except Exception as err:
         pocs.logger.warning(f"Problem with coarse autofocus: {err}.")
 
-    pocs.next_state = 'scheduling'
+    if past_midnight(pocs) and not pocs.is_dark(horizon='observe'):
+        pocs.next_state = 'twilight_flat_fielding'
+    else:
+        pocs.next_state = 'scheduling'
