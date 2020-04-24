@@ -20,6 +20,15 @@ def _get_cameras(pocs):
     return narrow_band_cameras, broad_band_cameras
 
 
+def _wait_for_twilight(pocs):
+    '''
+    Wait for twilight. Temporary solution until something better is found.
+    '''
+    pocs.logger.debug('Waiting for twilight...')
+    while pocs.is_dark(horizon='focus') or not pocs.is_safe(horizon='flat'):
+        pocs.sleep(delay=pocs._safe_delay)
+
+
 def on_enter(event_data):
     '''
     Calibrating state. If safe to do so, take flats and darks. Should be
@@ -29,6 +38,9 @@ def on_enter(event_data):
     '''
     pocs = event_data.model
     pocs.next_state = 'parking'
+
+    # Make sure its safe, dark and light enough for flats
+    _wait_for_twilight(pocs)
 
     if pocs.observatory.take_flat_fields:
         try:
