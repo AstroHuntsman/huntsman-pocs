@@ -180,15 +180,24 @@ def test_default_lookup_trigger(pocs):
     assert pocs._lookup_trigger() == 'parking'
 
 
-def test_darks_collection(pocs):
-    pocs.state = 'observing'
+@pytest.mark.skip(reason="Waiting for PR merge.")
+def test_darks_collection_simulator(pocs, db):
+    pocs.initialize()
+    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night']
 
-    pocs.is_dark(horizon="flat") is True
-    pocs.is_weather_safe is False
+    # Insert a dummy night
+    db.insert_current('night', {'dark': True})
+    # Make sure it is dark.
+    assert(pocs.is_dark(horizon="flat"))
 
-    pocs.next_state = 'parking'
+    # Insert a dummy weather record
+    db.insert_current('weather', {'safe': False})
+    # Make sure the weather is *not* safe to observe.
+    assert(pocs.is_weather_safe() is False)
 
-    assert pocs._lookup_trigger() == 'taking_darks'
+    pocs.next_state('parking')
+    for state in ['taking_darks']:
+        assert(pocs._lookup_trigger() == state)
 
 
 def test_free_space(pocs):

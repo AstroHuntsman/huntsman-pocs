@@ -6,7 +6,8 @@ def on_enter(event_data):
 
     pocs.say("Cleaning up for the night!")
 
-    if pocs.is_dark(horizon="flat") and pocs.is_weather_safe is False:
+    if pocs.is_dark(horizon="flat") and not pocs.is_weather_safe():
         pocs.next_state = 'taking_darks'
     else:
+        pocs.logger.info("Conditions for dark fields are not met")
         pocs.next_state = 'housekeeping'
