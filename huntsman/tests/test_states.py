@@ -56,11 +56,10 @@ def test_ready_sleeping_ready(pocs):
     '''
     pocs.initialize()
     pocs.get_ready()
-    # Make sure its no longer dark
     pocs.config['simulator'] = [_ for _ in pocs.config['simulator'] if _ != 'night']
     os.environ['POCSTIME'] = '2016-08-13 23:00:00'
     assert(not pocs.is_dark(horizon='observe'))
-    # Get into the sleeping state
+    pocs.next_state = 'parking'
     for state in ['parking', 'parked', 'housekeeping', 'sleeping', 'ready']:
         assert(pocs.next_state == state)
         pocs.goto_next_state()
@@ -77,6 +76,7 @@ def test_ready_sleeping_error(pocs):
     # Make sure its dark
     assert(pocs.is_dark(horizon='observe'))
     # Get into the sleeping state
+    pocs.next_state = 'parking'
     for state in ['parking', 'parked', 'housekeeping', 'sleeping']:
         assert(pocs.next_state == state)
         if state == 'sleeping':
@@ -100,26 +100,25 @@ def test_ready_scheduling(pocs):
     pocs.power_down()
 
 
-def test_ready_coarse_focusing_twilight_flat_fielding(pocs):
+def test_ready_coarse_focusing_twilight_flat_fielding_parking(pocs):
     '''
     Test if ready goes into twilight_flat_fielding after coarse_focusing in the morning.
     '''
-    pocs.config['simulator'] = [_ for _ in pocs.config['simulator'] if _ != 'night']
-    os.environ['POCSTIME'] = '2016-08-13 018:00:00'
+    os.environ['POCSTIME'] = '2016-08-13 19:30:00'
     pocs.initialize()
     pocs.get_ready()
+    pocs.config['simulator'] = [_ for _ in pocs.config['simulator'] if _ != 'night']
     assert(pocs.state == 'ready')
     assert(pocs.observatory.past_midnight())
     assert(not pocs.is_dark(horizon='observe'))
     assert(pocs.is_dark(horizon='focus'))
-    for state in ['coarse_focusing', 'twilight_flat_fielding']:
+    for state in ['coarse_focusing', 'twilight_flat_fielding', 'parking']:
         assert(pocs.next_state == state)
         if state == 'twilight_flat_fielding':
-            os.environ['POCSTIME'] = '2016-08-13 018:00:00'
+            os.environ['POCSTIME'] = '2016-08-13 20:00:00'
             assert(pocs.is_dark(horizon='flat'))
         pocs.goto_next_state()
         assert(pocs.state == state)
-    assert(pocs.next_state == 'twilight_flat_fielding')
     pocs.power_down()
 
 
