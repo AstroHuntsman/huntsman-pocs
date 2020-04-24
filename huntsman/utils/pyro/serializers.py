@@ -56,8 +56,23 @@ def dict_to_astropy(class_name, d):
     return ayaml.load(d["yaml_dump"])
 
 
+def value_error_to_dict(obj):
+    """Serialiser function for ValueError."""
+    return {"__class__": "ValueError",
+            "args": [str(arg) for arg in obj.args]}
+
+
+def dict_to_value_error(class_name, d):
+    """De-serialiser function for ValueError."""
+    return ValueError(*d["args"])
+
+
 SerializerBase.register_class_to_dict(u.Quantity, astropy_to_dict)
 SerializerBase.register_dict_to_class("astropy_yaml", dict_to_astropy)
 
 SerializerBase.register_class_to_dict(error.PanError, panerror_to_dict)
 SerializerBase.register_dict_to_class("PanError", dict_to_panerror)
+
+# These two are only here as a temporary workaround for some typos in POCS
+SerializerBase.register_class_to_dict(ValueError, value_error_to_dict)
+SerializerBase.register_dict_to_class("ValueError", dict_to_value_error)
