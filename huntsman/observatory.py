@@ -439,7 +439,7 @@ class HuntsmanObservatory(Observatory):
                     dark_obs,
                     fits_headers,
                     filename=filename,
-                    exptime=exptimes[cam_name][-1]
+                    exptime=exptimes[cam_name]
                 )
 
                 camera_events[cam_name] = {

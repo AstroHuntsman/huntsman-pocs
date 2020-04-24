@@ -3,9 +3,9 @@ def on_enter(event_data):
     """
     pocs = event_data.model
 
-    try:
+    if pocs.is_dark(horizon="flat") and pocs.is_weather_safe is False:
 
-        while pocs.is_dark(horizon="flat") and pocs.is_weather_safe is False:
+        try:
 
             pocs.say("It's time to take darks!")
 
@@ -35,8 +35,9 @@ def on_enter(event_data):
                     pocs.say("Starting dark fields")
                     pocs.observatory.take_dark_fields(camera_list=cameras,
                                                       exptimes_list=exptimes)
-
-    except Exception as e:
-        pocs.logger.warning("Conditions for dark fields are not met: {}".format(e))
+        except Exception as e:
+            pocs.logger.warning("Problem encountered while taking darks: {}".format(e))
+    else:
+        pocs.logger.info("Conditions for dark fields are not met")
 
     pocs.next_state = 'housekeeping'
