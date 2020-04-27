@@ -3,6 +3,7 @@ import pytest
 
 from huntsman.observatory import HuntsmanObservatory
 
+
 def test_bad_observatory(config):
     huntsman_pocs = os.environ['HUNTSMAN_POCS']
     try:
