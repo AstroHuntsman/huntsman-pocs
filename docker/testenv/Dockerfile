@@ -18,8 +18,7 @@ RUN apt-get update && \
     apt install -y openssh-client && \
 
     # Setup PANUSER
-    useradd -m -d /home/$PANUSER $PANUSER && \
-    echo $PANUSER:$PANUSER | chpasswd && \
+    useradd -m -d /home/$PANUSER $PANUSER -p $PANUSER && \
     chmod 1777 /tmp && \
     echo dialout plugdev netdev users input spi i2c gpio fuse | xargs -n 1 groupadd -f && \
     usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio,fuse,sudo huntsman && \
