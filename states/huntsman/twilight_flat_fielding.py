@@ -23,12 +23,12 @@ def get_cameras(pocs):
 def wait_for_twilight(pocs):
     '''
     Wait for twilight. Temporary solution until something better is found.
+
+    Twilight when Sun between flat and focus horizons.
     '''
     pocs.logger.debug('Waiting for twilight...')
     while pocs.is_safe(horizon='flat'):
-        # Twilight when Sun between flat and focus horizons.
-        twilight = not pocs.is_dark(horizon='focus')
-        if not twilight:
+        if pocs.is_dark(horizon='focus'):
             pocs.sleep(delay=pocs._safe_delay)
         else:
             return True
