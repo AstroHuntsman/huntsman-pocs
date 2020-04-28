@@ -110,12 +110,12 @@ class HuntsmanObservatory(Observatory):
             self.autoguider.connect()
 
     def past_midnight(self):
-        """Check if its morning, useful for going into either morning or evening flats."""
+        """Check if it's morning, useful for going into either morning or evening flats."""
 
         # Get the time of the nearest midnight to now
         midnight = self.observer.midnight(utils.current_time(), which='nearest')
 
-        # If the nearest midnight is in the past, its the morning...
+        # If the nearest midnight is in the past, it's the morning...
         return midnight < utils.current_time()
 
     def make_hdr_observation(self, observation=None):
