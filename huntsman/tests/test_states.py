@@ -77,6 +77,7 @@ def test_sleeping_error(pocs):
     assert(pocs.is_dark(horizon='observe'))
     # Get into the sleeping state
     pocs.next_state = 'parking'
+    pocs.should_retry = False
     for state in ['parking', 'parked', 'housekeeping', 'sleeping']:
         assert(pocs.next_state == state)
         if state == 'sleeping':
@@ -104,7 +105,7 @@ def test_ready_scheduling_1(pocs):
 def test_ready_scheduling_2(pocs):
     '''
     Test if ready goes into scheduling in the evening if focus is not required
-    and its not dark enough to start observing.
+    and its not dark enough to start observing but its dark enough to focus.
     '''
     os.environ['POCSTIME'] = '2016-08-13 08:40:00'
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
