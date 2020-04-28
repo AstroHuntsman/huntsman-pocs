@@ -3,7 +3,7 @@ State to handle the taking of calibration frames (evening and morning).
 """
 
 
-def _get_cameras(pocs):
+def get_cameras(pocs):
     '''
     Get lists of narrow and broad band cameras.
     '''
@@ -20,13 +20,18 @@ def _get_cameras(pocs):
     return narrow_band_cameras, broad_band_cameras
 
 
-def _wait_for_twilight(pocs):
+def wait_for_twilight(pocs):
     '''
     Wait for twilight. Temporary solution until something better is found.
     '''
     pocs.logger.debug('Waiting for twilight...')
-    while pocs.is_dark(horizon='focus') or not pocs.is_safe(horizon='flat'):
-        pocs.sleep(delay=pocs._safe_delay)
+    while pocs.is_weather_safe():
+        twilight = pocs.is_dark(horizon='flat') and not pocs.is_dark(horizon='focus')
+        if not twilight:
+            pocs.sleep(delay=pocs._safe_delay)
+        else:
+            return True
+    return False
 
 
 def on_enter(event_data):
@@ -40,27 +45,26 @@ def on_enter(event_data):
     pocs.next_state = 'parking'
 
     # Make sure its safe, dark and light enough for flats
-    _wait_for_twilight(pocs)
+    if not wait_for_twilight(pocs):
+        return
 
     if pocs.observatory.take_flat_fields:
-        try:
-            # Identify filter types
-            narrow_band_cameras, broad_band_cameras = _get_cameras(pocs)
 
-            # Specify which flats we are taking and in which order
-            if pocs.observatory.past_midnight():
-                flat_func = pocs.observatory.take_morning_flats
-                camera_lists = [broad_band_cameras, narrow_band_cameras]
-            else:
-                flat_func = pocs.observatory.take_evening_flats
-                camera_lists = [narrow_band_cameras, broad_band_cameras]
+        # Identify filter types
+        narrow_band_cameras, broad_band_cameras = get_cameras(pocs)
 
-            # Take flat fields
-            for camera_list in camera_lists:
-                flat_func(camera_list=camera_list)
+        # Specify which flats we are taking and in which order
+        if pocs.observatory.past_midnight():
+            flat_func = pocs.observatory.take_morning_flats
+            camera_lists = [broad_band_cameras, narrow_band_cameras]
+        else:
+            flat_func = pocs.observatory.take_evening_flats
+            camera_lists = [narrow_band_cameras, broad_band_cameras]
 
-        except Exception as err:
-            pocs.logger.warning(f'Exception during twilight flat fielding: {err}')
+        # Take flat fields
+        for camera_list in camera_lists:
+            flat_func(camera_list=camera_list)
+
     else:
         pocs.say('Skipping twilight flat fields.')
 

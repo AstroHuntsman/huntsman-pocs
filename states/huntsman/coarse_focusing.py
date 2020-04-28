@@ -12,15 +12,12 @@ def on_enter(event_data):
     pocs.next_state = 'parking'
 
     coarse_focus_timeout = pocs.config['focusing']['coarse']['timeout']
-    try:
-        # Do the autofocusing
-        pocs.say("Coarse focusing all cameras before starting observing for the night.")
-        autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
-        pocs.logger.debug("Waiting for coarse focus to finish.")
-        pocs.wait_for_events(list(autofocus_events.values()), coarse_focus_timeout)
 
-    except Exception as err:
-        pocs.logger.warning(f"Problem with coarse autofocus: {err}.")
+    # Do the autofocusing
+    pocs.say("Coarse focusing all cameras before starting observing for the night.")
+    autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
+    pocs.logger.debug("Waiting for coarse focus to finish.")
+    pocs.wait_for_events(list(autofocus_events.values()), coarse_focus_timeout)
 
     # Morning and not dark enough for observing...
     if pocs.observatory.past_midnight() and not pocs.is_dark(horizon='observe'):

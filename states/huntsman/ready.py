@@ -24,5 +24,10 @@ def on_enter(event_data):
         else:
             # We don't want to be waiting all day to take evening flats
             pocs.next_state = 'parking'
+
+    # Still evening, don't need to focus but too dark for twilight flats
+    elif pocs.is_dark(horizon='focus'):
+        pocs.next_state = 'scheduling'
+
     else:
         pocs.next_state = 'twilight_flat_fielding'
