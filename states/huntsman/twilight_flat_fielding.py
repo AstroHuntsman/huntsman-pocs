@@ -55,7 +55,7 @@ def on_enter(event_data):
         narrow_band_cameras, broad_band_cameras = get_cameras(pocs)
 
         # Specify which flats we are taking and in which order
-        if pocs.observatory.past_midnight():
+        if pocs.observatory.past_midnight:
             flat_func = pocs.observatory.take_morning_flats
             camera_lists = [broad_band_cameras, narrow_band_cameras]
         else:
@@ -70,7 +70,7 @@ def on_enter(event_data):
         pocs.say('Skipping twilight flat fields.')
 
     # Specify the next state
-    if pocs.observatory.past_midnight():
+    if pocs.observatory.past_midnight:
         pocs.next_state = 'parking'
     else:
         pocs.next_state = 'coarse_focusing'

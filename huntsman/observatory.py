@@ -97,6 +97,16 @@ class HuntsmanObservatory(Observatory):
         """
         return self._has_autoguider
 
+    @property
+    def past_midnight(self):
+        """Check if it's morning, useful for going into either morning or evening flats."""
+
+        # Get the time of the nearest midnight to now
+        midnight = self.observer.midnight(utils.current_time(), which='nearest')
+
+        # If the nearest midnight is in the past, it's the morning...
+        return midnight < utils.current_time()
+
 ##########################################################################
 # Methods
 ##########################################################################
@@ -108,15 +118,6 @@ class HuntsmanObservatory(Observatory):
         if self.has_autoguider:
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
-
-    def past_midnight(self):
-        """Check if it's morning, useful for going into either morning or evening flats."""
-
-        # Get the time of the nearest midnight to now
-        midnight = self.observer.midnight(utils.current_time(), which='nearest')
-
-        # If the nearest midnight is in the past, it's the morning...
-        return midnight < utils.current_time()
 
     def make_hdr_observation(self, observation=None):
         self.logger.debug("Getting exposure times from imager array")

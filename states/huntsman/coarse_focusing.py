@@ -20,7 +20,7 @@ def on_enter(event_data):
     pocs.wait_for_events(list(autofocus_events.values()), coarse_focus_timeout)
 
     # Morning and not dark enough for observing...
-    if pocs.observatory.past_midnight() and not pocs.is_dark(horizon='observe'):
+    if pocs.observatory.past_midnight and not pocs.is_dark(horizon='observe'):
         pocs.next_state = 'twilight_flat_fielding'
     else:
         pocs.next_state = 'scheduling'

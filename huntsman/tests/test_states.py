@@ -112,7 +112,7 @@ def test_ready_scheduling_2(pocs):
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     pocs.initialize()
     pocs.observatory.last_focus_time = utils.current_time()
-    assert(not pocs.observatory.past_midnight())
+    assert(not pocs.observatory.past_midnight)
     assert(not pocs.observatory.require_coarse_focus())
     assert(not pocs.is_dark(horizon='observe'))
     assert(pocs.is_dark(horizon='focus'))
@@ -145,7 +145,7 @@ def test_evening_setup(pocs):
     os.environ['POCSTIME'] = '2016-08-13 08:10:00'
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     assert(pocs.observatory.require_coarse_focus())
-    assert(not pocs.observatory.past_midnight())
+    assert(not pocs.observatory.past_midnight)
     assert(not pocs.is_dark(horizon='observe'))
     assert(not pocs.is_dark(horizon='focus'))
     assert(pocs.is_dark(horizon='flat'))
@@ -178,7 +178,7 @@ def test_morning_parking(pocs):
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     pocs.get_ready()
     assert(pocs.state == 'ready')
-    assert(pocs.observatory.past_midnight())
+    assert(pocs.observatory.past_midnight)
     assert(not pocs.observatory.require_coarse_focus())
     assert(not pocs.is_dark(horizon='observe'))
     assert(pocs.is_dark(horizon='focus'))
@@ -201,7 +201,7 @@ def test_morning_coarse_focusing_parking(pocs):
     pocs.get_ready()
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     assert(pocs.state == 'ready')
-    assert(pocs.observatory.past_midnight())
+    assert(pocs.observatory.past_midnight)
     assert(pocs.observatory.require_coarse_focus())
     assert(not pocs.is_dark(horizon='observe'))
     assert(pocs.is_dark(horizon='focus'))
