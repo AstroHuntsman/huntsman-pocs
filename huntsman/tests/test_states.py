@@ -106,7 +106,7 @@ def test_ready_scheduling_2(pocs):
     Test if ready goes into scheduling in the evening if focus is not required
     and its not dark enough to start observing.
     '''
-    os.environ['POCSTIME'] = '2016-08-13 19:30:00'
+    os.environ['POCSTIME'] = '2016-08-13 08:40:00'
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     pocs.initialize()
     pocs.observatory.last_focus_time = utils.current_time()
