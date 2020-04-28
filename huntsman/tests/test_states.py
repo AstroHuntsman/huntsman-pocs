@@ -76,8 +76,9 @@ def test_sleeping_error(pocs):
     # Make sure its dark
     assert(pocs.is_dark(horizon='observe'))
     # Get into the sleeping state
+    pocs._obs_run_retries = -1
+    assert(not pocs.should_retry)
     pocs.next_state = 'parking'
-    pocs.should_retry = False
     for state in ['parking', 'parked', 'housekeeping', 'sleeping']:
         assert(pocs.next_state == state)
         if state == 'sleeping':
