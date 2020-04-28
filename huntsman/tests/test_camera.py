@@ -12,6 +12,7 @@ import sys
 import shutil
 
 import astropy.units as u
+from astropy.io import fits
 
 import Pyro4
 import Pyro4.util
@@ -85,13 +86,13 @@ def test_get_temp(camera):
 
 def test_is_cooled(camera):
     cooled_camera = camera.is_cooled_camera
-    assert cooled_camera is not None
+    assert cooled_camera in {True, False}
 
 
 def test_set_target_temperature(camera):
     if camera.is_cooled_camera:
-        camera._target_temperature = 10 * u.Celsius
-        assert abs(camera._target_temperature - 10 * u.Celsius) < 0.5 * u.Celsius
+        camera.target_temperature = 10 * u.Celsius
+        assert abs(camera.target_temperature - 10 * u.Celsius) < 0.5 * u.Celsius
     else:
         pytest.skip("Camera {} doesn't implement temperature control".format(camera.name))
 
@@ -235,7 +236,7 @@ def test_exposure_scaling(camera, tmpdir):
     else:
         fits_path = str(tmpdir.join('test_exposure_scaling.fits'))
         camera.take_exposure(filename=fits_path, dark=True, blocking=True)
-        image_data, image_header = fits_utils.getdata(fits_path, header=True)
+        image_data, image_header = fits.getdata(fits_path, header=True)
         assert bit_depth == image_header['BITDEPTH'] * u.bit
         pad_bits = image_header['BITPIX'] - image_header['BITDEPTH']
         assert (image_data % 2**pad_bits).any()
@@ -305,13 +306,31 @@ def test_observation(camera, images_dir_control):
     Tests functionality of take_observation()
     """
     field = Field('Test Observation', '20h00m43.7135s +22d42m39.0645s')
-    observation = Observation(field, exptime=1.5 * u.second)
+    observation = Observation(field, exptime=1.5 * u.second, filter_name='deux')
     observation.seq_time = '19991231T235959'
     camera.take_observation(observation, headers={})
     time.sleep(7)
     observation_pattern = os.path.join(images_dir_control, 'fields', 'TestObservation',
                                        camera.uid, observation.seq_time, '*.fits*')
     assert len(glob.glob(observation_pattern)) == 1
+    for _ in glob.glob(observation_pattern):
+        os.remove(_)
+
+
+def test_observation_nofilter(camera, images_dir_control):
+    """
+    Tests functionality of take_observation()
+    """
+    field = Field('Test Observation', '20h00m43.7135s +22d42m39.0645s')
+    observation = Observation(field, exptime=1.5 * u.second, filter_name=None)
+    observation.seq_time = '19991231T235959'
+    camera.take_observation(observation, headers={})
+    time.sleep(7)
+    observation_pattern = os.path.join(images_dir_control, 'fields', 'TestObservation',
+                                       camera.uid, observation.seq_time, '*.fits*')
+    assert len(glob.glob(observation_pattern)) == 1
+    for _ in glob.glob(observation_pattern):
+        os.remove(_)
 
 
 def test_autofocus_coarse(camera, patterns):
@@ -382,7 +401,7 @@ def test_autofocus_keep_files(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-def test_autofocus_no_size(camera, caplog):
+def test_autofocus_no_size(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -390,16 +409,13 @@ def test_autofocus_no_size(camera, caplog):
     initial_focus = camera.focuser.position
     thumbnail_size = camera.focuser.autofocus_size
     camera.focuser.autofocus_size = None
-    camera.autofocus()
-    # Will be an ValueError raised, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_size = thumbnail_size
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_seconds(camera, caplog):
+def test_autofocus_no_seconds(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -407,16 +423,13 @@ def test_autofocus_no_seconds(camera, caplog):
     initial_focus = camera.focuser.position
     seconds = camera.focuser.autofocus_seconds
     camera.focuser.autofocus_seconds = None
-    camera.autofocus()
-    # Will be an ValueError raise, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_seconds = seconds
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_step(camera, caplog):
+def test_autofocus_no_step(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -424,16 +437,13 @@ def test_autofocus_no_step(camera, caplog):
     initial_focus = camera.focuser.position
     autofocus_step = camera.focuser.autofocus_step
     camera.focuser.autofocus_step = None
-    camera.autofocus()
-    # Will be an ValueError raise, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_step = autofocus_step
     assert camera.focuser.position == initial_focus
 
 
-def test_autofocus_no_range(camera, caplog):
+def test_autofocus_no_range(camera):
     try:
         initial_focus = camera.focuser.position
     except AttributeError:
@@ -441,11 +451,8 @@ def test_autofocus_no_range(camera, caplog):
     initial_focus = camera.focuser.position
     autofocus_range = camera.focuser.autofocus_range
     camera.focuser.autofocus_range = None
-    camera.autofocus()
-    # Will be an ValueError raise, but it's hidden in another thread.
-    # Should be an error in the logs, though.
-    time.sleep(0.1)
-    assert caplog.records[-1].levelname == "ERROR"
+    with pytest.raises(ValueError):
+        camera.autofocus()
     camera.focuser.autofocus_range = autofocus_range
     assert camera.focuser.position == initial_focus
 
@@ -456,10 +463,10 @@ def test_autofocus_camera_disconnected(camera):
     except AttributeError:
         pytest.skip("Camera does not have an exposed focuser attribute")
     initial_focus = camera.focuser.position
-    camera._connected = False
+    camera._proxy.set("_connected",  False)
     with pytest.raises(AssertionError):
         camera.autofocus()
-    camera._connected = True
+    camera._proxy.set("_connected", True)
     assert camera.focuser.position == initial_focus
 
 
@@ -469,10 +476,10 @@ def test_autofocus_focuser_disconnected(camera):
     except AttributeError:
         pytest.skip("Camera does not have an exposed focuser attribute")
     initial_focus = camera.focuser.position
-    camera.focuser._connected = False
+    camera._proxy.set("_connected", False, subcomponent="focuser")
     with pytest.raises(AssertionError):
         camera.autofocus()
-    camera.focuser._connected = True
+    camera._proxy.set("_connected", True, subcomponent="focuser")
     assert camera.focuser.position == initial_focus
 
 

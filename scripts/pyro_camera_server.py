@@ -16,10 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--ignore_local",
                         help="ignore pyro_camera_local.yaml config file",
                         action="store_true")
-    parser.add_argument("--key",
-                        help="override default config key",
-                        default=None)
     args = parser.parse_args()
 
     # Run the camera server
-    run_camera_server(args.ignore_local, key=args.key)
+    run_camera_server(ignore_local=args.ignore_local)

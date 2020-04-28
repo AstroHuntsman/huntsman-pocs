@@ -9,8 +9,7 @@ from huntsman.utils.config import load_device_config
 from huntsman.camera.pyro import CameraServer
 
 
-def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
-                      **kwargs):
+def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None, **kwargs):
     """
     Runs a Pyro camera server.
 
@@ -30,13 +29,11 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
     if logger is None:
         logger = DummyLogger()
 
-    # Mount the SSHFS images directory
-    mountpoint = sshfs.mount_images_dir(logger=logger)
-
-    Pyro4.config.SERVERTYPE = "multiplex"
-
     # Load the config file
     config = load_device_config(logger=logger, **kwargs)
+
+    # Mount the SSHFS images directory
+    mountpoint = sshfs.mount_images_dir(logger=logger, config=config)
 
     # Specify address
     host = config.get('host', None)
@@ -44,6 +41,8 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None,
         host = get_own_ip(verbose=True)
     # If port is not in config set to 0 so that Pyro will choose a random one.
     port = config.get('port', 0)
+
+    Pyro4.config.SERVERTYPE = "multiplex"
 
     with Pyro4.Daemon(host=host, port=port) as daemon:
         try:
