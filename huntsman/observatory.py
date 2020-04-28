@@ -54,8 +54,6 @@ class HuntsmanObservatory(Observatory):
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
 
-        self.take_flat_fields = take_flats
-
         # Attributes for focusing
         self.last_focus_time = None
         self._focus_frequency = config['focusing']['coarse']['frequency'] * \
