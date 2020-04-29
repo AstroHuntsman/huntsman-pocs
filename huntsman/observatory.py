@@ -232,19 +232,89 @@ class HuntsmanObservatory(Observatory):
 
         return result
 
-    def take_evening_flats(self,
-                           alt=None,
-                           az=None,
-                           min_counts=5000,
-                           max_counts=15000,
-                           bias=1000,
-                           max_exptime=60.,
-                           camera_list=None,
-                           target_adu_percentage=0.5,
-                           max_num_exposures=10,
-                           *args, **kwargs
-                           ):
-        """Take flat fields
+    def take_flat_fields(self, camera_names=None, **kwargs):
+        """
+        Take flat fields for each camera in each filter, respecting priority.
+        """
+        if camera_names is None:
+            camera_names = list(self.cameras.keys())
+        cameras = [self.cameras[cam_name] for cam_name in camera_names]
+
+        # Build filter priority queue for each camera
+        priority_queue = {cam_name: [] for cam_name in camera_names}
+        for cam_name, camera in zip(camera_names, cameras):
+            if not camera.has_filterwheel:
+                priority_queue[cam_name].append([0, None])
+            else:
+                for filter_name in camera.filterwheel.filter_names:
+                    priority = self.config['filterwheel']['priority'][filter_name]
+                    priority_queue[cam_name].append([priority, filter_name])
+
+        # Order the queue by priority
+        for cam_name in camera_names:
+            priority_queue[cam_name] = sorted(priority_queue[cam_name])
+
+            # If its the morning, priority is reversed
+            if self.past_midnight:
+                priority_queue[cam_name] = priority_queue[cam_name][::-1]
+
+        # Take flats for each camera & filter in order of filter priority
+        while True:
+            _camera_names = []
+            for cam_name, camera in zip(camera_names, cameras):
+                try:
+                    filter_name = priority_queue[cam_name].pop(0)[1]
+                except IndexError:
+                    continue
+                # Move the filterwheel
+                if filter_name is not None:
+                    camera.filterwheel.move_to(filter_name)
+                _camera_names.append(cam_name)
+            if len(_camera_names) == 0:
+                break
+            # Take the flats
+            self.take_autoexposure_flats(_camera_names, **kwargs)
+
+    def take_flat_observations(self, flat_obs, camera_names, exptimes,
+                               max_exptime, fits_headers, dark=False):
+        """
+
+        """
+        image_dir = self.config['directories']['images']
+        imtype = 'dark' if dark else 'flat'
+        camera_events = {}
+
+        self.logger.debug(f'Slewing to {imtype}-field coords: {flat_obs.field}.')
+        self.mount.set_target_coordinates(flat_obs.field)
+        self.mount.slew_to_target()
+        self.status()  # Seems to help with reading coords
+
+        # Loop over cameras...
+        for cam_name in camera_names:
+            camera = self.cameras[cam_name]
+
+            # Define filename for flat fields
+            filename = (f'{image_dir}/flats/{camera.uid}/{flat_obs.seq_time}'
+                        f'/{imtype}_{flat_obs.current_exp_num:02d}.{camera.file_extension}')
+
+            # Take picture and get event
+            if exptimes[cam_name].value < max_exptime:
+                camera_event = camera.take_observation(
+                      flat_obs, fits_headers, filename=filename, exptime=exptimes[cam_name])
+
+                camera_events[cam_name] = {'event': camera_event, 'filename': filename}
+
+        # Block until done exposing on all cameras
+        while not all([info['event'].is_set() for info in camera_events.values()]):
+            self.logger.debug('Waiting for flat-field image...')
+            time.sleep(1)
+
+        return camera_events
+
+    def take_autoexposure_flats(self, camera_names, alt=None, az=None, min_counts=5000, max_counts=15000,
+                                bias=1000, max_exptime=60., target_adu_percentage=0.5,
+                                max_num_exposures=10, *args, **kwargs):
+        """Take flat fields.
 
         Args:
             alt (float, optional): Altitude for flats
@@ -263,56 +333,24 @@ class HuntsmanObservatory(Observatory):
 
         """
         target_adu = target_adu_percentage * (min_counts + max_counts)
+        exptimes = {cam_name: [1. * u.second] for cam_name in camera_names}
 
-        image_dir = self.config['directories']['images']
-
+        # Create the observation object
         flat_obs = self._create_flat_field_observation(alt=alt, az=az)
-        exptimes = {cam_name: [1. * u.second] for cam_name in camera_list}
 
-        # Loop until conditions are met for flat-fielding
+        # Loop until conditions are met to finish flat-fielding
         while True:
-            self.logger.debug("Slewing to flat-field coords: {}".format(flat_obs.field))
-            self.mount.set_target_coordinates(flat_obs.field)
-            self.mount.slew_to_target()
-            self.status()  # Seems to help with reading coords
 
             fits_headers = self.get_standard_headers(observation=flat_obs)
 
+            # Use a common start time for all cameras
             start_time = utils.current_time()
-            fits_headers['start_time'] = utils.flatten_time(
-                start_time)  # Common start time for cameras
+            fits_headers['start_time'] = utils.flatten_time(start_time)
 
-            camera_events = dict()
-
-            # Take the observations
-            for cam_name in camera_list:
-
-                camera = self.cameras[cam_name]
-
-                filename = "{}/flats/{}/{}/{}.{}".format(
-                    image_dir,
-                    camera.uid,
-                    flat_obs.seq_time,
-                    'flat_{:02d}'.format(flat_obs.current_exp_num), camera.file_extension)
-
-                # Take picture and get event
-                if exptimes[cam_name][-1].value < max_exptime:
-                    camera_event = camera.take_observation(
-                        flat_obs,
-                        fits_headers,
-                        filename=filename,
-                        exptime=exptimes[cam_name][-1]
-                    )
-
-                    camera_events[cam_name] = {
-                        'event': camera_event,
-                        'filename': filename,
-                    }
-
-            # Block until done exposing on all cameras
-            while not all([info['event'].is_set() for info in camera_events.values()]):
-                self.logger.debug('Waiting for flat-field image')
-                time.sleep(1)
+            # Take the flat field observations (blocking)
+            _exptimes = [exptimes[cam_name][-1] for cam_name in camera_names]
+            camera_events = self.take_flat_observations(
+                        flat_obs, camera_names, _exptimes, max_exptime, fits_headers)
 
             # Check the counts for each image
             is_saturated = False
@@ -321,113 +359,66 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Checking counts for {}".format(img_file))
 
                 # Unpack fits if compressed
-                if not os.path.exists(img_file) and \
-                        os.path.exists(img_file.replace('.fits', '.fits.fz')):
+                if not os.path.exists(img_file) and os.path.exists(
+                                img_file.replace('.fits', '.fits.fz')):
                     fits_utils.fpack(img_file.replace('.fits', '.fits.fz'), unpack=True)
 
+                # Calculate average counts per pixel
                 data = fits.getdata(img_file)
+                mean_counts, _, _ = stats.sigma_clipped_stats(data)
+                mean_counts -= bias
+                self.logger.debug("Counts: {}".format(mean_counts))
+                if (mean_counts < min_counts) or (mean_counts > max_counts):
+                    self.logger.debug("Counts outside min/max range, should be discarded.")
 
-                mean, median, stddev = stats.sigma_clipped_stats(data)
-
-                counts = mean - bias
-
-                # This is in the original DragonFly code so copying
-                if counts <= 0:
-                    counts = 10
-
-                self.logger.debug("Counts: {}".format(counts))
-
-                if counts < min_counts or counts > max_counts:
-                    self.logger.debug("Counts outside min/max range, should be discarded")
-
-                # If we are saturating then wait a bit and redo
-                if counts >= max_counts:
+                # Check if camera is saturated
+                if mean_counts >= max_counts:
                     is_saturated = True
 
                 elapsed_time = (utils.current_time() - start_time).sec
                 self.logger.debug("Elapsed time: {}".format(elapsed_time))
 
                 # Get suggested exposure time
-                exptime = int(exptimes[cam_name][-1].value * (target_adu / counts) *
+                exptime = int(exptimes[cam_name][-1].value * (target_adu / mean_counts) *
                               (2.0 ** (elapsed_time / 180.0)) + 0.5)
-                if exptime < 1:
-                    exptime = 1
+                exptime = max(1, exptime)
                 self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
                 exptimes[cam_name].append(exptime * u.second)
 
-            self.logger.debug("Checking for long exposures")
             # Stop flats if any time is greater than max
-            if all([t[-1].value >= max_exptime for t in exptimes.values()]):
-                self.logger.debug("Exposure times greater than max, stopping flat fields")
+            if any([t[-1].value >= max_exptime for t in exptimes.values()]):
+                self.logger.debug("Exposure times greater than max, stopping flat fields.")
                 break
 
             # Stop flats if we are going on too long
-            self.logger.debug("Checking for too many exposures")
             if any([len(t) >= max_num_exposures for t in exptimes.values()]):
-                self.logger.debug("Too many flats, quitting")
+                self.logger.debug("Too many flats, quitting.")
                 break
 
-            self.logger.debug("Checking for saturation")
+            # Handle saturated cameras
             if is_saturated and exptimes[cam_name][-1].value < 2:
-                self.logger.debug(
-                    "Saturated with short exposure, waiting 30 seconds before next exposure")
-                max_num_exposures += 1
-                time.sleep(30)
+                if self.past_midnight:
+                    self.logger.debug('Saturated with short exposure. Stopping flat fields.')
+                    break
+                else:
+                    self.logger.debug('Saturated with short exposure. Waiting 30 seconds'
+                                      'before next exposure.')
+                    max_num_exposures += 1
+                    time.sleep(30)
 
         # Add a bias exposure
-        for cam_name in camera_list:
+        for cam_name in camera_names:
             exptimes[cam_name].append(0 * u.second)
 
-        # Record how many exposures we took
-        num_exposures = flat_obs.current_exp_num
+        # Take darks for each exposure we took
+        for i in range(flat_obs.current_exp_num):
+            self.logger.debug('Slewing to dark-field coords: {flat_obs.field}.')
+            self.slew_to_field(self, flat_obs.field)
 
-        # Take darks (just last ten)
-        for i in range(num_exposures):
-            self.logger.debug("Slewing to dark-field coords: {}".format(flat_obs.field))
-            self.mount.set_target_coordinates(flat_obs.field)
-            self.mount.slew_to_target()
-            self.status()
+            _exptimes = [exptimes[cam_name][i] for cam_name in camera_names]
+            camera_events = self.take_flat_observations(
+                    flat_obs, camera_names, _exptimes, max_exptime, fits_headers, dark=True)
 
-            for cam_name in camera_list:
-
-                try:
-                    exptime = exptimes[cam_name][i]
-                except KeyError:
-                    break
-
-                camera = self.cameras[cam_name]
-
-                filename = "{}/flats/{}/{}/{}.{}".format(
-                    image_dir,
-                    camera.uid,
-                    flat_obs.seq_time,
-                    'dark_{:02d}'.format(flat_obs.current_exp_num),
-                    camera.file_extension)
-
-                # Take picture and wait for result
-                camera_event = camera.take_observation(
-                    flat_obs,
-                    fits_headers,
-                    filename=filename,
-                    exptime=exptime,
-                    dark=True
-                )
-
-                camera_events[cam_name] = {
-                    'event': camera_event,
-                    'filename': filename,
-                }
-
-            # Will block here until done exposing on all cameras
-            while not all([info['event'].is_set() for info in camera_events.values()]):
-                self.logger.debug('Waiting for dark-field image')
-                time.sleep(1)
-
-    def take_morning_flats(*args, **kwargs):
-        '''
-
-        '''
-        raise NotImplementedError('Morning flats not implemented yet.')
 
 ##########################################################################
 # Private Methods
