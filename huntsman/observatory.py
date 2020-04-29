@@ -278,7 +278,8 @@ class HuntsmanObservatory(Observatory):
     def take_flat_observations(self, flat_obs, camera_names, exptimes,
                                max_exptime, fits_headers, dark=False):
         """
-
+        Slew to flat field, take exposures and wait for them to complete.
+        Returns a list of camera events for each camera.
         """
         image_dir = self.config['directories']['images']
         imtype = 'dark' if dark else 'flat'
@@ -301,7 +302,6 @@ class HuntsmanObservatory(Observatory):
             if exptimes[cam_name].value < max_exptime:
                 camera_event = camera.take_observation(
                       flat_obs, fits_headers, filename=filename, exptime=exptimes[cam_name])
-
                 camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
@@ -359,8 +359,8 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug("Checking counts for {}".format(img_file))
 
                 # Unpack fits if compressed
-                if not os.path.exists(img_file) and os.path.exists(
-                                img_file.replace('.fits', '.fits.fz')):
+                if not os.path.exists(img_file) and \
+                        os.path.exists(img_file.replace('.fits', '.fits.fz')):
                     fits_utils.fpack(img_file.replace('.fits', '.fits.fz'), unpack=True)
 
                 # Calculate average counts per pixel
@@ -412,9 +412,6 @@ class HuntsmanObservatory(Observatory):
 
         # Take darks for each exposure we took
         for i in range(flat_obs.current_exp_num):
-            self.logger.debug('Slewing to dark-field coords: {flat_obs.field}.')
-            self.slew_to_field(self, flat_obs.field)
-
             _exptimes = [exptimes[cam_name][i] for cam_name in camera_names]
             camera_events = self.take_flat_observations(
                     flat_obs, camera_names, _exptimes, max_exptime, fits_headers, dark=True)
