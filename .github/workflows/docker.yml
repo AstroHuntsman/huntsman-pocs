@@ -37,3 +37,11 @@ jobs:
             --platform linux/arm64 \
             --tag huntsmanarray/camera:latest \
             --output "type=image,push=true" .
+      -
+        name: Build and push testenv
+        working-directory: ./docker/testenv
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag huntsmanarray/testenv:latest \
+            --output "type=image,push=true" .
