@@ -57,14 +57,13 @@ def test_parking_ready(pocs):
     pocs.initialize()
     pocs.get_ready()
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
-    os.environ['POCSTIME'] = '2016-08-13 23:00:00'
+    os.environ['POCSTIME'] = '2020-04-29 23:00:00'
     assert not pocs.is_dark(horizon='observe')
     pocs.next_state = 'parking'
     for state in ['parking', 'parked', 'housekeeping', 'sleeping', 'ready']:
         assert pocs.next_state == state
         pocs.goto_next_state()
         assert pocs.state == state
-    pocs.power_down()
 
 
 def test_sleeping_error(pocs):
@@ -86,7 +85,6 @@ def test_sleeping_error(pocs):
                 pocs.goto_next_state()
         else:
             pocs.goto_next_state()
-    pocs.power_down()
 
 
 def test_ready_scheduling_1(pocs):
@@ -100,7 +98,6 @@ def test_ready_scheduling_1(pocs):
     assert not pocs.observatory.require_coarse_focus()
     assert pocs.is_dark(horizon='observe')
     assert pocs.next_state == 'scheduling'
-    pocs.power_down()
 
 
 def test_ready_scheduling_2(pocs):
@@ -108,7 +105,7 @@ def test_ready_scheduling_2(pocs):
     Test if ready goes into scheduling in the evening if focus is not required
     and its not dark enough to start observing but its dark enough to focus.
     '''
-    os.environ['POCSTIME'] = '2016-08-13 08:40:00'
+    os.environ['POCSTIME'] = '2020-04-29 08:40:00'
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     pocs.initialize()
     pocs.observatory.last_focus_time = utils.current_time()
@@ -119,7 +116,6 @@ def test_ready_scheduling_2(pocs):
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.next_state == 'scheduling'
-    pocs.power_down()
 
 
 def test_ready_coarse_focusing_scheduling(pocs):
@@ -134,7 +130,6 @@ def test_ready_coarse_focusing_scheduling(pocs):
     for state in ['coarse_focusing', 'scheduling']:
         assert pocs.next_state == state
         pocs.goto_next_state()
-    pocs.power_down()
 
 
 def test_evening_setup(pocs):
@@ -142,7 +137,7 @@ def test_evening_setup(pocs):
     Test the states in the evening before observing starts.
     '''
     # Preconditions to ready state
-    os.environ['POCSTIME'] = '2016-08-13 08:10:00'
+    os.environ['POCSTIME'] = '2020-04-29 08:10:00'
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     assert pocs.observatory.require_coarse_focus()
     assert not pocs.observatory.past_midnight
@@ -160,19 +155,18 @@ def test_evening_setup(pocs):
             assert not pocs.is_dark(horizon='focus')
             assert pocs.is_dark(horizon='flat')
         elif state == 'coarse_focusing':
-            os.environ['POCSTIME'] = '2016-08-13 08:40:00'
+            os.environ['POCSTIME'] = '2020-04-29 08:40:00'
             assert pocs.is_dark(horizon='focus')
             assert not pocs.is_dark(horizon='observe')
         pocs.goto_next_state()
         assert pocs.state == state
-    pocs.power_down()
 
 
 def test_morning_parking(pocs):
     '''
     Test morning transition between ready, flat fielding and parking.
     '''
-    os.environ['POCSTIME'] = '2016-08-13 19:30:00'
+    os.environ['POCSTIME'] = '2020-04-29 19:30:00'
     pocs.initialize()
     pocs.observatory.last_focus_time = utils.current_time()
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
@@ -185,18 +179,17 @@ def test_morning_parking(pocs):
     for state in ['twilight_flat_fielding', 'parking']:
         assert pocs.next_state == state
         if state == 'twilight_flat_fielding':
-            os.environ['POCSTIME'] = '2016-08-13 20:00:00'
+            os.environ['POCSTIME'] = '2020-04-29 20:00:00'
             assert pocs.is_dark(horizon='flat')
         pocs.goto_next_state()
         assert pocs.state == state
-    pocs.power_down()
 
 
 def test_morning_coarse_focusing_parking(pocs):
     '''
     Test morning transition between coarse focusing, flat fielding and parking.
     '''
-    os.environ['POCSTIME'] = '2016-08-13 19:30:00'
+    os.environ['POCSTIME'] = '2020-04-29 19:30:00'
     pocs.initialize()
     pocs.get_ready()
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
@@ -208,8 +201,7 @@ def test_morning_coarse_focusing_parking(pocs):
     for state in ['coarse_focusing', 'twilight_flat_fielding', 'parking']:
         assert pocs.next_state == state
         if state == 'twilight_flat_fielding':
-            os.environ['POCSTIME'] = '2016-08-13 20:00:00'
+            os.environ['POCSTIME'] = '2020-04-29 20:00:00'
             assert pocs.is_dark(horizon='flat')
         pocs.goto_next_state()
         assert pocs.state == state
-    pocs.power_down()
