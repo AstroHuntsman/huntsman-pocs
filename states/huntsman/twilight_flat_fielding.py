@@ -49,23 +49,8 @@ def on_enter(event_data):
     if not wait_for_twilight(pocs):
         return
 
-    if pocs.observatory.take_flat_fields:
-
-        # Identify filter types
-        narrow_band_cameras, broad_band_cameras = get_cameras(pocs)
-
-        # Specify which flats we are taking and in which order
-        if pocs.observatory.past_midnight:
-            flat_func = pocs.observatory.take_morning_flats
-            camera_lists = [broad_band_cameras, narrow_band_cameras]
-        else:
-            flat_func = pocs.observatory.take_evening_flats
-            camera_lists = [narrow_band_cameras, broad_band_cameras]
-
-        # Take flat fields
-        for camera_list in camera_lists:
-            flat_func(camera_list=camera_list)
-
+    if pocs.observatory.require_flat_fields:
+        pocs.observatory.take_flat_fields()
     else:
         pocs.logger.debug('Skipping twilight flat fields.')
 
