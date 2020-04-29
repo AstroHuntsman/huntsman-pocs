@@ -51,6 +51,12 @@ mount:
     driver: bisque
     model: 45
     template_dir: resources/bisque
+filterwheel:
+  priority:
+    - one: 1
+    - deux: 2
+    - drei: 3
+    - quattro: 4
 pointing:
     exptime: 30
     max_iterations: 3
