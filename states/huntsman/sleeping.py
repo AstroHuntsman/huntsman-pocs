@@ -5,10 +5,7 @@ def on_enter(event_data):
 
     # If it is dark and safe we shouldn't be in sleeping state
     if pocs.is_safe(horizon='focus'):
-        msg = "Weather is good and it is dark. Something must have gone wrong."
-        pocs.say(msg)
-        if not pocs.should_retry:
-            pocs.stop_states()
-            raise RuntimeError(msg)
+        pocs.say("Weather is good and it is dark. Something must have gone wrong.")
+        pocs.stop_states()
     else:
         pocs.say("Another successful night!")

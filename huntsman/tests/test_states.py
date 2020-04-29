@@ -66,25 +66,21 @@ def test_parking_ready(pocs):
         assert pocs.state == state
 
 
-def test_sleeping_error(pocs):
+def test_sleeping_stop(pocs):
     '''
-    Test if ready transitions to sleeping and then errors if still dark.
+    Test if ready transitions to sleeping and then stops if still dark.
     '''
     pocs.initialize()
     pocs.get_ready()
     # Make sure its dark
     assert pocs.is_dark(horizon='observe')
     # Get into the sleeping state
-    pocs._obs_run_retries = -1
-    assert not pocs.should_retry
     pocs.next_state = 'parking'
     for state in ['parking', 'parked', 'housekeeping', 'sleeping']:
         assert pocs.next_state == state
+        pocs.goto_next_state()
         if state == 'sleeping':
-            with pytest.raises(RuntimeError):
-                pocs.goto_next_state()
-        else:
-            pocs.goto_next_state()
+            assert pocs._do_states is False
 
 
 def test_ready_scheduling_1(pocs):

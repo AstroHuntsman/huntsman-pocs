@@ -1,5 +1,5 @@
 """
-State to handle the coarse focusing at the start of the night.
+State to handle coarse focusing before observing or at the end of the night.
 """
 
 
@@ -14,7 +14,7 @@ def on_enter(event_data):
     coarse_focus_timeout = pocs.config['focusing']['coarse']['timeout']
 
     # Do the autofocusing
-    pocs.say("Coarse focusing all cameras before starting observing for the night.")
+    pocs.say("Coarse focusing all cameras.")
     autofocus_events = pocs.observatory.autofocus_cameras(coarse=True)
     pocs.logger.debug("Waiting for coarse focus to finish.")
     pocs.wait_for_events(list(autofocus_events.values()), coarse_focus_timeout)

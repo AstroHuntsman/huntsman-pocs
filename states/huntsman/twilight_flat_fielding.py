@@ -45,7 +45,7 @@ def on_enter(event_data):
     pocs = event_data.model
     pocs.next_state = 'parking'
 
-    # Make sure its safe, dark and light enough for flats
+    # Make sure it's safe, dark and light enough for flats
     if not wait_for_twilight(pocs):
         return
 
