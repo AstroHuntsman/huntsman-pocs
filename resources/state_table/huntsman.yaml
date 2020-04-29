@@ -15,8 +15,10 @@ states:
         tags: always_safe
     scheduling:
         tags: always_safe
-    calibrating:
+    twilight_flat_fielding:
         horizon: flat
+    coarse_focusing:
+        horizon: focus
     focusing:
         horizon: focus
     preparing:
@@ -28,11 +30,12 @@ transitions:
     -
         source:
             - ready
-            - calibrating
+            - twilight_flat_fielding
             - scheduling
             - preparing
             - slewing
             - focusing
+            - coarse_focusing
             - observing
             - analyzing
             - dithering
@@ -62,16 +65,28 @@ transitions:
         conditions: mount_is_initialized
     -
         source: ready
-        dest: calibrating
-        trigger: calibrate
+        dest: twilight_flat_fielding
+        trigger: take_twilight_flats
     -
         source: ready
         dest: scheduling
         trigger: schedule
     -
-        source: calibrating
+        source: ready
+        dest: coarse_focusing
+        trigger: autofocus_coarse
+    -
+        source: coarse_focusing
         dest: scheduling
         trigger: schedule
+    -
+        source: coarse_focusing
+        dest: twilight_flat_fielding
+        trigger: take_twilight_flats
+    -
+        source: twilight_flat_fielding
+        dest: coarse_focusing
+        trigger: autofocus_coarse
     -
         source: scheduling
         dest: preparing
