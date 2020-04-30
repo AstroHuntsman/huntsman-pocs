@@ -243,7 +243,7 @@ class HuntsmanObservatory(Observatory):
         # Build filter priority queue for each camera
         priority_queue = {cam_name: [] for cam_name in camera_names}
         for cam_name, camera in zip(camera_names, cameras):
-            if not camera.has_filterwheel:
+            if camera.filterwheel is None:
                 priority_queue[cam_name].append([0, None])
             else:
                 for filter_name in camera.filterwheel.filter_names:
@@ -261,22 +261,20 @@ class HuntsmanObservatory(Observatory):
         # Take flats for each camera & filter in order of filter priority
         while True:
             _camera_names = []
+            _filter_names = {}
             for cam_name, camera in zip(camera_names, cameras):
                 try:
-                    filter_name = priority_queue[cam_name].pop(0)[1]
+                    _filter_names[cam_name] = priority_queue[cam_name].pop(0)[1]
                 except IndexError:
                     continue
-                # Move the filterwheel
-                if filter_name is not None:
-                    camera.filterwheel.move_to(filter_name)
                 _camera_names.append(cam_name)
             if len(_camera_names) == 0:
                 break
             # Take the flats
-            self.take_autoexposure_flats(_camera_names, **kwargs)
+            self._take_autoexposure_flats(_camera_names, _filter_names, **kwargs)
 
-    def take_flat_observations(self, flat_obs, camera_names, exptimes,
-                               max_exptime, fits_headers, dark=False):
+    def _take_flat_observations(self, flat_obs, camera_names, exptimes,
+                                max_exptime, fits_headers, dark=False):
         """
         Slew to flat field, take exposures and wait for them to complete.
         Returns a list of camera events for each camera.
@@ -301,7 +299,7 @@ class HuntsmanObservatory(Observatory):
             # Take picture and get event
             if exptimes[cam_name].value < max_exptime:
                 camera_event = camera.take_observation(
-                      flat_obs, fits_headers, filename=filename, exptime=exptimes[cam_name])
+                      flat_obs, fits_headers, filename=filename, exptime=exptimes[cam_name].to(u.second).value)
                 camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
@@ -311,9 +309,10 @@ class HuntsmanObservatory(Observatory):
 
         return camera_events
 
-    def take_autoexposure_flats(self, camera_names, alt=None, az=None, min_counts=5000, max_counts=15000,
+    def _take_autoexposure_flats(self, camera_names, filter_names, alt=None,
+                                az=None, min_counts=5000, max_counts=15000,
                                 bias=1000, max_exptime=60., target_adu_percentage=0.5,
-                                max_num_exposures=10, *args, **kwargs):
+                                max_num_exposures=10, filter_name=None, *args, **kwargs):
         """Take flat fields.
 
         Args:
@@ -336,7 +335,7 @@ class HuntsmanObservatory(Observatory):
         exptimes = {cam_name: [1. * u.second] for cam_name in camera_names}
 
         # Create the observation object
-        flat_obs = self._create_flat_field_observation(alt=alt, az=az)
+        flat_obs = self._create_flat_field_observation(alt=alt, az=az, filter_name=filter_name)
 
         # Loop until conditions are met to finish flat-fielding
         while True:
@@ -348,8 +347,8 @@ class HuntsmanObservatory(Observatory):
             fits_headers['start_time'] = utils.flatten_time(start_time)
 
             # Take the flat field observations (blocking)
-            _exptimes = [exptimes[cam_name][-1] for cam_name in camera_names]
-            camera_events = self.take_flat_observations(
+            _exptimes = {cam_name: exptimes[cam_name][-1] for cam_name in camera_names}
+            camera_events = self._take_flat_observations(
                         flat_obs, camera_names, _exptimes, max_exptime, fits_headers)
 
             # Check the counts for each image
@@ -412,8 +411,8 @@ class HuntsmanObservatory(Observatory):
 
         # Take darks for each exposure we took
         for i in range(flat_obs.current_exp_num):
-            _exptimes = [exptimes[cam_name][i] for cam_name in camera_names]
-            camera_events = self.take_flat_observations(
+            _exptimes = {cam_name: exptimes[cam_name][-1] for cam_name in camera_names}
+            camera_events = self._take_flat_observations(
                     flat_obs, camera_names, _exptimes, max_exptime, fits_headers, dark=True)
 
 
