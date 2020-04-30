@@ -449,11 +449,12 @@ class HuntsmanObservatory(Observatory):
                 exptimes[cam_name].append(exptime * u.second)
 
             # Stop flats if any time is greater than max
-            if any([t[-1].value >= max_exptime for t in exptimes.values()]):
+            if any([t[-1].value >= max_exptime for t in exptimes.values()]) & \
+                    (not self.past_midnight):
                 self.logger.debug("Exposure times greater than max, stopping flat fields.")
                 break
 
-            # Stop flats if we are going on too long
+            # Stop flats if we have taken too many.
             if any([len(t) >= max_num_exposures for t in exptimes.values()]):
                 self.logger.debug("Too many flats, quitting.")
                 break
@@ -480,7 +481,7 @@ class HuntsmanObservatory(Observatory):
                     camera_names, observations, _exptimes, fits_headers, dark=True)
 
     def _take_flat_fields(self, camera_names, observations, exptimes,
-                                fits_headers, dark=False):
+                          fits_headers, dark=False):
         """
         Slew to flat field, take exposures and wait for them to complete.
         Returns a list of camera events for each camera.
