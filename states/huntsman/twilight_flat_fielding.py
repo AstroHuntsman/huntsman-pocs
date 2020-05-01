@@ -3,23 +3,6 @@ State to handle the taking of calibration frames (evening and morning).
 """
 
 
-def get_cameras(pocs):
-    '''
-    Get lists of narrow and broad band cameras.
-    '''
-    narrow_band_cameras = list()
-    broad_band_cameras = list()
-    for cam_name, cam in pocs.observatory.cameras.items():
-
-        # This is a hack. There should be a narrow property in the config...
-        if cam.filter_type.lower().startswith('ha'):
-            narrow_band_cameras.append(cam_name)
-        else:
-            broad_band_cameras.append(cam_name)
-
-    return narrow_band_cameras, broad_band_cameras
-
-
 def wait_for_twilight(pocs):
     '''
     Wait for twilight. Temporary solution until something better is found.

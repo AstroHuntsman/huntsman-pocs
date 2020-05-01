@@ -1,8 +1,6 @@
 import os
 import sys
 import time
-from functools import partial
-from multiprocessing.pool import ThreadPool
 
 from astropy import units as u
 from astropy.io import fits
@@ -237,48 +235,59 @@ class HuntsmanObservatory(Observatory):
 
     def take_flat_fields(self, camera_names=None, **kwargs):
         """
-        Take flat fields for each camera in each filter, respecting priority.
+        Take flat fields for each camera in each filter, respecting filter priority.
+
+        Args:
+            camera_names (list, optional): List of camera names to take flats with.
+            alt (float, optional): Altitude for flats.
+            az (float, optional): Azimuth for flats.
+            min_counts (int, optional): Minimum ADU count.
+            max_counts (int, optional): Maximum ADU count.
+            bias (int, optional): Default bias for the cameras.
+            max_exptime (float, optional): Maximum exposure time before stopping.
+            camera_list (list, optional): List of cameras to use for flat-fielding.
+            target_adu_percentage (float, optional): Exposure time will be adjust so
+                that counts are close to: target * (`min_counts` + `max_counts`). Defaults
+                to 0.5.
+            max_num_exposures (int, optional): Maximum number of flats to take.
         """
         if camera_names is None:
             camera_names = list(self.cameras.keys())
         cameras = [self.cameras[cam_name] for cam_name in camera_names]
 
-        # Build filter priority queue for each camera
-        priority_queue = {cam_name: [] for cam_name in camera_names}
+        # Create filter queue for each camera using filter priority
+        filter_names = {}
         for cam_name, camera in zip(camera_names, cameras):
+
+            # Get priorities for each filter in the camera
+            priority_queue = []
             if camera.filterwheel is None:
                 priority_queue[cam_name].append([0, None])
             else:
                 for filter_name in camera.filterwheel.filter_names:
                     priority = self.config['filterwheel']['priority'][filter_name]
-                    priority_queue[cam_name].append([priority, filter_name])
+                    priority_queue.append([priority, filter_name])
 
-        # Order the queue by priority
-        for cam_name in camera_names:
-            priority_queue[cam_name] = sorted(priority_queue[cam_name])
+            # Order filter names by priority
+            filter_names[cam_name] = [p[1] for p in sorted(priority_queue)]
 
             # If its the morning, priority is reversed
             if self.past_midnight:
-                priority_queue[cam_name] = priority_queue[cam_name][::-1]
-
-        # Extract the ordered filter names for each camera
-        filter_names = {}
-        for cam_name in camera_names:
-            filter_names[cam_name] = [p[1] for p in priority_queue[cam_name]]
+                filter_names[cam_name] = filter_names[cam_name][::-1]
 
         # Take flats for each camera & filter in order of filter priority
         while True:
-            _camera_names = []
-            _filter_names = {}
+            camera_list = []
+            filter_dict = {}
             for cam_name in camera_names:
                 try:
-                    _filter_names[cam_name] = filter_names[cam_name].pop(0)
+                    filter_dict[cam_name] = filter_names[cam_name].pop(0)
                 except IndexError:
                     continue
-                _camera_names.append(cam_name)
-            if len(_camera_names) == 0:
+                camera_list.append(cam_name)
+            if len(camera_list) == 0:
                 break
-            self._take_autoexposure_flats(_camera_names, _filter_names, **kwargs)
+            self._take_autoexposure_flats(camera_list, filter_dict, **kwargs)
 
 ##########################################################################
 # Private Methods
@@ -367,24 +376,13 @@ class HuntsmanObservatory(Observatory):
     def _take_autoexposure_flats(self, camera_names, filter_names, alt=None,
                                  az=None, min_counts=5000, max_counts=15000,
                                  bias=1000, max_exptime=60., target_adu_percentage=0.5,
-                                 max_num_exposures=10, filter_name=None, *args, **kwargs):
-        """Take flat fields.
+                                 max_num_exposures=10, filter_name=None, min_saturated_exptime=2,
+                                 *args, **kwargs):
+        """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
-            alt (float, optional): Altitude for flats
-            az (float, optional): Azimuth for flats
-            min_counts (int, optional): Minimum ADU count
-            max_counts (int, optional): Maximum ADU count
-            bias (int, optional): Default bias for the cameras
-            max_exptime (float, optional): Maximum exposure time before stopping
-            camera_list (list, optional): List of cameras to use for flat-fielding
-            target_adu_percentage (float, optional): Exposure time will be adjust so
-                that counts are close to: target * (`min_counts` + `max_counts`). Default
-                to 0.5
-            max_num_exposures (int, optional): Maximum number of flats to take
-            *args (TYPE): Description
-            **kwargs (TYPE): Description
-
+            camera_names (list): List of camera names to take flats with.
+            filter_names (dict): Dict of filter name for each camera.
         """
         target_adu = target_adu_percentage * (min_counts + max_counts)
         exptimes = {cam_name: [1. * u.second] for cam_name in camera_names}
@@ -422,7 +420,6 @@ class HuntsmanObservatory(Observatory):
                 filename = info['filename']
                 self.logger.debug("Checking counts for {}".format(filename))
 
-                # Unpack fits if compressed
                 if not os.path.exists(filename) and \
                         os.path.exists(filename.replace('.fits', '.fits.fz')):
                     fits_utils.fpack(filename.replace('.fits', '.fits.fz'), unpack=True)
@@ -430,7 +427,7 @@ class HuntsmanObservatory(Observatory):
                 # Calculate average counts per pixel
                 data = fits.getdata(filename)
                 mean_counts, _, _ = stats.sigma_clipped_stats(data)
-                mean_counts -= bias
+                mean_counts = mean_counts - bias
                 self.logger.debug("Counts: {}".format(mean_counts))
                 if (mean_counts < min_counts) or (mean_counts > max_counts):
                     self.logger.debug("Counts outside min/max range, should be discarded.")
@@ -449,8 +446,8 @@ class HuntsmanObservatory(Observatory):
                 exptimes[cam_name].append(exptime * u.second)
 
             # Stop flats if any time is greater than max
-            if any([t[-1].value >= max_exptime for t in exptimes.values()]) & \
-                    (not self.past_midnight):
+            exptime_too_long = [t[-1].value >= max_exptime for t in exptimes.values()]
+            if any(exptime_too_long) and not self.past_midnight:
                 self.logger.debug("Exposure times greater than max, stopping flat fields.")
                 break
 
@@ -460,7 +457,7 @@ class HuntsmanObservatory(Observatory):
                 break
 
             # Handle saturated cameras
-            if is_saturated and exptimes[cam_name][-1].value < 2:
+            if is_saturated and exptimes[cam_name][-1].value < min_saturated_exptime:
                 if self.past_midnight:
                     self.logger.debug('Saturated with short exposure. Stopping flat fields.')
                     break
@@ -477,8 +474,7 @@ class HuntsmanObservatory(Observatory):
         # Take darks for each exposure we took
         for i in range(exposure_count):
             _exptimes = {cam_name: exptimes[cam_name][i] for cam_name in camera_names}
-            camera_events = self._take_flat_fields(
-                    camera_names, observations, _exptimes, fits_headers, dark=True)
+            self._take_flat_fields(camera_names, observations, _exptimes, fits_headers, dark=True)
 
     def _take_flat_fields(self, camera_names, observations, exptimes,
                           fits_headers, dark=False):
