@@ -4,8 +4,8 @@ def on_enter(event_data):
     pocs.next_state = 'ready'
 
     # If it is dark and safe we shouldn't be in sleeping state
-    if pocs.is_dark() and pocs.is_safe():
-        pocs.say("Weather is good and it is dark. Something must have gone wrong. Stopping loop.")
+    if pocs.is_safe(horizon='focus'):
+        pocs.say("Weather is good and it is dark. Something must have gone wrong.")
         pocs.stop_states()
     else:
         pocs.say("Another successful night!")

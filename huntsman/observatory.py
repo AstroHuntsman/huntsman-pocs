@@ -56,6 +56,11 @@ class HuntsmanObservatory(Observatory):
 
         self.take_flat_fields = take_flats
 
+        # Attributes for focusing
+        self.last_focus_time = None
+        self._focus_frequency = config['focusing']['coarse']['frequency'] * \
+            u.Unit(config['focusing']['coarse']['frequency_unit'])
+
         # Creating an imager array object
         if self.has_hdr_mode:
             self.logger.error("HDR mode not support currently")
@@ -91,6 +96,16 @@ class HuntsmanObservatory(Observatory):
             bool: True if has autoguider
         """
         return self._has_autoguider
+
+    @property
+    def past_midnight(self):
+        """Check if it's morning, useful for going into either morning or evening flats."""
+
+        # Get the time of the nearest midnight to now
+        midnight = self.observer.midnight(utils.current_time(), which='nearest')
+
+        # If the nearest midnight is in the past, it's the morning...
+        return midnight < utils.current_time()
 
 ##########################################################################
 # Methods
@@ -194,6 +209,28 @@ class HuntsmanObservatory(Observatory):
         super().analyze_recent()
 
         return self.current_offset_info
+
+    def require_coarse_focus(self):
+        '''
+        Return True if too much time has elapsed since the previous focus, else False.
+        '''
+        if self.last_focus_time is None:
+            return True
+        if utils.current_time() - self.last_focus_time > self._focus_frequency:
+            return True
+        return False
+
+    def autofocus_cameras(self, *args, **kwargs):
+        '''
+        Override autofocus_cameras to update the last focus time.
+        '''
+        result = super().autofocus_cameras(*args, **kwargs)
+
+        # Update last focus time
+        if not kwargs.get("coarse", False):
+            self.last_focus_time = utils.current_time()
+
+        return result
 
     def take_evening_flats(self,
                            alt=None,
@@ -386,6 +423,7 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
 
+
     def take_dark_fields(self,
                          wait_interval=5,
                          camera_list=None,
@@ -457,6 +495,13 @@ class HuntsmanObservatory(Observatory):
             if all([len(cam.event) >= len(exptimes_list) * n_darks for cam_name, cam in camera_events.items()]):
                 self.logger.debug("Total number of darks has been achieved, quitting")
                 break
+
+    def take_morning_flats(*args, **kwargs):
+        '''
+
+        '''
+        raise NotImplementedError('Morning flats not implemented yet.')
+
 
 ##########################################################################
 # Private Methods
