@@ -504,10 +504,10 @@ class HuntsmanObservatory(Observatory):
                         f'/{imtype}_{obs.current_exp_num:02d}.{camera.file_extension}')
 
             # Take picture and get event
-            fits_headers = fits_headers[cam_name]
+            headers = fits_headers[cam_name]
             exptime = exptimes[cam_name].to(u.second).value
             camera_event = camera.take_observation(
-                            obs, fits_headers, filename=filename, exptime=exptime)
+                            obs, headers, filename=filename, exptime=exptime)
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
