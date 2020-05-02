@@ -346,8 +346,8 @@ def test_run_no_targets_and_exit(pocs):
     pocs.observatory.scheduler._fields_list = None
     assert pocs.is_initialized is True
 
-    pocs.observatory.require_flat_fields = False
-    assert pocs.observatory.require_flat_fields is False
+    pocs.observatory.flat_fields_required = False
+    assert pocs.observatory.flat_fields_required is False
     pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 
@@ -370,7 +370,7 @@ def test_run(pocs):
     pocs.initialize()
     assert pocs.is_initialized is True
 
-    pocs.observatory.require_flat_fields = False
+    pocs.observatory.flat_fields_required = False
     pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 

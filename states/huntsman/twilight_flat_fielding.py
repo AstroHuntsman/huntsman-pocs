@@ -32,7 +32,7 @@ def on_enter(event_data):
     if not wait_for_twilight(pocs):
         return
 
-    if pocs.observatory.require_flat_fields:
+    if pocs.observatory.flat_fields_required:
         pocs.observatory.take_flat_fields()
     else:
         pocs.logger.debug('Skipping twilight flat fields.')
