@@ -264,7 +264,7 @@ class HuntsmanObservatory(Observatory):
         exptimes_dark = {c: [0 * u.second] for c in cameras_all.keys()}  # Add a bias exposure
         for filter_name in filter_order:
 
-            # Get a list of cameras that have this filter
+            # Get a dict of cameras that have this filter
             cameras = {}
             for cam_name, cam in cameras_all.items():
                 if cam.filterwheel is None:
