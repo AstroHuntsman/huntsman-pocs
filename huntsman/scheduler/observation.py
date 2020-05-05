@@ -112,4 +112,4 @@ class DitheredFlatObservation(DitheredObservation):
         self.exp_set_size = n_positions
 
         # Specify directory root for file storage
-        self._directory = os.path.join(self._directory, 'flats')
+        self._directory = os.path.join(self._image_dir, 'flats')

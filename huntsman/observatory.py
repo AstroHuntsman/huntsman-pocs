@@ -266,16 +266,16 @@ class HuntsmanObservatory(Observatory):
         for filter_name in filter_order:
 
             # Get a dict of cameras that have this filter
-            cameras = {}
+            filter_cameras = {}
             for cam_name, cam in cameras_all.items():
                 if cam.filterwheel is None:
                     if cam.filter_type == filter_name:
-                        cameras[cam_name] = cam
+                        filter_cameras[cam_name] = cam
                 elif filter_name in cam.filterwheel.filter_names:
-                    cameras[cam_name] = cam
+                    filter_cameras[cam_name] = cam
 
             # Go to next filter if there are no cameras with this one
-            if not cameras:
+            if not filter_cameras:
                 self.logger.debug(f'No cameras found with {filter_name} filter.')
                 continue
 
@@ -284,10 +284,10 @@ class HuntsmanObservatory(Observatory):
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
-            exptimes = self._take_autoexposure_flats(cameras, obs, **kwargs)
+            exptimes = self._take_autoexposure_flats(filter_cameras, obs, **kwargs)
 
             # Log the new exposure times we need to take darks with
-            for cam_name in cameras.keys():
+            for cam_name in filter_cameras.keys():
                 exptimes_dark[cam_name].update(exptimes[cam_name])
 
         # Take darks for each exposure time we used
@@ -348,6 +348,7 @@ class HuntsmanObservatory(Observatory):
             az = flat_config['az']
         flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                            obstime=utils.current_time())
+        self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
         # Create the Observation object
         obs = DitheredFlatObservation(position=flat_coords, *args, **kwargs)
@@ -355,6 +356,21 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(obs))
 
         return obs
+
+    def _calculate_flat_exptime(self, previous_exptime, elapsed_time, target_adu,
+                                mean_counts, min_exptime):
+        """Calculate the next exposure time for the flat fields, accounting
+        for changes in sky brightness."""
+        exptime = previous_exptime * (target_adu / mean_counts)
+
+        sky_factor = 2.0 ** (elapsed_time / 180.0)
+        if self.past_midnight:
+            exptime = exptime / sky_factor
+        else:
+            exptime = exptime * sky_factor
+        exptime = round(max(min_exptime.to_value(u.second), exptime)) * u.second
+
+        return exptime
 
     def _take_autoexposure_flats(self, cameras, observation, min_counts=5000, max_counts=15000,
                                  bias=1000, max_exptime=60*u.second, target_scaling=0.5,
@@ -397,46 +413,45 @@ class HuntsmanObservatory(Observatory):
 
                 # Calculate average counts per pixel
                 mean_counts, _, _ = stats.sigma_clipped_stats(data)
-                mean_counts = mean_counts - bias
+                mean_counts = max(1, mean_counts - bias)
                 self.logger.debug("Counts: {}".format(mean_counts))
                 if (mean_counts < min_counts) or (mean_counts > max_counts):
                     self.logger.debug("Counts outside min/max range, should be discarded.")
 
                 # Check if flats are too bright
-                if mean_counts >= max_counts:
-                    is_too_bright = True
+                is_too_bright |= mean_counts >= max_counts
 
                 # Get suggested exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
-                exptime = exptimes[cam_name][-1].value * (target_adu / mean_counts)
-                # Account for the sky changing brightness
-                sky_factor = 2.0 ** (elapsed_time / 180.0)
-                if self.past_midnight:
-                    exptime = exptime / sky_factor
-                else:
-                    exptime = exptime * sky_factor
-                exptime = round(max(min_exptime.to_value(u.second), exptime))
-                exptimes[cam_name].append(exptime * u.second)
-                self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
+                next_exptime = self._calculate_flat_exptime(
+                                    exptimes[cam_name][-1].value, elapsed_time,
+                                    target_adu, mean_counts, min_exptime)
+                exptimes[cam_name].append(next_exptime)
+                self.logger.debug(f"Suggested exptime for {cam_name}: {next_exptime}")
 
             # Stop flats if any time is greater than max
             exptime_too_long = [t[-1] >= max_exptime for t in exptimes.values()]
-            if any(exptime_too_long) and not self.past_midnight:
-                self.logger.debug("Exposure times greater than max, stopping flat fields.")
-                break
+            if any(exptime_too_long):
+                if self.past_midnight:
+                    self.logger.debug("Exposure time(s) greater than max.")
+                    max_num_exposures += 1
+                else:
+                    self.logger.debug("Exposure time(s) greater than max, stopping flat fields.")
+                    break
 
-            # Stop flats if we have taken too many.
+            # Stop flats if we have taken enough good ones.
             if any([len(t) >= max_num_exposures for t in exptimes.values()]):
-                self.logger.debug("Too many flats, quitting.")
+                self.logger.debug("Enough flat-field images, quitting.")
                 break
 
-            # Handle saturated cameras
+            # Handle high counts
             if is_too_bright and exptimes[cam_name][-1] < min_saturated_exptime:
                 if self.past_midnight:
-                    self.logger.debug('Saturated with short exposure. Stopping flat fields.')
+                    self.logger.debug('Max counts reached with short exposure.'
+                                      ' Stopping flat fields.')
                     break
                 else:
-                    self.logger.debug('Saturated with short exposure. Waiting 30 seconds'
+                    self.logger.debug('Max counts reached with short exposure. Waiting 30 seconds'
                                       'before next exposure.')
                     max_num_exposures += 1
                     time.sleep(30)
@@ -497,8 +512,8 @@ class HuntsmanObservatory(Observatory):
         while True:
             next_exptimes = {}
             for cam_name, exptime in exptimes.items():
-                with suppress(IndexError):
-                    next_exptimes[cam_name] = exptimes[cam_name].pop(0)
+                with suppress(KeyError):
+                    next_exptimes[cam_name] = exptimes[cam_name].pop()
 
             # Break if we have finished all the cameras
             if not next_exptimes:
