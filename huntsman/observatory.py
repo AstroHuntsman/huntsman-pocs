@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from contextlib import suppress
 
 from astropy import units as u
 from astropy.io import fits
@@ -14,7 +15,7 @@ from pocs import utils
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation
+from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.utils import dither
 from huntsman.utils import load_config
 
@@ -235,7 +236,7 @@ class HuntsmanObservatory(Observatory):
 
     def take_flat_fields(self, camera_names=None, alt=None, az=None, **kwargs):
         """
-        Take flat fields for each camera in each filter, respecting filter priority.
+        Take flat fields for each camera in each filter, respecting filter order.
 
         Args:
             camera_names (list, optional): List of camera names to take flats with.
@@ -244,12 +245,12 @@ class HuntsmanObservatory(Observatory):
             min_counts (int, optional): Minimum ADU count.
             max_counts (int, optional): Maximum ADU count.
             bias (int, optional): Default bias for the cameras.
-            max_exptime (float, optional): Maximum exposure time before stopping.
-            camera_list (list, optional): List of cameras to use for flat-fielding.
-            target_adu_percentage (float, optional): Exposure time will be adjust so
-                that counts are close to: target * (`min_counts` + `max_counts`). Defaults
-                to 0.5.
-            max_num_exposures (int, optional): Maximum number of flats to take.
+            min_exptime (float, optional): Minimum exposure time.
+            max_exptime (float, optional): Maximum exposure time.
+            target_scaling (float, optional): Required to be between 0 & 1 so
+                target_adu is proportionally between min_counts and max_counts.
+            max_num_exposures (int, optional): Maximum number of good flat-fields to
+                take per filter.
         """
         if camera_names is None:
             cameras_all = self.cameras
@@ -257,11 +258,11 @@ class HuntsmanObservatory(Observatory):
             cameras_all = {c: self.cameras[c] for c in camera_names}
 
         # Obtain the filter order
-        filter_order = self.config['filterwheel']['flat_field_order']
+        filter_order = self.config['filterwheel']['flat_field_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
-            filter_order = filter_order[::-1]
+            filter_order.reverse()
 
-        exptimes_dark = {c: [0 * u.second] for c in cameras_all.keys()}  # Add a bias exposure
+        exptimes_dark = {c: {0 * u.second} for c in cameras_all.keys()}  # Add a bias exposure
         for filter_name in filter_order:
 
             # Get a dict of cameras that have this filter
@@ -287,8 +288,7 @@ class HuntsmanObservatory(Observatory):
 
             # Log the new exposure times we need to take darks with
             for cam_name in cameras.keys():
-                exptimes_dark[cam_name].extend(
-                    [e for e in exptimes[cam_name] if e not in exptimes_dark[cam_name]])
+                exptimes_dark[cam_name].update(exptimes[cam_name])
 
         # Take darks for each exposure time we used
         self.logger.info('Taking flat field dark frames.')
@@ -338,66 +338,40 @@ class HuntsmanObservatory(Observatory):
 
         self.autoguider = guider
 
-    def _create_flat_field_observation(self, alt=None, az=None,
-                                       dither_pattern_offset=5 * u.arcmin,
-                                       dither_random_offset=0.5 * u.arcmin,
-                                       n_positions=9, filter_name=None,
-                                       ):
+    def _create_flat_field_observation(self, alt=None, az=None, *args, **kwargs):
+
+        # Specify coordinates for flat field
         if alt is None and az is None:
+            self.logger.debug('Using flat-field alt/az from config.')
             flat_config = self.config['flat_field']['twilight']
             alt = flat_config['alt']
             az = flat_config['az']
+        flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+                                           obstime=utils.current_time())
 
-        flat_coords = utils.altaz_to_radec(
-            alt=alt, az=az, location=self.earth_location, obstime=utils.current_time())
+        # Create the Observation object
+        obs = DitheredFlatObservation(position=flat_coords, *args, **kwargs)
+        obs.seq_time = utils.current_time(flatten=True)
+        self.logger.debug("Flat-field observation: {}".format(obs))
 
-        self.logger.debug("Creating dithered observation")
-        field = Field('Evening Flats', flat_coords.to_string('hmsdms'))
-        flat_obs = DitheredObservation(field, exptime=1. * u.second, filter_name=filter_name)
-        flat_obs.seq_time = utils.current_time(flatten=True)
-
-        if isinstance(flat_obs, DitheredObservation):
-
-            dither_coords = dither.get_dither_positions(flat_obs.field.coord,
-                                                        n_positions=n_positions,
-                                                        pattern=dither.dice9,
-                                                        pattern_offset=dither_pattern_offset,
-                                                        random_offset=dither_random_offset)
-
-            self.logger.debug("Dither Coords for Flat-field: {}".format(dither_coords))
-
-            fields = [Field('Dither{:02d}'.format(i), coord)
-                      for i, coord in enumerate(dither_coords)]
-            exptimes = [flat_obs.exptime for coord in dither_coords]
-
-            flat_obs.field = fields
-            flat_obs.exptime = exptimes
-            flat_obs.min_nexp = len(fields)
-            flat_obs.exp_set_size = len(fields)
-
-        self.logger.debug("Flat-field observation: {}".format(flat_obs))
-
-        return flat_obs
+        return obs
 
     def _take_autoexposure_flats(self, cameras, observation, min_counts=5000, max_counts=15000,
-                                 bias=1000, max_exptime=60., target_adu_percentage=0.5,
-                                 max_num_exposures=10, filter_name=None, min_saturated_exptime=2,
-                                 min_exptime=1, *args, **kwargs):
+                                 bias=1000, max_exptime=60*u.second, target_scaling=0.5,
+                                 max_num_exposures=10, filter_name=None,
+                                 min_saturated_exptime=2*u.second, min_exptime=1*u.second,
+                                 *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
             filter_names (dict): Dict of filter name for each camera.
         """
-        target_adu = target_adu_percentage * (min_counts + max_counts)
+        target_adu = min_counts + target_scaling * (max_counts - min_counts)
         exptimes = {cam_name: [1. * u.second] for cam_name in cameras.keys()}
 
         # Loop until conditions are met to finish flat-fielding
-        exposure_count = 0
         while True:
-
-            # Update the exposure count
-            exposure_count += 1
 
             # Get the FITS headers with a common start time
             start_time = utils.current_time()
@@ -410,7 +384,7 @@ class HuntsmanObservatory(Observatory):
                                                    fits_headers=fits_headers)
 
             # Check the counts for each image
-            is_saturated = False
+            is_too_bright = False
             for cam_name, info in camera_events.items():
                 filename = info['filename']
                 self.logger.debug("Checking counts for {}".format(filename))
@@ -428,9 +402,9 @@ class HuntsmanObservatory(Observatory):
                 if (mean_counts < min_counts) or (mean_counts > max_counts):
                     self.logger.debug("Counts outside min/max range, should be discarded.")
 
-                # Check if camera is saturated
+                # Check if flats are too bright
                 if mean_counts >= max_counts:
-                    is_saturated = True
+                    is_too_bright = True
 
                 # Get suggested exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
@@ -441,13 +415,12 @@ class HuntsmanObservatory(Observatory):
                     exptime = exptime / sky_factor
                 else:
                     exptime = exptime * sky_factor
-                exptime = int(max(min_exptime, exptime))
+                exptime = round(max(min_exptime.to_value(u.second), exptime))
                 exptimes[cam_name].append(exptime * u.second)
-                self.logger.debug("Elapsed time: {}".format(elapsed_time))
                 self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
 
             # Stop flats if any time is greater than max
-            exptime_too_long = [t[-1].value >= max_exptime for t in exptimes.values()]
+            exptime_too_long = [t[-1] >= max_exptime for t in exptimes.values()]
             if any(exptime_too_long) and not self.past_midnight:
                 self.logger.debug("Exposure times greater than max, stopping flat fields.")
                 break
@@ -458,7 +431,7 @@ class HuntsmanObservatory(Observatory):
                 break
 
             # Handle saturated cameras
-            if is_saturated and exptimes[cam_name][-1].value < min_saturated_exptime:
+            if is_too_bright and exptimes[cam_name][-1] < min_saturated_exptime:
                 if self.past_midnight:
                     self.logger.debug('Saturated with short exposure. Stopping flat fields.')
                     break
@@ -480,13 +453,12 @@ class HuntsmanObservatory(Observatory):
             exptimes: dict of camera_name: list of exposure times.
             observation: Flat field Observation object.
         """
-        image_dir = self.config['directories']['images']
         imtype = 'dark' if dark else 'flat'
         if fits_headers is None:
             fits_headers = self.get_standard_headers(observation=observation)
 
         # Slew to field
-        self.logger.debug(f'Slewing to {imtype}-field coords: {observation.field}.')
+        self.logger.debug(f'Slewing to flat-field coords: {observation.field}.')
         self.mount.set_target_coordinates(observation.field)
         self.mount.slew_to_target()
         self.status()  # Seems to help with reading coords
@@ -496,14 +468,15 @@ class HuntsmanObservatory(Observatory):
         for cam_name, exptime in exptimes.items():
             cam = self.cameras[cam_name]
 
-            # Define filename for flat fields
-            filename = (f'{image_dir}/flats/{cam.uid}/{observation.seq_time}'
-                        f'/{imtype}_{observation.current_exp_num:02d}.{cam.file_extension}')
+            # Create filename
+            filename = os.path.join(observation.directory, f'{imtype}_'
+                                    f'{observation.current_exp_num:02d}.{cam.file_extension}')
 
             # Take exposure and get event
             exptime = exptime.to(u.second).value
-            camera_event = cam.take_observation(observation, fits_headers,
-                                                filename=filename, exptime=exptime)
+            camera_event = cam.take_observation(observation, fits_headers, filename=filename,
+                                                exptime=exptime, dark=dark)
+
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
@@ -524,11 +497,12 @@ class HuntsmanObservatory(Observatory):
         while True:
             next_exptimes = {}
             for cam_name, exptime in exptimes.items():
-                try:
+                with suppress(IndexError):
                     next_exptimes[cam_name] = exptimes[cam_name].pop(0)
-                except IndexError:  # No more exposures left for this camera
-                    continue
-                self._take_flat_fields(next_exptimes, observation, dark=True)
+
             # Break if we have finished all the cameras
-            if not next_exptimes.items():
+            if not next_exptimes:
                 break
+
+            # Take the exposures
+            self._take_flat_fields(next_exptimes, observation, dark=True)
