@@ -262,7 +262,7 @@ class HuntsmanObservatory(Observatory):
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
-        exptimes_dark = {c: {0 * u.second} for c in cameras_all.keys()}  # Add a bias exposure
+        exptimes_dark = {c: set() for c in cameras_all.keys()}
         for filter_name in filter_order:
 
             # Get a dict of cameras that have this filter
