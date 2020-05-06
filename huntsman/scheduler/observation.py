@@ -105,7 +105,7 @@ class DitheredFlatObservation(DitheredObservation):
         dither_coords = dither.get_dither_positions(
                 field.coord, n_positions=n_positions, pattern=pattern,
                 pattern_offset=dither_offset, random_offset=random_offset)
-        self.field = [Field(f'Dither{i:02d}', c) for i, c in enumerate(dither_coords)]
+        self.field = [Field(f'FlatDither{i:02d}', c) for i, c in enumerate(dither_coords)]
 
         # Setup attributes for the scheduler
         self.min_nexp = n_positions

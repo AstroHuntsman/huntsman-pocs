@@ -342,10 +342,10 @@ class HuntsmanObservatory(Observatory):
 
         # Specify coordinates for flat field
         if alt is None and az is None:
-            self.logger.debug('Using flat-field alt/az from config.')
             flat_config = self.config['flat_field']['twilight']
             alt = flat_config['alt']
             az = flat_config['az']
+            self.logger.debug(f'Using flat-field alt/az from config: {alt}, {az}.')
         flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                            obstime=utils.current_time())
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
@@ -484,8 +484,9 @@ class HuntsmanObservatory(Observatory):
             cam = self.cameras[cam_name]
 
             # Create filename
-            filename = os.path.join(observation.directory, f'{imtype}_'
-                                    f'{observation.current_exp_num:02d}.{cam.file_extension}')
+            path = os.path.join(observation.directory, cam.uid, observation.seq_time)
+            filename = os.path.join(
+                path, f'{imtype}_{observation.current_exp_num:02d}.{cam.file_extension}')
 
             # Take exposure and get event
             exptime = exptime.to(u.second).value
