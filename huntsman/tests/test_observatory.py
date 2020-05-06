@@ -66,4 +66,5 @@ def test_take_flat_fields(pocs):
     """
     pocs.initialize()
     pocs.get_ready()
-    pocs.observatory.take_flat_fields(alt=60, az=90)
+    pocs.observatory.take_flat_fields(alt=60, az=90, min_counts=1000,
+                                      max_num_exposures=1)
