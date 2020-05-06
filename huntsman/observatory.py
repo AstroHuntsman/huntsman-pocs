@@ -292,6 +292,7 @@ class HuntsmanObservatory(Observatory):
 
         # Take darks for each exposure time we used
         self.logger.info('Taking flat field dark frames.')
+        obs = self._create_flat_field_observation(alt=alt, az=az)
         for exptime in exptimes_dark:
             self._take_flat_field_darks(exptimes_dark, obs)
 
@@ -426,7 +427,7 @@ class HuntsmanObservatory(Observatory):
                                       f' is too short: {next_exptime}.')
                     if self.past_midnight:
                         finished[cam_name] = True  # Its getting lighter, so finish
-                        continue 
+                        continue
 
                 # Update the next exposure time
                 exptimes[cam_name].append(next_exptime)
