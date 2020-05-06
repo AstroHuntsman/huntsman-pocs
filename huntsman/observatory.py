@@ -296,6 +296,8 @@ class HuntsmanObservatory(Observatory):
         for exptime in exptimes_dark:
             self._take_flat_field_darks(exptimes_dark, obs)
 
+        self.logger.info('Finished flat-fielding.')
+
 ##########################################################################
 # Private Methods
 ##########################################################################
