@@ -371,7 +371,7 @@ class HuntsmanObservatory(Observatory):
         """
         target_counts = min_counts + target_scaling * (max_counts - min_counts)
 
-        # Setup initial values
+        # Setup containers with initial values
         exptimes = {cam_name: [1. * u.second] for cam_name in cameras.keys()}
         finished = {cam_name: False for cam_name in cameras.keys()}
         n_good_exposures = {cam_name: 0 for cam_name in cameras.keys()}
@@ -390,6 +390,7 @@ class HuntsmanObservatory(Observatory):
                                                         fits_headers=fits_headers)
 
             # Check whether each camera has finished
+            all_too_bright = True
             for cam_name, meta in camera_events.items():
                 current_exptime = current_exptimes[cam_name].to_value(u.second)
 
@@ -417,7 +418,7 @@ class HuntsmanObservatory(Observatory):
                 # Calculate next exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
                 next_exptime = self._autoflat_next_exptime(
-                        current_exptime, elapsed_time, target_counts, mean_counts, min_exptime)
+                        current_exptime, elapsed_time, target_counts, mean_counts)
                 self.logger.debug(f'Suggested exposure time for {cam_name}: {next_exptime}.')
 
                 # Check the next exposure time is within limits
@@ -427,15 +428,24 @@ class HuntsmanObservatory(Observatory):
                     if not self.past_midnight:
                         finished[cam_name] = True  # Its getting darker, so finish
                         continue
+                    next_exptime = max_exptime
                 elif next_exptime < min_exptime:
                     self.logger.debug(f'Suggested exposure time for {cam_name}'
                                       f' is too short: {next_exptime}.')
                     if self.past_midnight:
                         finished[cam_name] = True  # Its getting lighter, so finish
                         continue
+                    next_exptime = min_exptime
 
                 # Update the next exposure time
                 exptimes[cam_name].append(next_exptime)
+
+                # Check if all the exposures in this loop are too bright
+                all_too_bright &= is_too_bright
+
+            if all_too_bright:
+                self.logger.debug('All exposures are too bright. Waiting 30 seconds...')
+                time.sleep(30)
 
         # Return the exposure times
         return exptimes
@@ -458,20 +468,16 @@ class HuntsmanObservatory(Observatory):
         mean_counts = max(min_counts, mean_counts - bias)
         return mean_counts
 
-    def _autoflat_next_exptime(self, previous_exptime, elapsed_time, target_adu,
-                                mean_counts, min_exptime):
+    def _autoflat_next_exptime(self, previous_exptime, elapsed_time, target_counts, mean_counts):
         """Calculate the next exposure time for the flat fields, accounting
         for changes in sky brightness."""
-        exptime = previous_exptime * (target_adu / mean_counts)
-
+        exptime = previous_exptime * (target_counts / mean_counts)
         sky_factor = 2.0 ** (elapsed_time / 180.0)
         if self.past_midnight:
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor
-        exptime = round(max(min_exptime.to_value(u.second), exptime)) * u.second
-
-        return exptime
+        return round(exptime) * u.second
 
     def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False):
         """
