@@ -265,6 +265,10 @@ class HuntsmanObservatory(Observatory):
         exptimes_dark = {c: set() for c in cameras_all.keys()}
         for filter_name in filter_order:
 
+            if not self.is_safe(horizon='flat'):
+                self.logger.info('Terminating flat-fielding because conditions are unsafe.')
+                return
+
             # Get a dict of cameras that have this filter
             filter_cameras = {}
             for cam_name, cam in cameras_all.items():
@@ -291,10 +295,13 @@ class HuntsmanObservatory(Observatory):
                 exptimes_dark[cam_name].update(exptimes[cam_name])
 
         # Take darks for each exposure time we used
-        self.logger.info('Taking flat field dark frames.')
-        obs = self._create_flat_field_observation(alt=alt, az=az)
-        for exptime in exptimes_dark:
-            self._take_flat_field_darks(exptimes_dark, obs)
+        if self.is_safe(horizon='flat'):
+            self.logger.info('Taking flat field dark frames.')
+            obs = self._create_flat_field_observation(alt=alt, az=az)
+            for exptime in exptimes_dark:
+                self._take_flat_field_darks(exptimes_dark, obs)
+        else:
+            self.logger.info('Skipping flat field dark frames because conditions are unsafe.')
 
         self.logger.info('Finished flat-fielding.')
 
@@ -377,7 +384,7 @@ class HuntsmanObservatory(Observatory):
         n_good_exposures = {cam_name: 0 for cam_name in cameras.keys()}
 
         # Loop until conditions are met to finish flat-fielding
-        while not all(finished.values()):
+        while self.is_safe(horizon='flat') and not all(finished.values()):
 
             # Get the FITS headers with a common start time
             start_time = utils.current_time()
@@ -399,7 +406,7 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug(f'Mean counts for {cam_name} following'
                                   f' {current_exptime} exposure: {mean_counts}.')
 
-                # Check if the last exposure was good enough to keep
+                # Check if the current exposure is good enough to keep
                 is_too_bright = mean_counts > max_counts
                 is_too_faint = mean_counts < min_counts
                 if is_too_bright or is_too_faint:
@@ -409,11 +416,11 @@ class HuntsmanObservatory(Observatory):
                 else:
                     n_good_exposures[cam_name] += 1
 
-                    # Check if we have enough good flats for this camera
-                    if n_good_exposures[cam_name] >= max_num_exposures:
-                        self.logger.debug(f'Enough flats taken for {cam_name}.')
-                        finished[cam_name] = True
-                        continue
+                # Check if we have enough good flats for this camera
+                if n_good_exposures[cam_name] >= max_num_exposures:
+                    self.logger.debug(f'Enough flats taken for {cam_name}.')
+                    finished[cam_name] = True
+                    continue
 
                 # Calculate next exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
