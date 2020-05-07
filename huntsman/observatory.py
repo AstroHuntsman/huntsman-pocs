@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from contextlib import suppress
+from functools import partial
 
 from astropy import units as u
 from astropy.io import fits
@@ -234,7 +235,8 @@ class HuntsmanObservatory(Observatory):
 
         return result
 
-    def take_flat_fields(self, camera_names=None, alt=None, az=None, **kwargs):
+    def take_flat_fields(self, camera_names=None, alt=None, az=None,
+                         safety_func=None, **kwargs):
         """
         Take flat fields for each camera in each filter, respecting filter order.
 
@@ -251,7 +253,11 @@ class HuntsmanObservatory(Observatory):
                 target_adu is proportionally between min_counts and max_counts.
             max_num_exposures (int, optional): Maximum number of good flat-fields to
                 take per filter.
+            safety_func (func): Boolean function that returns True only if safe to continue.
         """
+        if safety_func is None:
+            safety_func = partial(self.is_dark, horizon='observe')
+
         if camera_names is None:
             cameras_all = self.cameras
         else:
@@ -265,8 +271,8 @@ class HuntsmanObservatory(Observatory):
         exptimes_dark = {c: set() for c in cameras_all.keys()}
         for filter_name in filter_order:
 
-            if not self.is_dark(horizon='flat'):  # Replace with safety check
-                self.logger.info('Terminating flat-fielding because its no longer dark enough.')
+            if not safety_func():
+                self.logger.info('Terminating flat-fielding because its no longer safe.')
                 return
 
             # Get a dict of cameras that have this filter
@@ -288,18 +294,20 @@ class HuntsmanObservatory(Observatory):
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
-            exptimes = self._take_autoflats(filter_cameras, obs, **kwargs)
+            exptimes = self._take_autoflats(filter_cameras, obs, safety_func=safety_func, **kwargs)
 
             # Log the new exposure times we need to take darks with
             for cam_name in filter_cameras.keys():
                 exptimes_dark[cam_name].update(exptimes[cam_name])
 
         # Take darks for each exposure time we used
-        # Ideally, would check safety before starting
-        self.logger.info('Taking flat field dark frames.')
-        obs = self._create_flat_field_observation(alt=alt, az=az)
-        for exptime in exptimes_dark:
-            self._take_flat_field_darks(exptimes_dark, obs)
+        if safety_func():
+            self.logger.info('Taking flat field dark frames.')
+            obs = self._create_flat_field_observation(alt=alt, az=az)
+            for exptime in exptimes_dark:
+                self._take_flat_field_darks(exptimes_dark, obs)
+        else:
+            self.logger.info('Skipping flat-field darks as no longer safe.')
 
         self.logger.info('Finished flat-fielding.')
 
@@ -365,14 +373,16 @@ class HuntsmanObservatory(Observatory):
 
         return obs
 
-    def _take_autoflats(self, cameras, observation, min_counts=5000, max_counts=15000,
-                        bias=1000, max_exptime=60*u.second, target_scaling=0.5,
-                        max_num_exposures=10, min_exptime=1*u.second, *args, **kwargs):
+    def _take_autoflats(self, cameras, observation, safety_func, min_counts=5000,
+                        max_counts=15000, bias=1000, max_exptime=60*u.second,
+                        target_scaling=0.5, max_num_exposures=10, min_exptime=1*u.second,
+                        *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
             filter_names (dict): Dict of filter name for each camera.
+            safety_func (func): Boolean function that returns True only if safe to continue.
         """
         target_counts = min_counts + target_scaling * (max_counts - min_counts)
 
@@ -384,8 +394,8 @@ class HuntsmanObservatory(Observatory):
         # Loop until conditions are met to finish flat-fielding
         while not all(finished.values()):
 
-            if not self.is_dark(horizon='flat'):  # Replace with safety check
-                self.logger.info('Stopping flat-fielding as no longer dark.')
+            if not safety_func():
+                self.logger.info('Stopping flat-fielding as no longer safe.')
                 break
 
             # Get the FITS headers with a common start time
