@@ -391,16 +391,19 @@ class HuntsmanObservatory(Observatory):
 
             # Check whether each camera has finished
             for cam_name, meta in camera_events.items():
+                current_exptime = current_exptimes[cam_name].to_value(u.second)
 
                 # Calculate mean counts of last image
                 mean_counts = self._autoflat_mean_counts(meta['filename'], bias)
+                self.logger.debug(f'Mean counts for {cam_name} following'
+                                  f' {current_exptime} exposure: {mean_counts}.')
 
                 # Check if the last exposure was good enough to keep
                 is_too_bright = mean_counts > max_counts
                 is_too_faint = mean_counts < min_counts
                 if is_too_bright or is_too_faint:
-                    self.logger.debug(f'Count rate outside range for flat field'
-                                      f'image on {cam_name}: {mean_counts}.')
+                    self.logger.debug(f'Counts outside valid range for flat field'
+                                      f' image on {cam_name}: {mean_counts}.')
                     # os.remove(meta['filename']) Need to prevent NGAS push...
                 else:
                     n_good_exposures[cam_name] += 1
@@ -413,9 +416,9 @@ class HuntsmanObservatory(Observatory):
 
                 # Calculate next exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
-                current_exptime = current_exptimes[cam_name].to_value(u.second)
                 next_exptime = self._autoflat_next_exptime(
                         current_exptime, elapsed_time, target_counts, mean_counts, min_exptime)
+                self.logger.debug(f'Suggested exposure time for {cam_name}: {next_exptime}.')
 
                 # Check the next exposure time is within limits
                 if next_exptime > max_exptime:
