@@ -265,8 +265,8 @@ class HuntsmanObservatory(Observatory):
         exptimes_dark = {c: set() for c in cameras_all.keys()}
         for filter_name in filter_order:
 
-            if not self.is_safe(horizon='flat'):
-                self.logger.info('Terminating flat-fielding because conditions are unsafe.')
+            if not self.is_dark(horizon='flat'):  # Replace with safety check
+                self.logger.info('Terminating flat-fielding because its no longer dark enough.')
                 return
 
             # Get a dict of cameras that have this filter
@@ -295,13 +295,11 @@ class HuntsmanObservatory(Observatory):
                 exptimes_dark[cam_name].update(exptimes[cam_name])
 
         # Take darks for each exposure time we used
-        if self.is_safe(horizon='flat'):
-            self.logger.info('Taking flat field dark frames.')
-            obs = self._create_flat_field_observation(alt=alt, az=az)
-            for exptime in exptimes_dark:
-                self._take_flat_field_darks(exptimes_dark, obs)
-        else:
-            self.logger.info('Skipping flat field dark frames because conditions are unsafe.')
+        # Ideally, would check safety before starting
+        self.logger.info('Taking flat field dark frames.')
+        obs = self._create_flat_field_observation(alt=alt, az=az)
+        for exptime in exptimes_dark:
+            self._take_flat_field_darks(exptimes_dark, obs)
 
         self.logger.info('Finished flat-fielding.')
 
@@ -384,7 +382,11 @@ class HuntsmanObservatory(Observatory):
         n_good_exposures = {cam_name: 0 for cam_name in cameras.keys()}
 
         # Loop until conditions are met to finish flat-fielding
-        while self.is_safe(horizon='flat') and not all(finished.values()):
+        while not all(finished.values()):
+
+            if not self.is_dark(horizon='observe'):  # Replace with safety check
+                self.logger.info('Stopping flat-fielding as no longer dark.')
+                break
 
             # Get the FITS headers with a common start time
             start_time = utils.current_time()
