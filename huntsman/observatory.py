@@ -244,15 +244,16 @@ class HuntsmanObservatory(Observatory):
             camera_names (list, optional): List of camera names to take flats with.
             alt (float, optional): Altitude for flats.
             az (float, optional): Azimuth for flats.
-            min_counts (int, optional): Minimum ADU count.
-            max_counts (int, optional): Maximum ADU count.
-            bias (int, optional): Default bias for the cameras.
-            min_exptime (float, optional): Minimum exposure time.
-            max_exptime (float, optional): Maximum exposure time.
+            min_counts (int, optional): Minimum ADU count. Default 5000.
+            max_counts (int, optional): Maximum ADU count. Default 15000.
+            bias (int, optional): Default bias for the cameras. Default 1000.
+            min_exptime (float, optional): Minimum exposure time. Default 1s.
+            max_exptime (float, optional): Maximum exposure time. Default 60s.
             target_scaling (float, optional): Required to be between 0 & 1 so
                 target_adu is proportionally between min_counts and max_counts.
+                Default 0.5.
             max_num_exposures (int, optional): Maximum number of good flat-fields to
-                take per filter.
+                take per filter. Default 10.
             safety_func (func): Boolean function that returns True only if safe to continue.
         """
         if safety_func is None:
