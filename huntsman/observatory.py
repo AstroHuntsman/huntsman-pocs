@@ -384,7 +384,7 @@ class HuntsmanObservatory(Observatory):
         # Loop until conditions are met to finish flat-fielding
         while not all(finished.values()):
 
-            if not self.is_dark(horizon='observe'):  # Replace with safety check
+            if not self.is_dark(horizon='flat'):  # Replace with safety check
                 self.logger.info('Stopping flat-fielding as no longer dark.')
                 break
 
