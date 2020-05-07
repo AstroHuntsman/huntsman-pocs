@@ -182,21 +182,24 @@ def test_default_lookup_trigger(pocs):
 
 def test_darks_collection_simulator(pocs, db):
     pocs.initialize()
-    pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night']
+    assert pocs.is_initialized is True
+    pocs.config['simulator'] = ['camera', 'mount', 'night']
 
     # Insert a dummy night
-    db.insert_current('night', {'dark': True})
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
     # Make sure it is dark.
     assert(pocs.is_dark(horizon="flat"))
 
     # Insert a dummy weather record
     db.insert_current('weather', {'safe': False})
     # Make sure the weather is *not* safe to observe.
-    assert(pocs.is_weather_safe() is False)
+    assert not pocs.is_weather_safe()
 
-    pocs.next_state('parking')
-    for state in ['taking_darks']:
-        assert(pocs._lookup_trigger() == state)
+    assert(pocs.state == 'sleeping')
+
+    pocs.state = 'taking_darks'
+
+    # assert(pocs.state == 'parked')
 
 
 def test_free_space(pocs):
