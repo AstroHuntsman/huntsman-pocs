@@ -400,8 +400,9 @@ class HuntsmanObservatory(Observatory):
 
             # Check whether each camera has finished
             all_too_bright = True
+            all_too_faint = True
             for cam_name, meta in camera_events.items():
-                current_exptime = current_exptimes[cam_name].to_value(u.second)
+                current_exptime = current_exptimes[cam_name]
 
                 # Calculate mean counts of last image
                 mean_counts = self._autoflat_mean_counts(meta['filename'], bias)
@@ -411,6 +412,9 @@ class HuntsmanObservatory(Observatory):
                 # Check if the current exposure is good enough to keep
                 is_too_bright = mean_counts > max_counts
                 is_too_faint = mean_counts < min_counts
+                all_too_bright &= is_too_bright
+                all_too_faint &= is_too_faint
+
                 if is_too_bright or is_too_faint:
                     self.logger.debug(f'Counts outside valid range for flat field'
                                       f' image on {cam_name}: {mean_counts}.')
@@ -449,12 +453,15 @@ class HuntsmanObservatory(Observatory):
                 # Update the next exposure time
                 exptimes[cam_name].append(next_exptime)
 
-                # Check if all the exposures in this loop are too bright
-                all_too_bright &= is_too_bright
-
-            if all_too_bright:
-                self.logger.debug('All exposures are too bright. Waiting 30 seconds...')
-                time.sleep(30)
+            # Check if all the exposures in this loop are too bright
+            if self.past_midnight:
+                if all_too_faint:
+                    self.logger.debug('All exposures are too faint. Waiting 30 seconds...')
+                    time.sleep(30)
+            else:
+                if all_too_bright:
+                    self.logger.debug('All exposures are too bright. Waiting 30 seconds...')
+                    time.sleep(30)
 
         # Return the exposure times
         return exptimes
@@ -486,7 +493,7 @@ class HuntsmanObservatory(Observatory):
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor
-        return round(exptime) * u.second
+        return round(exptime.to_value(u.second)) * u.second
 
     def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False):
         """

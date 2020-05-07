@@ -64,7 +64,13 @@ def test_take_flat_fields(pocs):
     """
 
     """
+    os.environ['POCSTIME'] = '2020-04-29 08:10:00'
+    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     pocs.initialize()
+    assert not pocs.observatory.past_midnight
+    assert not pocs.is_dark(horizon='observe')
+    assert not pocs.is_dark(horizon='focus')
+    assert pocs.is_dark(horizon='flat')
     pocs.get_ready()
-    pocs.observatory.take_flat_fields(alt=60, az=90, min_counts=1000,
+    pocs.observatory.take_flat_fields(alt=60, az=90, min_counts=100,
                                       max_num_exposures=1)
