@@ -180,7 +180,6 @@ def test_default_lookup_trigger(pocs):
     assert pocs._lookup_trigger() == 'parking'
 
 
-@pytest.mark.skip(reason="Waiting for PR merge.")
 def test_darks_collection_simulator(pocs, db):
     pocs.initialize()
     pocs.config['simulator'] = ['camera', 'mount', 'weather', 'night']
