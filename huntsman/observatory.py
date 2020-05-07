@@ -256,7 +256,7 @@ class HuntsmanObservatory(Observatory):
             safety_func (func): Boolean function that returns True only if safe to continue.
         """
         if safety_func is None:
-            safety_func = partial(self.is_dark, horizon='observe')
+            safety_func = partial(self.is_dark, horizon='flat')
 
         if camera_names is None:
             cameras_all = self.cameras
