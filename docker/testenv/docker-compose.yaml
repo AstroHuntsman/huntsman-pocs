@@ -1,0 +1,11 @@
+version: '3'
+services:
+  testenv:
+    image: huntsmanarray/testenv:latest
+    user: huntsman
+    privileged: true
+    network_mode: host
+    stdin_open: true
+    tty: true
+    volumes:
+       - "$HUNTSMAN_POCS:/var/huntsman/huntsman-pocs"
