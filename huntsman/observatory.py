@@ -369,7 +369,7 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug(f'Using flat-field alt/az from config.')
         flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                            obstime=utils.current_time())
-        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03}, {az:.03f}.')
+        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03f}, {az:.03f}.')
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
         # Create the Observation object
