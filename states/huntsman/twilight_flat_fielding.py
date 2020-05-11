@@ -39,8 +39,8 @@ def on_enter(event_data):
         return
 
     if pocs.observatory.flat_fields_required:
-        safety_func = partial(safety_func, pocs=pocs)
-        pocs.observatory.take_flat_fields(safety_func=safety_func)
+        sf = partial(safety_func, pocs=pocs)
+        pocs.observatory.take_flat_fields(safety_func=sf)
     else:
         pocs.logger.debug('Skipping twilight flat fields.')
 
