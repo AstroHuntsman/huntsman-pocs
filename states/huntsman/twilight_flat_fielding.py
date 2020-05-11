@@ -1,7 +1,7 @@
 """
 State to handle the taking of calibration frames (evening and morning).
 """
-from functools import partial
+
 
 def wait_for_twilight(pocs):
     '''
@@ -16,6 +16,11 @@ def wait_for_twilight(pocs):
         else:
             return True
     return False
+
+
+def safety_func(pocs):
+    """ Return True only if safe for flats to continue. """
+    return pocs.is_safe(horizon='flat') and not pocs.is_dark(horizon='focus')
 
 
 def on_enter(event_data):
@@ -33,7 +38,6 @@ def on_enter(event_data):
         return
 
     if pocs.observatory.flat_fields_required:
-        safety_func = partial(pocs.is_safe, horizon='flat')
         pocs.observatory.take_flat_fields(safety_func=safety_func)
     else:
         pocs.logger.debug('Skipping twilight flat fields.')

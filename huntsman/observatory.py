@@ -374,10 +374,9 @@ class HuntsmanObservatory(Observatory):
 
         return obs
 
-    def _take_autoflats(self, cameras, observation, safety_func, min_counts=5000,
-                        max_counts=15000, bias=1000, max_exptime=60*u.second,
-                        target_scaling=0.5, max_num_exposures=10, min_exptime=1*u.second,
-                        *args, **kwargs):
+    def _take_autoflats(self, cameras, observation, safety_func, counts_saturate=4096,
+                        tolerance=0.1, target_scaling=0.5, bias=35, max_exptime=60*u.second,
+                        max_num_exposures=10, min_exptime=1*u.second, *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
@@ -385,7 +384,9 @@ class HuntsmanObservatory(Observatory):
             filter_names (dict): Dict of filter name for each camera.
             safety_func (func): Boolean function that returns True only if safe to continue.
         """
-        target_counts = min_counts + target_scaling * (max_counts - min_counts)
+        target_counts = target_scaling * counts_saturate
+        min_counts = target_counts - tolerance * target_counts
+        max_counts = target_counts + tolerance * target_counts
 
         # Setup containers with initial values
         exptimes = {cam_name: [1. * u.second] for cam_name in cameras.keys()}
