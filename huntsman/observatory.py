@@ -374,9 +374,10 @@ class HuntsmanObservatory(Observatory):
 
         return obs
 
-    def _take_autoflats(self, cameras, observation, safety_func, counts_saturate=4096,
-                        tolerance=0.2, target_scaling=0.5, bias=35, max_exptime=60*u.second,
-                        max_num_exposures=10, min_exptime=1*u.second, *args, **kwargs):
+    def _take_autoflats(self, cameras, observation, safety_func,
+                        tolerance=0.1, target_scaling=0.17, bias=32,
+                        min_exptime=1*u.second, max_exptime=60*u.second,
+                        max_num_exposures=10, *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
@@ -384,9 +385,19 @@ class HuntsmanObservatory(Observatory):
             filter_names (dict): Dict of filter name for each camera.
             safety_func (func): Boolean function that returns True only if safe to continue.
         """
-        target_counts = target_scaling * counts_saturate
-        min_counts = target_counts - tolerance * target_counts
-        max_counts = target_counts + tolerance * target_counts
+        # Get the target counts and tolerance for each camera
+        target_counts = {}
+        counts_tolerance = {}
+        for cam_name, cam in cameras.items():
+            try:
+                bit_depth = cam.bit_depth
+            except NotImplementedError:
+                self.logger.debug(f'No bit depth property for {cam_name}. Using 16.')
+                bit_depth = 16
+            target_counts[cam_name] = target_scaling * 2**bit_depth
+            counts_tolerance[cam_name] = tolerance * 2**bit_depth
+            self.logger.debug(f'Target counts for {cam_name}: '
+                              f'{target_counts[cam_name]}+-{counts_tolerance[cam_name]}.')
 
         # Setup containers with initial values
         exptimes = {cam_name: [1. * u.second] for cam_name in cameras.keys()}
@@ -422,8 +433,8 @@ class HuntsmanObservatory(Observatory):
                                   f' {current_exptime} exposure: {mean_counts}.')
 
                 # Check if the current exposure is good enough to keep
-                is_too_bright = mean_counts > max_counts
-                is_too_faint = mean_counts < min_counts
+                is_too_bright = mean_counts > target_counts[cam_name] + counts_tolerance[cam_name]
+                is_too_faint = mean_counts < target_counts[cam_name] - counts_tolerance[cam_name]
                 all_too_bright &= is_too_bright
                 all_too_faint &= is_too_faint
 
@@ -443,7 +454,7 @@ class HuntsmanObservatory(Observatory):
                 # Calculate next exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
                 next_exptime = self._autoflat_next_exptime(
-                        current_exptime, elapsed_time, target_counts, mean_counts)
+                        current_exptime, elapsed_time, target_counts[cam_name], mean_counts)
                 self.logger.debug(f'Suggested exposure time for {cam_name}: {next_exptime}.')
 
                 # Check the next exposure time is within limits

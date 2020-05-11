@@ -1,6 +1,5 @@
 import os
 import pytest
-from functools import partial
 
 from pocs.core import POCS
 from pocs.utils.location import create_location_from_config
@@ -73,7 +72,5 @@ def test_take_flat_fields(pocs):
     assert not pocs.is_dark(horizon='focus')
     assert pocs.is_dark(horizon='flat')
     pocs.get_ready()
-    safety_func = partial(pocs.is_safe, horizon='flat')
-    assert(safety_func())
-    pocs.observatory.take_flat_fields(alt=60, az=90, min_counts=100,
-                                      max_num_exposures=1, safety_func=safety_func)
+    pocs.observatory.take_flat_fields(alt=60, az=90, max_num_exposures=1,
+                                      tolerance=0.5)
