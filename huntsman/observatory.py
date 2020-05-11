@@ -375,7 +375,7 @@ class HuntsmanObservatory(Observatory):
         return obs
 
     def _take_autoflats(self, cameras, observation, safety_func, counts_saturate=4096,
-                        tolerance=0.1, target_scaling=0.5, bias=35, max_exptime=60*u.second,
+                        tolerance=0.2, target_scaling=0.5, bias=35, max_exptime=60*u.second,
                         max_num_exposures=10, min_exptime=1*u.second, *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
