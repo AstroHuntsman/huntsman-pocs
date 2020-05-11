@@ -3,6 +3,7 @@ import sys
 import time
 from contextlib import suppress
 from functools import partial
+from collections import defaultdict
 
 from astropy import units as u
 from astropy.io import fits
@@ -102,7 +103,9 @@ class HuntsmanObservatory(Observatory):
     @property
     def coarse_focus_required(self):
         """
-        Return True if too much time has elapsed since the previous focus, else False.
+        Return True if too much time has elapsed since the previous focus,
+        using the amount of time specified by `focusing.coarse.frequency` in the config,
+        else False.
         """
         if self.last_focus_time is None:
             return True
@@ -242,19 +245,23 @@ class HuntsmanObservatory(Observatory):
 
         Args:
             camera_names (list, optional): List of camera names to take flats with.
-            alt (float, optional): Altitude for flats.
-            az (float, optional): Azimuth for flats.
+                Default to `None`, which uses all cameras.
+            alt (float, optional): Altitude for flats in degrees. Default `None` will use the
+                `flat_field.twilight.alt` config value.
+            az (float, optional): Azimuth for flats in degrees. Default `None` will use the
+                `flat_field.twilight.az` config value.
             min_counts (int, optional): Minimum ADU count. Default 5000.
             max_counts (int, optional): Maximum ADU count. Default 15000.
-            bias (int, optional): Default bias for the cameras. Default 1000.
-            min_exptime (float, optional): Minimum exposure time. Default 1s.
-            max_exptime (float, optional): Maximum exposure time. Default 60s.
-            target_scaling (float, optional): Required to be between 0 & 1 so
-                target_adu is proportionally between min_counts and max_counts.
-                Default 0.5.
+            bias (int, optional): Default bias in ADU counts for the cameras. Default 32.
+            target_scaling (float, optional): Required to be between [0,1] so
+                target_adu is proportionally between 0 and digital saturation level.
+                Default 0.17.
+            tolerance (float, optional): The minimum precision on the average counts required to
+                keep the exposure, expressed as a fraction of the dynamic range. Default 0.1.
             max_num_exposures (int, optional): Maximum number of good flat-fields to
                 take per filter. Default 10.
-            safety_func (func): Boolean function that returns True only if safe to continue.
+            safety_func (callable|None): Boolean function that returns True only if safe to continue.
+                The default `None` will call `self.is_dark(horizon='flat')`.
         """
         if safety_func is None:
             safety_func = partial(self.is_dark, horizon='flat')
@@ -269,11 +276,11 @@ class HuntsmanObservatory(Observatory):
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
-        exptimes_dark = {c: set() for c in cameras_all.keys()}
+        exptimes_dark = defaultdict(set)
         for filter_name in filter_order:
 
             if not safety_func():
-                self.logger.info('Terminating flat-fielding because its no longer safe.')
+                self.logger.info('Terminating flat-fielding because it is no longer safe.')
                 return
 
             # Get a dict of cameras that have this filter
@@ -302,13 +309,10 @@ class HuntsmanObservatory(Observatory):
                 exptimes_dark[cam_name].update(exptimes[cam_name])
 
         # Take darks for each exposure time we used
-        if safety_func():
-            self.logger.info('Taking flat field dark frames.')
-            obs = self._create_flat_field_observation(alt=alt, az=az)
-            for exptime in exptimes_dark:
-                self._take_flat_field_darks(exptimes_dark, obs)
-        else:
-            self.logger.info('Skipping flat-field darks as no longer safe.')
+        self.logger.info('Taking flat field dark frames.')
+        obs = self._create_flat_field_observation(alt=alt, az=az)
+        for exptime in exptimes_dark:
+            self._take_flat_field_darks(exptimes_dark, obs, safety_func)
 
         self.logger.info('Finished flat-fielding.')
 
@@ -362,9 +366,10 @@ class HuntsmanObservatory(Observatory):
             flat_config = self.config['flat_field']['twilight']
             alt = flat_config['alt']
             az = flat_config['az']
-            self.logger.debug(f'Using flat-field alt/az from config: {alt}, {az}.')
+            self.logger.debug(f'Using flat-field alt/az from config.')
         flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                            obstime=utils.current_time())
+        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03}, {az:.03f}.')
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
         # Create the Observation object
@@ -427,6 +432,9 @@ class HuntsmanObservatory(Observatory):
             for cam_name, meta in camera_events.items():
                 current_exptime = current_exptimes[cam_name]
 
+                self.logger.debug(f'Current good flat-field exposures for {cam_name}: '
+                                  f'{n_good_exposures[cam_name]} of {max_num_exposures}.')
+
                 # Calculate mean counts of last image
                 mean_counts = self._autoflat_mean_counts(meta['filename'], bias)
                 self.logger.debug(f'Mean counts for {cam_name} following'
@@ -441,7 +449,8 @@ class HuntsmanObservatory(Observatory):
                 if is_too_bright or is_too_faint:
                     self.logger.debug(f'Counts outside valid range for flat field'
                                       f' image on {cam_name}: {mean_counts}.')
-                    # os.remove(meta['filename']) Need to prevent NGAS push...
+                    # TODO Need to prevent NGAS push...
+                    os.remove(meta['filename'])
                 else:
                     n_good_exposures[cam_name] += 1
 
@@ -458,18 +467,18 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug(f'Suggested exposure time for {cam_name}: {next_exptime}.')
 
                 # Check the next exposure time is within limits
-                if next_exptime > max_exptime:
+                if next_exptime >= max_exptime:
                     self.logger.debug(f'Suggested exposure time for {cam_name}'
                                       f' is too long: {next_exptime}.')
                     if not self.past_midnight:
-                        finished[cam_name] = True  # Its getting darker, so finish
+                        finished[cam_name] = True  # It's getting darker, so finish
                         continue
                     next_exptime = max_exptime
                 elif next_exptime < min_exptime:
                     self.logger.debug(f'Suggested exposure time for {cam_name}'
                                       f' is too short: {next_exptime}.')
                     if self.past_midnight:
-                        finished[cam_name] = True  # Its getting lighter, so finish
+                        finished[cam_name] = True  # It's getting lighter, so finish
                         continue
                     next_exptime = min_exptime
 
@@ -548,10 +557,9 @@ class HuntsmanObservatory(Observatory):
                 path, f'{imtype}_{observation.current_exp_num:02d}.{cam.file_extension}')
 
             # Take exposure and get event
-            exptime = exptime.to(u.second).value
+            exptime = exptime.to_value(u.second)
             camera_event = cam.take_observation(observation, fits_headers, filename=filename,
                                                 exptime=exptime, dark=dark)
-
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
@@ -561,8 +569,8 @@ class HuntsmanObservatory(Observatory):
 
         return camera_events
 
-    def _take_flat_field_darks(self, exptimes, observation):
-        """Take the dark fileds for each camera.
+    def _take_flat_field_darks(self, exptimes, observation, safety_func):
+        """Take the dark flat fields for each camera.
 
         args:
             exptimes: dict of camera_name: list of exposure times.
@@ -571,7 +579,7 @@ class HuntsmanObservatory(Observatory):
         # Exposure time lists may not be the same length for each camera
         while True:
             next_exptimes = {}
-            for cam_name, exptime in exptimes.items():
+            for cam_name in exptimes.keys():
                 with suppress(KeyError):
                     next_exptimes[cam_name] = exptimes[cam_name].pop()
 
@@ -579,5 +587,9 @@ class HuntsmanObservatory(Observatory):
             if not next_exptimes:
                 break
 
-            # Take the exposures
-            self._take_flat_observation(next_exptimes, observation, dark=True)
+            # Take the exposures, break out if safety fails
+            if safety_func():
+                self._take_flat_observation(next_exptimes, observation, dark=True)
+            else:
+                self.logger.debug('Aborting flat-field observations as no longer safe.')
+                return
