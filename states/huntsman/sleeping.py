@@ -7,7 +7,7 @@ def on_enter(event_data):
     if pocs.is_safe(horizon='focus'):
         pocs.logger.debug("Safety check passed but in sleeping state.")
         if pocs.should_retry:
-            pocs.logger.dubug("Continuing states.")
+            pocs.logger.debug("Continuing states.")
         else:
             pocs.say("Stopping states.")
             pocs.stop_states()
