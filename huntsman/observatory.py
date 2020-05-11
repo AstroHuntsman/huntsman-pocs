@@ -395,7 +395,7 @@ class HuntsmanObservatory(Observatory):
         counts_tolerance = {}
         for cam_name, cam in cameras.items():
             try:
-                bit_depth = cam.bit_depth
+                bit_depth = cam.bit_depth.to_value(u.bit)
             except NotImplementedError:
                 self.logger.debug(f'No bit depth property for {cam_name}. Using 16.')
                 bit_depth = 16
