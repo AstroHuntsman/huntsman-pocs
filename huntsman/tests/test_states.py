@@ -72,6 +72,8 @@ def test_sleeping_stop(pocs):
     '''
     pocs.initialize()
     pocs.get_ready()
+    pocs._obs_run_retries = -1
+    assert(not pocs.should_retry)
     # Make sure its dark
     assert pocs.is_dark(horizon='observe')
     # Get into the sleeping state
