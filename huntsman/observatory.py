@@ -380,7 +380,7 @@ class HuntsmanObservatory(Observatory):
         return obs
 
     def _take_autoflats(self, cameras, observation, safety_func,
-                        tolerance=0.1, target_scaling=0.17, bias=32,
+                        tolerance=0.05, target_scaling=0.17, bias=32,
                         min_exptime=1*u.second, max_exptime=60*u.second,
                         max_num_exposures=10, *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
@@ -482,6 +482,8 @@ class HuntsmanObservatory(Observatory):
                                       f' is too long: {next_exptime}.')
                     if not self.past_midnight:
                         finished[cam_name] = True  # It's getting darker, so finish
+                        self.logger.debug('Premature termination of flat-field exposures for '
+                                          f'{cam_name} in {observation.filter_name}.')
                         continue
                     next_exptime = max_exptime
                 elif next_exptime < min_exptime:
@@ -489,6 +491,8 @@ class HuntsmanObservatory(Observatory):
                                       f' is too short: {next_exptime}.')
                     if self.past_midnight:
                         finished[cam_name] = True  # It's getting lighter, so finish
+                        self.logger.debug('Premature termination of flat-field exposures for '
+                                          f'{cam_name} in {observation.filter_name}.')
                         continue
                     next_exptime = min_exptime
 
