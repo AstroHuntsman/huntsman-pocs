@@ -9,4 +9,4 @@ def on_enter(event_data):
         pocs.stop_states()
     else:
         pocs.say("Reseting observation run from sleeping state. Continuing states.")
-        pocs.reset_observation_run()
+        pocs.reset_observing_run()
