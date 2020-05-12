@@ -397,7 +397,7 @@ class HuntsmanObservatory(Observatory):
             try:
                 bit_depth = cam.bit_depth.to_value(u.bit)
             except NotImplementedError:
-                self.logger.debug(f'No bit depth property for {cam_name}. Using 16.')
+                self.logger.debug(f'No bit_depth property for {cam_name}. Using 16.')
                 bit_depth = 16
             target_counts[cam_name] = target_scaling * 2**bit_depth
             counts_tolerance[cam_name] = tolerance * 2**bit_depth
@@ -432,31 +432,40 @@ class HuntsmanObservatory(Observatory):
             for cam_name, meta in camera_events.items():
                 current_exptime = current_exptimes[cam_name]
 
-                self.logger.debug(f'Current good flat-field exposures for {cam_name}: '
-                                  f'{n_good_exposures[cam_name]} of {max_num_exposures}.')
-
                 # Calculate mean counts of last image
                 mean_counts = self._autoflat_mean_counts(meta['filename'], bias)
-                self.logger.debug(f'Mean counts for {cam_name} following'
-                                  f' {current_exptime} exposure: {mean_counts}.')
+                self.logger.debug(f'Mean flat-field counts for {cam_name} following'
+                                  f' {current_exptime} exposure: {mean_counts:.0f}.'
+                                  f' Target counts: {target_counts[cam_name]:.0f}.')
 
                 # Check if the current exposure is good enough to keep
-                is_too_bright = mean_counts > target_counts[cam_name] + counts_tolerance[cam_name]
-                is_too_faint = mean_counts < target_counts[cam_name] - counts_tolerance[cam_name]
+                max_counts = target_counts[cam_name] + counts_tolerance[cam_name]
+                min_counts = target_counts[cam_name] - counts_tolerance[cam_name]
+                self.logger.debug(f'Valid flat-field counts range for {cam_name}: '
+                                  f'{min_counts:.0f}, {max_counts:.0f}.')
+
+                is_too_bright = mean_counts > max_counts
+                is_too_faint = mean_counts < min_counts
                 all_too_bright &= is_too_bright
                 all_too_faint &= is_too_faint
-
-                if is_too_bright or is_too_faint:
-                    self.logger.debug(f'Counts outside valid range for flat field'
-                                      f' image on {cam_name}: {mean_counts}.')
+                if is_too_bright:
+                    self.logger.debug(f'Counts too high for flat-field'
+                                      f' image on {cam_name}: {mean_counts:.0f}>{max_counts:.0f}.')
+                elif is_too_faint:
+                    self.logger.debug(f'Counts too low for flat-field'
+                                      f' image on {cam_name}: {mean_counts:.0f}<{min_counts:.0f}.')
                     # TODO Need to prevent NGAS push...
                     os.remove(meta['filename'])
                 else:
                     n_good_exposures[cam_name] += 1
+                self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
+                                  f'in {observation.filter_name} filter: '
+                                  f'{n_good_exposures[cam_name]} of {max_num_exposures}.')
 
                 # Check if we have enough good flats for this camera
                 if n_good_exposures[cam_name] >= max_num_exposures:
-                    self.logger.debug(f'Enough flats taken for {cam_name}.')
+                    self.logger.debug('Enough acceptable flat-field exposures acquired for '
+                                      f'{cam_name} in {observation.filter_name} filter.')
                     finished[cam_name] = True
                     continue
 
@@ -464,18 +473,19 @@ class HuntsmanObservatory(Observatory):
                 elapsed_time = (utils.current_time() - start_time).sec
                 next_exptime = self._autoflat_next_exptime(
                         current_exptime, elapsed_time, target_counts[cam_name], mean_counts)
-                self.logger.debug(f'Suggested exposure time for {cam_name}: {next_exptime}.')
+                self.logger.debug('Suggested flat-field exposure time for '
+                                  f'{cam_name}: {next_exptime}.')
 
                 # Check the next exposure time is within limits
                 if next_exptime >= max_exptime:
-                    self.logger.debug(f'Suggested exposure time for {cam_name}'
+                    self.logger.debug(f'Suggested flat-field exposure time for {cam_name}'
                                       f' is too long: {next_exptime}.')
                     if not self.past_midnight:
                         finished[cam_name] = True  # It's getting darker, so finish
                         continue
                     next_exptime = max_exptime
                 elif next_exptime < min_exptime:
-                    self.logger.debug(f'Suggested exposure time for {cam_name}'
+                    self.logger.debug(f'Suggested flat-field exposure time for {cam_name}'
                                       f' is too short: {next_exptime}.')
                     if self.past_midnight:
                         finished[cam_name] = True  # It's getting lighter, so finish
@@ -488,11 +498,11 @@ class HuntsmanObservatory(Observatory):
             # Check if all the exposures in this loop are too bright
             if self.past_midnight:
                 if all_too_faint:
-                    self.logger.debug('All exposures are too faint. Waiting 30 seconds...')
+                    self.logger.debug('All flat-field exposures are too faint. Waiting 30 seconds...')
                     time.sleep(30)
             else:
                 if all_too_bright:
-                    self.logger.debug('All exposures are too bright. Waiting 30 seconds...')
+                    self.logger.debug('All flat-field exposures are too bright. Waiting 30 seconds...')
                     time.sleep(30)
 
         # Return the exposure times
