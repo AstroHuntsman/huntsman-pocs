@@ -524,10 +524,15 @@ class HuntsmanObservatory(Observatory):
             data = fits.getdata(filename)
         except FileNotFoundError:
             data = fits.getdata(filename + '.fz')
+        data = data.astype('int32')
 
         # Calculate average counts per pixel
         mean_counts, _, _ = stats.sigma_clipped_stats(data-bias)
-        mean_counts = max(min_counts, mean_counts - bias)
+        if mean_counts < min_counts:
+            self.logger.warning('Truncating mean flat-field counts to minimum value: '
+                                f'{mean_counts}<{min_counts}.')
+            mean_counts = min_counts
+
         return mean_counts
 
     def _autoflat_next_exptime(self, previous_exptime, elapsed_time, target_counts, mean_counts):
