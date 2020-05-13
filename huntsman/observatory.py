@@ -250,8 +250,6 @@ class HuntsmanObservatory(Observatory):
                 `flat_field.twilight.alt` config value.
             az (float, optional): Azimuth for flats in degrees. Default `None` will use the
                 `flat_field.twilight.az` config value.
-            min_counts (int, optional): Minimum ADU count. Default 5000.
-            max_counts (int, optional): Maximum ADU count. Default 15000.
             bias (int, optional): Default bias in ADU counts for the cameras. Default 32.
             target_scaling (float, optional): Required to be between [0,1] so
                 target_adu is proportionally between 0 and digital saturation level.
@@ -260,6 +258,8 @@ class HuntsmanObservatory(Observatory):
                 keep the exposure, expressed as a fraction of the dynamic range. Default 0.1.
             max_num_exposures (int, optional): Maximum number of good flat-fields to
                 take per filter. Default 10.
+            max_attempts (int, optional): Number of attempts per camera-filter pair to get good
+                flat-field exposures before aborting. Default 20.
             safety_func (callable|None): Boolean function that returns True only if safe to continue.
                 The default `None` will call `self.is_dark(horizon='flat')`.
         """
@@ -382,7 +382,7 @@ class HuntsmanObservatory(Observatory):
     def _take_autoflats(self, cameras, observation, safety_func,
                         tolerance=0.05, target_scaling=0.17, bias=32,
                         min_exptime=1*u.second, max_exptime=60*u.second,
-                        max_num_exposures=10, *args, **kwargs):
+                        max_num_exposures=10, max_attempts=20, *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
@@ -402,7 +402,7 @@ class HuntsmanObservatory(Observatory):
             target_counts[cam_name] = target_scaling * 2**bit_depth
             counts_tolerance[cam_name] = tolerance * 2**bit_depth
             self.logger.debug(f'Target counts for {cam_name}: '
-                              f'{target_counts[cam_name]}+-{counts_tolerance[cam_name]}.')
+                              f'{target_counts[cam_name]}±{counts_tolerance[cam_name]}.')
 
         # Setup containers with initial values
         exptimes = {cam_name: [1. * u.second] for cam_name in cameras.keys()}
@@ -410,7 +410,12 @@ class HuntsmanObservatory(Observatory):
         n_good_exposures = {cam_name: 0 for cam_name in cameras.keys()}
 
         # Loop until conditions are met to finish flat-fielding
-        while not all(finished.values()):
+        for attempt_number in range(max_attempts):
+
+            if all(finished.values()):
+                self.logger.info(f'All cameras have finished flat-fielding in'
+                                 f' {observation.filter_name} filter.')
+                break
 
             if not safety_func():
                 self.logger.info('Stopping flat-fielding as no longer safe.')
@@ -459,8 +464,8 @@ class HuntsmanObservatory(Observatory):
                 else:
                     n_good_exposures[cam_name] += 1
                 self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
-                                  f'in {observation.filter_name} filter: '
-                                  f'{n_good_exposures[cam_name]} of {max_num_exposures}.')
+                                  f'in {observation.filter_name} filter after {attempt_number+1} '
+                                  f'attempts: {n_good_exposures[cam_name]} of {max_num_exposures}.')
 
                 # Check if we have enough good flats for this camera
                 if n_good_exposures[cam_name] >= max_num_exposures:
@@ -508,6 +513,10 @@ class HuntsmanObservatory(Observatory):
                 if all_too_bright:
                     self.logger.debug('All flat-field exposures are too bright. Waiting 30 seconds...')
                     time.sleep(30)
+
+            if attempt_number == max_attempts-1:
+                self.logger.debug('Max attempts have been reached for flat-fielding '
+                                  f'in {filter_name} filter. Aborting.')
 
         # Return the exposure times
         return exptimes
@@ -610,5 +619,5 @@ class HuntsmanObservatory(Observatory):
             if safety_func():
                 self._take_flat_observation(next_exptimes, observation, dark=True)
             else:
-                self.logger.debug('Aborting flat-field observations as no longer safe.')
+                self.logger.debug('Aborting flat-field dark observations as no longer safe.')
                 return
