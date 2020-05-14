@@ -40,8 +40,10 @@ RUN apt-get update && \
     pip install -e . && \
     pip install astroplan && \
 
-    # Make sure we are using the latest POCS version
+    # Make sure we are using the latest POCS/panoptes-utils versions
     cd $POCS && \
+    pip install -e . && \
+    cd $PANDIR/panoptes-utils && \
     pip install -e . && \
 
     # Setup SSH so localhost works without password
