@@ -1,3 +1,26 @@
+import time
+from pocs.utils import error
+
+
+def prepare_cameras(pocs, sleep=60, max_attempts=5):
+    """
+    Make sure cameras are ready before starting states.
+    """
+    pocs.logger.debug('Preparing cameras before leaving ready state.')
+    cameras = pocs.observatory.cameras.values()
+
+    # Make sure camera cooling is enabled
+    for cam in cameras:
+        cam.cooling_enabled = True
+
+    # Wait for cameras to be ready
+    for i in range(max_attempts):
+        if all([cam.is_ready for cam in cameras]):
+            return
+        time.sleep(sleep)
+    raise error.PanError('Timeout while waiting for cameras to become ready from ready state.')
+
+
 def on_enter(event_data):
     """
     Once in the `ready` state our unit has been initialized successfully. The next step is to
@@ -32,3 +55,7 @@ def on_enter(event_data):
                 pocs.next_state = 'scheduling'
             else:
                 pocs.next_state = 'twilight_flat_fielding'
+
+    # Prepare the cameras if we are about to take some exposures
+    if pocs.next_state != 'parking':
+        prepare_cameras(pocs)
