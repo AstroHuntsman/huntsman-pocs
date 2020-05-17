@@ -11,11 +11,12 @@ def prepare_cameras(pocs, sleep=60, max_attempts=5):
 
     # Make sure camera cooling is enabled
     for cam in cameras:
-        cam.cooling_enabled = True
+        if cam.is_cooled_camera:
+            cam.cooling_enabled = True
 
     # Wait for cameras to be ready
     for i in range(max_attempts):
-        if all([cam.is_ready for cam in cameras]):
+        if all([cam.is_ready() for cam in cameras]):
             return
         time.sleep(sleep)
     raise error.PanError('Timeout while waiting for cameras to become ready from ready state.')
