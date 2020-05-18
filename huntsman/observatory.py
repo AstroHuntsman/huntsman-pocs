@@ -316,6 +316,43 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
+    def activate_camera_cooling(self):
+        """
+        Activate camera cooling for all cameras.
+        """
+        self.logger.debug('Activating camera cooling for all cameras.')
+        for cam in self.cameras.values():
+            if cam.is_cooled_camera:
+                cam.cooling_enabled = True
+
+    def deactivate_camera_cooling(self):
+        """
+        Deactivate camera cooling for all cameras.
+        """
+        self.logger.debug('Deactivating camera cooling for all cameras.')
+        for cam in self.cameras.values():
+            if cam.is_cooled_camera:
+                cam.cooling_enabled = False
+
+    def prepare_cameras(self, sleep=60, max_attempts=5):
+        """
+        Make sure cameras are all cooled and ready.
+
+        Arguments:
+            sleep (float): Time in seconds to sleep between checking readiness. Default 60.
+            max_attempts (int): Maximum number of ready checks before raising a `PanError`.
+        """
+        # Make sure camera cooling is enabled
+        self.activate_camera_cooling()
+
+        # Wait for cameras to be ready
+        self.logger.debug('Waiting for cameras to be ready.')
+        for i in range(max_attempts):
+            if all([cam.is_ready for cam in self.cameras.values()]):
+                return
+            time.sleep(sleep)
+        raise error.PanError('Timeout while waiting for cameras to be ready.')
+
 ##########################################################################
 # Private Methods
 ##########################################################################

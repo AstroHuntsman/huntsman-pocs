@@ -1,13 +1,3 @@
-def deactivate_camera_cooling(pocs):
-    """
-    Deactivate camera cooling before entering sleeping state.
-    """
-    pocs.logger.debug('Deactivating camera cooling before entering sleeping state.')
-    for cam in pocs.observatory.cameras.values():
-        if cam.is_cooled_camera:
-            cam.cooling_enabled = False
-
-
 def on_enter(event_data):
     """
 
@@ -24,6 +14,6 @@ def on_enter(event_data):
         pocs.logger.warning('Problem with cleanup: {}'.format(e))
 
     # Turn-off camera cooling
-    deactivate_camera_cooling(pocs)
+    pocs.observatory.deactivate_camera_cooling()
 
     pocs.say("Ok, looks like I'm done for the day. Time to get some sleep!")
