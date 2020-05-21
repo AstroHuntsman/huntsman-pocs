@@ -348,8 +348,10 @@ class HuntsmanObservatory(Observatory):
         # Wait for cameras to be ready
         self.logger.debug('Waiting for cameras to be ready.')
         for i in range(max_attempts):
+            pocs.logger.debug(f'Preparing cameras {i}/{max_attempts}')                        
             if all([cam.is_ready for cam in self.cameras.values()]):
                 return
+            pocs.say('Not all the cameras are cooling yet, going to give them a little more time')
             time.sleep(sleep)
         raise error.PanError('Timeout while waiting for cameras to be ready.')
 
