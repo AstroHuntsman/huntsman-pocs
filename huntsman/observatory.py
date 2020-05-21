@@ -351,7 +351,7 @@ class HuntsmanObservatory(Observatory):
         # Wait for cameras to be ready
         n_cameras = len(self.cameras)
         self.logger.debug('Waiting for cameras to be ready.')
-        for i in range(max_attempts):
+        for i in range(1, max_attempts+1):
 
             num_cameras_ready = 0
             for cam_name, cam in self.cameras.items():
@@ -361,7 +361,7 @@ class HuntsmanObservatory(Observatory):
                     continue
 
                 # If max attempts have been reached...
-                if (i == max_attempts-1):
+                if (i == max_attempts):
                     msg = f'Timeout while waiting for {cam_name} to be ready.'
 
                     # Raise PanError if we need all cameras
@@ -375,12 +375,12 @@ class HuntsmanObservatory(Observatory):
                         self.remove_camera(cam_name)
 
             # Terminate loop if all cameras are ready
-            self.logger.debug(f'Number of ready cameras after {i+1} of {max_attempts} checks:'
+            self.logger.debug(f'Number of ready cameras after {i} of {max_attempts} checks:'
                               f' {num_cameras_ready} of {n_cameras}.')
             if num_cameras_ready == n_cameras:
                 self.logger.debug('All cameras are ready.')
                 break
-            elif i < max_attempts-1:
+            elif i < max_attempts:
                 self.logger.debug('Not all cameras are ready yet, '
                                   f'waiting another {sleep} seconds before checking again.')
                 time.sleep(sleep)
