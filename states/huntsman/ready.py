@@ -35,4 +35,5 @@ def on_enter(event_data):
 
     # Prepare the cameras if we are about to take some exposures
     if pocs.next_state != 'parking':
+        pocs.say("Those cameras are hot! Let's turn on the cooling. This might take a few minutes.")
         pocs.observatory.prepare_cameras()
