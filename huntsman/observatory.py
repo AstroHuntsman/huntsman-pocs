@@ -336,7 +336,7 @@ class HuntsmanObservatory(Observatory):
 
     def prepare_cameras(self, sleep=60, max_attempts=5):
         """
-        Make sure cameras are all cooled and ready.
+        Make sure cameras are cooled and ready.
 
         Arguments:
             sleep (float): Time in seconds to sleep between checking readiness. Default 60.
