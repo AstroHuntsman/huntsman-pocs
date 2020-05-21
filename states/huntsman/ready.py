@@ -1,12 +1,10 @@
 def on_enter(event_data):
     """
-    Once in the `ready` state our unit has been initialized successfully. The next step is to
-    schedule something for the night.
+    Once in the `ready` state our unit has been initialized successfully. We now
+    decide on the next state and ready the cameras if appropriate.
     """
     pocs = event_data.model
     pocs.next_state = 'parking'
-    pocs.say("Ok, I'm all set up and ready to go!")
-
     pocs.observatory.mount.unpark()
 
     # Check if we need to foucs
@@ -35,5 +33,6 @@ def on_enter(event_data):
 
     # Prepare the cameras if we are about to take some exposures
     if pocs.next_state != 'parking':
-        pocs.say("Those cameras are hot! Let's turn on the cooling. This might take a few minutes.")
+        pocs.say("Making sure cameras are ready before leaving ready state.")
         pocs.observatory.prepare_cameras()
+        pocs.say("Ok, I'm all set up and ready to go!")

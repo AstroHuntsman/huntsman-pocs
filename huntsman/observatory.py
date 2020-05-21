@@ -334,26 +334,60 @@ class HuntsmanObservatory(Observatory):
             if cam.is_cooled_camera:
                 cam.cooling_enabled = False
 
-    def prepare_cameras(self, sleep=60, max_attempts=5):
+    def prepare_cameras(self, sleep=60, max_attempts=5, require_all_cameras=False):
         """
-        Make sure cameras are cooled and ready.
+        Make sure cameras are all cooled and ready.
 
         Arguments:
             sleep (float): Time in seconds to sleep between checking readiness. Default 60.
-            max_attempts (int): Maximum number of ready checks before raising a `PanError`.
+            max_attempts (int): Maximum number of ready checks. See `require_all_cameras`.
+            require_all_cameras (bool): `True` if all cameras are required to be ready.
+                If `True` and max_attempts is reached, a `PanError` will be raised. If `False`,
+                any camera that has failed to become ready will be dropped from the Observatory.
         """
         # Make sure camera cooling is enabled
         self.activate_camera_cooling()
 
         # Wait for cameras to be ready
+        n_cameras = len(self.cameras)
         self.logger.debug('Waiting for cameras to be ready.')
         for i in range(max_attempts):
-            pocs.logger.debug(f'Preparing cameras {i}/{max_attempts}')                        
-            if all([cam.is_ready for cam in self.cameras.values()]):
-                return
-            pocs.say('Not all the cameras are cooling yet, going to give them a little more time')
-            time.sleep(sleep)
-        raise error.PanError('Timeout while waiting for cameras to be ready.')
+
+            num_cameras_ready = 0
+            for cam_name, cam in self.cameras.items():
+
+                if cam.is_ready:
+                    num_cameras_ready += 1
+                    continue
+
+                # If max attempts have been reached...
+                if (i == max_attempts-1):
+                    msg = f'Timeout while waiting for {cam_name} to be ready.'
+
+                    # Raise PanError if we need all cameras
+                    if require_all_cameras:
+                        raise error.PanError(msg)
+
+                    # Drop the camera if we don't need all cameras
+                    else:
+                        self.logger.error(msg)
+                        self.logger.debug(f'Removing {cam_name} from {self}.')
+                        self.remove_camera(cam_name)
+
+            # Terminate loop if all cameras are ready
+            self.logger.debug(f'Number of ready cameras after {i+1} of {max_attempts} checks:'
+                              f' {num_cameras_ready} of {n_cameras}.')
+            if num_cameras_ready == n_cameras:
+                self.logger.debug('All cameras are ready.')
+                break
+            elif i < max_attempts-1:
+                self.logger.debug('Not all cameras are ready yet, '
+                                  f'waiting another {sleep} seconds before checking again.')
+                time.sleep(sleep)
+
+        # Raise a `PanError` if no cameras are ready.
+        if num_cameras_ready == 0:
+            raise error.PanError('No cameras ready after maximum attempts reached.')
 
 ##########################################################################
 # Private Methods
