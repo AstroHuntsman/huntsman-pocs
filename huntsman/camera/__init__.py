@@ -70,7 +70,7 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
         error.PanError: Description
     """
     if not logger:
-        logger = logger_module.get_root_logger()
+        logger = logger_module
 
     if not config:
         config = load_config(**kwargs)
@@ -139,7 +139,7 @@ def create_distributed_cameras(camera_info, logger=None):
             OrderedDict if no distributed cameras are found.
     """
     if not logger:
-        logger = logger_module.get_root_logger()
+        logger = logger_module
 
     # Get all distributed cameras
     camera_uris = list_distributed_cameras(ns_host=camera_info.get('name_server_host', None),

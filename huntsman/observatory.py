@@ -14,12 +14,10 @@ from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from panoptes.utils import error
 from pocs import utils
-from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.library import load_module
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
-from huntsman.utils import dither
 from huntsman.utils import load_config
 
 
