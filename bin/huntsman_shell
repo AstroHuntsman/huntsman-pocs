@@ -6,16 +6,14 @@ from cmd import Cmd
 
 from astropy.utils import console
 
-from pocs import POCS
+from pocs.core import POCS
 from panoptes.utils import error
 from panoptes.utils import listify
-from panoptes.utils.messaging import PanMessaging
 
 from huntsman.observatory import HuntsmanObservatory as Observatory
 
 
 class HuntsmanShell(Cmd):
-
     """ A simple command loop for running the Huntsman via POCS """
     intro = 'Welcome to Huntsman Shell! Type ? for help'
     prompt = 'Huntsman > '
@@ -27,11 +25,6 @@ class HuntsmanShell(Cmd):
     msg_subscriber = None
     msg_publisher = None
     cmd_publisher = None
-
-    cmd_pub_port = 6500
-    cmd_sub_port = 6501
-    msg_pub_port = 6510
-    msg_sub_port = 6511
 
     @property
     def ready(self):
@@ -45,58 +38,6 @@ class HuntsmanShell(Cmd):
 
         return self.pocs.is_safe()
 
-    def do_start_messaging(self, *arg):
-        """ Starts the messaging system for the POCS ecosystem
-
-        This starts both a command forwarder and a message forwarder as separate
-        processes.
-
-        The command forwarder has the pocs_shell and PAWS as PUBlishers and POCS
-        itself as a SUBscriber to those commands
-
-        The message forwarder has POCS as a PUBlisher and the pocs_shell and PAWS
-        as SUBscribers to those messages
-
-        Arguments:
-            *arg {str} -- Unused
-        """
-        print_info("Starting messaging")
-
-        # Send commands to POCS via this publisher
-        try:
-            self.cmd_publisher = PanMessaging.create_publisher(
-                self.cmd_pub_port)
-            print_info("Command publisher started on port {}".format(
-                self.cmd_pub_port))
-        except Exception as e:
-            print_warning("Can't start command publisher: {}".format(e))
-
-        try:
-            self.cmd_subscriber = PanMessaging.create_subscriber(
-                self.cmd_sub_port)
-            print_info("Command subscriber started on port {}".format(
-                self.cmd_sub_port))
-        except Exception as e:
-            print_warning("Can't start command subscriber: {}".format(e))
-
-        # Receive messages from POCS via this subscriber
-        try:
-            self.msg_subscriber = PanMessaging.create_subscriber(
-                self.msg_sub_port)
-            print_info("Message subscriber started on port {}".format(
-                self.msg_sub_port))
-        except Exception as e:
-            print_warning("Can't start message subscriber: {}".format(e))
-
-        # Send messages to PAWS
-        try:
-            self.msg_publisher = PanMessaging.create_publisher(
-                self.msg_pub_port)
-            print_info("Message publisher started on port {}".format(
-                self.msg_pub_port))
-        except Exception as e:
-            print_warning("Can't start message publisher: {}".format(e))
-
     def do_setup_pocs(self, *arg):
         """ Setup and initialize a POCS instance """
         simulator = listify(arg[0].split('=')[-1])
@@ -107,7 +48,8 @@ class HuntsmanShell(Cmd):
         try:
             observatory = Observatory(simulator=simulator)
 
-            self.pocs = POCS(observatory, messaging=True, state_machine_file='{}/conf_files/state_machine.yaml'.format(os.getenv('HUNTSMAN_POCS')))
+            self.pocs = POCS(observatory,
+                             state_machine_file='{}/conf_files/state_machine.yaml'.format(os.getenv('HUNTSMAN_POCS')))
             self.pocs.initialize()
         except error.PanError:
             pass
@@ -125,9 +67,6 @@ class HuntsmanShell(Cmd):
             *arg {str} -- Can pass arguments through to `do_connect`
         """
         if self.pocs is not None:
-            if self.msg_subscriber is None:
-                self.do_start_messaging()
-
             print_info("Starting POCS - Press Ctrl-c to interrupt")
 
             try:
@@ -138,28 +77,6 @@ class HuntsmanShell(Cmd):
                 self._running = False
         else:
             print_warning('Please run `setup_pocs` before trying to run')
-
-    def do_pocs_command(self, cmd):
-        """ Send a command to POCS instance
-
-        Arguments:
-            cmd {str} -- Command to be sent
-        """
-        try:
-            self.cmd_publisher.send_message('POCS-CMD', cmd)
-        except AttributeError:
-            print_info('Messaging not started')
-
-    def do_pocs_message(self, cmd):
-        """ Send a message to PAWS and other listeners
-
-        Arguments:
-            cmd {str} -- Command to be sent
-        """
-        try:
-            self.msg_publisher.send_message('POCS-SHELL', cmd)
-        except AttributeError:
-            print_info('Messaging not started')
 
     def do_exit(self, *arg):
         """ Exits PanShell """

@@ -7,9 +7,8 @@ import copy
 from warnings import warn
 import Pyro4
 
-from panoptes.utils.logger import logger
+from panoptes.utils.logging import logger
 from panoptes.utils.database import PanDB
-from panoptes.utils.messaging import PanMessaging
 
 from huntsman.utils import load_config, get_own_ip
 # This import is needed to set up the custom (de)serializers in the same scope
@@ -58,7 +57,7 @@ def pytest_addoption(parser):
 
 def pytest_collection_modifyitems(config, items):
     if config.getoption("--hardware-test"):
-        # --hardware-test given in cli: do not skip harware tests
+        # --hardware-test given in cli: do not skip hardware tests
         return
     skip_hardware = pytest.mark.skip(reason="need --hardware-test option to run")
     for item in items:
@@ -79,8 +78,7 @@ def images_dir_device(tmpdir_factory):
 
 
 @pytest.fixture(scope='function')
-def config(images_dir_control, messaging_ports):
-
+def config(images_dir_control):
     global _one_time_config
     if not _one_time_config:
         _one_time_config = load_config(ignore_local=True, simulator=['all'])
@@ -94,18 +92,6 @@ def config(images_dir_control, messaging_ports):
     # We allow for each test to have its own images directory, and thus
     # to not conflict with each other.
     result['directories']['images'] = images_dir_control
-
-    # For now (October 2018), POCS assumes that the pub and sub ports are
-    # sequential. Make sure that is what the test fixtures have in them.
-    # TODO(jamessynge): Remove this once pocs.yaml (or messaging.yaml?) explicitly
-    # lists the ports to be used.
-    assert messaging_ports['cmd_ports'][0] == (messaging_ports['cmd_ports'][1] - 1)
-    assert messaging_ports['msg_ports'][0] == (messaging_ports['msg_ports'][1] - 1)
-
-    # We don't want to use the same production messaging ports, just in case
-    # these tests are running on a working scope.
-    result['messaging']['cmd_port'] = messaging_ports['cmd_ports'][0]
-    result['messaging']['msg_port'] = messaging_ports['msg_ports'][0]
 
     logger.debug(f'config fixture: {result!r}')
     return result
@@ -136,7 +122,6 @@ def db_name():
 
 @pytest.fixture(scope='function', params=_all_databases)
 def db_type(request, db_name):
-
     db_list = request.config.option.test_databases
     if request.param not in db_list and 'all' not in db_list:
         pytest.skip("Skipping {} DB, set --test-all-databases=True".format(request.param))
@@ -239,7 +224,7 @@ def config_server(name_server, request, images_dir_control, images_dir_device):
         try:
 
             config = query_config_server()
-            assert(isinstance(config, dict))
+            assert (isinstance(config, dict))
 
             # Add an entry for the IP used by the test machine
             config_server = Pyro4.Proxy('PYRONAME:config_server')
@@ -304,71 +289,3 @@ def test_server(name_server, request):
 def test_proxy(test_server):
     proxy = Pyro4.Proxy("PYRONAME:test_server")
     return proxy
-
-
-# -----------------------------------------------------------------------
-# Messaging support fixtures. It is important that tests NOT use the same
-# ports that the real pocs_shell et al use; when they use the same ports,
-# then tests may cause errors in the real system (e.g. by sending a
-# shutdown command).
-
-
-@pytest.fixture(scope='module')
-def messaging_ports():
-    # Some code (e.g. POCS._setup_messaging) assumes that sub and pub ports
-    # are sequential so these need to match that assumption for now.
-    return dict(msg_ports=(43001, 43002), cmd_ports=(44001, 44002))
-
-
-@pytest.fixture(scope='function')
-def message_forwarder(messaging_ports):
-    cmd = os.path.join(os.getenv('POCS'), 'scripts', 'run_messaging_hub.py')
-    args = [cmd]
-    # Note that the other programs using these port pairs consider
-    # them to be pub and sub, in that order, but the forwarder sees things
-    # in reverse: it subscribes to the port that others publish to,
-    # and it publishes to the port that others subscribe to.
-    for _, (sub, pub) in messaging_ports.items():
-        args.append('--pair')
-        args.append(str(sub))
-        args.append(str(pub))
-
-    logger.info(f'message_forwarder fixture starting: {args}')
-    proc = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    # It takes a while for the forwarder to start, so allow for that.
-    # TODO(jamessynge): Come up with a way to speed up these fixtures.
-    time.sleep(3)
-    yield messaging_ports
-    proc.terminate()
-
-
-@pytest.fixture(scope='function')
-def msg_publisher(message_forwarder):
-    port = message_forwarder['msg_ports'][0]
-    publisher = PanMessaging.create_publisher(port)
-    yield publisher
-    publisher.close()
-
-
-@pytest.fixture(scope='function')
-def msg_subscriber(message_forwarder):
-    port = message_forwarder['msg_ports'][1]
-    subscriber = PanMessaging.create_subscriber(port)
-    yield subscriber
-    subscriber.close()
-
-
-@pytest.fixture(scope='function')
-def cmd_publisher(message_forwarder):
-    port = message_forwarder['cmd_ports'][0]
-    publisher = PanMessaging.create_publisher(port)
-    yield publisher
-    publisher.close()
-
-
-@pytest.fixture(scope='function')
-def cmd_subscriber(message_forwarder):
-    port = message_forwarder['cmd_ports'][1]
-    subscriber = PanMessaging.create_subscriber(port)
-    yield subscriber
-    subscriber.close()
