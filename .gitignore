@@ -87,3 +87,4 @@ notebooks/*
 weather_plots
 
 src/
+venv
