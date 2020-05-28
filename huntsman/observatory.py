@@ -17,7 +17,7 @@ from pocs import utils
 from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
+from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation, DarkObservation
 from huntsman.utils import dither
 from huntsman.utils import load_config
 
@@ -241,180 +241,7 @@ class HuntsmanObservatory(Observatory):
     def take_flat_fields(self, camera_names=None, alt=None, az=None,
                          safety_func=None, **kwargs):
         """
-<<<<<<< HEAD
-        target_adu = target_adu_percentage * (min_counts + max_counts)
-
-        image_dir = self.config['directories']['images']
-
-        flat_obs = self._create_flat_field_observation(alt=alt, az=az)
-        exptimes = {cam_name: [1. * u.second] for cam_name in camera_list}
-
-        # Loop until conditions are met for flat-fielding
-        while True:
-            self.logger.debug("Slewing to flat-field coords: {}".format(flat_obs.field))
-            self.mount.set_target_coordinates(flat_obs.field)
-            self.mount.slew_to_target()
-            self.status()  # Seems to help with reading coords
-
-            fits_headers = self.get_standard_headers(observation=flat_obs)
-
-            start_time = utils.current_time()
-            fits_headers['start_time'] = utils.flatten_time(
-                start_time)  # Common start time for cameras
-
-            camera_events = dict()
-
-            # Take the observations
-            for cam_name in camera_list:
-
-                camera = self.cameras[cam_name]
-
-                filename = "{}/flats/{}/{}/{}.{}".format(
-                    image_dir,
-                    camera.uid,
-                    flat_obs.seq_time,
-                    'flat_{:02d}'.format(flat_obs.current_exp_num), camera.file_extension)
-
-                # Take picture and get event
-                if exptimes[cam_name][-1].value < max_exptime:
-                    camera_event = camera.take_observation(
-                        flat_obs,
-                        fits_headers,
-                        filename=filename,
-                        exptime=exptimes[cam_name][-1]
-                    )
-
-                    camera_events[cam_name] = {
-                        'event': camera_event,
-                        'filename': filename,
-                    }
-
-            # Block until done exposing on all cameras
-            while not all([info['event'].is_set() for info in camera_events.values()]):
-                self.logger.debug('Waiting for flat-field image')
-                time.sleep(1)
-
-            # Check the counts for each image
-            is_saturated = False
-            for cam_name, info in camera_events.items():
-                img_file = info['filename']
-                self.logger.debug("Checking counts for {}".format(img_file))
-
-                # Unpack fits if compressed
-                if not os.path.exists(img_file) and \
-                        os.path.exists(img_file.replace('.fits', '.fits.fz')):
-                    fits_utils.fpack(img_file.replace('.fits', '.fits.fz'), unpack=True)
-
-                data = fits.getdata(img_file)
-
-                mean, median, stddev = stats.sigma_clipped_stats(data)
-
-                counts = mean - bias
-
-                # This is in the original DragonFly code so copying
-                if counts <= 0:
-                    counts = 10
-
-                self.logger.debug("Counts: {}".format(counts))
-
-                if counts < min_counts or counts > max_counts:
-                    self.logger.debug("Counts outside min/max range, should be discarded")
-
-                # If we are saturating then wait a bit and redo
-                if counts >= max_counts:
-                    is_saturated = True
-
-                elapsed_time = (utils.current_time() - start_time).sec
-                self.logger.debug("Elapsed time: {}".format(elapsed_time))
-
-                # Get suggested exposure time
-                exptime = int(exptimes[cam_name][-1].value * (target_adu / counts) *
-                              (2.0 ** (elapsed_time / 180.0)) + 0.5)
-                if exptime < 1:
-                    exptime = 1
-                self.logger.debug("Suggested exptime for {}: {}".format(cam_name, exptime))
-                exptimes[cam_name].append(exptime * u.second)
-
-            self.logger.debug("Checking for long exposures")
-            # Stop flats if any time is greater than max
-            if all([t[-1].value >= max_exptime for t in exptimes.values()]):
-                self.logger.debug("Exposure times greater than max, stopping flat fields")
-                break
-
-            # Stop flats if we are going on too long
-            self.logger.debug("Checking for too many exposures")
-            if any([len(t) >= max_num_exposures for t in exptimes.values()]):
-                self.logger.debug("Too many flats, quitting")
-                break
-
-            self.logger.debug("Checking for saturation")
-            if is_saturated and exptimes[cam_name][-1].value < 2:
-                self.logger.debug(
-                    "Saturated with short exposure, waiting 30 seconds before next exposure")
-                max_num_exposures += 1
-                time.sleep(30)
-
-        # Add a bias exposure
-        for cam_name in camera_list:
-            exptimes[cam_name].append(0 * u.second)
-
-        # Record how many exposures we took
-        num_exposures = flat_obs.current_exp_num
-
-        # Take darks (just last ten)
-        for i in range(num_exposures):
-            self.logger.debug("Slewing to dark-field coords: {}".format(flat_obs.field))
-            self.mount.set_target_coordinates(flat_obs.field)
-            self.mount.slew_to_target()
-            self.status()
-
-            for cam_name in camera_list:
-
-                try:
-                    exptime = exptimes[cam_name][i]
-                except KeyError:
-                    break
-
-                camera = self.cameras[cam_name]
-
-                filename = "{}/flats/{}/{}/{}.{}".format(
-                    image_dir,
-                    camera.uid,
-                    flat_obs.seq_time,
-                    'dark_{:02d}'.format(flat_obs.current_exp_num),
-                    camera.file_extension)
-
-                # Take picture and wait for result
-                camera_event = camera.take_observation(
-                    flat_obs,
-                    fits_headers,
-                    filename=filename,
-                    exptime=exptime,
-                    dark=True
-                )
-
-                camera_events[cam_name] = {
-                    'event': camera_event,
-                    'filename': filename,
-                }
-
-            # Will block here until done exposing on all cameras
-            while not all([info['event'].is_set() for info in camera_events.values()]):
-                self.logger.debug('Waiting for dark-field image')
-                time.sleep(1)
-
-    def take_dark_fields(self,
-                         wait_interval=5,
-                         camera_list=None,
-                         exptimes_list=[],
-                         filename='',
-                         n_darks=10,
-                         *args, **kwargs
-                         ):
-        """Take dark fields
-=======
         Take flat fields for each camera in each filter, respecting filter order.
->>>>>>> d3c53fa2afcd7d3fdd02adf862ab5ce2c35eb0a3
 
         Args:
             camera_names (list, optional): List of camera names to take flats with.
@@ -489,25 +316,37 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def activate_camera_cooling(self):
-        """
-        Activate camera cooling for all cameras.
-        """
-        self.logger.debug('Activating camera cooling for all cameras.')
-        for cam in self.cameras.values():
-            if cam.is_cooled_camera:
-                cam.cooling_enabled = True
+    def take_dark_fields(self,
+                         wait_interval=5,
+                         camera_list=None,
+                         exptimes_list=[],
+                         filename='',
+                         n_darks=10,
+                         *args, **kwargs
+                         ):
+        """Take dark fields
 
-    def deactivate_camera_cooling(self):
-        """
-        Deactivate camera cooling for all cameras.
-        """
-        self.logger.debug('Deactivating camera cooling for all cameras.')
-        for cam in self.cameras.values():
-            if cam.is_cooled_camera:
-                cam.cooling_enabled = False
+        Args:
+            wait_interval (float, optional): Time in between dark exposures
+            camera_list (list, optional): List of cameras to use for darks
+            exptimes_list (list, optional): List of exposure times for darks
+            n_darks (int, optional): Number of darks to be taken per exptime
+            *args (TYPE): Description
+            **kwargs (TYPE): Description
 
-<<<<<<< HEAD
+        """
+
+        image_dir = self.config['directories']['images']
+
+        dark_obs = self._create_dark_observation(n_darks, exptimes_list)
+        exptimes = {cam_name: exptimes_list * u.second for cam_name in camera_list}
+
+        # Loop until conditions are met for dark fields
+        while True:
+            self.status()  # Seems to help with reading coords
+
+            fits_headers = self.get_standard_headers(observation=dark_obs)
+
             start_time = utils.current_time()
             fits_headers['start_time'] = utils.flatten_time(
                 start_time)  # Common start time for cameras
@@ -549,7 +388,26 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Checking for total number of darks")
             if all([len(cam.event) >= len(exptimes_list) * n_darks for cam_name, cam in camera_events.items()]):
                 self.logger.debug("Total number of darks has been achieved, quitting")
-=======
+                break
+
+    def activate_camera_cooling(self):
+        """
+        Activate camera cooling for all cameras.
+        """
+        self.logger.debug('Activating camera cooling for all cameras.')
+        for cam in self.cameras.values():
+            if cam.is_cooled_camera:
+                cam.cooling_enabled = True
+
+    def deactivate_camera_cooling(self):
+        """
+        Deactivate camera cooling for all cameras.
+        """
+        self.logger.debug('Deactivating camera cooling for all cameras.')
+        for cam in self.cameras.values():
+            if cam.is_cooled_camera:
+                cam.cooling_enabled = False
+
     def prepare_cameras(self, sleep=60, max_attempts=5, require_all_cameras=False):
         """
         Make sure cameras are all cooled and ready.
@@ -595,24 +453,15 @@ class HuntsmanObservatory(Observatory):
                               f' {num_cameras_ready} of {n_cameras}.')
             if num_cameras_ready == n_cameras:
                 self.logger.debug('All cameras are ready.')
->>>>>>> d3c53fa2afcd7d3fdd02adf862ab5ce2c35eb0a3
                 break
             elif i < max_attempts:
                 self.logger.debug('Not all cameras are ready yet, '
                                   f'waiting another {sleep} seconds before checking again.')
                 time.sleep(sleep)
 
-<<<<<<< HEAD
-    def take_morning_flats(*args, **kwargs):
-        '''
-
-        '''
-        raise NotImplementedError('Morning flats not implemented yet.')
-=======
         # Raise a `PanError` if no cameras are ready.
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
->>>>>>> d3c53fa2afcd7d3fdd02adf862ab5ce2c35eb0a3
 
 ##########################################################################
 # Private Methods
@@ -676,6 +525,30 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(obs))
 
         return obs
+
+    def _create_dark_observation(self, n_darks, exptimes):
+        dark_coords = self.mount.get_current_coordinates().to_string('hmsdms')
+
+        self.logger.debug("Creating darks observation")
+        dark_field = Field('Darks', dark_coords)
+        dark_obs = DarkObservation(dark_field)
+        dark_obs.seq_time = utils.current_time(flatten=True)
+
+        if isinstance(dark_obs, DarkObservation):
+
+            self.logger.debug("Going to take {} dark fields".format(n_darks))
+
+            dark_fields = [Field('Dark{:02d}'.format(i), dark_coords)
+                           for i in range(n_darks)]
+
+            dark_obs.field = dark_fields
+            dark_obs.exptime = exptimes
+            dark_obs.min_nexp = len(dark_fields)
+            dark_obs.exp_set_size = len(dark_fields)
+
+        self.logger.debug("Dark observation: {}".format(dark_obs))
+
+        return dark_obs
 
     def _take_autoflats(self, cameras, observation, safety_func,
                         tolerance=0.05, target_scaling=0.17, bias=32,
