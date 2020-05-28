@@ -423,11 +423,11 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Waiting for dark-field image')
                 time.sleep(1)
 
-
     def take_dark_fields(self,
                          wait_interval=5,
                          camera_list=None,
                          exptimes_list=[],
+                         filename='',
                          n_darks=10,
                          *args, **kwargs
                          ):
@@ -465,12 +465,13 @@ class HuntsmanObservatory(Observatory):
 
                 camera = self.cameras[cam_name]
 
-                filename = "{}/darks/{}/{}/{}.{}".format(
-                    image_dir,
-                    camera.uid,
-                    dark_obs.seq_time,
-                    'dark_{:02d}'.format(dark_obs.current_exp_num),
-                    camera.file_extension)
+                if not filename:
+                    filename = "{}/darks/{}/{}/{}.{}".format(
+                        image_dir,
+                        camera.uid,
+                        dark_obs.seq_time,
+                        'dark_{:02d}'.format(dark_obs.current_exp_num),
+                        camera.file_extension)
 
                 # Take picture and get event
                 camera_event = camera.take_observation(
@@ -501,7 +502,6 @@ class HuntsmanObservatory(Observatory):
 
         '''
         raise NotImplementedError('Morning flats not implemented yet.')
-
 
 ##########################################################################
 # Private Methods

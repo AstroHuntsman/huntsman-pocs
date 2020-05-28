@@ -21,6 +21,63 @@ from huntsman.camera.pyro import Camera as PyroCamera
 from huntsman.observatory import HuntsmanObservatory as Observatory
 
 
+def test_entering_darks_state(pocs, db):
+    pocs.initialize()
+    assert pocs.is_initialized is True
+    pocs.config['simulator'] = ['camera', 'mount', 'night']
+
+    # Insert a dummy night
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
+    # Make sure it is dark.
+    assert(pocs.is_dark(horizon="flat"))
+
+    # Insert a dummy weather record
+    db.insert_current('weather', {'safe': False})
+    # Make sure the weather is *not* safe to observe.
+    assert not pocs.is_weather_safe()
+
+    assert(pocs.state == 'sleeping')
+
+    pocs.state = 'taking_darks'
+
+    # assert(pocs.state == 'parked')
+
+
+def test_darks_collection_simulator(pocs, tmpdir):
+    pocs.config['simulator'] = ['camera']
+    pocs.state = 'parked'
+    pocs._do_states = True
+
+    pocs.initialize()
+    assert pocs.is_initialized is True
+
+    cameras = list()
+    for cam_name, camera in pocs.observatory.cameras.items():
+        cameras.append(cam_name)
+
+    assert len(cameras) > 0
+
+    exptimes = list()
+    for target in pocs.observatory.scheduler.fields_list:
+        exp = target["exptime"].value
+        if exp not in exptimes:
+            exptimes.append(exp)
+
+    assert len(exptimes) > 0
+
+    if len(cameras) > 0:
+        fits_path = str(tmpdir.join('test_dark_frame.fits'))
+        pocs.say("Starting dark fields")
+        pocs.observatory.take_dark_fields(camera_list=cameras,
+                                          exptimes_list=exptimes,
+                                          filename=fits_path)
+        assert os.path.exists(fits_path)
+
+    pocs.state = 'housekeeping'
+
+    assert(pocs.state == 'housekeeping')
+
+
 def wait_for_running(sub, max_duration=90):
     """Given a message subscriber, wait for a RUNNING message."""
     timeout = CountdownTimer(max_duration)
@@ -178,28 +235,6 @@ def test_default_lookup_trigger(pocs):
     pocs.state = 'foo'
 
     assert pocs._lookup_trigger() == 'parking'
-
-
-def test_darks_collection_simulator(pocs, db):
-    pocs.initialize()
-    assert pocs.is_initialized is True
-    pocs.config['simulator'] = ['camera', 'mount', 'night']
-
-    # Insert a dummy night
-    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
-    # Make sure it is dark.
-    assert(pocs.is_dark(horizon="flat"))
-
-    # Insert a dummy weather record
-    db.insert_current('weather', {'safe': False})
-    # Make sure the weather is *not* safe to observe.
-    assert not pocs.is_weather_safe()
-
-    assert(pocs.state == 'sleeping')
-
-    pocs.state = 'taking_darks'
-
-    # assert(pocs.state == 'parked')
 
 
 def test_free_space(pocs):
