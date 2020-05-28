@@ -72,6 +72,8 @@ def test_sleeping_stop(pocs):
     '''
     pocs.initialize()
     pocs.get_ready()
+    pocs._obs_run_retries = -1
+    assert(not pocs.should_retry)
     # Make sure its dark
     assert pocs.is_dark(horizon='observe')
     # Get into the sleeping state
@@ -91,7 +93,7 @@ def test_ready_scheduling_1(pocs):
     pocs.observatory.last_focus_time = utils.current_time()
     pocs.get_ready()
     assert pocs.state == 'ready'
-    assert not pocs.observatory.require_coarse_focus()
+    assert not pocs.observatory.coarse_focus_required
     assert pocs.is_dark(horizon='observe')
     assert pocs.next_state == 'scheduling'
 
@@ -106,7 +108,7 @@ def test_ready_scheduling_2(pocs):
     pocs.initialize()
     pocs.observatory.last_focus_time = utils.current_time()
     assert not pocs.observatory.past_midnight
-    assert not pocs.observatory.require_coarse_focus()
+    assert not pocs.observatory.coarse_focus_required
     assert not pocs.is_dark(horizon='observe')
     assert pocs.is_dark(horizon='focus')
     pocs.get_ready()
@@ -122,7 +124,7 @@ def test_ready_coarse_focusing_scheduling(pocs):
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.is_dark(horizon='observe')
-    assert pocs.observatory.require_coarse_focus()
+    assert pocs.observatory.coarse_focus_required
     for state in ['coarse_focusing', 'scheduling']:
         assert pocs.next_state == state
         pocs.goto_next_state()
@@ -135,7 +137,7 @@ def test_evening_setup(pocs):
     # Preconditions to ready state
     os.environ['POCSTIME'] = '2020-04-29 08:10:00'
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
-    assert pocs.observatory.require_coarse_focus()
+    assert pocs.observatory.coarse_focus_required
     assert not pocs.observatory.past_midnight
     assert not pocs.is_dark(horizon='observe')
     assert not pocs.is_dark(horizon='focus')
@@ -169,7 +171,7 @@ def test_morning_parking(pocs):
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.observatory.past_midnight
-    assert not pocs.observatory.require_coarse_focus()
+    assert not pocs.observatory.coarse_focus_required
     assert not pocs.is_dark(horizon='observe')
     assert pocs.is_dark(horizon='focus')
     for state in ['twilight_flat_fielding', 'parking']:
@@ -191,7 +193,7 @@ def test_morning_coarse_focusing_parking(pocs):
     pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
     assert pocs.state == 'ready'
     assert pocs.observatory.past_midnight
-    assert pocs.observatory.require_coarse_focus()
+    assert pocs.observatory.coarse_focus_required
     assert not pocs.is_dark(horizon='observe')
     assert pocs.is_dark(horizon='focus')
     for state in ['coarse_focusing', 'twilight_flat_fielding', 'parking']:

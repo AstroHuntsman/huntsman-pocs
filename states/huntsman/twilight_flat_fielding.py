@@ -1,23 +1,7 @@
 """
 State to handle the taking of calibration frames (evening and morning).
 """
-
-
-def get_cameras(pocs):
-    '''
-    Get lists of narrow and broad band cameras.
-    '''
-    narrow_band_cameras = list()
-    broad_band_cameras = list()
-    for cam_name, cam in pocs.observatory.cameras.items():
-
-        # This is a hack. There should be a narrow property in the config...
-        if cam.filter_type.lower().startswith('ha'):
-            narrow_band_cameras.append(cam_name)
-        else:
-            broad_band_cameras.append(cam_name)
-
-    return narrow_band_cameras, broad_band_cameras
+from functools import partial
 
 
 def wait_for_twilight(pocs):
@@ -35,6 +19,11 @@ def wait_for_twilight(pocs):
     return False
 
 
+def safety_func(pocs):
+    """ Return True only if safe for flats to continue. """
+    return pocs.is_safe(horizon='flat') and not pocs.is_dark(horizon='focus')
+
+
 def on_enter(event_data):
     '''
     Calibrating state. If safe to do so, take flats and darks. Should be
@@ -49,23 +38,9 @@ def on_enter(event_data):
     if not wait_for_twilight(pocs):
         return
 
-    if pocs.observatory.take_flat_fields:
-
-        # Identify filter types
-        narrow_band_cameras, broad_band_cameras = get_cameras(pocs)
-
-        # Specify which flats we are taking and in which order
-        if pocs.observatory.past_midnight:
-            flat_func = pocs.observatory.take_morning_flats
-            camera_lists = [broad_band_cameras, narrow_band_cameras]
-        else:
-            flat_func = pocs.observatory.take_evening_flats
-            camera_lists = [narrow_band_cameras, broad_band_cameras]
-
-        # Take flat fields
-        for camera_list in camera_lists:
-            flat_func(camera_list=camera_list)
-
+    if pocs.observatory.flat_fields_required:
+        sf = partial(safety_func, pocs=pocs)
+        pocs.observatory.take_flat_fields(safety_func=sf)
     else:
         pocs.logger.debug('Skipping twilight flat fields.')
 
