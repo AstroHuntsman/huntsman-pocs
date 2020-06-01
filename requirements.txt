@@ -1,4 +1,5 @@
--e git+git://github.com/panoptes/POCS@docker#egg=pocs
+PyYAML >= 3.11
+Pyro4
 astroplan
 astropy >= 4.0.0
 astroquery
@@ -10,16 +11,14 @@ matplotlib >= 3.1.3
 netifaces
 numpy >= 1.17.0
 pandas >= 0.18.0
-panoptes-utils==0.2.15
+panoptes-pocs==0.7.4
+panoptes-utils==0.2.17
 photutils
 pycodestyle
-Pyro4
 pyserial >= 3.1.1
 pytest >= 3.6.0
 pytest-mplp
-
 python-dateutil >= 2.5.3
-PyYAML >= 3.11
 readline
 scipy >= 1.4.0
 transitions >= 0.4.0

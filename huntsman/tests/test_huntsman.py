@@ -208,7 +208,7 @@ def test_run_wait_until_safe(observatory, cmd_publisher, msg_subscriber):
         # Remove weather simulator, else it would always be safe.
         observatory.config['simulator'] = hardware.get_all_names(without=['weather'])
 
-        pocs = POCS(observatory, messaging=True, safe_delay=5)
+        pocs = POCS(observatory, safe_delay=5)
 
         pocs.observatory.scheduler.clear_available_observations()
         pocs.observatory.scheduler.add_observation({'name': 'KIC 8462852',
@@ -309,11 +309,11 @@ def test_run(pocs):
 
     pocs.observatory.scheduler.clear_available_observations()
     pocs.observatory.scheduler.add_observation({'name': 'KIC 8462852',
-                                                        'position': '20h06m15.4536s +44d27m24.75s',
-                                                        'priority': '1000',
-                                                        'exptime': 2,
-                                                        'min_nexp': 2,
-                                                        'exp_set_size': 2,
+                                                'position': '20h06m15.4536s +44d27m24.75s',
+                                                'priority': '1000',
+                                                'exptime': 2,
+                                                'min_nexp': 2,
+                                                'exp_set_size': 2,
                                                 })
 
     pocs.initialize()
@@ -326,7 +326,7 @@ def test_run(pocs):
 
 def test_run_power_down_interrupt(observatory, msg_subscriber, cmd_publisher):
     def start_pocs():
-        pocs = POCS(observatory, messaging=True)
+        pocs = POCS(observatory)
         pocs.initialize()
         pocs.observatory.scheduler.fields_list = [{'name': 'KIC 8462852',
                                                    'position': '20h06m15.4536s +44d27m24.75s',
