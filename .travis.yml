@@ -30,7 +30,7 @@ install:
   - cd $TRAVIS_BUILD_DIR
   - pip install -r requirements.txt
   - python -c "from astroplan import download_IERS_A; download_IERS_A()"
-  - python setup.py install
+  - pip install -e .
 before_script:
   - echo -e "Host 127.0.0.1\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 script:
