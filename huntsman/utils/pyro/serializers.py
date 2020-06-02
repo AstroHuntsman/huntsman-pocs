@@ -1,7 +1,7 @@
 """Import this module to register the required custom (de)serializers with Pyro.
 
 This needs to be done for the server and the client. Currently custom serializers
-included for astropy Quantities and the custom exceptions from POCS (pocs.utils.error).
+included for astropy Quantities and the custom exceptions from panoptes.pocs (pocs.utils.error).
 """
 import re
 import sys

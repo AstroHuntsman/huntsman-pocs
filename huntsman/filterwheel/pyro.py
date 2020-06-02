@@ -1,6 +1,6 @@
 from threading import Event
 
-from pocs.filterwheel import AbstractFilterWheel
+from panoptes.pocs.filterwheel import AbstractFilterWheel
 
 from huntsman.utils.pyro.event import RemoteEvent
 

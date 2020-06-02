@@ -2,8 +2,8 @@ import os
 from astropy import units as u
 from contextlib import suppress
 
-from pocs.scheduler.field import Field
-from pocs.scheduler.observation import Observation
+from panoptes.pocs.scheduler.field import Field
+from panoptes.pocs.scheduler.observation import Observation
 
 from panoptes.utils import listify
 

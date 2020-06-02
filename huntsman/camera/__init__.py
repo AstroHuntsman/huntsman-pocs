@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import Pyro4
 
-from pocs.camera import create_cameras_from_config as create_local_cameras
+from panoptes.pocs.camera import create_cameras_from_config as create_local_cameras
 from panoptes.utils import error
 from panoptes.utils import logger as logger_module
 
@@ -129,7 +129,7 @@ def create_distributed_cameras(camera_info, logger=None):
     Creates a `pocs.camera.pyro.Camera` object for each distributed camera detected.
 
     Args:
-        camera_info: 'cameras' section from POCS config
+        camera_info: 'cameras' section from panoptes.pocs config
         logger (logging.Logger, optional): logger to use for messages, if not given will
             use the root logger.
 

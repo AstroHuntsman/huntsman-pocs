@@ -6,7 +6,7 @@ from cmd import Cmd
 
 from astropy.utils import console
 
-from pocs.core import POCS
+from panoptes.pocs.core import POCS
 from panoptes.utils import error
 from panoptes.utils import listify
 

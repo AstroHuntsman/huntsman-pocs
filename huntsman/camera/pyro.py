@@ -12,7 +12,7 @@ import Pyro4.errors
 from panoptes.utils.library import load_module
 from panoptes.utils import get_quantity_value
 from panoptes.utils import error
-from pocs.camera import AbstractCamera
+from panoptes.pocs.camera import AbstractCamera
 
 from huntsman.focuser.pyro import Focuser as PyroFocuser
 from huntsman.filterwheel.pyro import FilterWheel as PyroFilterWheel

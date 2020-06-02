@@ -3,7 +3,7 @@
 import threading
 import time
 
-from pocs.dome.abstract_serial_dome import AbstractSerialDome
+from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 from panoptes.utils import CountdownTimer
 
 

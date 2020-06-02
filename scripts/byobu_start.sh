@@ -52,11 +52,11 @@ byobu select-pane -t 2
 byobu send-keys "ipython"
 byobu send-keys Enter
 # pocs start up steps
-pocsstart=("from pocs.mount import create_mount_from_config"
-            "from pocs.scheduler import create_scheduler_from_config"
+pocsstart=("from panoptes.pocs.mount import create_mount_from_config"
+            "from panoptes.pocs.scheduler import create_scheduler_from_config"
             "from huntsman.camera import create_cameras_from_config"
             "from huntsman.observatory import HuntsmanObservatory"
-            "from pocs.core import POCS"
+            "from panoptes.pocs.core import POCS"
             "from huntsman.utils import load_config"
             "config = load_config"
             "cameras = create_cameras_from_config"

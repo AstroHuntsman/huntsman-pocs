@@ -9,11 +9,11 @@ from astropy import units as u
 from astropy.io import fits
 from astropy import stats
 
-from pocs.observatory import Observatory
-from pocs.scheduler import constraint
-from pocs.scheduler.observation import Field
+from panoptes.pocs.observatory import Observatory
+from panoptes.pocs.scheduler import constraint
+from panoptes.pocs.scheduler.observation import Field
 from panoptes.utils import error
-from pocs import utils
+from panoptes.pocs import utils
 from panoptes.utils.library import load_module
 
 from huntsman.guide.bisque import Guide
