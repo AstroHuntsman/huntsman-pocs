@@ -2,7 +2,7 @@
 # Docker image for a Huntsman testing environment
 #==============================================================================
 
-FROM gcr.io/panoptes-exp/pocs:latest
+FROM gcr.io/panoptes-exp/panoptes-pocs:latest
 
 ENV PANDIR_OLD=$PANDIR
 ENV PANUSER=huntsman
@@ -24,14 +24,6 @@ RUN apt-get update && \
     usermod -a -G dialout,plugdev,netdev,users,input,spi,i2c,gpio,fuse,sudo huntsman && \
     echo "$PANUSER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
 
-    # Install latest version of POCS (use as base image in future)
-    mv $PANDIR_OLD $PANDIR && \
-    rm -rf $POCS && \
-    cd $PANDIR && \
-    git clone https://github.com/panoptes/POCS.git && \
-    cd $POCS && \
-    pip install -r requirements.txt && \
-
     # Install Huntsman-POCS & deps
     cd $PANDIR && \
     git clone https://github.com/AstroHuntsman/huntsman-pocs.git && \
@@ -39,12 +31,6 @@ RUN apt-get update && \
     pip install -r requirements.txt && \
     pip install -e . && \
     pip install astroplan && \
-
-    # Make sure we are using the latest POCS/panoptes-utils versions
-    cd $POCS && \
-    pip install -e . && \
-    cd $PANDIR/panoptes-utils && \
-    pip install -e . && \
 
     # Setup SSH so localhost works without password
     mkdir /home/$PANUSER/.ssh && \
