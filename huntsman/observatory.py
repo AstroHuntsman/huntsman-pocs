@@ -14,11 +14,9 @@ from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
-from pocs.utils.images import fits as fits_utils
 
 from huntsman.guide.bisque import Guide
 from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation, DarkObservation
-from huntsman.utils import dither
 from huntsman.utils import load_config
 
 
@@ -317,78 +315,103 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Finished flat-fielding.')
 
     def take_dark_fields(self,
-                         wait_interval=5,
-                         camera_list=None,
-                         exptimes_list=[],
-                         filename='',
+                         exptimes,
+                         wait_interval=1,
+                         camera_names=None,
                          n_darks=10,
                          *args, **kwargs
                          ):
-        """Take dark fields
+        """Take dark fields for each camera with all the exposure times
+           in the targets list.
 
         Args:
+            exptimes_list (list): List of exposure times for darks
             wait_interval (float, optional): Time in between dark exposures
             camera_list (list, optional): List of cameras to use for darks
-            exptimes_list (list, optional): List of exposure times for darks
             n_darks (int, optional): Number of darks to be taken per exptime
             *args (TYPE): Description
             **kwargs (TYPE): Description
 
         """
 
+        if camera_names is None:
+            cameras_all = self.cameras
+        else:
+            cameras_all = {c: self.cameras[c] for c in camera_names}
+
+        self.logger.debug('Using cameras {}'.format(cameras_all))
+
         image_dir = self.config['directories']['images']
 
-        dark_obs = self._create_dark_observation(n_darks, exptimes_list)
-        exptimes = {cam_name: exptimes_list * u.second for cam_name in camera_list}
+        self.logger.debug("Going to take {} dark fields for each of these exposure times {}".
+                          format(n_darks, exptimes))
 
-        # Loop until conditions are met for dark fields
-        while True:
+        # List to check that the final number of darks is equal to the number
+        # of cameras times the number of exptimes times n_darks.
+        total_exposures = []
+
+        # Loop over cameras.
+        for exptime in exptimes:
+
             self.status()  # Seems to help with reading coords
 
-            fits_headers = self.get_standard_headers(observation=dark_obs)
-
             start_time = utils.current_time()
-            fits_headers['start_time'] = utils.flatten_time(
-                start_time)  # Common start time for cameras
 
-            camera_events = dict()
+            if isinstance(exptime, u.Quantity):
+                exptime = exptime.to_value(u.second)
 
-            # Take the observations
-            for cam_name in camera_list:
+            # Loop over exposure times for each camera.
+            for num in range(n_darks):
 
-                camera = self.cameras[cam_name]
+                self.logger.debug('Darks sequence #{} of exposure time {}s'.
+                                  format(num, exptime))
 
-                if not filename:
-                    filename = "{}/darks/{}/{}/{}.{}".format(
+                camera_events = dict()
+
+                # Take a given number of exposures for each exposure time.
+                for camera in cameras_all.values():
+
+                    self.logger.debug('Camera {} is exposing for {}s'.
+                                      format(camera.uid, exptime))
+
+                    # Create dark observation
+                    dark_obs = self._create_dark_observation(exptime)
+                    fits_headers = self.get_standard_headers(observation=dark_obs)
+                    # Common start time for cameras
+                    fits_headers['start_time'] = utils.flatten_time(start_time)
+
+                    filename = '{}/darks/{}/{}/{}.{}'.format(
                         image_dir,
                         camera.uid,
                         dark_obs.seq_time,
-                        'dark_{:02d}'.format(dark_obs.current_exp_num),
+                        'dark_{:02d}_{}s'.format(num, int(exptime)),
                         camera.file_extension)
 
-                # Take picture and get event
-                camera_event = camera.take_observation(
-                    dark_obs,
-                    fits_headers,
-                    filename=filename,
-                    exptime=exptimes[cam_name]
-                )
+                    # Take picture and get event
+                    camera_event = camera.take_observation(
+                        dark_obs,
+                        fits_headers,
+                        filename=filename,
+                        exptime=exptime,
+                        dark=True,
+                        blocking=True
+                    )
 
-                camera_events[cam_name] = {
-                    'event': camera_event,
-                    'filename': filename,
-                }
+                    camera_events[camera] = {
+                        'event': camera_event,
+                        'filename': filename,
+                    }
 
-            # Block until done exposing on all cameras
-            while not all([info['event'].is_set() for info in camera_events.values()]):
-                self.logger.debug('Waiting for dark-field image')
-                time.sleep(wait_interval)
+                    total_exposures.append(filename)
 
-            # Stop taking darks when we reach the total number
-            self.logger.debug("Checking for total number of darks")
-            if all([len(cam.event) >= len(exptimes_list) * n_darks for cam_name, cam in camera_events.items()]):
-                self.logger.debug("Total number of darks has been achieved, quitting")
-                break
+                    self.logger.debug(camera_events)
+
+                # Block until done exposing on all cameras
+                while not all([info['event'].is_set() for info in camera_events.values()]):
+                    self.logger.debug('Waiting for dark-field image...')
+                    time.sleep(wait_interval)
+        self.logger.debug(total_exposures)
+        return total_exposures
 
     def activate_camera_cooling(self):
         """
@@ -526,27 +549,17 @@ class HuntsmanObservatory(Observatory):
 
         return obs
 
-    def _create_dark_observation(self, n_darks, exptimes):
-        dark_coords = self.mount.get_current_coordinates().to_string('hmsdms')
+    def _create_dark_observation(self, exptime, *args, **kwargs):
 
-        self.logger.debug("Creating darks observation")
-        dark_field = Field('Darks', dark_coords)
-        dark_obs = DarkObservation(dark_field)
+        # Create the observation object
+        dark_position = self.mount.get_current_coordinates()
+        dark_obs = DarkObservation(dark_position, *args, **kwargs)
         dark_obs.seq_time = utils.current_time(flatten=True)
 
         if isinstance(dark_obs, DarkObservation):
+            dark_obs.exptime = exptime
 
-            self.logger.debug("Going to take {} dark fields".format(n_darks))
-
-            dark_fields = [Field('Dark{:02d}'.format(i), dark_coords)
-                           for i in range(n_darks)]
-
-            dark_obs.field = dark_fields
-            dark_obs.exptime = exptimes
-            dark_obs.min_nexp = len(dark_fields)
-            dark_obs.exp_set_size = len(dark_fields)
-
-        self.logger.debug("Dark observation: {}".format(dark_obs))
+        self.logger.debug("Dark field observation: {}".format(dark_obs))
 
         return dark_obs
 

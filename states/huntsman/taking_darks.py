@@ -10,22 +10,17 @@ def on_enter(event_data):
         pocs.status()
 
         # Wait until mount is parked
-        pocs.say("I'm going to take dark fields")
+        pocs.say("Everything set up for dark fields")
 
-        cameras = list()
-        for cam_name, camera in pocs.observatory.cameras.items():
-            cameras.append(cam_name)
+        exptimes_list = list()
+        for target in pocs.observatory.scheduler.fields_list:
+            exptime = target['exptime']
+            if exptime not in exptimes_list:
+                exptimes_list.append(exptime)
 
-        exptimes = list()
-        for target in pocs.scheduler.fields_list:
-            exp = target["exptime"].value
-            if exp not in exptimes:
-                exptimes.append(exp)
-
-        if len(cameras) > 0:
-            pocs.say("Starting dark fields")
-            pocs.observatory.take_dark_fields(camera_list=cameras,
-                                              exptimes_list=exptimes)
+            if len(exptimes_list) > 0:
+                pocs.say("I'm starting with dark-field exposures")
+                pocs.observatory.take_dark_fields(exptimes_list)
     except Exception as e:
         pocs.logger.warning("Problem encountered while taking darks: {}".format(e))
 

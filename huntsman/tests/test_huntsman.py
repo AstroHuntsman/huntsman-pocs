@@ -21,63 +21,6 @@ from huntsman.camera.pyro import Camera as PyroCamera
 from huntsman.observatory import HuntsmanObservatory as Observatory
 
 
-def test_entering_darks_state(pocs, db):
-    pocs.initialize()
-    assert pocs.is_initialized is True
-    pocs.config['simulator'] = ['camera', 'mount', 'night']
-
-    # Insert a dummy night
-    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
-    # Make sure it is dark.
-    assert(pocs.is_dark(horizon="flat"))
-
-    # Insert a dummy weather record
-    db.insert_current('weather', {'safe': False})
-    # Make sure the weather is *not* safe to observe.
-    assert not pocs.is_weather_safe()
-
-    assert(pocs.state == 'sleeping')
-
-    pocs.state = 'taking_darks'
-
-    # assert(pocs.state == 'parked')
-
-
-def test_darks_collection_simulator(pocs, tmpdir):
-    pocs.config['simulator'] = ['camera']
-    pocs.state = 'parked'
-    pocs._do_states = True
-
-    pocs.initialize()
-    assert pocs.is_initialized is True
-
-    cameras = list()
-    for cam_name, camera in pocs.observatory.cameras.items():
-        cameras.append(cam_name)
-
-    assert len(cameras) > 0
-
-    exptimes = list()
-    for target in pocs.observatory.scheduler.fields_list:
-        exp = target["exptime"].value
-        if exp not in exptimes:
-            exptimes.append(exp)
-
-    assert len(exptimes) > 0
-
-    if len(cameras) > 0:
-        fits_path = str(tmpdir.join('test_dark_frame.fits'))
-        pocs.say("Starting dark fields")
-        pocs.observatory.take_dark_fields(camera_list=cameras,
-                                          exptimes_list=exptimes,
-                                          filename=fits_path)
-        assert os.path.exists(fits_path)
-
-    pocs.state = 'housekeeping'
-
-    assert(pocs.state == 'housekeeping')
-
-
 def wait_for_running(sub, max_duration=90):
     """Given a message subscriber, wait for a RUNNING message."""
     timeout = CountdownTimer(max_duration)
@@ -288,6 +231,65 @@ def test_is_weather_safe_no_simulator(pocs, db):
     # Set a time 181 seconds later
     os.environ['POCSTIME'] = '2016-08-13 23:05:01'
     assert pocs.is_weather_safe() is False
+
+
+def test_entering_darks_state(pocs, db):
+    pocs.initialize()
+    assert pocs.is_initialized is True
+    pocs.config['simulator'] = ['camera', 'mount', 'night']
+
+    # Insert a dummy night
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
+    # Make sure it is dark.
+    assert(pocs.is_dark(horizon="flat"))
+
+    # Insert a dummy weather record
+    db.insert_current('weather', {'safe': False})
+    # Make sure the weather is *not* safe to observe.
+    assert not pocs.is_weather_safe()
+
+    assert(pocs.state == 'sleeping')
+
+    pocs.state = 'taking_darks'
+
+    # assert(pocs.state == 'parked')
+
+
+def test_darks_collection_simulator(pocs, tmpdir):
+    pocs.config['simulator'] = hardware.get_all_names()
+    pocs._do_states = True
+    pocs.observatory.scheduler.clear_available_observations()
+
+    pocs.observatory.scheduler.fields_list.append({'name': 'KIC 8462852-1',
+                                                   'position': '20h06m15.4536s +44d27m24.75s',
+                                                   'priority': '100',
+                                                   'exptime': 100.0,
+                                                   'min_nexp': 1,
+                                                   'exp_set_size': 1,
+                                                   })
+
+    pocs.state = 'parked'
+
+    pocs.initialize()
+    assert(pocs.is_initialized is True)
+
+    exptimes_list = list()
+    for target in pocs.observatory.scheduler.fields_list:
+        exptime = target['exptime']
+        if not isinstance(exptime, u.Quantity):
+            exptime *= u.second
+        if exptime not in exptimes_list:
+            exptimes_list.append(exptime)
+
+    if len(exptimes_list) > 0:
+        pocs.say("I'm starting with dark-field exposures")
+        ndarks_per_exp = 2
+        darks = pocs.observatory.take_dark_fields(exptimes_list,
+                                                  n_darks=ndarks_per_exp)
+        assert(len(darks) == len(pocs.observatory.cameras.keys()) * ndarks_per_exp * len(exptimes_list))
+
+    else:
+        return False
 
 
 def test_pyro_camera(config, camera_server):

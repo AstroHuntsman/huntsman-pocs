@@ -129,8 +129,16 @@ class DarkObservation(Observation):
         more conveniently be set with `add_field`
     """
 
-    def __init__(self, *args, **kwargs):
-        super(DarkObservation, self).__init__(*args, **kwargs)
+    def __init__(self, position, *args, **kwargs):
+        """
+        Args:
+            position (str): Center of field, can be anything accepted by
+                `~astropy.coordinates.SkyCoord`.
+        """
+        # Create the observation
+        dark_coords = position.to_string('hmsdms')
+        dark_field = Field('Dark Field', dark_coords)
+        super().__init__(field=dark_field, *args, **kwargs)
 
         # Set initial list to original values
         self._exptime = listify(self.exptime)
