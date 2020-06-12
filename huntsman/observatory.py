@@ -370,9 +370,6 @@ class HuntsmanObservatory(Observatory):
                 # Take a given number of exposures for each exposure time.
                 for camera in cameras_all.values():
 
-                    self.logger.debug('Camera {} is exposing for {}s'.
-                                      format(camera.uid, exptime))
-
                     # Create dark observation
                     dark_obs = self._create_dark_observation(exptime)
                     fits_headers = self.get_standard_headers(observation=dark_obs)
@@ -396,6 +393,8 @@ class HuntsmanObservatory(Observatory):
                         dark=True,
                         blocking=False
                     )
+
+                    self.logger.debug(f'Camera {camera.uid} is exposing for {exptime}s')
 
                     camera_events[camera] = {
                         'event': camera_event,
