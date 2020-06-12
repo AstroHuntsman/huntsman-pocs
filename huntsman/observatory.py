@@ -352,8 +352,6 @@ class HuntsmanObservatory(Observatory):
         # Loop over cameras.
         for exptime in exptimes:
 
-            self.status()  # Seems to help with reading coords
-
             start_time = utils.current_time()
 
             with suppress(AttributeError):
