@@ -65,11 +65,11 @@ class DarkObservation(Observation):
 
     @property
     def exposure_index(self):
-        _exp_index = 0
+        exp_index = 0
         with suppress(AttributeError):
-            _exp_index = self.current_exp_num % len(self._exptime)
+            exp_index = self.current_exp_num % len(self._exptime)
 
-        return _exp_index
+        return exp_index
 
     def __str__(self):
         return f"DarkObservation: {self._field}: {self._exptime}"
