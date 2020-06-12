@@ -362,8 +362,7 @@ class HuntsmanObservatory(Observatory):
             # Loop over exposure times for each camera.
             for num in range(n_darks):
 
-                self.logger.debug('Darks sequence #{} of exposure time {}s'.
-                                  format(num, exptime))
+                self.logger.debug(f'Darks sequence #{num} of exposure time {exptime}s')
 
                 camera_events = dict()
 
