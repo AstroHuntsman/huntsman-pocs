@@ -8,7 +8,7 @@ from pocs.utils import listify
 
 class DarkObservation(Observation):
 
-    """ Collection of darks when weather is bad
+    """ A Dark field observation
 
     Dark observations will consist of both multiple exposure, but no fields.
     Also, the mount will be parked when used.
