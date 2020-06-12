@@ -16,7 +16,8 @@ from pocs.utils import error
 from pocs import utils
 
 from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation, DarkObservation
+from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
+from huntsman.scheduler.dark_observation import DarkObservation
 from huntsman.utils import load_config
 
 
