@@ -332,11 +332,11 @@ class HuntsmanObservatory(Observatory):
         """
 
         if camera_names is None:
-            cameras_all = self.cameras
+            cameras_list = self.cameras
         else:
-            cameras_all = {c: self.cameras[c] for c in camera_names}
+            cameras_list = {c: self.cameras[c] for c in camera_names}
 
-        self.logger.debug('Using cameras {}'.format(cameras_all))
+        self.logger.debug(f'Using cameras {cameras_list}')
 
         image_dir = self.config['directories']['images']
 
@@ -362,7 +362,7 @@ class HuntsmanObservatory(Observatory):
                 camera_events = dict()
 
                 # Take a given number of exposures for each exposure time.
-                for camera in cameras_all.values():
+                for camera in cameras_list.values():
 
                     # Create dark observation
                     dark_obs = self._create_dark_observation(exptime)
