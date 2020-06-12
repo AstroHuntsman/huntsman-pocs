@@ -394,7 +394,7 @@ class HuntsmanObservatory(Observatory):
                         filename=filename,
                         exptime=exptime,
                         dark=True,
-                        blocking=True
+                        blocking=False
                     )
 
                     camera_events[camera] = {
