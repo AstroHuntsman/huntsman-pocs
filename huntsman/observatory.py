@@ -316,7 +316,7 @@ class HuntsmanObservatory(Observatory):
 
     def take_dark_fields(self,
                          exptimes,
-                         wait_interval=1,
+                         wait_interval=3,
                          camera_names=None,
                          n_darks=10,
                          *args, **kwargs
@@ -325,13 +325,10 @@ class HuntsmanObservatory(Observatory):
            in the targets list.
 
         Args:
-            exptimes_list (list): List of exposure times for darks
+            exptimes (list): List of exposure times for darks
             wait_interval (float, optional): Time in between dark exposures
-            camera_list (list, optional): List of cameras to use for darks
+            camera_names (list, optional): List of cameras to use for darks
             n_darks (int, optional): Number of darks to be taken per exptime
-            *args (TYPE): Description
-            **kwargs (TYPE): Description
-
         """
 
         if camera_names is None:
