@@ -276,8 +276,6 @@ def test_darks_collection_simulator(pocs, tmpdir):
     exptimes_list = list()
     for target in pocs.observatory.scheduler.fields_list:
         exptime = target['exptime']
-        if not isinstance(exptime, u.Quantity):
-            exptime *= u.second
         if exptime not in exptimes_list:
             exptimes_list.append(exptime)
 
