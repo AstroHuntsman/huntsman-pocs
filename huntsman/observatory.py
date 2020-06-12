@@ -553,7 +553,7 @@ class HuntsmanObservatory(Observatory):
         if isinstance(dark_obs, DarkObservation):
             dark_obs.exptime = exptime
 
-        self.logger.debug("Dark field observation: {}".format(dark_obs))
+        self.logger.debug(f"Dark field observation: {dark_obs}")
 
         return dark_obs
 
