@@ -27,8 +27,7 @@ class DarkObservation(Observation):
                 `~astropy.coordinates.SkyCoord`.
         """
         # Create the observation
-        dark_coords = position.to_string('hmsdms')
-        dark_field = Field('Dark Field', dark_coords)
+        dark_field = Field('Dark Field', position)
         super().__init__(field=dark_field, *args, **kwargs)
 
         # Set initial list to original values
