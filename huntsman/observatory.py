@@ -343,8 +343,7 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.config['directories']['images']
 
-        self.logger.debug("Going to take {} dark fields for each of these exposure times {}".
-                          format(n_darks, exptimes))
+        self.logger.debug(f"Going to take {n_darks} dark fields for each of these exposure times {exptimes}")
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -380,12 +379,13 @@ class HuntsmanObservatory(Observatory):
                     # Common start time for cameras
                     fits_headers['start_time'] = utils.flatten_time(start_time)
 
-                    filename = '{}/darks/{}/{}/{}.{}'.format(
+                    filename = os.path.join(
                         image_dir,
+                        'darks',
                         camera.uid,
+                        f'{exptime}',
                         dark_obs.seq_time,
-                        'dark_{:02d}_{}s'.format(num, int(exptime)),
-                        camera.file_extension)
+                        f'dark_{num:02d}.{camera.file_extension}')
 
                     # Take picture and get event
                     camera_event = camera.take_observation(

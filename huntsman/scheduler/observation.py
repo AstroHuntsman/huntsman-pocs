@@ -182,4 +182,4 @@ class DarkObservation(Observation):
         return _exp_index
 
     def __str__(self):
-        return "DarkObservation: {}: {}".format(self._field, self._exptime)
+        return f"DarkObservation: {self._field}: {self._exptime}"
