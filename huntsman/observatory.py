@@ -356,7 +356,7 @@ class HuntsmanObservatory(Observatory):
 
             start_time = utils.current_time()
 
-            if isinstance(exptime, u.Quantity):
+            with suppress(AttributeError):
                 exptime = exptime.to_value(u.second)
 
             # Loop over exposure times for each camera.
