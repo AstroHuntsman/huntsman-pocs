@@ -38,6 +38,7 @@ class DarkObservation(Observation):
 
     @property
     def exptime(self):
+        """ Exposure time of the dark observation as a Quantity instance """
         exptime = self._exptime[self.exposure_index]
 
         if not isinstance(exptime, u.Quantity):
@@ -54,6 +55,7 @@ class DarkObservation(Observation):
 
     @property
     def field(self):
+        """ Field of dark observation """
         return self._field[self.exposure_index]
 
     @field.setter
