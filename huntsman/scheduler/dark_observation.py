@@ -8,10 +8,11 @@ from pocs.utils import listify
 
 class DarkObservation(Observation):
 
-    """ A Dark field observation
+    """ A Dark-field observation
 
-    Dark observations will consist of both multiple exposure, but no fields.
-    Also, the mount will be parked when used.
+    Dark observations will consist of multiple exposure. As the mount will be
+    parked when using this class, the fields will be centred at the parked
+    position.
 
     Note:
         For now the new observation must be created like a normal `Observation`,
@@ -27,7 +28,7 @@ class DarkObservation(Observation):
                 `~astropy.coordinates.SkyCoord`.
         """
         # Create the observation
-        dark_field = Field('Dark Field', position)
+        dark_field = Field('Dark-Field', position)
         super().__init__(field=dark_field, *args, **kwargs)
 
         # Set initial list to original values

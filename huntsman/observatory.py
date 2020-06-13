@@ -341,7 +341,7 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.config['directories']['images']
 
-        self.logger.debug(f"Going to take {n_darks} dark fields for each of these exposure times {exptimes}")
+        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -553,7 +553,7 @@ class HuntsmanObservatory(Observatory):
         if isinstance(dark_obs, DarkObservation):
             dark_obs.exptime = exptime
 
-        self.logger.debug(f"Dark field observation: {dark_obs}")
+        self.logger.debug(f"Dark-field observation: {dark_obs}")
 
         return dark_obs
 
