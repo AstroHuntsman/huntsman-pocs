@@ -241,7 +241,7 @@ def test_entering_darks_state(pocs, db):
     # Insert a dummy night
     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
     # Make sure it is dark.
-    assert(pocs.is_dark(horizon="flat"))
+    assert(pocs.is_dark())
 
     # Insert a dummy weather record
     db.insert_current('weather', {'safe': False})
