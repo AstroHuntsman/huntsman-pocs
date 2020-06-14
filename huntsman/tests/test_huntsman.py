@@ -252,8 +252,6 @@ def test_entering_darks_state(pocs, db):
 
     pocs.state = 'taking_darks'
 
-    # assert(pocs.state == 'parked')
-
 
 def test_darks_collection_simulator(pocs, tmpdir):
     pocs.config['simulator'] = hardware.get_all_names()
