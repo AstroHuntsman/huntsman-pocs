@@ -50,6 +50,30 @@ def pocs(config_with_simulated_stuff, observatory):
 # ==============================================================================
 
 
+def test_entering_darks_state(pocs, db):
+    pocs.initialize()
+    assert pocs.is_initialized is True
+    pocs.config['simulator'] = ['camera', 'mount', 'night']
+
+    # Insert a dummy night
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
+    # Make sure it is dark.
+    assert(pocs.is_dark())
+
+    # Insert a dummy weather record
+    db.insert_current('weather', {'safe': False})
+    # Make sure the weather is *not* safe to observe.
+    assert not pocs.is_weather_safe()
+
+    pocs.next_state = 'parking'
+    pocs.goto_next_state()
+    assert(pocs.state == 'parked')
+
+    assert pocs.next_state == "taking_darks"
+    pocs.goto_next_state()
+    assert pocs.state == "taking_darks"
+
+
 def test_parking_ready(pocs):
     '''
     Test if the parking state transitions back into ready.
