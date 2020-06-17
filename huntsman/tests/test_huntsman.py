@@ -234,6 +234,8 @@ def test_is_weather_safe_no_simulator(pocs, db):
 
 
 def test_darks_collection_simulator(pocs, tmpdir):
+    """Tests routines to take darks using the same structure of the
+       taking_darks state."""
     pocs.config['simulator'] = hardware.get_all_names()
     pocs._do_states = True
     pocs.observatory.scheduler.clear_available_observations()
