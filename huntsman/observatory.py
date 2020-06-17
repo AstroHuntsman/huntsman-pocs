@@ -403,7 +403,7 @@ class HuntsmanObservatory(Observatory):
                 # Block until done exposing on all cameras
                 while not all([info['event'].is_set() for info in camera_events.values()]):
                     self.logger.debug('Waiting for dark-field images...')
-                    time.sleep(wait_interval)
+                    time.sleep(sleep)
         self.logger.debug(total_exposures)
         return total_exposures
 
