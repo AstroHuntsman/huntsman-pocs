@@ -345,7 +345,7 @@ class HuntsmanObservatory(Observatory):
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
-        total_exposures = []
+        darks_filenames = []
 
         # Loop over cameras.
         for exptime in exptimes:
@@ -396,7 +396,7 @@ class HuntsmanObservatory(Observatory):
                         'filename': filename,
                     }
 
-                    total_exposures.append(filename)
+                    darks_filenames.append(filename)
 
                     self.logger.debug(camera_events)
 
@@ -404,8 +404,8 @@ class HuntsmanObservatory(Observatory):
                 while not all([info['event'].is_set() for info in camera_events.values()]):
                     self.logger.debug('Waiting for dark-field images...')
                     time.sleep(sleep)
-        self.logger.debug(total_exposures)
-        return total_exposures
+        self.logger.debug(darks_filenames)
+        return darks_filenames
 
     def activate_camera_cooling(self):
         """
