@@ -264,8 +264,13 @@ def test_darks_collection_simulator(pocs, tmpdir):
         ndarks_per_exp = 2
         darks = pocs.observatory.take_dark_fields(exptimes_list,
                                                   n_darks=ndarks_per_exp)
-        assert(len(darks) == len(pocs.observatory.cameras.keys()) * ndarks_per_exp * len(exptimes_list))
+        expected_darks = (len(pocs.observatory.cameras.keys())
+                          * ndarks_per_exp * len(exptimes_list))
 
+        assert(len(darks) == expected_darks)
+
+        for d in darks:
+            assert(os.path.isfile(d))
     else:
         pytest.fail(pocs.logger.info('No exposure times were provided'))
 
