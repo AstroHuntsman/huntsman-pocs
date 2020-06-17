@@ -260,14 +260,14 @@ def test_darks_collection_simulator(pocs, tmpdir):
             exptimes_list.append(exptime)
 
     if len(exptimes_list) > 0:
-        pocs.say("I'm starting with dark-field exposures")
+        pocs.logger.info("I'm starting with dark-field exposures")
         ndarks_per_exp = 2
         darks = pocs.observatory.take_dark_fields(exptimes_list,
                                                   n_darks=ndarks_per_exp)
         assert(len(darks) == len(pocs.observatory.cameras.keys()) * ndarks_per_exp * len(exptimes_list))
 
     else:
-        return False
+        pytest.fail(pocs.logger.info('No exposure times were provided'))
 
 
 def test_pyro_camera(config, camera_server):
