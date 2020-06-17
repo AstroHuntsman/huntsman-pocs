@@ -51,6 +51,10 @@ def pocs(config_with_simulated_stuff, observatory):
 
 
 def test_entering_darks_state(pocs, db):
+    '''
+    Test if parked state transitions to taking_darks given the required
+    conditions, namely it is dark and it cannot observe (i.e. bad weather).
+    '''
     pocs.initialize()
     assert pocs.is_initialized is True
     pocs.get_ready()
