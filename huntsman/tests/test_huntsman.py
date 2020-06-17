@@ -248,9 +248,13 @@ def test_entering_darks_state(pocs, db):
     # Make sure the weather is *not* safe to observe.
     assert not pocs.is_weather_safe()
 
-    assert(pocs.state == 'sleeping')
+    pocs.next_state = 'parking'
+    pocs.goto_next_state()
+    assert(pocs.state == 'parked')
 
-    pocs.state = 'taking_darks'
+    assert pocs.next_state == "taking_darks"
+    pocs.goto_next_state()
+    assert pocs.state == "taking_darks"
 
 
 def test_darks_collection_simulator(pocs, tmpdir):
