@@ -322,8 +322,8 @@ class HuntsmanObservatory(Observatory):
                          n_darks=10,
                          *args, **kwargs
                          ):
-        """Take dark fields for each camera with all the exposure times
-           in the targets list.
+        """Take n_darks dark frames for each exposure time specified,
+           for each camera.
 
         Args:
             exptimes (list): List of exposure times for darks
