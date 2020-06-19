@@ -54,7 +54,7 @@ transitions:
     -
         source: parked
         dest: taking_darks
-        trigger: set_park
+        trigger: take_darks
     -
         source: taking_darks
         dest: housekeeping
