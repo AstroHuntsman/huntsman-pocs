@@ -2,7 +2,7 @@
 # Dockerfile for a distributed Huntsman camera.
 #==============================================================================
 
-FROM huntsmanarray/arm_device:latest
+FROM huntsmanarray/arm_device:tenlens
 
 # ZWO camera & EFW libraries
 RUN export BUILD_DIR=$(pwd)/ASIBuild && \

@@ -1,7 +1,15 @@
 version: '3'
 services:
+  arm_device:
+    image: huntsmanarray/arm_device:tenlens
+    build:
+      context: ../arm_device
   camera:
-    image: huntsmanarray/camera:latest
+    image: huntsmanarray/camera:tenlens
+    depends_on:
+      - arm_device
+    build:
+      context: .
     user: huntsman
     privileged: true
     network_mode: host
