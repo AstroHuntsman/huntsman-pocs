@@ -7,6 +7,8 @@ states:
         tags: always_safe
     parked:
         tags: always_safe
+    taking_darks:
+        tags: always_safe
     sleeping:
         tags: always_safe
     housekeeping:
@@ -47,6 +49,14 @@ transitions:
         trigger: set_park
     -
         source: parked
+        dest: housekeeping
+        trigger: clean_up
+    -
+        source: parked
+        dest: taking_darks
+        trigger: take_darks
+    -
+        source: taking_darks
         dest: housekeeping
         trigger: clean_up
     -
