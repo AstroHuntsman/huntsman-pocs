@@ -26,7 +26,7 @@ RUN useradd -m -d /home/$PANUSER $PANUSER && \
     apt-get -y upgrade && \
     apt-get update && \
     apt-get -y dist-upgrade && \
-    apt-get -y install bzip2 git gcc sshfs sudo && \
+    apt-get -y install bzip2 git gcc sshfs sudo vim && \
     # Allow sudo without password
     echo "$PANUSER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
@@ -45,7 +45,7 @@ RUN ln -s $CONDA_PATH/bin/conda /usr/local/bin/ && \
     pip install --upgrade pip && \
     pip install setuptools --upgrade && \
     conda install astropy matplotlib requests scipy && \
-    pip install netifaces pyro4 pyyaml pyserial && \
+    pip install netifaces pyro4 pyyaml pyserial pymongo && \
     # Install huntsman-pocs
     mkdir -p $PANDIR/logs && \
     cd $PANDIR && \
