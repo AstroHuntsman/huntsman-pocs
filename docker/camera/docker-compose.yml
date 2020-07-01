@@ -6,8 +6,6 @@ services:
       context: ../arm_device
   camera:
     image: huntsmanarray/camera:tenlens
-    depends_on:
-      - arm_device
     build:
       context: .
     user: huntsman
