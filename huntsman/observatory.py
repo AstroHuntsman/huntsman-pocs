@@ -425,47 +425,52 @@ class HuntsmanObservatory(Observatory):
             if cam.is_cooled_camera:
                 cam.cooling_enabled = False
 
-    def prepare_cameras(self, sleep=60, max_attempts=5, require_all_cameras=False):
+    def prepare_cameras(self, sleep=60, max_attempts=10, consecutive=3,
+                        require_all_cameras=False):
         """
         Make sure cameras are all cooled and ready.
 
         Arguments:
             sleep (float): Time in seconds to sleep between checking readiness. Default 60.
+            consecutive (int): Number of consecutive readies to be considered ready.
             max_attempts (int): Maximum number of ready checks. See `require_all_cameras`.
             require_all_cameras (bool): `True` if all cameras are required to be ready.
                 If `True` and max_attempts is reached, a `PanError` will be raised. If `False`,
                 any camera that has failed to become ready will be dropped from the Observatory.
         """
+        # Consecutive needs to be less than or equal to max_attempts
+        if consecutive > max_attempts:
+            max_attempts = consecutive
+
         # Make sure camera cooling is enabled
         self.activate_camera_cooling()
 
-        # Wait for cameras to be ready
+        # Setup containers
         n_cameras = len(self.cameras)
+        cameras_failed = []
+        ready_counts = {cam_name: 0 for cam_name in self.cameras.keys()}
+
+        # Wait for cameras to be ready
         self.logger.debug('Waiting for cameras to be ready.')
         for i in range(1, max_attempts+1):
 
             num_cameras_ready = 0
             for cam_name, cam in self.cameras.items():
 
+                # Check if camera is ready
                 if cam.is_ready:
-                    num_cameras_ready += 1
-                    continue
+                    ready_counts[cam_name] += 1
+
+                else:
+                    # Reset ready counts for this camera
+                    ready_counts[cam_name] = 0
 
                 # If max attempts have been reached...
-                if (i == max_attempts):
-                    msg = f'Timeout while waiting for {cam_name} to be ready.'
+                if (i == max_attempts) & (ready_counts[cam_name] < consecutive):
+                    cameras_failed.append(cam_name)
 
-                    # Raise PanError if we need all cameras
-                    if require_all_cameras:
-                        raise error.PanError(msg)
-
-                    # Drop the camera if we don't need all cameras
-                    else:
-                        self.logger.error(msg)
-                        self.logger.debug(f'Removing {cam_name} from {self}.')
-                        self.remove_camera(cam_name)
-
-            # Terminate loop if all cameras are ready
+            # Check if all cameras are ready
+            num_cameras_ready = sum([ready_counts[c] >= consecutive for c in self.cameras.keys()])
             self.logger.debug(f'Number of ready cameras after {i} of {max_attempts} checks:'
                               f' {num_cameras_ready} of {n_cameras}.')
             if num_cameras_ready == n_cameras:
@@ -475,6 +480,22 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Not all cameras are ready yet, '
                                   f'waiting another {sleep} seconds before checking again.')
                 time.sleep(sleep)
+
+        # Handle failed cameras
+        if len(cameras_failed) != 0:
+            msg = "The following cameras have failed to become ready: "
+            msg += ", ".join(cameras_failed)
+
+            # Raise PanError if we need all cameras
+            if require_all_cameras:
+                raise error.PanError(msg)
+
+            # Drop the camera if we don't need all cameras
+            else:
+                msg += ". Dropping them from the Observatory."
+                self.logger.error(msg)
+                for cam_name in cameras_failed:
+                    self.remove_camera(cam_name)
 
         # Raise a `PanError` if no cameras are ready.
         if num_cameras_ready == 0:
