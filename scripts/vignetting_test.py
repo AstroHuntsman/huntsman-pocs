@@ -91,11 +91,11 @@ def take_exposures(observatory, alt, az, exptime, filter_name):
     Slew to coordinates, take exposures and return images.
     """
     # Slew to field
-    position = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+    position = utils.altaz_to_radec(alt=alt, az=az, location=observatory.earth_location,
                                     obstime=utils.current_time())
     field = Field('DomeVigTest', position.to_string('hmsdms'))
-    self.mount.set_target_coordinates(field)
-    self.mount.slew_to_target()
+    observatory.mount.set_target_coordinates(field)
+    observatory.mount.slew_to_target()
 
     # Loop over cameras
     camera_events = {}
