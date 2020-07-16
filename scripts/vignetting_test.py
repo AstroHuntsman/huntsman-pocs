@@ -9,7 +9,6 @@ from astropy import units as u
 from astropy.io import fits
 
 import matplotlib
-matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -87,7 +86,7 @@ def sample_coordinates(n_samples, alt_min, makeplots=False):
     return alt_array, az_array
 
 
-def take_exposures(self, observatory, alt, az, exptime):
+def take_exposures(self, observatory, alt, az, exptime, filter_name):
     """
     Slew to coordinates, take exposures and return images.
     """
@@ -105,6 +104,9 @@ def take_exposures(self, observatory, alt, az, exptime):
         # Create filename
         path = observatory.config['directories']['images']
         filename = os.path.join(path, 'vigtest', f'{cam.uid}.{cam.file_extension}')
+
+        # Move filterwheel
+        cam.filterwheel.move_to(filter_name, blocking=True)
 
         # Take exposure and get event
         exptime = exptime.to_value(u.second)
@@ -160,7 +162,7 @@ def measure_vignetted_fractions(images, dome_darks):
 
 
 def run_test(alt_min=10, exptime=5*u.second, alt_dark=60, az_dark=90,
-             filename=None, n_samples=50, simulate=False):
+             filename=None, n_samples=50, simulate=False, filter_name="luminance"):
     """
 
     """
@@ -170,10 +172,13 @@ def run_test(alt_min=10, exptime=5*u.second, alt_dark=60, az_dark=90,
         config = load_config()
 
     # Get the alt/az coordinates
+    print("Obtaining alt/az samples...")
     alt_array, az_array = sample_coordinates(n_samples, alt_min)
     n_samples = alt_array.size
+    print(f"Number of samples: {alt_array.size}")
 
     # Create the observatory instance
+    print("Creating observatory...")
     cameras = create_cameras_from_config(config)
     mount = create_mount_from_config(config)
     mount.initialize()
@@ -182,24 +187,30 @@ def run_test(alt_min=10, exptime=5*u.second, alt_dark=60, az_dark=90,
                                       with_autoguider=True, take_flats=True)
 
     # Wait for cameras to be ready
+    print("Preparing cameras...")
     observatory.prepare_cameras()
 
     # Take dome darks
-    dome_darks = take_dome_darks(observatory, alt_dark, az_dark, exptime)
+    print("Taking dome darks...")
+    dome_darks = take_dome_darks(observatory, alt_dark, az_dark, exptime, filter_name)
 
     # Make sure dome shutter is open
     input("The dome shutter must be open. "
           "Press enter once the dome is open to continue.")
 
     # Measure vignetting
+    print("Measuring vignetting...")
     vig_fractions = np.zeros((n_samples, len(cameras)))
     for i, (alt, az) in enumerate(zip(alt_array, az_array)):
 
+        print(f"Exposure {i+1} of {n_samples}...")
+
         # Take the exposures
-        images = take_exposures(observatory, alt, az, exptime)
+        images = take_exposures(observatory, alt, az, exptime, filter_name)
 
         # Calculate vignetted fractions
         vig_fractions[i, :] = measure_vignetted_fractions(images, dome_darks)
+    print("Done!")
 
     # Write the output file
     df = pd.DataFrame()
@@ -224,4 +235,4 @@ if __name__ == '__main__':
     plt.show(block=False)
     """
 
-    df = run_test(simulate=True)
+    df = run_test(simulate=False, exptime=1*u.second)
