@@ -161,7 +161,7 @@ def measure_vignetted_fractions(images, dome_darks):
     return fractions
 
 
-def run_test(alt_min=10, exptime=5*u.second, alt_dark=60, az_dark=90,
+def run_test(alt_min=30, exptime=5*u.second, alt_dark=60, az_dark=90,
              filename=None, n_samples=50, simulate=False, filter_name="luminance"):
     """
 
