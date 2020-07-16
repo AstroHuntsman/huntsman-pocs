@@ -182,6 +182,7 @@ def run_test(alt_min=10, exptime=5*u.second, alt_dark=60, az_dark=90,
     cameras = create_cameras_from_config(config)
     mount = create_mount_from_config(config)
     mount.initialize()
+    mount.unpark()
     scheduler = create_scheduler_from_config(config)
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
                                       with_autoguider=True, take_flats=True)
