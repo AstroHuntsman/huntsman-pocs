@@ -86,7 +86,7 @@ def sample_coordinates(n_samples, alt_min, makeplots=False):
     return alt_array, az_array
 
 
-def take_exposures(self, observatory, alt, az, exptime, filter_name):
+def take_exposures(observatory, alt, az, exptime, filter_name):
     """
     Slew to coordinates, take exposures and return images.
     """
