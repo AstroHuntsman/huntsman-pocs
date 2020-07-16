@@ -202,7 +202,7 @@ def run_test(observatory, alt_min=30, exptime=5*u.second, alt_dark=60,
     df = pd.DataFrame()
     df['alt'] = alt_array
     df['az'] = az_array
-    for i, cam in enumerate(cameras.items()):
+    for i, cam in enumerate(cameras.values()):
         df[f"{cam.uid}"] = vig_fractions[:, i]
     if filename is None:
         filename = os.path.join(os.environ["HOME"], "vigtest.csv")
