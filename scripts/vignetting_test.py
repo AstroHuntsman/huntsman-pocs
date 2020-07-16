@@ -161,31 +161,16 @@ def measure_vignetted_fractions(images, dome_darks):
     return fractions
 
 
-def run_test(alt_min=30, exptime=5*u.second, alt_dark=60, az_dark=90,
-             filename=None, n_samples=50, simulate=False, filter_name="luminance"):
+def run_test(observatory, alt_min=30, exptime=5*u.second, alt_dark=60,
+             az_dark=90, filename=None, n_samples=50, filter_name="luminance"):
     """
 
     """
-    if simulate:
-        config = load_simulated_config()
-    else:
-        config = load_config()
-
     # Get the alt/az coordinates
     print("Obtaining alt/az samples...")
     alt_array, az_array = sample_coordinates(n_samples, alt_min)
     n_samples = alt_array.size
     print(f"Number of samples: {alt_array.size}")
-
-    # Create the observatory instance
-    print("Creating observatory...")
-    cameras = create_cameras_from_config(config)
-    mount = create_mount_from_config(config)
-    mount.initialize()
-    mount.unpark()
-    scheduler = create_scheduler_from_config(config)
-    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
-                                      with_autoguider=True, take_flats=True)
 
     # Wait for cameras to be ready
     print("Preparing cameras...")
@@ -236,4 +221,21 @@ if __name__ == '__main__':
     plt.show(block=False)
     """
 
-    df = run_test(simulate=False, exptime=1*u.second)
+    simulate = False
+
+    # Load the config
+    if simulate:
+        config = load_simulated_config()
+    else:
+        config = load_config()
+
+    # Create the observatory instance
+    cameras = create_cameras_from_config(config)
+    mount = create_mount_from_config(config)
+    mount.initialize()
+    mount.unpark()
+    scheduler = create_scheduler_from_config(config)
+    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler)
+
+    # Run
+    df = run_test(observatory, exptime=1*u.second)
