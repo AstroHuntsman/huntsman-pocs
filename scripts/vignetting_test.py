@@ -127,7 +127,9 @@ def take_exposures(observatory, alt, az, exptime, filter_name, suffix=""):
         fig, ax = plt.subplots()
         vmin = np.quantile(images[cam_name], 0.05)
         vmax = np.quantile(images[cam_name], 0.95)
-        ax.imshow(images[cam_name], vmin=vmin, vmax=vmax, cmap='binary')
+        print(vmin, vmax)
+        # ax.imshow(images[cam_name], vmin=vmin, vmax=vmax, cmap='binary')
+        ax.imshow(images[cam_name], cmap='binary')
         filename = os.path.join(path, 'vigtest', f'{cam.uid}')
         filename += suffix + ".png"
         plt.savefig(filename, bbox_inches='tight')
