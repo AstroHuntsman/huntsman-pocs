@@ -86,7 +86,7 @@ def sample_coordinates(n_samples, alt_min, makeplots=False):
     return alt_array, az_array
 
 
-def take_exposures(observatory, alt, az, exptime, filter_name):
+def take_exposures(observatory, alt, az, exptime, filter_name, suffix=""):
     """
     Slew to coordinates, take exposures and return images.
     """
@@ -103,7 +103,8 @@ def take_exposures(observatory, alt, az, exptime, filter_name):
 
         # Create filename
         path = observatory.config['directories']['images']
-        filename = os.path.join(path, 'vigtest', f'{cam.uid}.{cam.file_extension}')
+        filename = os.path.join(path, 'vigtest', f'{cam.uid}')
+        filename += suffix + f".{cam.file_extension}"
 
         # Move filterwheel
         cam.filterwheel.move_to(filter_name, blocking=True)
@@ -119,8 +120,17 @@ def take_exposures(observatory, alt, az, exptime, filter_name):
 
     # Read the data
     images = {}
-    for cam_name in observatory.cameras.keys():
+    for cam_name, cam in observatory.cameras.items():
         images[cam_name] = fits.getdata(camera_events[cam_name]['filename'])
+
+        # Make check plot
+        fig, ax = plt.subplots()
+        vmin = np.quantile(images[cam_name], 0.05)
+        vmax = np.quantile(images[cam_name], 0.95)
+        ax.imshow(images[cam_name], vmin=vmin, vmax=vmax, cmap='binary')
+        filename = os.path.join(path, 'vigtest', f'{cam.uid}')
+        filename += suffix + ".png"
+        plt.savefig(filename, bbox_inches='tight')
 
     return images
 
@@ -178,7 +188,8 @@ def run_test(observatory, alt_min=30, exptime=5*u.second, alt_dark=60,
 
     # Take dome darks
     print("Taking dome darks...")
-    dome_darks = take_dome_darks(observatory, alt_dark, az_dark, exptime, filter_name)
+    dome_darks = take_dome_darks(observatory, alt_dark, az_dark, exptime, filter_name,
+                                 suffix='_dark')
 
     # Make sure dome shutter is open
     input("The dome shutter must be open. "
@@ -192,7 +203,7 @@ def run_test(observatory, alt_min=30, exptime=5*u.second, alt_dark=60,
         print(f"Exposure {i+1} of {n_samples}...")
 
         # Take the exposures
-        images = take_exposures(observatory, alt, az, exptime, filter_name)
+        images = take_exposures(observatory, alt, az, exptime, filter_name, suffix=f'_{i}')
 
         # Calculate vignetted fractions
         vig_fractions[i, :] = measure_vignetted_fractions(images, dome_darks)
@@ -238,4 +249,4 @@ if __name__ == '__main__':
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler)
 
     # Run
-    df = run_test(observatory, exptime=1*u.second)
+    df = run_test(observatory, exptime=1*u.second, n_samples=20)
