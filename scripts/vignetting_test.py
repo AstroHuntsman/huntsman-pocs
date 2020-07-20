@@ -127,9 +127,9 @@ def take_exposures(observatory, alt, az, exptime, filter_name, suffix=""):
         fig, ax = plt.subplots()
         vmin = np.quantile(images[cam_name], 0.05)
         vmax = np.quantile(images[cam_name], 0.95)
-        ax.imshow(images[cam_name], vmin=vmin, vmax=vmax, cmap='binary')
-        ax.imshow(images[cam_name], cmap='binary')
-        # plt.colorbar()
+        im = ax.imshow(images[cam_name], vmin=vmin, vmax=vmax, cmap='binary')
+        # ax.imshow(images[cam_name], cmap='binary')
+        plt.colorbar(im, ax=ax)
         filename = os.path.join(path, 'vigtest', f'{cam.uid}')
         filename += suffix + ".png"
         plt.savefig(filename, bbox_inches='tight')
@@ -251,4 +251,4 @@ if __name__ == '__main__':
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler)
 
     # Run
-    df = run_test(observatory, exptime=1*u.second, n_samples=20)
+    df = run_test(observatory, exptime=1*u.second, n_samples=50)
