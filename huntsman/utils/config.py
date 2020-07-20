@@ -9,7 +9,7 @@ from huntsman.utils import load_config, get_own_ip, DummyLogger
 @Pyro4.expose
 class ConfigServer():
 
-    def __init__(self, config_file=None, parse=True, refresh_frequency=120,
+    def __init__(self, config_file=None, parse=True, refresh_interval=120,
                  **kwargs):
         """
         Parameters
@@ -18,11 +18,11 @@ class ConfigServer():
             The name of the config file to use. Default is device_info.yaml.
         parse (bool):
             Parse the config? Default True.
-        refresh_frequency (float):
+        refresh_interval (float):
             Frequency that the config is updated from file in seconds. Default 120s.
         """
         self._parse = parse
-        self._refresh_frequency = refresh_frequency
+        self._refresh_interval = refresh_interval
 
         if config_file is None:
             config_file = 'device_info.yaml'
@@ -41,7 +41,7 @@ class ConfigServer():
 
     @property
     def config(self):
-        if current_time() - self._last_refresh_time > self._refresh_frequency:
+        if current_time() - self._last_refresh_time > self._refresh_interval:
             self._load_config()
         return self._config
 
