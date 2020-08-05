@@ -28,10 +28,10 @@ def monitor_loop(dome, interval=60, filename_csv="/home/huntsman/domelog.csv",
         # Update plot
         df = pd.read_csv(filename_csv)
         n_plot = int(8640/interval)
-        x = np.arange(n_plot)
         fig = plt.figure(figsize=(4, 8))
         ax0 = plt.subplot(1, 2, 1)
-        y = df["Battery"].values
+        y = df["Battery"].values[-n_plot:]
+        x = np.arange(y.size)
         ax0.plot(x, y)
         ax0.set_xticks(x[::30], y[::30])
         ax0.set_title("Battery")
