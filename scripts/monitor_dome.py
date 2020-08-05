@@ -39,7 +39,7 @@ def monitor_loop(dome, interval=60, filename_csv="/home/huntsman/domelog.csv",
         y = df["Solar_A"].values
         ax1.plot(x, y)
         # ax1.set_xticks(x[::30], [::30])
-        ax0.set_title("Solar_A")
+        ax1.set_title("Solar_A")
         plt.tight_layout()
         plt.savefig(filename_plot, dpi=150, bbox_inches='tight')
 
