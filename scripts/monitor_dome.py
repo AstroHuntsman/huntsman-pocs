@@ -39,6 +39,7 @@ def monitor_loop(dome, interval=5, filename_csv="/home/huntsman/domelog.csv",
         ax1.set_title("Solar_A")
         plt.tight_layout()
         plt.savefig(filename_plot, dpi=150, bbox_inches='tight')
+        plt.close(fig)
 
         # Sleep
         time.sleep(interval)
