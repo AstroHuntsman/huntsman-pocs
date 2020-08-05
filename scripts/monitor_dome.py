@@ -33,12 +33,9 @@ def monitor_loop(dome, interval=60, filename_csv="/home/huntsman/domelog.csv",
         y = df["Battery"].values[-n_plot:]
         x = np.arange(y.size)
         ax0.plot(x, y)
-        # ax0.set_xticks(x[::30], y[::30])
         ax0.set_title("Battery")
         ax1 = plt.subplot(2, 1, 2)
-        y = df["Solar_A"].values
-        ax1.plot(x, y)
-        # ax1.set_xticks(x[::30], [::30])
+        ax1.plot(x, df["Solar_A"].values[-n_plot:])
         ax1.set_title("Solar_A")
         plt.tight_layout()
         plt.savefig(filename_plot, dpi=150, bbox_inches='tight')
