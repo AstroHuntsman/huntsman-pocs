@@ -24,7 +24,7 @@ def monitor_loop(dome, interval=60, filename_csv="/home/huntsman/domelog.csv",
             pd.DataFrame(series).T.to_csv(f, header=f.tell()==0, index=False)
 
         # Update plot
-        df = pd.read_csv(filename_plot)
+        df = pd.read_csv(filename_csv)
         n_plot = int(8640/interval)
         x = np.arange(n_plot)
         fig = plt.figure(figsize=(4, 8))
