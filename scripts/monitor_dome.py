@@ -2,6 +2,8 @@
 import time
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from pocs.utils import current_time
 from huntsman.dome.musca import HuntsmanDome
 from huntsman.utils import load_config
