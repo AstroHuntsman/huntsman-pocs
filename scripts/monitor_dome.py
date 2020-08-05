@@ -53,4 +53,4 @@ if __name__ == "__main__":
     dome = HuntsmanDome(config=config)
 
     # Start monitoring
-    monitor_loop(dome, interval=30)
+    monitor_loop(dome)
