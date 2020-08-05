@@ -20,7 +20,7 @@ def monitor_loop(dome, interval=300, filename="/home/huntsman/domelog.csv"):
             series[key] = status.get(key, np.nan)
         series["time"] = str(current_time().value)
         with open(filename, 'a') as f:
-            pd.DataFrame([series]).T.to_csv(f, header=f.tell()==0)
+            pd.DataFrame(series).T.to_csv(f, header=f.tell()==0)
 
         # Sleep
         time.sleep(interval)
