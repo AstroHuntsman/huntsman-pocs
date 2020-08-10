@@ -10,7 +10,7 @@ from huntsman.utils import load_config
 
 KEYS = ["Battery", "Solar_A", "Status", "Shutter", "Door", "Switch"]
 
-def monitor_loop(dome, interval=5, filename_csv="/home/huntsman/domelog.csv",
+def monitor_loop(dome, interval=30, filename_csv="/home/huntsman/domelog.csv",
                  filename_plot="/home/huntsman/domelog.png"):
     while True:
         # Log dome status
@@ -26,6 +26,7 @@ def monitor_loop(dome, interval=5, filename_csv="/home/huntsman/domelog.csv",
             pd.DataFrame(series).T.to_csv(f, header=f.tell()==0, index=False)
 
         # Update plot
+        """
         df = pd.read_csv(filename_csv)
         n_plot = int(8640/interval)  # One day
         fig = plt.figure(figsize=(10, 4))
@@ -40,7 +41,7 @@ def monitor_loop(dome, interval=5, filename_csv="/home/huntsman/domelog.csv",
         plt.tight_layout()
         plt.savefig(filename_plot, dpi=150, bbox_inches='tight')
         plt.close(fig)
-
+        """
         # Sleep
         time.sleep(interval)
 
