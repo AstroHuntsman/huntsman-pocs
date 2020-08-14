@@ -11,14 +11,14 @@ from pocs.core import POCS
 from pocs.utils import error
 from pocs.utils import CountdownTimer
 
-from huntsman.camera import create_cameras_from_config
+from huntsman.pocs.camera import create_cameras_from_config
 from pocs.utils.location import create_location_from_config
 from pocs.scheduler import create_scheduler_from_config
 from pocs.dome import create_dome_from_config
 from pocs.mount import create_mount_from_config
 
-from huntsman.camera.pyro import Camera as PyroCamera
-from huntsman.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.camera.pyro import Camera as PyroCamera
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 def wait_for_running(sub, max_duration=90):

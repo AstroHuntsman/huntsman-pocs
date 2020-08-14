@@ -6,7 +6,7 @@ from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
 from pocs.utils import listify
 
-from huntsman.utils import dither
+from huntsman.pocs.utils import dither
 
 
 class DitheredObservation(Observation):

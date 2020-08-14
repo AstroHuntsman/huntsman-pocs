@@ -7,7 +7,7 @@ POCS.
 """
 import argparse
 
-from huntsman.utils.pyro.name_server import run_name_server
+from huntsman.pocs.utils.pyro.name_server import run_name_server
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
