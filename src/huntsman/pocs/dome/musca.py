@@ -133,7 +133,7 @@ class HuntsmanDome(AbstractSerialDome):
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
 
-    def keep_dome_open(self, max_read_attempts=5):
+    def keep_dome_open(self):
         """Periodically tell musca to reset watchdog timer
 
         """
