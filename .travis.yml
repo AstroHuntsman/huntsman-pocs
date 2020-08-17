@@ -15,6 +15,7 @@ before_install:
   # Install testing dependencies.
   - pip install -U pip
   - pip install setuptools --upgrade
+  - pip install certifi --upgrade
   - pip install coveralls
   - cd $PANDIR
   # Install POCS
