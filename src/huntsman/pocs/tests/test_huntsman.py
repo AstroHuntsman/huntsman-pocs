@@ -11,14 +11,14 @@ from panoptes.pocs.core import POCS
 from panoptes.utils import error
 from panoptes.utils import CountdownTimer
 
-from huntsman.camera import create_cameras_from_config
+from huntsman.pocs.camera import create_cameras_from_config
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config
 
-from huntsman.camera.pyro import Camera as PyroCamera
-from huntsman.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.camera.pyro import Camera as PyroCamera
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 def wait_for_running(sub, max_duration=90):
@@ -180,6 +180,49 @@ def test_is_weather_safe_no_simulator(pocs, db):
     # Set a time 181 seconds later
     os.environ['POCSTIME'] = '2016-08-13 23:05:01'
     assert pocs.is_weather_safe() is False
+
+
+def test_darks_collection_simulator(pocs, tmpdir):
+    """Test routines to take darks using the same structure of the
+       taking_darks state."""
+    pocs.config['simulator'] = hardware.get_all_names()
+    pocs._do_states = True
+    pocs.observatory.scheduler.clear_available_observations()
+
+    pocs.observatory.scheduler.fields_list.append({'name': 'KIC 8462852-1',
+                                                   'position': '20h06m15.4536s +44d27m24.75s',
+                                                   'priority': '100',
+                                                   'exptime': 100.0,
+                                                   'min_nexp': 1,
+                                                   'exp_set_size': 1,
+                                                   })
+
+    pocs.state = 'parked'
+
+    pocs.initialize()
+    assert(pocs.is_initialized is True)
+
+    exptimes_list = list()
+    for target in pocs.observatory.scheduler.fields_list:
+        exptime = target['exptime']
+        if exptime not in exptimes_list:
+            exptimes_list.append(exptime)
+
+    if len(exptimes_list) > 0:
+        pocs.logger.info("I'm starting with dark-field exposures")
+        ndarks_per_exp = 2
+        darks = pocs.observatory.take_dark_fields(exptimes_list,
+                                                  n_darks=ndarks_per_exp)
+        expected_number_of_darks = (len(pocs.observatory.cameras.keys())
+                                    * ndarks_per_exp * len(exptimes_list))
+
+        for filename in darks:
+            assert(os.path.basename(filename).endswith('fits') is True)
+
+        assert(len(darks) == expected_number_of_darks)
+
+    else:
+        pytest.fail(pocs.logger.info('No exposure times were provided'))
 
 
 def test_pyro_camera(config, camera_server):

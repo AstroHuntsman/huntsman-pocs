@@ -6,7 +6,7 @@ running.
 Might be good to parse some args in the future, but doesn't seem necessary
 now.
 """
-from huntsman.utils.config import start_config_server
+from huntsman.pocs.utils.config import start_config_server
 
 if __name__ == "__main__":
 

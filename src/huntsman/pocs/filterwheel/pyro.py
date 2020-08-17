@@ -2,7 +2,7 @@ from threading import Event
 
 from panoptes.pocs.filterwheel import AbstractFilterWheel
 
-from huntsman.utils.pyro.event import RemoteEvent
+from huntsman.pocs.utils.pyro.event import RemoteEvent
 
 
 class FilterWheel(AbstractFilterWheel):

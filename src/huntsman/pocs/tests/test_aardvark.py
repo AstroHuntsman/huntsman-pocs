@@ -9,7 +9,7 @@ from astropy import units as u
 
 from panoptes.utils import error
 
-from huntsman.utils import get_own_ip
+from huntsman.pocs.utils import get_own_ip
 
 
 def test_get_own_ip():

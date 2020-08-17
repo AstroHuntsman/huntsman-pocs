@@ -22,7 +22,7 @@ from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils import error
 
-from huntsman.camera.pyro import Camera as PyroCamera
+from huntsman.pocs.camera.pyro import Camera as PyroCamera
 
 sys.excepthook = Pyro4.util.excepthook
 

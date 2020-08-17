@@ -8,8 +8,8 @@ from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config
 
-from huntsman.camera import create_cameras_from_config
-from huntsman.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.camera import create_cameras_from_config
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 @pytest.fixture(scope='function')
@@ -48,6 +48,34 @@ def pocs(config_with_simulated_stuff, observatory):
     pocs.power_down()
 
 # ==============================================================================
+
+
+def test_entering_darks_state(pocs, db):
+    '''
+    Test if parked state transitions to taking_darks given the required
+    conditions, namely that it is dark and cannot observe (i.e. bad weather).
+    '''
+    pocs.initialize()
+    assert pocs.is_initialized is True
+    pocs.get_ready()
+
+    pocs.config['simulator'] = ['camera', 'mount', 'night']
+
+    # Insert a dummy night
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
+    # Make sure it is dark.
+    assert(pocs.is_dark(horizon='observe'))
+
+    # Insert a dummy weather record
+    db.insert_current('weather', {'safe': False})
+    # Make sure the weather is *not* safe to observe.
+    assert not pocs.is_weather_safe()
+
+    pocs.next_state = 'parking'
+    for state in ['parking', 'parked', 'taking_darks']:
+        assert pocs.next_state == state
+        pocs.goto_next_state()
+        assert pocs.state == state
 
 
 def test_parking_ready(pocs):

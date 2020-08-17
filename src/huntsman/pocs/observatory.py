@@ -16,9 +16,10 @@ from panoptes.utils import error
 from panoptes.pocs import utils
 from panoptes.utils.library import load_module
 
-from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
-from huntsman.utils import load_config
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
+from huntsman.pocs.scheduler.dark_observation import DarkObservation
+from huntsman.pocs.utils import load_config
 
 
 class HuntsmanObservatory(Observatory):
@@ -315,6 +316,98 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
+    def take_dark_fields(self,
+                         exptimes,
+                         sleep=10,
+                         camera_names=None,
+                         n_darks=10,
+                         *args, **kwargs
+                         ):
+        """Take n_darks dark frames for each exposure time specified,
+           for each camera.
+
+        Args:
+            exptimes (list): List of exposure times for darks
+            sleep (float, optional): Time in seconds to sleep between dark sequences.
+            camera_names (list, optional): List of cameras to use for darks
+            n_darks (int, optional): Number of darks to be taken per exptime
+        """
+
+        if camera_names is None:
+            cameras_list = self.cameras
+        else:
+            cameras_list = {c: self.cameras[c] for c in camera_names}
+
+        self.logger.debug(f'Using cameras {cameras_list}')
+
+        image_dir = self.config['directories']['images']
+
+        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
+
+        # List to check that the final number of darks is equal to the number
+        # of cameras times the number of exptimes times n_darks.
+        darks_filenames = []
+
+        # Loop over cameras.
+        for exptime in exptimes:
+
+            start_time = utils.current_time()
+
+            with suppress(AttributeError):
+                exptime = exptime.to_value(u.second)
+
+            # Loop over exposure times for each camera.
+            for num in range(n_darks):
+
+                self.logger.debug(f'Darks sequence #{num} of exposure time {exptime}s')
+
+                camera_events = dict()
+
+                # Take a given number of exposures for each exposure time.
+                for camera in cameras_list.values():
+
+                    # Create dark observation
+                    dark_obs = self._create_dark_observation(exptime)
+                    fits_headers = self.get_standard_headers(observation=dark_obs)
+                    # Common start time for cameras
+                    fits_headers['start_time'] = utils.flatten_time(start_time)
+
+                    filename = os.path.join(
+                        image_dir,
+                        'darks',
+                        camera.uid,
+                        f'{exptime}',
+                        dark_obs.seq_time,
+                        f'dark_{num:02d}.{camera.file_extension}')
+
+                    # Take picture and get event
+                    camera_event = camera.take_observation(
+                        dark_obs,
+                        fits_headers,
+                        filename=filename,
+                        exptime=exptime,
+                        dark=True,
+                        blocking=False
+                    )
+
+                    self.logger.debug(f'Camera {camera.uid} is exposing for {exptime}s')
+
+                    camera_events[camera] = {
+                        'event': camera_event,
+                        'filename': filename,
+                    }
+
+                    darks_filenames.append(filename)
+
+                    self.logger.debug(camera_events)
+
+                # Block until done exposing on all cameras
+                while not all([info['event'].is_set() for info in camera_events.values()]):
+                    self.logger.debug('Waiting for dark-field images...')
+                    time.sleep(sleep)
+        self.logger.debug(darks_filenames)
+        return darks_filenames
+
     def activate_camera_cooling(self):
         """
         Activate camera cooling for all cameras.
@@ -449,6 +542,20 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug("Flat-field observation: {}".format(obs))
 
         return obs
+
+    def _create_dark_observation(self, exptime, *args, **kwargs):
+
+        # Create the observation object
+        dark_position = self.mount.get_current_coordinates()
+        dark_obs = DarkObservation(dark_position, *args, **kwargs)
+        dark_obs.seq_time = utils.current_time(flatten=True)
+
+        if isinstance(dark_obs, DarkObservation):
+            dark_obs.exptime = exptime
+
+        self.logger.debug(f"Dark-field observation: {dark_obs}")
+
+        return dark_obs
 
     def _take_autoflats(self, cameras, observation, safety_func,
                         tolerance=0.05, target_scaling=0.17, bias=32,

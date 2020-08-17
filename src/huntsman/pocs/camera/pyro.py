@@ -14,12 +14,13 @@ from panoptes.utils import get_quantity_value
 from panoptes.utils import error
 from panoptes.pocs.camera import AbstractCamera
 
-from huntsman.focuser.pyro import Focuser as PyroFocuser
-from huntsman.filterwheel.pyro import FilterWheel as PyroFilterWheel
-from huntsman.utils.pyro.event import RemoteEvent
+from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
+from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
+from huntsman.pocs.utils.pyro.event import RemoteEvent
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
-from huntsman.utils.config import load_device_config, query_config_server
+from huntsman.pocs.utils.pyro import serializers
+from huntsman.pocs.utils.config import load_device_config, query_config_server
 
 
 class Camera(AbstractCamera):

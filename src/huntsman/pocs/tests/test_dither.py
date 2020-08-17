@@ -2,7 +2,7 @@ import pytest
 import astropy.units as u
 from astropy.coordinates import SkyCoord, Angle
 
-from huntsman.utils import dither
+from huntsman.pocs.utils import dither
 
 
 def test_dice9_SkyCoord():

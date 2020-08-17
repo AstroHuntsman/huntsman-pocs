@@ -1,40 +1,48 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan  2 12:04:11 2020
-
-@author: danjampro
-
-Code to provide a config server using pyro.
-"""
 import sys
 import time
 import Pyro4
-from huntsman.utils import load_config, get_own_ip, DummyLogger
-from panoptes.utils.config import parse_config
+from pocs.utils import current_time
+from pocs.utils.config import parse_config
+from huntsman.pocs.utils import load_config, get_own_ip, DummyLogger
 
 
 @Pyro4.expose
 class ConfigServer():
-    '''
-    Class representing the config server.
-    '''
 
-    def __init__(self, config_file=None, parse=True, **kwargs):
-        '''
-
-        '''
-        self.parse = parse
+    def __init__(self, config_file=None, parse=True, refresh_interval=120,
+                 **kwargs):
+        """
+        Parameters
+        ----------
+        config_file (str):
+            The name of the config file to use. Default is device_info.yaml.
+        parse (bool):
+            Parse the config? Default True.
+        refresh_interval (float):
+            Frequency that the config is updated from file in seconds. Default 120s.
+        """
+        self._parse = parse
+        self._refresh_interval = refresh_interval
 
         if config_file is None:
             config_file = 'device_info.yaml'
 
         # Read the config file
-        self._config = load_config(config_files=[config_file], parse=self.parse,
+        self._config_kwargs = dict(config_files=[config_file], parse=self._parse,
                                    **kwargs)
+        self._load_config()
+
+    def _load_config(self):
+        """
+        Load the config from file.
+        """
+        self._config = load_config(**self._config_kwargs)
+        self._last_refresh_time = current_time()
 
     @property
     def config(self):
+        if current_time() - self._last_refresh_time > self._refresh_interval:
+            self._load_config()
         return self._config
 
     @config.setter
@@ -42,9 +50,9 @@ class ConfigServer():
         self._config = config
 
     def get_config(self, key=None):
-        '''
+        """
         Retrieve the config file.
-        '''
+        """
         config = self.config
 
         if key is not None:
@@ -52,7 +60,7 @@ class ConfigServer():
 
             # Need to run parse_config if querying by key, as load_config
             # only checks top-level keys.
-            if self.parse:
+            if self._parse:
                 config = parse_config(config)
 
         return config

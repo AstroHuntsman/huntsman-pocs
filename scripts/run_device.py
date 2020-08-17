@@ -4,7 +4,7 @@ necessary processes automatically.
 
 This code is ideally run from inside the latest huntsman docker container.
 """
-from huntsman.utils.config import load_device_config
+from huntsman.pocs.utils.config import load_device_config
 
 
 def get_device_type(**kwargs):
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     if device_type == 'camera':
 
         # Only attempt imports here to be as lightweight as possible
-        from huntsman.utils.pyro.camera_server import run_camera_server
+        from huntsman.pocs.utils.pyro.camera_server import run_camera_server
         run_camera_server()
 
     # Dome server...

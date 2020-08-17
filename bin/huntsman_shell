@@ -10,7 +10,7 @@ from panoptes.pocs.core import POCS
 from panoptes.utils import error
 from panoptes.utils import listify
 
-from huntsman.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 class HuntsmanShell(Cmd):

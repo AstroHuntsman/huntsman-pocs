@@ -5,8 +5,8 @@ from panoptes.pocs.scheduler.field import Field
 from panoptes.utils import current_time
 from panoptes.pocs.scheduler.observation import Observation
 
-from huntsman.scheduler.observation import DitheredObservation
-from huntsman.utils import dither
+from huntsman.pocs.scheduler.observation import DitheredObservation
+from huntsman.pocs.utils import dither
 
 
 class Scheduler(dispatch.Scheduler):

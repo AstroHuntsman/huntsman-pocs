@@ -7,7 +7,7 @@ from panoptes.pocs.scheduler.observation import Observation
 
 from panoptes.utils import listify
 
-from huntsman.utils import dither
+from huntsman.pocs.utils import dither
 
 
 class DitheredObservation(Observation):
