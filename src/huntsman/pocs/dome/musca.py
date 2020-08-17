@@ -151,27 +151,19 @@ class HuntsmanDome(AbstractSerialDome):
             now = time.monotonic()
             if now - last_time > 290:
 
-                # Read the dome shutter status
-                # This can sometimes raise a KeyError
-                for j in range(max_read_attempts):
-                    with suppress(KeyError):
-                        status = self._get_shutter_status_dict()
-                        break
-                    self.logger.debug(f"Failed to get shutter status after {j+1} of"
-                                      f" {max_read_attempts} attempts.")
-                    if j+1 == max_read_attempts:
-                        raise ValueError("Failed to get shutter status.")
-                    time.sleep(5)
+                status = self._get_shutter_status_dict()  # Sometimes empty dict
+                try:
+                    self.logger.info((f'Status Update: Shutter is '
+                                      f'{status[Protocol.SHUTTER]}, '
+                                      f'Door is {status[Protocol.DOOR]}, '
+                                      f'Battery voltage is {status[Protocol.BATTERY]}'))
+                except KeyError:
+                    self.logger.debug("Failed to get shutter status.")
 
-                self.logger.info((f'Status Update: Shutter is '
-                                  f'{status[Protocol.SHUTTER]}, '
-                                  f'Door is {status[Protocol.DOOR]}, '
-                                  f'Battery voltage is {status[Protocol.BATTERY]}'))
-                self._write_musca(Protocol.KEEP_DOME_OPEN,
-                                  'Keeping dome open.')
+                self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
                 last_time = now
-                self.logger.debug(
-                    'Keep dome open thread sleeping for ~5 minutes.')
+                self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
+
             time.sleep(1)
         self.logger.warning(
             'Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
