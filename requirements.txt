@@ -4,7 +4,6 @@ astroplan
 astropy >= 4.0.0
 astroquery
 ccdproc
-certifi >= 2020.06.20
 codecov
 coloredlogs >= 5.0
 coveralls
