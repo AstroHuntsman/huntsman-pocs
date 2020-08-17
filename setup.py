@@ -9,6 +9,9 @@ except ImportError:
 from configparser import ConfigParser
 from distutils.command.build_py import build_py
 
+# Get the version number
+exec(open("src/huntsman/pocs/version.py").read())
+
 # Get some values from the setup.cfg
 conf = ConfigParser()
 conf.read(['setup.cfg'])
@@ -28,7 +31,7 @@ URL = metadata.get('url', 'http://projectpanoptes.org')
 #            if os.path.basename(fname) != 'README.rst']
 
 setup(name=PACKAGENAME,
-      version="0.1.1",
+      version=__version__,
       description=DESCRIPTION,
       long_description=LONG_DESCRIPTION,
       author=AUTHOR,
