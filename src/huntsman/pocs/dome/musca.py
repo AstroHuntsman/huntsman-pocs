@@ -2,9 +2,10 @@
 
 import threading
 import time
+from contextlib import suppress
 
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
-from pocs.utils import CountdownTimer
+from pocs.utils import CountdownTimer, error
 
 
 class Protocol:
@@ -133,7 +134,7 @@ class HuntsmanDome(AbstractSerialDome):
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
 
-    def keep_dome_open(self):
+    def keep_dome_open(self, max_read_attempts=5):
         """Periodically tell musca to reset watchdog timer
 
         """
@@ -149,7 +150,19 @@ class HuntsmanDome(AbstractSerialDome):
                 return
             now = time.monotonic()
             if now - last_time > 290:
-                status = self._get_shutter_status_dict()
+
+                # Read the dome shutter status
+                # This can sometimes raise a KeyError
+                for j in range(max_read_attempts):
+                    with suppress(KeyError):
+                        status = self._get_shutter_status_dict()
+                        break
+                    self.logger.debug(f"Failed to get shutter status after {j+1} of"
+                                      f" {max_read_attempts} attempts.")
+                    if j+1 == max_read_attempts:
+                        raise ValueError("Failed to get shutter status.")
+                    time.sleep(5)
+
                 self.logger.info((f'Status Update: Shutter is '
                                   f'{status[Protocol.SHUTTER]}, '
                                   f'Door is {status[Protocol.DOOR]}, '
