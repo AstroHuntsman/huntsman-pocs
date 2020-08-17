@@ -2,10 +2,9 @@
 
 import threading
 import time
-from contextlib import suppress
 
 from pocs.dome.abstract_serial_dome import AbstractSerialDome
-from pocs.utils import CountdownTimer, error
+from pocs.utils import CountdownTimer
 
 
 class Protocol:
