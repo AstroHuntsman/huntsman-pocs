@@ -15,10 +15,10 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
 
-from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
-from huntsman.scheduler.dark_observation import DarkObservation
-from huntsman.utils import load_config
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
+from huntsman.pocs.scheduler.dark_observation import DarkObservation
+from huntsman.pocs.utils import load_config
 
 
 class HuntsmanObservatory(Observatory):

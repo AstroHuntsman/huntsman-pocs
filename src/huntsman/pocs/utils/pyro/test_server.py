@@ -8,8 +8,8 @@ from pocs.utils import error
 
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the TestServer.
-from huntsman.utils.pyro import serializers
-from huntsman.utils import get_own_ip, DummyLogger
+from huntsman.pocs.utils.pyro import serializers
+from huntsman.pocs.utils import get_own_ip, DummyLogger
 
 
 class NewError(Exception):

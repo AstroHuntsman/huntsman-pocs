@@ -3,7 +3,7 @@ import time
 import Pyro4
 from pocs.utils import current_time
 from pocs.utils.config import _parse_config
-from huntsman.utils import load_config, get_own_ip, DummyLogger
+from huntsman.pocs.utils import load_config, get_own_ip, DummyLogger
 
 
 @Pyro4.expose
