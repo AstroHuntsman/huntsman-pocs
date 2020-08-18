@@ -1,16 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec  3 07:16:00 2019
-
-@author: danjampro
-
-Run this on the pis (not the main computer).
-"""
 import os
 import subprocess
-from huntsman.utils import DummyLogger
-from huntsman.utils.config import query_config_server, load_device_config
+from huntsman.pocs.utils import DummyLogger
+from huntsman.pocs.utils.config import query_config_server, load_device_config
 
 
 def mount(mountpoint, remote, server_alive_interval=20, logger=None,

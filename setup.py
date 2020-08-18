@@ -9,7 +9,8 @@ except ImportError:
 from configparser import ConfigParser
 from distutils.command.build_py import build_py
 
-from huntsman.version import __version__
+# Get the version number
+exec(open("src/huntsman/pocs/version.py").read())
 
 # Get some values from the setup.cfg
 conf = ConfigParser()

@@ -54,10 +54,10 @@ byobu send-keys Enter
 # pocs start up steps
 pocsstart=("from pocs.mount import create_mount_from_config"
             "from pocs.scheduler import create_scheduler_from_config"
-            "from huntsman.camera import create_cameras_from_config"
-            "from huntsman.observatory import HuntsmanObservatory"
+            "from huntsman.pocs.camera import create_cameras_from_config"
+            "from huntsman.pocs.observatory import HuntsmanObservatory"
             "from pocs.core import POCS"
-            "from huntsman.utils import load_config"
+            "from huntsman.pocs.utils import load_config"
             "config = load_config"
             "cameras = create_cameras_from_config"
             "mount = create_mount_from_config(config)"
@@ -86,10 +86,10 @@ byobu send-keys "ipython"
 byobu send-keys Enter
 # some times commands seem to get skipped over unless a pause is inserted
 sleep .1
-byobu send-keys "#from huntsman.dome.musca import HuntsmanDome"
+byobu send-keys "#from huntsman.pocs.dome.musca import HuntsmanDome"
 byobu send-keys Enter
 sleep .1
-byobu send-keys "#from huntsman.utils import load_config"
+byobu send-keys "#from huntsman.pocs.utils import load_config"
 byobu send-keys Enter
 sleep .1
 byobu send-keys "#config = load_config()"
