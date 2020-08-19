@@ -48,6 +48,18 @@ def pocs(config_with_simulated_stuff, observatory):
 
 # ==============================================================================
 
+def test_prepare_cameras_dropping(observatory):
+    """Test that unready camera is dropped."""
+    cameras = observatory.cameras
+    camera_names = cameras.keys()
+    assert len(camera_names) > 1, "Expeted more than one camera."
+    # Override class method
+    cameras[camera_names[0]].is_ready = False
+    # This should drop the unready camera
+    observatory.prepare_cameras(max_attempts=1)
+    assert len(observatory.cameras) == len(camera_names)-1
+
+
 def test_bad_observatory(config):
     huntsman_pocs = os.environ['HUNTSMAN_POCS']
     try:
