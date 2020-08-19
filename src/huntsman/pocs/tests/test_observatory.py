@@ -56,7 +56,7 @@ def test_prepare_cameras_dropping(observatory):
     # Override class method
     cameras[camera_names[0]].is_ready = False
     # This should drop the unready camera
-    observatory.prepare_cameras()
+    observatory.prepare_cameras(max_attempts=1)
     assert len(observatory.cameras) == len(camera_names)-1
 
 
