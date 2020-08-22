@@ -1,11 +1,14 @@
 import os
 import subprocess
-from huntsman.pocs.utils import DummyLogger
+from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.config import query_config_server, load_device_config
 
 
-def mount(mountpoint, remote, server_alive_interval=20, logger=None,
-          server_alive_count_max=3, strict_host_key_checking=False):
+def mount(mountpoint,
+          remote,
+          server_alive_interval=20,
+          server_alive_count_max=3,
+          strict_host_key_checking=False):
     """
     Mount remote on local.
 
@@ -15,8 +18,6 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
         Should be False to avoid user interaction when running in a docker
         container.
     """
-    if logger is None:
-        logger = DummyLogger()
     logger.debug(f'Mounting {remote} on {mountpoint}...')
 
     try:
@@ -41,7 +42,7 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
         raise (e)
 
 
-def unmount(mountpoint, logger=None):
+def unmount(mountpoint):
     """
     Unmount remote from local.
     """
@@ -50,12 +51,10 @@ def unmount(mountpoint, logger=None):
         try:
             subprocess.run(options, shell=False, check=True)
         except Exception:
-            if logger is None:
-                logger = DummyLogger()
             logger.warning(f'Unable to unmount {mountpoint}.')
 
 
-def get_user(default='huntsman', key='PANUSER', logger=None):
+def get_user(default='huntsman', key='PANUSER'):
     """
     Return the user.
     """
@@ -64,43 +63,34 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
     else:
         user = default
         msg = f'{key} environment variable not found. Using f{default} as user.'
-        if logger is None:
-            logger = DummyLogger()
         logger.warning(msg)
     return user
 
 
-def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
-                     **kwargs):
+def mount_images_dir(user=None, mountpoint=None, config=None, **kwargs):
     """
     Mount the images directory from the NGAS server to the local device.
     """
-    # Setup the logger
-    if logger is None:
-        logger = DummyLogger()
-
     # Load the config
     if config is None:
-        config = load_device_config(logger=logger, **kwargs)
+        config = load_device_config(**kwargs)
 
     # Specify user for SSHFS connection
     if user is None:
-        user = get_user(logger=logger)
+        user = get_user()
 
     # Specify the mount point on the local device
     if mountpoint is None:
         mountpoint = config['directories']['images']
 
     # Retrieve the IP of the remote
-    remote_ip = query_config_server(key='control', logger=logger,
-                                    )['ip_address']
+    remote_ip = query_config_server(key='control')['ip_address']
 
     # Specify the remote directory
-    remote_dir = query_config_server(key='control',
-                                     logger=logger)['directories']['images']
+    remote_dir = query_config_server(key='control')['directories']['images']
     remote = f"{user}@{remote_ip}:{remote_dir}"
 
     # Mount
-    mount(mountpoint, remote, logger=logger)
+    mount(mountpoint, remote)
 
     return mountpoint

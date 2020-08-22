@@ -2,15 +2,14 @@ import sys
 import time
 import Pyro4
 from panoptes.utils import current_time
-from panoptes.utils.config import _parse_config
-from huntsman.pocs.utils import load_config, get_own_ip, DummyLogger
+from huntsman.pocs.utils import load_config, get_own_ip
+from huntsman.pocs.utils.logger import logger
 
 
 @Pyro4.expose
-class ConfigServer():
+class ConfigServer(object):
 
-    def __init__(self, config_file=None, parse=True, refresh_interval=120,
-                 **kwargs):
+    def __init__(self, config_file=None, parse=True, refresh_interval=120, **kwargs):
         """
         Parameters
         ----------
@@ -26,6 +25,8 @@ class ConfigServer():
 
         if config_file is None:
             config_file = 'device_info.yaml'
+
+        self._config = dict()
 
         # Read the config file
         self._config_kwargs = dict(config_files=[config_file], parse=self._parse, **kwargs)
@@ -59,13 +60,14 @@ class ConfigServer():
 
             # Need to run _parse_config if querying by key, as load_config
             # only checks top-level keys.
-            if self._parse:
-                config = _parse_config(config)
+            # TODO figure out if this is still needed. Should be correctly parsing now.
+            # if self._parse:
+            #     config = _parse_config(config)
 
         return config
 
 
-def locate_name_server(wait=None, logger=None):
+def locate_name_server(wait=None):
     """
     Locate and return the name server (NS), waiting if necessary.
 
@@ -78,8 +80,6 @@ def locate_name_server(wait=None, logger=None):
     -------
     Pyro name server.
     """
-    if logger is None:
-        logger = DummyLogger()
     if wait is None:
         return Pyro4.locateNS()
 
@@ -94,13 +94,16 @@ def locate_name_server(wait=None, logger=None):
 
     # Catch keyboard interrupt
     except KeyboardInterrupt:
-        logger.debug('Keyboard interrupt while locating name server.\
-                     Terminating!')
+        logger.debug('Keyboard interrupt while locating name server. Terminating!')
         sys.exit(0)
 
 
-def start_config_server(host=None, port=6563, name='config_server',
-                        wait=120, logger=None, *args, **kwargs):
+def start_config_server(host=None,
+                        port=6563,
+                        name='config_server',
+                        wait=120,
+                        *args,
+                        **kwargs):
     """
     Start the config server by creating a ConfigServer instance and registering
     it with the Pyro name server.
@@ -116,9 +119,6 @@ def start_config_server(host=None, port=6563, name='config_server',
     wait (float or None) [seconds]:
         If not None, attempt to locate the NS at this frequency.
     """
-    if logger is None:
-        logger = DummyLogger()
-
     if host is None:
         host = get_own_ip()
 
@@ -145,7 +145,7 @@ def start_config_server(host=None, port=6563, name='config_server',
             name_server.remove(name=name)
 
 
-def query_config_server(key=None, name='config_server', logger=None, wait=None):
+def query_config_server(key=None, name='config_server', wait=None):
     """
     Query the config server.
 
@@ -164,9 +164,6 @@ def query_config_server(key=None, name='config_server', logger=None, wait=None):
     dict:
         The config dictionary.
     """
-    if logger is None:
-        logger = DummyLogger()
-
     while True:
 
         try:
@@ -181,26 +178,25 @@ def query_config_server(key=None, name='config_server', logger=None, wait=None):
                 time.sleep(wait)
             else:
                 logger.error('Failed to locate config server!')
-                raise (e)
+                raise e
 
         except Exception as e:
             logger.error(f'Unable to load remote config: {e}')
-            raise (e)
+            raise e
 
 
-def load_device_config(key=None, config_files=None, logger=None, wait=None,
-                       **kwargs):
+def load_device_config(key=None, config_files=None, wait=None, **kwargs):
     """
     Load the device config from either the config server or local files.
 
     Parameters
     ----------
-    key:
+    key (str):
         The key used to query the config server. Only used if config_files
         is None. If None, use the IP of the current device.
-    config_files:
+    config_files (list):
         List of config file names. If None (default), use the config server.
-    wait (float or None) [seconds]:
+    wait (float or None):
         If not None, attempt to locate the NS at this frequency.
 
     Returns
@@ -208,9 +204,6 @@ def load_device_config(key=None, config_files=None, logger=None, wait=None,
     dict:
         The config dictionary.
     """
-    if logger is None:
-        logger = DummyLogger()
-
     # Load config from local files?
     if config_files is not None:
         logger.debug(f'Loading config from local file(s).')
@@ -231,14 +224,14 @@ def load_device_config(key=None, config_files=None, logger=None, wait=None,
             try:
                 my_ip = get_own_ip()
                 logger.debug(f'Loading remote config for own IP: {my_ip}')
-                config = query_config_server(key=my_ip, logger=logger, wait=wait)
+                config = query_config_server(key=my_ip, wait=wait)
             except KeyError:
                 # Should only get to this fallback when doing local testing with simulated
                 # camera and default config files.
                 logger.warning("No config for own IP address, falling back to localhost.")
-                config = query_config_server(key='localhost', logger=logger, wait=wait)
+                config = query_config_server(key='localhost', wait=wait)
         else:
             logger.debug(f'Loading remote config with key: {key}')
-            config = query_config_server(key=key, logger=logger, wait=wait)
+            config = query_config_server(key=key, wait=wait)
 
     return config

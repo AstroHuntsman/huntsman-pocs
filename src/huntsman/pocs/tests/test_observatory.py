@@ -2,7 +2,7 @@ import os
 import pytest
 
 from panoptes.pocs.core import POCS
-from panoptes.utils.location import create_location_from_config
+from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config

@@ -4,29 +4,24 @@ import Pyro4
 
 from panoptes.pocs.camera import create_cameras_from_config as create_local_cameras
 from panoptes.utils import error
-from panoptes.utils import logger as logger_module
 
+from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.camera.pyro import Camera as PyroCamera
 from huntsman.pocs.utils import load_config
 
 
-def list_distributed_cameras(ns_host=None, logger=None):
+def list_distributed_cameras(ns_host=None):
     """Detect distributed cameras.
 
     Looks for a Pyro name server and queries it for the list of registered cameras.
 
     Args:
-        host (str, optional): hostname or IP address of the name server host. If not given
+        ns_host (str, optional): hostname or IP address of the name server host. If not given
             will attempt to locate the name server via UDP network broadcast.
-        logger (logging.Logger, optional): logger to use for messages, if not given will
-            use the root logger.
 
     Returns:
         dict: Dictionary of detected distributed camera name, URI pairs
     """
-    if not logger:
-        logger = logger_module.get_root_logger()
-
     try:
         # Get a proxy for the name server (will raise NamingError if not found)
         with Pyro4.locateNS(host=ns_host) as name_server:
@@ -35,26 +30,24 @@ def list_distributed_cameras(ns_host=None, logger=None):
             camera_uris = OrderedDict(sorted(camera_uris.items(), key=lambda t: t[0]))
             n_cameras = len(camera_uris)
             if n_cameras > 0:
-                msg = "Found {} distributed cameras on name server".format(n_cameras)
-                logger.debug(msg)
+                logger.debug(f"Found {n_cameras} distributed cameras on name server")
             else:
-                msg = "Found name server but no distributed cameras"
-                logger.warning(msg)
+                logger.warning(f"Found name server but no distributed cameras")
     except Pyro4.errors.NamingError as err:
-        msg = "Couldn't connect to Pyro name server: {}".format(err)
-        logger.warning(msg)
+        logger.warning(f"Couldn't connect to Pyro name server: {err!r}")
         camera_uris = OrderedDict()
 
     return camera_uris
 
 
-def create_cameras_from_config(config=None, logger=None, **kwargs):
+def create_cameras_from_config(config=None, **kwargs):
     """Create camera object(s) based on the config.
 
     Creates a camera for each camera item listed in the config. Ensures the
     appropriate camera module is loaded.
 
     Args:
+        config (dict): The config to use. If the default `None`, then load config.
         **kwargs (dict): Can pass a `cameras` object that overrides the info in
             the configuration file. Can also pass `auto_detect`(bool) to try and
             automatically discover the ports.
@@ -69,11 +62,7 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
             auto_detect=True and no cameras are found.
         error.PanError: Description
     """
-    if not logger:
-        logger = logger_module.get_root_logger()
-
-    if not config:
-        config = load_config(**kwargs)
+    config = config or load_config(**kwargs)
 
     # Helper method to first check kwargs then config
     def kwargs_or_config(item, default=None):
@@ -92,14 +81,14 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
                                      camera_info.get('distributed_cameras', False))
 
     try:
-        cameras = create_local_cameras(config=config, logger=logger, **kwargs)
+        cameras = create_local_cameras(config=config, **kwargs)
     except (error.PanError, KeyError, error.CameraNotFound):
         logger.debug("No local cameras")
         cameras = OrderedDict()
 
     if not a_simulator and distributed_cameras:
         logger.debug("Creating distributed cameras")
-        cameras.update(create_distributed_cameras(camera_info, logger=logger))
+        cameras.update(create_distributed_cameras(camera_info))
 
     if len(cameras) == 0:
         raise error.CameraNotFound(
@@ -123,27 +112,21 @@ def create_cameras_from_config(config=None, logger=None, **kwargs):
     return cameras
 
 
-def create_distributed_cameras(camera_info, logger=None):
+def create_distributed_cameras(camera_info):
     """Create distributed camera object(s) based on detected cameras and config
 
     Creates a `pocs.camera.pyro.Camera` object for each distributed camera detected.
 
     Args:
         camera_info: 'cameras' section from POCS config
-        logger (logging.Logger, optional): logger to use for messages, if not given will
-            use the root logger.
 
     Returns:
         OrderedDict: An ordered dictionary of created camera objects, with the
             camera name as key and camera instance as value. Returns an empty
             OrderedDict if no distributed cameras are found.
     """
-    if not logger:
-        logger = logger_module.get_root_logger()
-
     # Get all distributed cameras
-    camera_uris = list_distributed_cameras(ns_host=camera_info.get('name_server_host', None),
-                                           logger=logger)
+    camera_uris = list_distributed_cameras(ns_host=camera_info.get('name_server_host', None))
 
     # Create the camera objects.
     # TODO: do this in parallel because initialising cameras can take a while.

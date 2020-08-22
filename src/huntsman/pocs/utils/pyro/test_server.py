@@ -9,7 +9,8 @@ from panoptes.utils import error
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the TestServer.
 from huntsman.pocs.utils.pyro import serializers
-from huntsman.pocs.utils import get_own_ip, DummyLogger
+from huntsman.pocs.utils import get_own_ip
+from huntsman.pocs.utils.logger import logger
 
 
 class NewError(Exception):
@@ -47,13 +48,10 @@ class TestServer(object):
         raise NewError("Pyro can't de-serialise this.")
 
 
-def run_test_server(logger=None):
+def run_test_server():
     """
     Runs a Pyro test server.
     """
-    if logger is None:
-        logger = DummyLogger()
-
     host = get_own_ip(verbose=True)
 
     with Pyro4.Daemon(host=host) as daemon:

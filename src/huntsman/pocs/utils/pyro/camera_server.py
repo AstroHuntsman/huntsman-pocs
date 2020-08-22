@@ -3,13 +3,14 @@ import sys
 import Pyro4
 from Pyro4 import errors
 
-from huntsman.pocs.utils import get_own_ip, sshfs, DummyLogger
+from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils import get_own_ip, sshfs
 from huntsman.pocs.utils.config import load_device_config
 
 from huntsman.pocs.camera.pyro import CameraServer
 
 
-def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None, **kwargs):
+def run_camera_server(ignore_local=False, unmount_sshfs=True, **kwargs):
     """
     Runs a Pyro camera server.
 
@@ -26,14 +27,11 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None, **kwa
             termination of the camera server.
 
     """
-    if logger is None:
-        logger = DummyLogger()
-
     # Load the config file
-    config = load_device_config(logger=logger, **kwargs)
+    config = load_device_config(**kwargs)
 
     # Mount the SSHFS images directory
-    mountpoint = sshfs.mount_images_dir(logger=logger, config=config)
+    mountpoint = sshfs.mount_images_dir(config=config)
 
     # Specify address
     host = config.get('host', None)
@@ -69,4 +67,4 @@ def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None, **kwa
 
             # Unmount the SSHFS
             if unmount_sshfs:
-                sshfs.unmount(mountpoint, logger=logger)
+                sshfs.unmount(mountpoint)

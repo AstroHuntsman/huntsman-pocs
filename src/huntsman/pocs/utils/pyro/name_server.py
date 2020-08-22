@@ -1,11 +1,11 @@
 import Pyro4
 from Pyro4 import errors, naming
 
+from huntsman.pocs.utils import get_own_ip
+from huntsman.pocs.utils.logger import logger
 
-from huntsman.pocs.utils import get_own_ip, DummyLogger
 
-
-def run_name_server(host=None, port=None, autoclean=0, logger=None):
+def run_name_server(host=None, port=None, autoclean=0):
     """
     Runs a Pyro name server.
 
@@ -22,9 +22,6 @@ def run_name_server(host=None, port=None, autoclean=0, logger=None):
             from the name server if they cannot be connected. If not given no autocleaning will
             be done.
     """
-    if logger is None:
-        logger = DummyLogger()
-
     try:
         # Check that there isn't a name server already running
         name_server = Pyro4.locateNS()

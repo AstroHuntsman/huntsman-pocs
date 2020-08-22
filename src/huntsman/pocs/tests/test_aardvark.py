@@ -1,6 +1,5 @@
 # Named after an African nocturnal insectivore because for mysterious reasons these
 # tests were failing if run towards the end of the test suite.
-import logging
 
 import pytest
 import Pyro4
@@ -23,8 +22,7 @@ def test_get_own_ip_verbose():
 
 
 def test_get_own_ip_logger():
-    logger = logging.getLogger()
-    ip = get_own_ip(logger=logger)
+    ip = get_own_ip()
     assert ip
 
 
