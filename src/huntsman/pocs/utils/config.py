@@ -67,7 +67,7 @@ class ConfigServer():
 
 
 def locate_name_server(wait=None, logger=None):
-    '''
+    """
     Locate and return the name server (NS), waiting if necessary.
 
     Parameters
@@ -78,7 +78,7 @@ def locate_name_server(wait=None, logger=None):
     Returns
     -------
     Pyro name server.
-    '''
+    """
     if logger is None:
         logger = DummyLogger()
     if wait is None:
@@ -95,14 +95,14 @@ def locate_name_server(wait=None, logger=None):
 
     # Catch keyboard interrupt
     except KeyboardInterrupt:
-        logger.debug('Keyboard interupt while locating name server.\
+        logger.debug('Keyboard interrupt while locating name server.\
                      Terminating!')
         sys.exit(0)
 
 
 def start_config_server(host=None, port=6563, name='config_server',
                         wait=120, logger=None, *args, **kwargs):
-    '''
+    """
     Start the config server by creating a ConfigServer instance and registering
     it with the Pyro name server.
 
@@ -116,7 +116,7 @@ def start_config_server(host=None, port=6563, name='config_server',
         The name of the config server used by the Pyro name server.
     wait (float or None) [seconds]:
         If not None, attempt to locate the NS at this frequency.
-    '''
+    """
     if logger is None:
         logger = DummyLogger()
 
@@ -147,7 +147,7 @@ def start_config_server(host=None, port=6563, name='config_server',
 
 
 def query_config_server(key=None, name='config_server', logger=None, wait=None):
-    '''
+    """
     Query the config server.
 
     Parameters
@@ -164,7 +164,7 @@ def query_config_server(key=None, name='config_server', logger=None, wait=None):
     -------
     dict:
         The config dictionary.
-    '''
+    """
     if logger is None:
         logger = DummyLogger()
 
@@ -182,16 +182,16 @@ def query_config_server(key=None, name='config_server', logger=None, wait=None):
                 time.sleep(wait)
             else:
                 logger.error('Failed to locate config server!')
-                raise(e)
+                raise (e)
 
         except Exception as e:
             logger.error(f'Unable to load remote config: {e}')
-            raise(e)
+            raise (e)
 
 
 def load_device_config(key=None, config_files=None, logger=None, wait=None,
                        **kwargs):
-    '''
+    """
     Load the device config from either the config server or local files.
 
     Parameters
@@ -208,7 +208,7 @@ def load_device_config(key=None, config_files=None, logger=None, wait=None,
     -------
     dict:
         The config dictionary.
-    '''
+    """
     if logger is None:
         logger = DummyLogger()
 
