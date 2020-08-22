@@ -1,4 +1,4 @@
-from pocs.utils import error
+from panoptes.utils import error
 from time import sleep
 
 wait_interval = 15.

@@ -1,27 +1,25 @@
-from threading import Event
-
-from pocs.filterwheel import AbstractFilterWheel
+from panoptes.pocs.filterwheel import AbstractFilterWheel
 
 from huntsman.pocs.utils.pyro.event import RemoteEvent
 
 
 class FilterWheel(AbstractFilterWheel):
     """ Class representing the client side interface to the Filterwheel of a distributed camera. """
+
     def __init__(self,
                  name='Pyro Filterwheel',
                  model='pyro',
                  camera=None,
                  **kwargs):
-
         # Need to get filter names before calling base class constructor.
         filter_names = camera._proxy.get("filter_names", "filterwheel")
         kwargs['filter_names'] = filter_names
         super().__init__(name=name, model=model, camera=camera, **kwargs)
         self.connect()
 
-##################################################################################################
-# Properties
-##################################################################################################
+    ##################################################################################################
+    # Properties
+    ##################################################################################################
 
     @property
     def is_connected(self):
@@ -52,9 +50,9 @@ class FilterWheel(AbstractFilterWheel):
     def is_unidirectional(self):
         return self._proxy.get("is_unidirectional", "filterwheel")
 
-##################################################################################################
-# Methods
-##################################################################################################
+    ##################################################################################################
+    # Methods
+    ##################################################################################################
 
     def connect(self):
         # Pyro4 proxy to remote huntsman.camera.pyro.CameraServer instance.
@@ -69,9 +67,9 @@ class FilterWheel(AbstractFilterWheel):
 
         self.logger.debug(f"{self} connected.")
 
-##################################################################################################
-# Private methods
-##################################################################################################
+    ##################################################################################################
+    # Private methods
+    ##################################################################################################
 
     def _move_to(self, position):
         self._proxy.filterwheel_move_to(position)

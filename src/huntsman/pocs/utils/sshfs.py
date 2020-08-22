@@ -6,7 +6,7 @@ from huntsman.pocs.utils.config import query_config_server, load_device_config
 
 def mount(mountpoint, remote, server_alive_interval=20, logger=None,
           server_alive_count_max=3, strict_host_key_checking=False):
-    '''
+    """
     Mount remote on local.
 
     Arguments
@@ -14,7 +14,7 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
     strict_host_key_checking:
         Should be False to avoid user interaction when running in a docker
         container.
-    '''
+    """
     if logger is None:
         logger = DummyLogger()
     logger.debug(f'Mounting {remote} on {mountpoint}...')
@@ -38,13 +38,13 @@ def mount(mountpoint, remote, server_alive_interval=20, logger=None,
 
     except Exception as e:
         logger.error(f'Failed to mount {remote} at {mountpoint}: {e}')
-        raise(e)
+        raise (e)
 
 
 def unmount(mountpoint, logger=None):
-    '''
+    """
     Unmount remote from local.
-    '''
+    """
     if os.path.isdir(mountpoint):
         options = ['fusermount', '-u', mountpoint]
         try:
@@ -56,9 +56,9 @@ def unmount(mountpoint, logger=None):
 
 
 def get_user(default='huntsman', key='PANUSER', logger=None):
-    '''
+    """
     Return the user.
-    '''
+    """
     if key in os.environ:
         user = os.environ[key]
     else:
@@ -72,9 +72,9 @@ def get_user(default='huntsman', key='PANUSER', logger=None):
 
 def mount_images_dir(logger=None, user=None, mountpoint=None, config=None,
                      **kwargs):
-    '''
+    """
     Mount the images directory from the NGAS server to the local device.
-    '''
+    """
     # Setup the logger
     if logger is None:
         logger = DummyLogger()

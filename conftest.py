@@ -26,7 +26,7 @@ from huntsman.pocs.utils import load_config, get_own_ip
 from huntsman.pocs.utils import pyro as pyro_utils
 from huntsman.pocs.utils.config import query_config_server
 
-from panoptes.pocs.utils.logger import get_logger, PanLogger
+from panoptes.utils.logger import get_logger, PanLogger
 
 _all_databases = ['file', 'memory']
 

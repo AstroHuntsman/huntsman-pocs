@@ -4,7 +4,7 @@ import astropy.units as u
 import Pyro4
 from Pyro4 import errors
 
-from pocs.utils import error
+from panoptes.utils import error
 
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the TestServer.

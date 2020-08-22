@@ -1,8 +1,8 @@
 import sys
 import time
 import Pyro4
-from pocs.utils import current_time
-from pocs.utils.config import _parse_config
+from panoptes.utils import current_time
+from panoptes.utils.config import _parse_config
 from huntsman.pocs.utils import load_config, get_own_ip, DummyLogger
 
 

@@ -8,5 +8,5 @@ def on_enter(event_data):
         pocs.logger.debug("Safety check passed but in sleeping state. Stopping states.")
         pocs.stop_states()
     else:
-        pocs.say("Reseting observing run from sleeping state. Continuing states.")
+        pocs.say("Resetting observing run from sleeping state. Continuing states.")
         pocs.reset_observing_run()

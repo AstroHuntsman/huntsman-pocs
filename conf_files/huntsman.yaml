@@ -2,55 +2,53 @@
 name: HuntsmanSSO
 log_file: huntsman
 location:
-    name: Siding Spring Observatory
-    latitude: -31.16 # Degrees
-    longitude: 149.13 # Degrees
-    elevation: 1160.0 # Meters
-    utc_offset: 10.00 # Hours
-    horizon: 30 # Degrees - Targets above this limit
-    flat_horizon: -6 # Degrees - Flats between this and focus_horizon
-    focus_horizon: -12 # Degrees - Focus between this and observe_horizon
-    observe_horizon: -18 # Degrees - Sun below this limit to observe
-    obstructions:
-      - [[45, 355], [45, 5]] # telstra tower rough coordinates
-    timezone: Australia/Sydney
-    twilight_horizon: 0 # Degrees
+  name: Siding Spring Observatory
+  latitude: -31.16 # Degrees
+  longitude: 149.13 # Degrees
+  elevation: 1160.0 # Meters
+  utc_offset: 10.00 # Hours
+  horizon: 30 # Degrees - Targets above this limit
+  flat_horizon: -6 # Degrees - Flats between this and focus_horizon
+  focus_horizon: -12 # Degrees - Focus between this and observe_horizon
+  observe_horizon: -18 # Degrees - Sun below this limit to observe
+  obstructions:
+    - [[45, 355], [45, 5]] # telstra tower rough coordinates
+  timezone: Australia/Sydney
+  twilight_horizon: 0 # Degrees
 db:
-    name: huntsman
-    type: file
+  name: huntsman
+  type: file
 scheduler:
-    type: dispatch
-    fields_file: targets.yaml
-    check_file: True
+  type: dispatch
+  fields_file: targets.yaml
+  check_file: True
 directories:
-    base: /var/huntsman
-    data: data
-    images: images
-    mounts: POCS/resources/mounts
-    resources: POCS/resources/
-    targets: /var/huntsman/huntsman-pocs/conf_files
-    webcam: webcams
+  base: /var/huntsman
+  data: data
+  images: images
+  mounts: POCS/resources/mounts
+  resources: POCS/resources/
+  targets: /var/huntsman/huntsman-pocs/conf_files
+  webcam: webcams
 cameras:
-    auto_detect: False
-    devices:
-    -
-        model: simulator_sdk
-    -
-        model: simulator_sdk
+  auto_detect: False
+  devices:
+    - model: simulator_sdk
+    - model: simulator_sdk
 dome:
-    template_dir: resources/bisque
-    driver: bisque
-    brand: bisque
-    port: /dev/tty.Tinyos-DevB
+  template_dir: resources/bisque
+  driver: bisque
+  brand: bisque
+  port: /dev/tty.Tinyos-DevB
 guider:
-    bin_size: 1
-    image_path: /var/huntsman/temp/guide_image.fits
-    template_dir: resources/bisque/guider
+  bin_size: 1
+  image_path: /var/huntsman/temp/guide_image.fits
+  template_dir: resources/bisque/guider
 mount:
-    brand: bisque
-    driver: bisque
-    model: 45
-    template_dir: resources/bisque
+  brand: bisque
+  driver: bisque
+  model: 45
+  template_dir: resources/bisque
 filterwheel:
   flat_field_order:
     - one
@@ -58,12 +56,9 @@ filterwheel:
     - drei
     - quattro
 pointing:
-    exptime: 30
-    max_iterations: 3
-    threshold: 0.05
-messaging:
-    cmd_port: 6500
-    msg_port: 6510
+  exptime: 30
+  max_iterations: 3
+  threshold: 0.05
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
 focusing:
   coarse:
@@ -83,5 +78,5 @@ focusing:
 # morning:            The coordinates should be roughly opposite the sun.
 ################################################################################
 flat_field:
-    take_evening_flats: False
-    take_morning_flats: False
+  take_evening_flats: False
+  take_morning_flats: False

@@ -1,13 +1,8 @@
-"""
-State to handle coarse focusing before observing or at the end of the night.
-"""
-
-
 def on_enter(event_data):
-    '''
-    Coarse focusing state. Will do a coarse focus for each camera and move to
-    the scheduling state.
-    '''
+    """ Coarse focusing state.
+
+    Will do a coarse focus for each camera and move to the scheduling state.
+    """
     pocs = event_data.model
     pocs.next_state = 'parking'
 

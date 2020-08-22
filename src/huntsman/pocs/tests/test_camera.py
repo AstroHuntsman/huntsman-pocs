@@ -1,4 +1,4 @@
-"""This is lightly edited copy of pocs/tests/test_camera.py from POCS.
+"""This is lightly edited copy of pocs/tests/test_camera.py from panoptes.pocs.
 
 The intent is to apply all the same tests from there to the Camera class(es) in huntsman-pocs.
 This file should be udpated to track any changes to the tests in POCS.
@@ -17,10 +17,10 @@ from astropy.io import fits
 import Pyro4
 import Pyro4.util
 
-from pocs.scheduler.field import Field
-from pocs.scheduler.observation import Observation
-from pocs.utils.images import fits as fits_utils
-from pocs.utils import error
+from panoptes.pocs.scheduler.field import Field
+from panoptes.pocs.scheduler.observation import Observation
+from panoptes.utils.images import fits as fits_utils
+from panoptes.utils import error
 
 from huntsman.pocs.camera.pyro import Camera as PyroCamera
 

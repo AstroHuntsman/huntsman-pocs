@@ -9,10 +9,10 @@ import Pyro4
 import Pyro4.util
 import Pyro4.errors
 
-from pocs.utils import load_module
-from pocs.utils import get_quantity_value
-from pocs.utils import error
-from pocs.camera import AbstractCamera
+from panoptes.utils.library import load_module
+from panoptes.utils import get_quantity_value
+from panoptes.utils import error
+from panoptes.pocs.camera import AbstractCamera
 
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
@@ -44,7 +44,7 @@ class Camera(AbstractCamera):
         # Connect to camera
         self.connect()
 
-# Properties
+    # Properties
 
     @property
     def egain(self):
@@ -122,7 +122,7 @@ class Camera(AbstractCamera):
         '''
         return self._proxy.get("is_ready")
 
-# Methods
+    # Methods
 
     def connect(self):
         """
@@ -278,7 +278,7 @@ class Camera(AbstractCamera):
 
         return self._autofocus_event
 
-# Private Methods
+    # Private Methods
 
     def _start_exposure(self, seconds=None, filename=None, dark=False, header=None):
         """Dummy method on the client required to overwrite @abstractmethod"""
@@ -370,7 +370,7 @@ class Camera(AbstractCamera):
 
             except Exception as e:
                 self.logger.error(f'Error while performing NGAS push: {e}')
-                raise(e)
+                raise (e)
 
 
 @Pyro4.expose
@@ -395,8 +395,8 @@ class CameraServer(object):
         module = load_module('pocs.camera.{}'.format(camera_config['model']))
         self._camera = module.Camera(**camera_config)
 
-# Properties - rather than labouriously wrapping every camera property individually expose
-# them all with generic get and set methods.
+    # Properties - rather than labouriously wrapping every camera property individually expose
+    # them all with generic get and set methods.
 
     def get(self, property_name, subcomponent=None):
         obj = self._camera
@@ -410,7 +410,7 @@ class CameraServer(object):
             obj = getattr(obj, subcomponent)
         setattr(obj, property_name, value)
 
-# Methods
+    # Methods
 
     def get_uid(self):
         """
@@ -431,7 +431,7 @@ class CameraServer(object):
         kwargs['blocking'] = False
         self._autofocus_event = self._camera.autofocus(*args, **kwargs)
 
-# Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
+    # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
     @property
     def has_focuser(self):
@@ -443,8 +443,8 @@ class CameraServer(object):
     def focuser_move_by(self, increment):
         return self._camera.focuser.move_by(increment)
 
-# Filterwheel methods - these are used by the remote filterwheel client,
-# huntsman.filterwheel.pyro.FilterWheel
+    # Filterwheel methods - these are used by the remote filterwheel client,
+    # huntsman.filterwheel.pyro.FilterWheel
 
     @property
     def has_filterwheel(self):
@@ -453,7 +453,7 @@ class CameraServer(object):
     def filterwheel_move_to(self, position):
         self._camera.filterwheel._move_to(position)
 
-# Event access
+    # Event access
 
     def _get_event(self, event_type):
         event_location = self._event_locations[event_type]

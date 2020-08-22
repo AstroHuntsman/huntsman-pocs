@@ -1,4 +1,4 @@
-from pocs.focuser import AbstractFocuser
+from panoptes.pocs.focuser import AbstractFocuser
 
 
 class Focuser(AbstractFocuser):
@@ -8,13 +8,12 @@ class Focuser(AbstractFocuser):
                  name='Pyro Focuser',
                  model='pyro',
                  camera=None):
-
         super().__init__(name=name, model=model, camera=camera)
         self.connect()
 
-##################################################################################################
-# Properties
-##################################################################################################
+    ##################################################################################################
+    # Properties
+    ##################################################################################################
 
     @property
     def position(self):
@@ -122,9 +121,9 @@ class Focuser(AbstractFocuser):
     def autofocus_mask_dilations(self, dilations):
         self._proxy.set("autofocus_mask_dilations", dilations, "focuser")
 
-##################################################################################################
-# Methods
-##################################################################################################
+    ##################################################################################################
+    # Methods
+    ##################################################################################################
 
     def connect(self):
         # Pyro4 proxy to remote huntsman.camera.pyro.CameraServer instance.

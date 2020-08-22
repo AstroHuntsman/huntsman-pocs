@@ -9,11 +9,11 @@ from astropy import units as u
 from astropy.io import fits
 from astropy import stats
 
-from pocs.observatory import Observatory
-from pocs.scheduler import constraint
-from pocs.scheduler.observation import Field
-from pocs.utils import error
-from pocs import utils
+from panoptes.pocs.observatory import Observatory
+from panoptes.pocs.scheduler import constraint
+from panoptes.pocs.scheduler.observation import Field
+from panoptes.utils import error
+from panoptes.pocs import utils
 
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
@@ -61,7 +61,7 @@ class HuntsmanObservatory(Observatory):
         # Attributes for focusing
         self.last_focus_time = None
         self._focus_frequency = config['focusing']['coarse']['frequency'] * \
-            u.Unit(config['focusing']['coarse']['frequency_unit'])
+                                u.Unit(config['focusing']['coarse']['frequency_unit'])
 
         # Creating an imager array object
         if self.has_hdr_mode:
@@ -77,9 +77,9 @@ class HuntsmanObservatory(Observatory):
                 self._has_autoguider = False
                 self.logger.warning("Problem setting autoguider, continuing without: {}".format(e))
 
-##########################################################################
-# Properties
-##########################################################################
+    ##########################################################################
+    # Properties
+    ##########################################################################
 
     @property
     def has_hdr_mode(self):
@@ -122,9 +122,9 @@ class HuntsmanObservatory(Observatory):
         # If the nearest midnight is in the past, it's the morning...
         return midnight < utils.current_time()
 
-##########################################################################
-# Methods
-##########################################################################
+    ##########################################################################
+    # Methods
+    ##########################################################################
 
     def initialize(self):
         """Initialize the observatory and connected hardware """
@@ -141,7 +141,6 @@ class HuntsmanObservatory(Observatory):
             observation = self.current_observation
 
         if isinstance(observation, DitheredObservation):
-
             min_magnitude = observation.extra_config.get('min_magnitude', 10) * u.ABmag
             max_magnitude = observation.extra_config.get('max_magnitude', 20) * u.ABmag
             max_exptime = observation.extra_config.get('max_exptime', 300) * u.second
@@ -364,7 +363,6 @@ class HuntsmanObservatory(Observatory):
 
                 # Take a given number of exposures for each exposure time.
                 for camera in cameras_list.values():
-
                     # Create dark observation
                     dark_obs = self._create_dark_observation(exptime)
                     fits_headers = self.get_standard_headers(observation=dark_obs)
@@ -443,7 +441,7 @@ class HuntsmanObservatory(Observatory):
         n_cameras = len(self.cameras)
         cameras_to_drop = []
         self.logger.debug('Waiting for cameras to be ready.')
-        for i in range(1, max_attempts+1):
+        for i in range(1, max_attempts + 1):
 
             num_cameras_ready = 0
             for cam_name, cam in self.cameras.items():
@@ -486,9 +484,9 @@ class HuntsmanObservatory(Observatory):
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
-##########################################################################
-# Private Methods
-##########################################################################
+    ##########################################################################
+    # Private Methods
+    ##########################################################################
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
@@ -499,7 +497,7 @@ class HuntsmanObservatory(Observatory):
         # Read the targets from the file
         fields_file = scheduler_config.get('fields_file', 'simple.yaml')
         fields_path = os.path.join(self.config['directories'][
-                                   'targets'], fields_file)
+                                       'targets'], fields_file)
         self.logger.debug('Creating scheduler: {}'.format(fields_path))
 
         if os.path.exists(fields_path):
@@ -565,7 +563,7 @@ class HuntsmanObservatory(Observatory):
 
     def _take_autoflats(self, cameras, observation, safety_func,
                         tolerance=0.05, target_scaling=0.17, bias=32,
-                        min_exptime=1*u.second, max_exptime=60*u.second,
+                        min_exptime=1 * u.second, max_exptime=60 * u.second,
                         max_num_exposures=10, max_attempts=20, *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
@@ -583,8 +581,8 @@ class HuntsmanObservatory(Observatory):
             except NotImplementedError:
                 self.logger.debug(f'No bit_depth property for {cam_name}. Using 16.')
                 bit_depth = 16
-            target_counts[cam_name] = target_scaling * 2**bit_depth
-            counts_tolerance[cam_name] = tolerance * 2**bit_depth
+            target_counts[cam_name] = target_scaling * 2 ** bit_depth
+            counts_tolerance[cam_name] = tolerance * 2 ** bit_depth
             self.logger.debug(f'Target counts for {cam_name}: '
                               f'{target_counts[cam_name]}±{counts_tolerance[cam_name]}.')
 
@@ -648,7 +646,7 @@ class HuntsmanObservatory(Observatory):
                 else:
                     n_good_exposures[cam_name] += 1
                 self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
-                                  f'in {observation.filter_name} filter after {attempt_number+1} '
+                                  f'in {observation.filter_name} filter after {attempt_number + 1} '
                                   f'attempts: {n_good_exposures[cam_name]} of {max_num_exposures}.')
 
                 # Check if we have enough good flats for this camera
@@ -661,7 +659,7 @@ class HuntsmanObservatory(Observatory):
                 # Calculate next exposure time
                 elapsed_time = (utils.current_time() - start_time).sec
                 next_exptime = self._autoflat_next_exptime(
-                        current_exptime, elapsed_time, target_counts[cam_name], mean_counts)
+                    current_exptime, elapsed_time, target_counts[cam_name], mean_counts)
                 self.logger.debug('Suggested flat-field exposure time for '
                                   f'{cam_name}: {next_exptime}.')
 
@@ -698,7 +696,7 @@ class HuntsmanObservatory(Observatory):
                     self.logger.debug('All flat-field exposures are too bright. Waiting 30 seconds...')
                     time.sleep(30)
 
-            if attempt_number == max_attempts-1:
+            if attempt_number == max_attempts - 1:
                 self.logger.debug('Max attempts have been reached for flat-fielding '
                                   f'in {filter_name} filter. Aborting.')
 
@@ -720,7 +718,7 @@ class HuntsmanObservatory(Observatory):
         data = data.astype('int32')
 
         # Calculate average counts per pixel
-        mean_counts, _, _ = stats.sigma_clipped_stats(data-bias)
+        mean_counts, _, _ = stats.sigma_clipped_stats(data - bias)
         if mean_counts < min_counts:
             self.logger.warning('Truncating mean flat-field counts to minimum value: '
                                 f'{mean_counts}<{min_counts}.')

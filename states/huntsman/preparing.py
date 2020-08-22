@@ -1,4 +1,3 @@
-
 def on_enter(event_data):
     """Pointing State
 
