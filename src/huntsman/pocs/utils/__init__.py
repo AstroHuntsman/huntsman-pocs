@@ -5,9 +5,9 @@ from panoptes.utils.config import load_config as config_loader
 
 
 def load_config(config_files=None, **kwargs):
-    '''
+    """
 
-    '''
+    """
     config_dir = os.path.join(os.environ['HUNTSMAN_POCS'], 'conf_files')
 
     if config_files is None:
@@ -85,9 +85,9 @@ def get_own_ip(verbose=False, logger=None):
 
 
 class DummyLogger():
-    '''
+    """
 
-    '''
+    """
 
     def __init__(self):
         pass

@@ -28,8 +28,7 @@ class ConfigServer():
             config_file = 'device_info.yaml'
 
         # Read the config file
-        self._config_kwargs = dict(config_files=[config_file], parse=self._parse,
-                                   **kwargs)
+        self._config_kwargs = dict(config_files=[config_file], parse=self._parse, **kwargs)
         self._load_config()
 
     def _load_config(self):
