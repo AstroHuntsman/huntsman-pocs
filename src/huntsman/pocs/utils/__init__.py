@@ -1,33 +1,11 @@
-import os
 import netifaces
-from panoptes.utils import listify
-from panoptes.utils.config.helpers import load_config as config_loader
 
 from huntsman.pocs.utils.logger import logger
 
 
-def load_config(config_files=None, **kwargs):
-    """
-
-    """
-    config_dir = os.path.join(os.environ['HUNTSMAN_POCS'], 'conf_files')
-
-    if config_files is None:
-        config_files = ['huntsman.yaml']
-
-    config_files = listify(config_files)
-    config_files = [os.path.join(config_dir, config_file) for config_file in config_files]
-
-    config = config_loader(config_files=config_files, **kwargs)
-    return config
-
-
-def get_own_ip(verbose=False):
+def get_own_ip():
     """
     Attempts to automatically determine the IP address of the computer that it was run on.
-
-    Args:
-        verbose (bool, optional): If True print messages to standard output. Default false.
 
     Returns:
         host (str): IP address of the computer.

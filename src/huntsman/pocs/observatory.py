@@ -18,7 +18,7 @@ from panoptes.pocs import utils
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
-from huntsman.pocs.utils import load_config
+from huntsman.pocs.utils.config import load_config
 
 
 class HuntsmanObservatory(Observatory):

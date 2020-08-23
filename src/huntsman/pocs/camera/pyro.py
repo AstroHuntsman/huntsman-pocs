@@ -117,9 +117,9 @@ class Camera(AbstractCamera):
 
     @property
     def is_ready(self):
-        '''
+        """
         True if camera is ready to start another exposure, otherwise False.
-        '''
+        """
         return self._proxy.get("is_ready")
 
     # Methods
@@ -280,11 +280,11 @@ class Camera(AbstractCamera):
 
     # Private Methods
 
-    def _start_exposure(self, seconds=None, filename=None, dark=False, header=None):
+    def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
-    def _readout(self, filename=None):
+    def _readout(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
@@ -317,11 +317,11 @@ class Camera(AbstractCamera):
             raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
 
     def _process_fits(self, file_path, info):
-        '''
+        """
         Override _process_fits, called by process_exposure in take_observation.
 
         The difference is that we do an NGAS push following the processing.
-        '''
+        """
         # Call the super method
         result = super()._process_fits(file_path, info)
 
@@ -331,7 +331,7 @@ class Camera(AbstractCamera):
         return result
 
     def _ngas_push(self, filename, metadata, filename_ngas=None, port=7778):
-        '''
+        """
         Parameters
         ----------
         filename (str):
@@ -343,7 +343,7 @@ class Camera(AbstractCamera):
         port (int, optional):
             The port of the NGAS server. Defaults to the TCP port.
 
-        '''
+        """
         # Define the NGAS filename
         if filename_ngas is None:
             extension = os.path.splitext(filename)[-1]
@@ -356,8 +356,7 @@ class Camera(AbstractCamera):
         url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
         with open(filename, 'rb') as f:
 
-            self.logger.info(
-                f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
+            self.logger.info(f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
 
             try:
                 # Post the file
@@ -369,8 +368,8 @@ class Camera(AbstractCamera):
                 r.raise_for_status()
 
             except Exception as e:
-                self.logger.error(f'Error while performing NGAS push: {e}')
-                raise (e)
+                self.logger.error(f'Error while performing NGAS push: {e!r}')
+                raise e
 
 
 @Pyro4.expose

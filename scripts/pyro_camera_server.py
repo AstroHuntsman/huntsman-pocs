@@ -8,13 +8,11 @@ but before POCS.
 import argparse
 from huntsman.pocs.utils.pyro.camera_server import run_camera_server
 
-
 if __name__ == "__main__":
-
     # Parse the args
     parser = argparse.ArgumentParser()
     parser.add_argument("--ignore_local",
-                        help="ignore pyro_camera_local.yaml config file",
+                        help="Ignore pyro_camera_local.yaml config file",
                         action="store_true")
     args = parser.parse_args()
 

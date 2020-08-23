@@ -138,7 +138,7 @@ for _pane in $(byobu list-panes -F '#P'); do
     # byobu send-keys -t ${_pane} "echo byobu"
     # byobu send-keys -t ${_pane} Enter
     # run camera server docker start up script
-    byobu send-keys -t ${_pane} "echo $HUNTSMAN_POCSscripts/run_device_container.sh"
+    byobu send-keys -t ${_pane} "echo $HUNTSMAN_POCS/scripts/run_device_container.sh"
     byobu send-keys -t ${_pane} Enter
 done
 

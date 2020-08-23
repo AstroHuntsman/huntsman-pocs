@@ -52,7 +52,7 @@ def run_test_server():
     """
     Runs a Pyro test server.
     """
-    host = get_own_ip(verbose=True)
+    host = get_own_ip()
 
     with Pyro4.Daemon(host=host) as daemon:
         try:

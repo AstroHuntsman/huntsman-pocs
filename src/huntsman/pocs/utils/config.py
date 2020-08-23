@@ -1,9 +1,29 @@
+import os
 import sys
 import time
 import Pyro4
 from panoptes.utils import current_time
-from huntsman.pocs.utils import load_config, get_own_ip
+from huntsman.pocs.utils import get_own_ip
 from huntsman.pocs.utils.logger import logger
+
+from panoptes.utils import listify
+from panoptes.utils.config.helpers import load_config as config_loader
+
+
+def load_config(config_files=None, **kwargs):
+    """
+
+    """
+    config_dir = os.path.join(os.environ['HUNTSMAN_POCS'], 'conf_files')
+
+    if config_files is None:
+        config_files = ['huntsman.yaml']
+
+    config_files = listify(config_files)
+    config_files = [os.path.join(config_dir, config_file) for config_file in config_files]
+
+    config = config_loader(config_files=config_files, **kwargs)
+    return config
 
 
 @Pyro4.expose
@@ -181,7 +201,7 @@ def query_config_server(key=None, name='config_server', wait=None):
                 raise e
 
         except Exception as e:
-            logger.error(f'Unable to load remote config: {e}')
+            logger.error(f'Unable to load remote config: {e!r}')
             raise e
 
 

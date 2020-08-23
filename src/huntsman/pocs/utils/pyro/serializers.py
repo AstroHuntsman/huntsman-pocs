@@ -21,7 +21,7 @@ error_pattern = re.compile(r"error\.(\w+)'>$")
 
 
 def panerror_to_dict(obj):
-    """Serialiser function for POCS custom exceptions."""
+    """Serializer function for POCS custom exceptions."""
     name_match = error_pattern.search(str(obj.__class__))
     if name_match:
         exception_name = name_match.group(1)
@@ -35,7 +35,7 @@ def panerror_to_dict(obj):
 
 
 def dict_to_panerror(class_name, d):
-    """Deserialiser function for POCS custom exceptions."""
+    """Deserializer function for POCS custom exceptions."""
     try:
         exception_class = getattr(error, d['exception_name'])
     except AttributeError:
@@ -52,18 +52,18 @@ def astropy_to_dict(obj):
 
 
 def dict_to_astropy(class_name, d):
-    """De-serialiser function for Astropy objects using astropy.io.misc.yaml.load()."""
+    """Deserializer function for Astropy objects using astropy.io.misc.yaml.load()."""
     return ayaml.load(d["yaml_dump"])
 
 
 def value_error_to_dict(obj):
-    """Serialiser function for ValueError."""
+    """Serializer function for ValueError."""
     return {"__class__": "ValueError",
             "args": [str(arg) for arg in obj.args]}
 
 
 def dict_to_value_error(class_name, d):
-    """De-serialiser function for ValueError."""
+    """Deserializer function for ValueError."""
     return ValueError(*d["args"])
 
 

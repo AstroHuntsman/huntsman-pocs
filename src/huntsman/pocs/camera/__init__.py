@@ -10,36 +10,6 @@ from huntsman.pocs.camera.pyro import Camera as PyroCamera
 from huntsman.pocs.utils import load_config
 
 
-def list_distributed_cameras(ns_host=None):
-    """Detect distributed cameras.
-
-    Looks for a Pyro name server and queries it for the list of registered cameras.
-
-    Args:
-        ns_host (str, optional): hostname or IP address of the name server host. If not given
-            will attempt to locate the name server via UDP network broadcast.
-
-    Returns:
-        dict: Dictionary of detected distributed camera name, URI pairs
-    """
-    try:
-        # Get a proxy for the name server (will raise NamingError if not found)
-        with Pyro4.locateNS(host=ns_host) as name_server:
-            # Find all the registered POCS cameras
-            camera_uris = name_server.list(metadata_all={'POCS', 'Camera'})
-            camera_uris = OrderedDict(sorted(camera_uris.items(), key=lambda t: t[0]))
-            n_cameras = len(camera_uris)
-            if n_cameras > 0:
-                logger.debug(f"Found {n_cameras} distributed cameras on name server")
-            else:
-                logger.warning(f"Found name server but no distributed cameras")
-    except Pyro4.errors.NamingError as err:
-        logger.warning(f"Couldn't connect to Pyro name server: {err!r}")
-        camera_uris = OrderedDict()
-
-    return camera_uris
-
-
 def create_cameras_from_config(config=None, **kwargs):
     """Create camera object(s) based on the config.
 
@@ -143,3 +113,33 @@ def create_distributed_cameras(camera_info):
         cameras[cam_name] = cam
 
     return cameras
+
+
+def list_distributed_cameras(ns_host=None):
+    """Detect distributed cameras.
+
+    Looks for a Pyro name server and queries it for the list of registered cameras.
+
+    Args:
+        ns_host (str, optional): hostname or IP address of the name server host. If not given
+            will attempt to locate the name server via UDP network broadcast.
+
+    Returns:
+        dict: Dictionary of detected distributed camera name, URI pairs
+    """
+    try:
+        # Get a proxy for the name server (will raise NamingError if not found)
+        with Pyro4.locateNS(host=ns_host) as name_server:
+            # Find all the registered POCS cameras
+            camera_uris = name_server.list(metadata_all={'POCS', 'Camera'})
+            camera_uris = OrderedDict(sorted(camera_uris.items(), key=lambda t: t[0]))
+            n_cameras = len(camera_uris)
+            if n_cameras > 0:
+                logger.debug(f"Found {n_cameras} distributed cameras on name server")
+            else:
+                logger.warning(f"Found name server but no distributed cameras")
+    except Pyro4.errors.NamingError as err:
+        logger.warning(f"Couldn't connect to Pyro name server: {err!r}")
+        camera_uris = OrderedDict()
+
+    return camera_uris

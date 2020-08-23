@@ -16,16 +16,6 @@ def test_get_own_ip():
     assert ip
 
 
-def test_get_own_ip_verbose():
-    ip = get_own_ip(verbose=True)
-    assert ip
-
-
-def test_get_own_ip_logger():
-    ip = get_own_ip()
-    assert ip
-
-
 def test_name_server(name_server):
     # Check that it's running.
     assert name_server.poll() is None

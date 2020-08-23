@@ -1,7 +1,7 @@
 """This is lightly edited copy of pocs/tests/test_camera.py from panoptes.pocs.
 
 The intent is to apply all the same tests from there to the Camera class(es) in huntsman-pocs.
-This file should be udpated to track any changes to the tests in POCS.
+This file should be updated to track any changes to the tests in POCS.
 """
 import pytest
 
@@ -29,6 +29,7 @@ sys.excepthook = Pyro4.util.excepthook
 params = [PyroCamera]
 ids = ['pyro']
 
+
 # Ugly hack to access id inside fixture
 
 
@@ -49,7 +50,6 @@ def camera(request, images_dir_control, camera_server):
 
 @pytest.fixture(scope='module')
 def patterns(camera, images_dir_device):
-
     # It would be better to replace images_dir_device by images_dir_control.
     # However, problems with rmtree and SSHFS causes the autofocus code to hang.
 
@@ -239,7 +239,7 @@ def test_exposure_scaling(camera, tmpdir):
         image_data, image_header = fits.getdata(fits_path, header=True)
         assert bit_depth == image_header['BITDEPTH'] * u.bit
         pad_bits = image_header['BITPIX'] - image_header['BITDEPTH']
-        assert (image_data % 2**pad_bits).any()
+        assert (image_data % 2 ** pad_bits).any()
 
 
 def test_exposure_no_filename(camera):
@@ -463,7 +463,7 @@ def test_autofocus_camera_disconnected(camera):
     except AttributeError:
         pytest.skip("Camera does not have an exposed focuser attribute")
     initial_focus = camera.focuser.position
-    camera._proxy.set("_connected",  False)
+    camera._proxy.set("_connected", False)
     with pytest.raises(AssertionError):
         camera.autofocus()
     camera._proxy.set("_connected", True)

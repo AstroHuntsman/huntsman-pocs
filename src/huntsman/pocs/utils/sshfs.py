@@ -14,6 +14,10 @@ def mount(mountpoint,
 
     Arguments
     ---------
+    mountpoint
+    remote
+    server_alive_interval
+    server_alive_count_max
     strict_host_key_checking:
         Should be False to avoid user interaction when running in a docker
         container.

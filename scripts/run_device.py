@@ -8,9 +8,9 @@ from huntsman.pocs.utils.config import load_device_config
 
 
 def get_device_type(**kwargs):
-    '''
+    """
     Retrieve the type of this device.
-    '''
+    """
     # Retrieve the device config from the config server, using own IP
     config = load_device_config(**kwargs)
 
@@ -27,12 +27,12 @@ if __name__ == '__main__':
 
         # Only attempt imports here to be as lightweight as possible
         from huntsman.pocs.utils.pyro.camera_server import run_camera_server
+
         run_camera_server()
 
     # Dome server...
     # elif device_type == 'dome':
 
-    # Unrecongnised device type...
+    # Unrecognised device type...
     else:
-        raise NotImplementedError(
-            f'Device type not implemented: {device_type}')
+        raise NotImplementedError(f'Device type not implemented: {device_type}')

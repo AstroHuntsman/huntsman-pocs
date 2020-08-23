@@ -28,7 +28,7 @@ def run_name_server(host=None, port=None, autoclean=0):
     except errors.NamingError:
         if not host:
             # Not given an hostname or IP address. Will attempt to work it out.
-            host = get_own_ip(verbose=True)
+            host = get_own_ip()
         else:
             host = str(host)
 
@@ -40,4 +40,4 @@ def run_name_server(host=None, port=None, autoclean=0):
         logger.info("Starting Pyro name server... (Control-C/Command-C to exit)")
         naming.startNSloop(host=host, port=port)
     else:
-        logger.info("Pyro name server {} already running! Exiting...".format(name_server))
+        logger.info(f"Pyro name server {name_server} already running! Exiting...")

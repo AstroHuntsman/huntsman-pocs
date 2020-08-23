@@ -2,13 +2,12 @@
 *~
 *.so
 *.cfg
-!.isort.cfg
 !setup.cfg
 *.orig
 *.pot
 **/*.py[cod]
 **/*.log
-**/__pycache__/*
+**/__pycache__/
 .cache/*
 .*.swp
 */.ipynb_checkpoints/*
