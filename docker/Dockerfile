@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
         readline-common \
         udev && \
 
-    # Change username.
+    # Change username, home directory, and group. We need to keep the uid=1000 but want a different name.
     usermod -l "${panuser}" panoptes && \
     usermod -d "/home/${panuser}" -m "${panuser}" && \
     groupmod -n "${panuser}" panoptes && \
@@ -48,17 +48,17 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     chown -R ${panuser} /home/${panuser}/.ssh && \
 
     # Make sure permissions are correct
-    chown -R $PANUSER $PANDIR && \
-    chown -R $PANUSER /home/$PANUSER && \
+    chown -R ${panuser}:${panuser} $PANDIR && \
+    chown -R ${panuser}:${panuser} /home/${panuser} && \
 
-    echo "export HUNTSMAN_DIR=${huntsman_dir}" >> /home/$PANUSER/.zshrc && \
-    echo "export HUNTSMAN_POCS=${huntsman_dir}/huntsman-pocs" >> /home/$PANUSER/.zshrc && \
+    echo "export HUNTSMAN_DIR=${huntsman_dir}" >> /home/${panuser}/.zshrc && \
+    echo "export HUNTSMAN_POCS=${huntsman_dir}/huntsman-pocs" >> /home/${panuser}/.zshrc && \
 
     # Link the Huntsman directory logs to the panoptes
     ln -s "${huntsman_dir}/logs" "${pan_dir}/logs" && \
     # Make sure PANUSER has permissions to Huntsman dir.
     mkdir -p "${HUNTSMAN_POCS}" && \
-    chown -R "${PANUSER}" "${huntsman_dir}"
+    chown -R "${panuser}" "${huntsman_dir}"
 
 # Install the module.
 USER ${PANUSER}
@@ -75,4 +75,4 @@ RUN "${PANDIR}/conda/envs/${conda_env_name}/bin/pip" install -e ".${pip_extras}"
 
 USER root
 ENTRYPOINT ["/bin/sh", "/var/huntsman/huntsman-pocs/resources/docker/entrypoint.sh"]
-CMD ["/usr/bin/zsh"]
+CMD ["echo Please specify a command."]
