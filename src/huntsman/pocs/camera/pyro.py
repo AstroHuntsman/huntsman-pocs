@@ -1,26 +1,28 @@
 import os
 import requests
-from warnings import warn
+import urllib.parse
 from threading import Timer
 from contextlib import suppress
+from collections import OrderedDict
 
 from astropy import units as u
 import Pyro4
 import Pyro4.util
 import Pyro4.errors
 
+from huntsman.pocs.utils.logger import logger
 from panoptes.utils.library import load_module
 from panoptes.utils import get_quantity_value
-from panoptes.utils import error
 from panoptes.pocs.camera import AbstractCamera
 
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.utils.pyro.event import RemoteEvent
-# This import is needed to set up the custom (de)serializers in the same scope
-# as the CameraServer and the Camera client's proxy.
-from huntsman.pocs.utils.pyro import serializers
 from huntsman.pocs.utils.config import load_device_config, query_config_server
+
+from panoptes.utils import error
+from panoptes.pocs.camera import create_cameras_from_config as create_local_cameras
+from panoptes.utils.config.client import get_config
 
 
 class Camera(AbstractCamera):
@@ -37,9 +39,12 @@ class Camera(AbstractCamera):
         super().__init__(name=name, port=port, model=model, *args, **kwargs)
         self._uri = uri
 
-        # Obtain the NGAS server IP
-        if 'ngas_ip' not in self.config.keys():
-            self.config['ngas_ip'] = query_config_server(key='control')['ip_address']
+        # The proxy used for communication with the remote instance.
+        self._proxy = None
+
+        # Obtain the NGAS server IP.
+        self.ngas_ip = self.get_config('control.ip_address')
+        self.ngas_port = self.get_config('control.ngas_port', default=7778)
 
         # Connect to camera
         self.connect()
@@ -125,21 +130,18 @@ class Camera(AbstractCamera):
     # Methods
 
     def connect(self):
+        """ Connect to the distributed camera.
         """
-        (re)connect to the distributed camera.
-        """
-        self.logger.debug('Connecting to {} at {}'.format(self.port, self._uri))
+        self.logger.debug(f'Connecting to {self.port} at {self._uri}')
 
-        # Get a proxy for the camera
+        # Get a proxy for the camera.
         try:
             self._proxy = Pyro4.Proxy(self._uri)
         except Pyro4.errors.NamingError as err:
-            msg = "Couldn't get proxy to camera {}: {}".format(self.port, err)
-            warn(msg)
-            self.logger.error(msg)
+            logger.error(f"Couldn't get proxy to camera on {self.port=}: {err!r}")
             return
 
-        # Set sync mode
+        # Set sync mode.
         Pyro4.asyncproxy(self._proxy, asynchronous=False)
 
         # Force camera proxy to connect by getting the camera uid.
@@ -148,9 +150,7 @@ class Camera(AbstractCamera):
 
         uid = self._proxy.get_uid()
         if not uid:
-            msg = "Couldn't connect to {} on {}!".format(self.name, self._uri)
-            warn(msg)
-            self.logger.error(msg)
+            self.logger.error(f"Could't connect to {self.name} on {self._uri}, no uid found.")
             return
 
         # Retrieve and locally cache camera properties that won't change.
@@ -166,7 +166,7 @@ class Camera(AbstractCamera):
         self._exposure_event = RemoteEvent(self._proxy, event_type="camera")
 
         self._connected = True
-        self.logger.debug("{} connected".format(self))
+        self.logger.debug(f"{self} connected")
 
         if self._proxy.has_focuser:
             self.focuser = PyroFocuser(camera=self)
@@ -330,7 +330,7 @@ class Camera(AbstractCamera):
 
         return result
 
-    def _ngas_push(self, filename, metadata, filename_ngas=None, port=7778):
+    def _ngas_push(self, filename, metadata, filename_ngas=None):
         """
         Parameters
         ----------
@@ -349,23 +349,23 @@ class Camera(AbstractCamera):
             extension = os.path.splitext(filename)[-1]
             filename_ngas = f"{metadata['image_id']}{extension}"
 
-        # Get the IP address of the NGAS server
-        ngas_ip = self.config['ngas_ip']
+        # Escape the filename for url.
+        filename_ngas = urllib.parse.quote(filename_ngas)
 
         # Post the file to the NGAS server
-        url = f'http://{ngas_ip}:{port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
+        url = f'http://{self.ngas_ip}:{self.ngas_port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
         with open(filename, 'rb') as f:
 
             self.logger.info(f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
 
             try:
                 # Post the file
-                r = requests.post(url, data=f)
+                response = requests.post(url, data=f)
 
-                self.logger.debug(f'NGAS response: {r.text}')
+                self.logger.debug(f'NGAS response: {response.text}')
 
                 # Confirm success
-                r.raise_for_status()
+                response.raise_for_status()
 
             except Exception as e:
                 self.logger.error(f'Error while performing NGAS push: {e!r}')
@@ -472,3 +472,137 @@ class CameraServer(object):
 
     def event_wait(self, event_type, timeout):
         return self._get_event(event_type).wait(timeout)
+
+
+def create_cameras_from_config(config=None, **kwargs):
+    """Create camera object(s) based on the config.
+
+    Creates a camera for each camera item listed in the config. Ensures the
+    appropriate camera module is loaded.
+
+    Args:
+        config (dict): The config to use. If the default `None`, then load config.
+        **kwargs (dict): Can pass a `cameras` object that overrides the info in
+            the configuration file. Can also pass `auto_detect`(bool) to try and
+            automatically discover the ports.
+
+    Returns:
+        OrderedDict: An ordered dictionary of created camera objects, with the
+            camera name as key and camera instance as value. Returns an empty
+            OrderedDict if there is no camera configuration items.
+
+    Raises:
+        error.CameraNotFound: Raised if camera cannot be found at specified port or if
+            auto_detect=True and no cameras are found.
+        error.PanError: Description
+    """
+    config = config or get_config()
+
+    # Helper method to first check kwargs then config
+    def kwargs_or_config(item, default=None):
+        return kwargs.get(item, config.get(item, default))
+
+    a_simulator = 'camera' in kwargs_or_config('simulator', default=list())
+    logger.debug("Camera simulator: {}".format(a_simulator))
+
+    camera_info = kwargs_or_config('cameras', default=dict())
+
+    if not camera_info and not a_simulator:
+        logger.info('No camera information in config.')
+        return OrderedDict()
+
+    distributed_cameras = kwargs.get('distributed_cameras',
+                                     camera_info.get('distributed_cameras', False))
+
+    try:
+        cameras = create_local_cameras(config=config, **kwargs)
+    except (error.PanError, KeyError, error.CameraNotFound):
+        logger.debug("No local cameras")
+        cameras = OrderedDict()
+
+    if not a_simulator and distributed_cameras:
+        logger.debug("Creating distributed cameras")
+        cameras.update(create_distributed_cameras(camera_info))
+
+    if len(cameras) == 0:
+        raise error.CameraNotFound(msg="No cameras available. Exiting.")
+
+    # Find primary camera
+    primary_camera = None
+    for camera in cameras.values():
+        if camera.is_primary:
+            primary_camera = camera
+
+    # If no camera was specified as primary use the first
+    if primary_camera is None:
+        camera_names = sorted(cameras.keys())
+        primary_camera = cameras[camera_names[0]]
+        primary_camera.is_primary = True
+
+    logger.debug(f"Primary camera: {primary_camera}")
+    logger.debug(f"{len(cameras)} cameras created")
+
+    return cameras
+
+
+def create_distributed_cameras(camera_info):
+    """Create distributed camera object(s) based on detected cameras and config
+
+    Creates a `pocs.camera.pyro.Camera` object for each distributed camera detected.
+
+    Args:
+        camera_info: 'cameras' section from POCS config
+
+    Returns:
+        OrderedDict: An ordered dictionary of created camera objects, with the
+            camera name as key and camera instance as value. Returns an empty
+            OrderedDict if no distributed cameras are found.
+    """
+    # Get all distributed cameras
+    camera_uris = list_distributed_cameras(ns_host=camera_info.get('name_server_host', None))
+
+    # Create the camera objects.
+    # TODO: do this in parallel because initialising cameras can take a while.
+    cameras = OrderedDict()
+    primary_id = camera_info.get('primary', '')
+    for cam_name, cam_uri in camera_uris.items():
+        logger.debug(f'Creating camera: {cam_name}')
+        cam = Camera(port=cam_name, uri=cam_uri)
+        if primary_id == cam.uid or primary_id == cam.name:
+            cam.is_primary = True
+
+        logger.info(f"Camera created: {cam}")
+
+        cameras[cam_name] = cam
+
+    return cameras
+
+
+def list_distributed_cameras(ns_host=None):
+    """Detect distributed cameras.
+
+    Looks for a Pyro name server and queries it for the list of registered cameras.
+
+    Args:
+        ns_host (str, optional): hostname or IP address of the name server host. If not given
+            will attempt to locate the name server via UDP network broadcast.
+
+    Returns:
+        dict: Dictionary of detected distributed camera name, URI pairs
+    """
+    try:
+        # Get a proxy for the name server (will raise NamingError if not found)
+        with Pyro4.locateNS(host=ns_host) as name_server:
+            # Find all the registered POCS cameras
+            camera_uris = name_server.list(metadata_all={'POCS', 'Camera'})
+            camera_uris = OrderedDict(sorted(camera_uris.items(), key=lambda t: t[0]))
+            n_cameras = len(camera_uris)
+            if n_cameras > 0:
+                logger.debug(f"Found {n_cameras} distributed cameras on name server")
+            else:
+                logger.warning(f"Found name server but no distributed cameras")
+    except Pyro4.errors.NamingError as err:
+        logger.warning(f"Couldn't connect to Pyro name server: {err!r}")
+        camera_uris = OrderedDict()
+
+    return camera_uris
