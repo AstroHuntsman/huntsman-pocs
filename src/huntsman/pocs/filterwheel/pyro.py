@@ -55,7 +55,7 @@ class FilterWheel(AbstractFilterWheel):
     ##################################################################################################
 
     def connect(self):
-        # Pyro4 proxy to remote huntsman.camera.pyro.CameraServer instance.
+        # Pyro4 proxy to remote huntsman.camera.pyro.CameraService instance.
         self._proxy = self.camera._proxy
         # Replace _move_event created by base class constructor with
         # an interface to the remote one.

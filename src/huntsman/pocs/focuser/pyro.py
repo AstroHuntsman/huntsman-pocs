@@ -126,7 +126,7 @@ class Focuser(AbstractFocuser):
     ##################################################################################################
 
     def connect(self):
-        # Pyro4 proxy to remote huntsman.camera.pyro.CameraServer instance.
+        # Pyro4 proxy to remote huntsman.camera.pyro.CameraService instance.
         self._proxy = self.camera._proxy
         self.name = self._proxy.get("name", "focuser")
         self.model = self._proxy.get("model", "focuser")

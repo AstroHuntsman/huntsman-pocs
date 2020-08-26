@@ -42,6 +42,10 @@ class Camera(AbstractCamera):
         # The proxy used for communication with the remote instance.
         self._proxy = None
 
+        # Hardware that may be attached in connect method.
+        self.focuser = None
+        self.filterwheel = None
+
         # Obtain the NGAS server IP.
         self.ngas_ip = self.get_config('control.ip_address')
         self.ngas_port = self.get_config('control.ngas_port', default=7778)
@@ -170,13 +174,9 @@ class Camera(AbstractCamera):
 
         if self._proxy.has_focuser:
             self.focuser = PyroFocuser(camera=self)
-        else:
-            self.focuser = None
 
         if self._proxy.has_filterwheel:
             self.filterwheel = PyroFilterWheel(camera=self)
-        else:
-            self.filterwheel = None
 
     def take_exposure(self,
                       seconds=1.0 * u.second,
@@ -374,9 +374,13 @@ class Camera(AbstractCamera):
 
 @Pyro4.expose
 @Pyro4.behavior(instance_mode="single")
-class CameraServer(object):
-    """
-    Wrapper for the camera class for use as a Pyro camera server
+class CameraService(object):
+    """A python remote object (pyro) camera service.
+
+    This class should be instantiated on a device that is remote from the
+    main POCS control computer.  All logic related to the actual camera
+    should exist in a real Camera class and this should merely be used as
+    a thin-wrapper that can run on the device.
     """
     _event_locations = {"camera": ("_exposure_event",),
                         "focuser": ("_autofocus_event",),
@@ -421,14 +425,12 @@ class CameraServer(object):
     def take_exposure(self, *args, **kwargs):
         # Start the exposure non-blocking so that camera server can still respond to
         # status requests.
-        kwargs['blocking'] = False
-        self._exposure_event = self._camera.take_exposure(*args, **kwargs)
+        self._exposure_event = self._camera.take_exposure(blocking=False, *args, **kwargs)
 
     def autofocus(self, *args, **kwargs):
         # Start the autofocus non-blocking so that camera server can still respond to
         # status requests.
-        kwargs['blocking'] = False
-        self._autofocus_event = self._camera.autofocus(*args, **kwargs)
+        self._autofocus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
 
     # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 

@@ -1,22 +1,37 @@
-import sys
+from contextlib import suppress
 
-import Pyro4
-from Pyro4 import errors
-from Pyro4 import naming
+import Pyro5.errors
+from Pyro5.api import Daemon as PyroDaemon
+from Pyro5.api import locate_ns
+from Pyro5.api import start_ns_loop
 
-# This import is needed to set up the custom (de)serializers in the same scope
-# as the TestServer.
-from huntsman.pocs.utils.pyro import serializers
+from panoptes.utils.config.client import get_config
+from panoptes.utils.config.client import set_config
+from panoptes.utils import error
+
 from huntsman.pocs.utils.logger import logger
-from huntsman.pocs.utils import get_own_ip
-from huntsman.pocs.utils import sshfs
-from huntsman.pocs.utils.config import load_device_config
-from huntsman.pocs.camera.pyro import CameraServer
-# FIXME (wtgee) - we shouldn't be importing from test files.
-from huntsman.pocs.tests.test_pyro_servers import TestServer
+from huntsman.pocs.utils import error
 
 
-def run_name_server(host=None, port=None, autoclean=0):
+def get_running_nameserver(host=None, port=None, broadcast=True):
+    """Attempt to find a running Pyro5 nameserver.
+
+    The `host` and `port` should only be passed if it is well known
+    that they will be exact, otherwise it's simpler just to let the
+    broadcast do its job.
+    """
+
+    host = host or get_config('pyro.nameserver.ip')
+    port = port or get_config('pyro.nameserver.port')
+
+    logger.info(f'Looking for nameserver on {host}:{port}')
+    name_server = locate_ns(host=host, port=port, broadcast=broadcast)
+    logger.success(f'Found Pyro name server: {name_server}')
+
+    return name_server
+
+
+def run_nameserver(host=None, port=None, autoclean=0):
     """Runs a Pyro name server.
 
     The name server must be running in order to use distributed cameras with POCS. The name server
@@ -32,156 +47,75 @@ def run_name_server(host=None, port=None, autoclean=0):
             from the name server if they cannot be connected. If not given no autocleaning will
             be done.
     """
+    host = host or get_config('pyro.nameserver.ip')
+    port = port or get_config('pyro.nameserver.port')
+
     try:
-        # Check that there isn't a name server already running
-        name_server = Pyro4.locateNS()
-    except errors.NamingError:
-        if not host:
-            # Not given an hostname or IP address. Will attempt to work it out.
-            host = get_own_ip()
-        else:
-            host = str(host)
+        nameserver = get_running_nameserver(host=host, port=port)
+        logger.info(f"Pyro {nameserver=} already running! Exiting...")
+    except (error.PyroNameServerNotFound, Pyro5.errors.NamingError):
+        logger.info(f"No running pyro nameserver found.")
+        Pyro5.config.NS_AUTOCLEAN = float(autoclean)
 
-        if port is not None:
-            port = int(port)
-
-        Pyro4.config.NS_AUTOCLEAN = float(autoclean)
-
-        logger.info("Starting Pyro name server... (Control-C/Command-C to exit)")
-        naming.startNSloop(host=host, port=port)
-    else:
-        logger.info(f"Pyro name server {name_server} already running! Exiting...")
+        logger.success("Starting new pyro nameserver...(Ctrl-c/Cmd-c to exit)")
+        start_ns_loop(host=host, port=port, enableBroadcast=True)
+    finally:
+        logger.info(f'Shutting down pyro nameserver.')
 
 
-def run_camera_server(unmount_sshfs=True, **kwargs):
-    """Runs a Pyro camera server.
+def run_pyro_service(service_class=None,
+                     service_name=None,
+                     host=None,
+                     port=None):
+    """Creates and runs a Pyro Service.
 
-    This should be run on the camera control computer for a distributed camera.
-
-    The configuration for the camera is read from the pyro_camera.yaml/pyro_camera_local.yaml
-    config file. The camera servers should be started after the name server, but before POCS.
-
-    Args:
-        unmount_sshfs (bool, optional): If True, unmounts the sshfs upon
-            termination of the camera server.
-
-    """
-    # Load the config file
-    config = load_device_config(**kwargs)
-
-    # Mount the SSHFS images directory
-    mountpoint = sshfs.mount_images_dir(config=config)
-
-    # Specify address
-    host = config.get('host', get_own_ip())
-
-    # If port is not in config set to 0 so that Pyro will choose a random one.
-    port = config.get('port', 0)
-
-    Pyro4.config.SERVERTYPE = "multiplex"
-
-    with Pyro4.Daemon(host=host, port=port) as daemon:
-        try:
-            name_server = Pyro4.locateNS()
-        except errors.NamingError as err:
-            logger.error(f'Failed to locate Pyro name server: {err!r}')
-            sys.exit(1)
-
-        logger.info(f'Found Pyro name server: {name_server}')
-        uri = daemon.register(CameraServer)
-        logger.info(f'Camera server registered with daemon as: {uri}')
-        name_server.register(config['name'], uri, metadata={"POCS",
-                                                            "Camera",
-                                                            config['camera']['model']})
-        logger.info('Registered with name server as {}'.format(config['name']))
-        logger.info(f'Starting request loop at {uri}... (Control-C/Command-C to exit)')
-
-        try:
-            daemon.requestLoop()
-        except KeyboardInterrupt:
-            logger.info(f'Shutting down name server at {uri}...')
-        except Exception as e:  # noqa
-            logger.info(f'Name server died: {e!r}')
-        finally:
-            name_server.remove(name=config['name'])
-            logger.info('Unregistered from name server')
-
-            # Unmount the SSHFS
-            if unmount_sshfs:
-                logger.info(f'Unmounting {mountpoint}')
-                sshfs.unmount(mountpoint)
-
-
-def run_test_server():
-    """ Runs a Pyro test server.
-    """
-    host = get_own_ip()
-
-    with Pyro4.Daemon(host=host) as daemon:
-        try:
-            name_server = Pyro4.locateNS()
-        except errors.NamingError as err:
-            logger.error('Failed to locate Pyro name server: {}'.format(err))
-            sys.exit(1)
-
-        logger.info('Found Pyro name server.')
-        uri = daemon.register(TestServer)
-        logger.info('Test server registered with daemon as {}'.format(uri))
-        name_server.register('test_server', uri, metadata={"POCS", "Test"})
-        logger.info('Registered with name server as test_server')
-        logger.info('Starting request loop... (Control-C/Command-C to exit)')
-
-        try:
-            daemon.requestLoop()
-        finally:
-            logger.info('\nShutting down...')
-            name_server.remove(name='test_server')
-            logger.info('Unregistered from name server')
-
-
-def create_pyro_server(server=None, server_metadata=None):
-    """Creates and returns a Pyro Server.
+    This is the "server" portion of the Pyro communication, which should be started
+    on a remote device (not on the central control computer).
 
     Parameters
     ----------
-    server (object): An instance of a class that has been exposed by Pyro.
-    server_metadata (dict): Instance metadata to register with the nameserver.
-
-    Yields
-    ------
-    Pyro4.Daemon: The configured server daemon. User should call `requestLoop()` to
-        start the server instance.
-
+    service_class (class): A class that has been exposed by Pyro.
+    service_metadata (dict): Instance metadata to register with the nameserver.
     """
-    # Load the config file
-    config = load_device_config(**kwargs)
-
     # Specify address
-    host = config.get('host', get_own_ip())
-
+    host = host or get_config('control_computer.pyro.ip', default='localhost')
     # If port is not in config set to 0 so that Pyro will choose a random one.
-    port = config.get('port', 0)
+    port = port or get_config('control_computer.pyro.port', default=0)
 
-    server_name = config.get('name', 'Generic Pyro Server')
+    service_name = service_name or get_config('name', 'Generic Pyro Server')
 
-    Pyro4.config.SERVERTYPE = "multiplex"
+    # TODO figure out if we really want multiplex.
+    Pyro5.config.SERVERTYPE = "multiplex"
 
-    with Pyro4.Daemon(host=host, port=port) as daemon:
+    try:
+        nameserver = get_running_nameserver(host=host, port=port)
+    except Exception as e:
+        logger.warning(
+            f"Pyro nameserver not running, can't create server. See 'huntsman-pyro nameserver' for details. {e!r}")
+        return
+
+    with PyroDaemon(host=host, port=port) as daemon:
+        uri = daemon.register(service_class)
+        logger.info(f'{service_class} registered with pyro daemon as: {uri}')
+
+        nameserver.register(service_name, uri, safe=True)
+        logger.info(f'Registered {service_class} with name server as {service_name}')
+
+        # Save uri in the generic POCS config.
+        # TODO do better checks if config-server is running rather than just a warning.
         try:
-            name_server = Pyro4.locateNS()
-            logger.info(f'Found Pyro name server: {name_server}')
-        except errors.NamingError as err:
-            logger.error(f'Failed to locate Pyro name server {server}: {err!r}')
+            set_config(f'pyro.devices.{service_name}.uri', uri)
+        except Exception as e:
+            logger.warning(f"Can't save {service_name} uri in config-server: {e!r}")
 
-        uri = daemon.register(server)
-        logger.info(f'Camera server {server_name} registered with daemon as: {uri}')
-
-        name_server.register(server_name, uri, metadata=server_metadata)
-        logger.info(f'Registered with name server as {server_name}')
-
-        # Yield so we can shutdown properly afterward.
-        yield daemon
-
-        logger.info(f'Shutting down {server_name} pyro server...')
-        name_server.remove(name=server_name)
-        logger.info(f'Unregistered {server_name} from name server')
+        try:
+            logger.success(f'Starting {service_name} event loop.')
+            daemon.requestLoop()
+        except KeyboardInterrupt:
+            logger.info(f'Shutting down pyro service {service_name=} at {uri=}...')
+        except Exception as e:  # noqa
+            logger.info(f'{service_name} died unexpectedly: {e!r}')
+        finally:
+            logger.info(f'Shutting down {service_name} pyro server...')
+            nameserver.remove(name=service_name)
+            logger.info(f'Unregistered {service_name} from pyro nameserver')

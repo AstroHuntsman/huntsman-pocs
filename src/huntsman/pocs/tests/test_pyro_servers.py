@@ -9,7 +9,7 @@ class NewError(Exception):
 
 
 @Pyro4.expose
-class TestServer(object):
+class TestService(object):
 
     def quantity_argument(self, q):
         assert isinstance(q, u.Quantity)
