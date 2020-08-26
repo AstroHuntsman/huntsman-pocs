@@ -2,7 +2,7 @@ import Pyro4
 from Pyro4 import errors, naming
 
 
-from huntsman.utils import get_own_ip, DummyLogger
+from huntsman.pocs.utils import get_own_ip, DummyLogger
 
 
 def run_name_server(host=None, port=None, autoclean=0, logger=None):

@@ -7,8 +7,8 @@ from pocs.scheduler import create_scheduler_from_config
 from pocs.dome import create_dome_from_config
 from pocs.mount import create_mount_from_config
 
-from huntsman.camera import create_cameras_from_config
-from huntsman.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.camera import create_cameras_from_config
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 @pytest.fixture(scope='function')
@@ -47,6 +47,18 @@ def pocs(config_with_simulated_stuff, observatory):
     pocs.power_down()
 
 # ==============================================================================
+
+def test_prepare_cameras_dropping(observatory):
+    """Test that unready camera is dropped."""
+    cameras = observatory.cameras
+    camera_names = cameras.keys()
+    assert len(camera_names) > 1, "Expeted more than one camera."
+    # Override class method
+    cameras[camera_names[0]].is_ready = False
+    # This should drop the unready camera
+    observatory.prepare_cameras(max_attempts=1)
+    assert len(observatory.cameras) == len(camera_names)-1
+
 
 def test_bad_observatory(config):
     huntsman_pocs = os.environ['HUNTSMAN_POCS']

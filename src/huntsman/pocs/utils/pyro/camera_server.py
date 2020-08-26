@@ -3,10 +3,10 @@ import sys
 import Pyro4
 from Pyro4 import errors
 
-from huntsman.utils import get_own_ip, sshfs, DummyLogger
-from huntsman.utils.config import load_device_config
+from huntsman.pocs.utils import get_own_ip, sshfs, DummyLogger
+from huntsman.pocs.utils.config import load_device_config
 
-from huntsman.camera.pyro import CameraServer
+from huntsman.pocs.camera.pyro import CameraServer
 
 
 def run_camera_server(ignore_local=False, unmount_sshfs=True, logger=None, **kwargs):

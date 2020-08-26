@@ -11,7 +11,7 @@ from pocs.utils import error
 from pocs.utils import listify
 from pocs.utils.messaging import PanMessaging
 
-from huntsman.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 class HuntsmanShell(Cmd):

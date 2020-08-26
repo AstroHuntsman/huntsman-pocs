@@ -15,10 +15,10 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
 
-from huntsman.guide.bisque import Guide
-from huntsman.scheduler.observation import DitheredObservation, DitheredFlatObservation
-from huntsman.scheduler.dark_observation import DarkObservation
-from huntsman.utils import load_config
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
+from huntsman.pocs.scheduler.dark_observation import DarkObservation
+from huntsman.pocs.utils import load_config
 
 
 class HuntsmanObservatory(Observatory):
@@ -441,6 +441,7 @@ class HuntsmanObservatory(Observatory):
 
         # Wait for cameras to be ready
         n_cameras = len(self.cameras)
+        cameras_to_drop = []
         self.logger.debug('Waiting for cameras to be ready.')
         for i in range(1, max_attempts+1):
 
@@ -453,7 +454,7 @@ class HuntsmanObservatory(Observatory):
 
                 # If max attempts have been reached...
                 if (i == max_attempts):
-                    msg = f'Timeout while waiting for {cam_name} to be ready.'
+                    msg = f'Max attempts reached while waiting for {cam_name} to be ready.'
 
                     # Raise PanError if we need all cameras
                     if require_all_cameras:
@@ -462,8 +463,7 @@ class HuntsmanObservatory(Observatory):
                     # Drop the camera if we don't need all cameras
                     else:
                         self.logger.error(msg)
-                        self.logger.debug(f'Removing {cam_name} from {self}.')
-                        self.remove_camera(cam_name)
+                        cameras_to_drop.append(cam_name)
 
             # Terminate loop if all cameras are ready
             self.logger.debug(f'Number of ready cameras after {i} of {max_attempts} checks:'
@@ -475,6 +475,12 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug('Not all cameras are ready yet, '
                                   f'waiting another {sleep} seconds before checking again.')
                 time.sleep(sleep)
+
+        # Remove cameras that didn't become ready in time
+        # This must be done outside of the main loop to avoid a RuntimeError
+        for cam_name in cameras_to_drop:
+            self.logger.debug(f'Removing {cam_name} from {self} for not being ready.')
+            self.remove_camera(cam_name)
 
         # Raise a `PanError` if no cameras are ready.
         if num_cameras_ready == 0:
