@@ -3,7 +3,7 @@ from contextlib import suppress
 import Pyro5.errors
 from Pyro5.api import Daemon as PyroDaemon
 from Pyro5.api import locate_ns
-from Pyro5.api import start_ns_loop
+from Pyro5.api import start_ns
 
 from panoptes.utils.config.client import get_config
 from panoptes.utils.config.client import set_config
@@ -11,6 +11,7 @@ from panoptes.utils import error
 
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils import error
+from panoptes.utils.library import load_module
 
 
 def get_running_nameserver(host=None, port=None, broadcast=True):
@@ -31,7 +32,10 @@ def get_running_nameserver(host=None, port=None, broadcast=True):
     return name_server
 
 
-def run_nameserver(host=None, port=None, autoclean=0):
+def pyro_nameserver(host=None,
+                    port=None,
+                    auto_clean=0,
+                    auto_start=False):
     """Runs a Pyro name server.
 
     The name server must be running in order to use distributed cameras with POCS. The name server
@@ -43,30 +47,46 @@ def run_nameserver(host=None, port=None, autoclean=0):
             the computer that the name server is being started on.
         port (int, optional): port number to bind the name server to. If not given then the port
             will be selected automatically (usually 9090).
-        autoclean (int, optional): interval, in seconds, for automatic deregistration of objects
+        auto_clean (int, optional): interval, in seconds, for automatic deregistration of objects
             from the name server if they cannot be connected. If not given no autocleaning will
             be done.
+        auto_start (bool, optional): If nameserver should be started, which will case the function
+            to block. Default is False, which will return the nameserver daemon and it is the users
+            responsibility to start the `requestLoop`.
     """
+    logger.info(f'Pyro nameserver start request: {host=} {port=} {auto_clean=} {auto_start=}')
     host = host or get_config('pyro.nameserver.ip')
     port = port or get_config('pyro.nameserver.port')
 
-    try:
+    with suppress(error.PyroNameServerNotFound, Pyro5.errors.NamingError):
+        logger.info('Checking for existing nameserver')
         nameserver = get_running_nameserver(host=host, port=port)
-        logger.info(f"Pyro {nameserver=} already running! Exiting...")
-    except (error.PyroNameServerNotFound, Pyro5.errors.NamingError):
-        logger.info(f"No running pyro nameserver found.")
-        Pyro5.config.NS_AUTOCLEAN = float(autoclean)
+        logger.info(f"Pyro {nameserver=} already running.")
+        return
 
-        logger.success("Starting new pyro nameserver...(Ctrl-c/Cmd-c to exit)")
-        start_ns_loop(host=host, port=port, enableBroadcast=True)
+    Pyro5.config.NS_AUTOCLEAN = float(auto_clean)
+
+    nameserver_uri, nameserver_daemon, broadcast_server = start_ns(host=host, port=port, enableBroadcast=True)
+
+    logger.info(f'Pyro nameserver started on {nameserver_uri.host}:{nameserver_uri.port} with {auto_start=}')
+
+    try:
+        if auto_start:
+            logger.success("Auto-starting new pyro nameserver...(Ctrl-c/Cmd-c to exit)")
+            nameserver_daemon.requestLoop()
+        else:
+            logger.debug(f'Yielding Pyro nameserver daemon...')
+            yield nameserver_daemon
     finally:
-        logger.info(f'Shutting down pyro nameserver.')
+        logger.info(f'Pyro nameserver shutting down.')
+        nameserver_daemon.close()
 
 
-def run_pyro_service(service_class=None,
-                     service_name=None,
-                     host=None,
-                     port=None):
+def pyro_service(service_class=None,
+                 service_name=None,
+                 host=None,
+                 port=None,
+                 auto_start=True):
     """Creates and runs a Pyro Service.
 
     This is the "server" portion of the Pyro communication, which should be started
@@ -94,8 +114,12 @@ def run_pyro_service(service_class=None,
             f"Pyro nameserver not running, can't create server. See 'huntsman-pyro nameserver' for details. {e!r}")
         return
 
+    # Get the class for the service.
+    service_class_ref = load_module(service_class)
+
     with PyroDaemon(host=host, port=port) as daemon:
-        uri = daemon.register(service_class)
+        logger.info(f'Creating pyro daemon service for {service_class=}')
+        uri = daemon.register(service_class_ref)
         logger.info(f'{service_class} registered with pyro daemon as: {uri}')
 
         nameserver.register(service_name, uri, safe=True)
@@ -109,8 +133,12 @@ def run_pyro_service(service_class=None,
             logger.warning(f"Can't save {service_name} uri in config-server: {e!r}")
 
         try:
-            logger.success(f'Starting {service_name} event loop.')
-            daemon.requestLoop()
+            if auto_start:
+                logger.success(f"Auto-starting {service_name} service...(Ctrl-c/Cmd-c to exit)")
+                daemon.requestLoop()
+            else:
+                logger.debug(f'Yielding Pyro service daemon for {service_name}...')
+                yield daemon
         except KeyboardInterrupt:
             logger.info(f'Shutting down pyro service {service_name=} at {uri=}...')
         except Exception as e:  # noqa

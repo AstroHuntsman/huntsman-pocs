@@ -6,3 +6,5 @@ logger = get_logger(
     full_log_file='huntsman_{time:YYYYMMDD!UTC}.log',
     log_dir=os.getenv('HUNTSMAN_DIR', '/var/huntsman/logs')
 )
+# See messages from underlying panoptes modules.
+logger.enable('panoptes')
