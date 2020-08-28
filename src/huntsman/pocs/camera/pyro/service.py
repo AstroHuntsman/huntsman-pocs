@@ -1,9 +1,9 @@
 import os
 
 import Pyro5.server
-from huntsman.pocs.utils.config import load_device_config
 
 from panoptes.utils.library import load_module
+from panoptes.utils.config.client import get_config
 
 
 @Pyro5.server.expose
@@ -20,9 +20,10 @@ class CameraService(object):
                         "focuser": ("_autofocus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
-    def __init__(self, config_files=None):
-        # Pyro classes ideally have no arguments for the constructor. Do it all from config file.
-        self.config = load_device_config(config_files=config_files)
+    def __init__(self):
+        # Fetch the config once during object creation
+        # TODO determine if we want to make all calls dynamic.
+        self.config = get_config()
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
 
@@ -86,7 +87,7 @@ class CameraService(object):
         return self._camera.filterwheel is not None
 
     def filterwheel_move_to(self, position):
-        self._camera.filterwheel._move_to(position)
+        self._camera.filterwheel.move_to(position)
 
     # Event access
 

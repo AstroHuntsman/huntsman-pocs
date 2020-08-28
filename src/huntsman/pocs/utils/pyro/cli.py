@@ -1,8 +1,8 @@
 import click
 
 from huntsman.pocs.utils.logger import logger
-from huntsman.pocs.utils.pyro.server import pyro_nameserver
-from huntsman.pocs.utils.pyro.server import pyro_service
+from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
+from huntsman.pocs.utils.pyro.service import pyro_service
 
 
 @click.group()
@@ -28,11 +28,12 @@ def nameserver(host=None, port=None, auto_clean=0):
 
     try:
         logger.info(f'Creating Pyro nameserver')
-        # pyro_service is a generator so we call next to get the actual object.
-        ns_proc = next(pyro_nameserver(host=host, port=port, auto_clean=auto_clean, auto_start=True))
+        ns_proc = pyro_nameserver(host=host, port=port, auto_clean=auto_clean, auto_start=False)
         logger.info(f'Starting Pyro nameserver from cli')
-        ns_proc.requestLoop()
-    except (KeyboardInterrupt, StopIteration):
+        ns_proc.start()
+        logger.info(f'Pyro nameserver started. Ctrl-C/Cmd-C to quit...')
+        ns_proc.join()
+    except KeyboardInterrupt:
         logger.info(f'Pyro nameserver interrupted, shutting down.')
     except Exception as e:  # noqa
         logger.error(f'Pyro nameserver shutdown unexpectedly {e!r}')
@@ -61,14 +62,14 @@ def service(service_name, service_class=None, host=None, port=None):
     try:
         logger.info(f'Creating Pyro service {service_name}')
 
-        # pyro_service is a generator so we call next to get the actual object.
-        service_proc = next(pyro_service(service_class=service_class,
-                                         service_name=service_name,
-                                         host=host,
-                                         port=port,
-                                         auto_start=True))
-        logger.info(f'Starting Pyro service {service_name} from cli')
-        service_proc.requestLoop()
+        service_proc = pyro_service(service_class=service_class,
+                                    service_name=service_name,
+                                    host=host,
+                                    port=port,
+                                    auto_start=False)
+        logger.info(f'Starting Pyro service process {service_name} from cli')
+        service_proc.start()
+        service_proc.join()
     except (KeyboardInterrupt, StopIteration):
         logger.info(f'Pyro service {service_name} interrupted, shutting down.')
     except Exception as e:  # noqa
