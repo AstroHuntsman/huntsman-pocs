@@ -8,27 +8,10 @@ from astropy import units as u
 
 from panoptes.utils import error
 
-from huntsman.pocs.utils import get_own_ip
 
-
-def test_get_own_ip():
-    ip = get_own_ip()
-    assert ip
-
-
-def test_name_server(name_server):
+def test_name_server(pyro_nameserver):
     # Check that it's running.
     assert pyro_nameserver.poll() is None
-
-
-def test_locate_name_server(name_server):
-    # Check that we can connect to the name server
-    Pyro4.locateNS()
-
-
-def test_test_server(test_server):
-    # Check that it is running
-    assert test_server.poll() is None
 
 
 def test_quantity_argument(test_proxy):
@@ -66,20 +49,3 @@ def test_pocs_subclass(test_proxy):
 def test_undeserialisable(test_proxy):
     with pytest.raises(Pyro4.errors.SerializeError):
         test_proxy.raise_undeserialisable()
-
-
-def test_config_server(config_server):
-    # Check we can get a config
-    assert config_server.poll() is None
-
-
-def test_camera_server(camera_server):
-    # Check that it's running.
-    assert camera_server.poll() is None
-
-
-def test_camera_detection(camera_server):
-    with Pyro4.locateNS() as ns:
-        cameras = ns.list(metadata_all={'POCS', 'Camera'})
-    # Should be one distributed camera, a simulator with simulated focuser
-    assert len(cameras) == 1
