@@ -1,24 +1,21 @@
 import os
 import sys
 import time
+from collections import defaultdict
 from contextlib import suppress
 from functools import partial
-from collections import defaultdict
 
+from astropy import stats
 from astropy import units as u
 from astropy.io import fits
-from astropy import stats
-
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.dark_observation import DarkObservation
+from huntsman.pocs.scheduler.observation import DitheredFlatObservation
 from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
-from panoptes.pocs.scheduler.observation import Field
-from panoptes.utils import error
-from panoptes.pocs import utils
-
-from huntsman.pocs.guide.bisque import Guide
-from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
-from huntsman.pocs.scheduler.dark_observation import DarkObservation
-from huntsman.pocs.utils.config import load_config
+from panoptes.utils import error, altaz_to_radec
+from panoptes.utils.library import load_module
+from panoptes.utils.time import current_time, flatten_time
 
 
 class HuntsmanObservatory(Observatory):
@@ -49,8 +46,7 @@ class HuntsmanObservatory(Observatory):
             sys.exit("Must set HUNTSMAN_POCS variable")
 
         # If we don't receive a config then load a local
-        if not config:
-            config = load_config()
+        config = config or self.get_config()
         super().__init__(config=config, *args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
@@ -60,22 +56,16 @@ class HuntsmanObservatory(Observatory):
 
         # Attributes for focusing
         self.last_focus_time = None
-        self._focus_frequency = config['focusing']['coarse']['frequency'] * \
-                                u.Unit(config['focusing']['coarse']['frequency_unit'])
-
-        # Creating an imager array object
-        if self.has_hdr_mode:
-            self.logger.error("HDR mode not support currently")
-            # self.logger.info('\tSetting up HDR imager array')
-            # self.imager_array = imager.create_imagers()
+        coarse_focus_config = self.get_config('focusing.coarse')
+        self._focus_frequency = coarse_focus_config['frequency'] * u.Unit(coarse_focus_config['frequency_unit'])
 
         if self.has_autoguider:
-            self.logger.info("\tSetting up autoguider")
+            self.logger.info("Setting up autoguider")
             try:
                 self._create_autoguider()
             except Exception as e:
                 self._has_autoguider = False
-                self.logger.warning("Problem setting autoguider, continuing without: {}".format(e))
+                self.logger.warning(f"Problem setting autoguider, continuing without: {e!r}")
 
     ##########################################################################
     # Properties
@@ -108,7 +98,7 @@ class HuntsmanObservatory(Observatory):
         """
         if self.last_focus_time is None:
             return True
-        if utils.current_time() - self.last_focus_time > self._focus_frequency:
+        if current_time() - self.last_focus_time > self._focus_frequency:
             return True
         return False
 
@@ -117,10 +107,10 @@ class HuntsmanObservatory(Observatory):
         """Check if it's morning, useful for going into either morning or evening flats."""
 
         # Get the time of the nearest midnight to now
-        midnight = self.observer.midnight(utils.current_time(), which='nearest')
+        midnight = self.observer.midnight(current_time(), which='nearest')
 
         # If the nearest midnight is in the past, it's the morning...
-        return midnight < utils.current_time()
+        return midnight < current_time()
 
     ##########################################################################
     # Methods
@@ -133,43 +123,6 @@ class HuntsmanObservatory(Observatory):
         if self.has_autoguider:
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
-
-    def make_hdr_observation(self, observation=None):
-        self.logger.debug("Getting exposure times from imager array")
-
-        if observation is None:
-            observation = self.current_observation
-
-        if isinstance(observation, DitheredObservation):
-            min_magnitude = observation.extra_config.get('min_magnitude', 10) * u.ABmag
-            max_magnitude = observation.extra_config.get('max_magnitude', 20) * u.ABmag
-            max_exptime = observation.extra_config.get('max_exptime', 300) * u.second
-
-            # Generating a list of exposure times for the imager array
-            hdr_targets = utils.hdr.get_hdr_target_list(imager_array=self.imager_array,
-                                                        imager_name='canon_sbig_g',
-                                                        coords=observation.field.coord,
-                                                        name=observation.field.name,
-                                                        minimum_magnitude=min_magnitude,
-                                                        maximum_exptime=max_exptime,
-                                                        maximum_magnitude=max_magnitude,
-                                                        long_exposures=1,
-                                                        factor=2,
-                                                        dither_parameters={
-                                                            'pattern_offset': 5 * u.arcmin,
-                                                            'random_offset': 0.5 * u.arcmin,
-                                                        }
-                                                        )
-            self.logger.debug("HDR Targets: {}".format(hdr_targets))
-
-            fields = [Field(target['name'], target['position']) for target in hdr_targets]
-            exptimes = [target['exptime'][0]
-                        for target in hdr_targets]  # Not sure why exptime is in tuple
-
-            observation.field = fields
-            observation.exptime = exptimes
-
-            self.logger.debug("New Dithered Observation: {}".format(observation))
 
     def finish_observing(self):
         """Performs various cleanup functions for observe.
@@ -225,14 +178,14 @@ class HuntsmanObservatory(Observatory):
         return self.current_offset_info
 
     def autofocus_cameras(self, *args, **kwargs):
-        '''
+        """
         Override autofocus_cameras to update the last focus time.
-        '''
+        """
         result = super().autofocus_cameras(*args, **kwargs)
 
         # Update last focus time
         if not kwargs.get("coarse", False):
-            self.last_focus_time = utils.current_time()
+            self.last_focus_time = current_time()
 
         return result
 
@@ -270,7 +223,7 @@ class HuntsmanObservatory(Observatory):
             cameras_all = {c: self.cameras[c] for c in camera_names}
 
         # Obtain the filter order
-        filter_order = self.config['filterwheel']['flat_field_order'].copy()
+        filter_order = self.get_config('filterwheel.flat_field_order')
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
@@ -338,9 +291,9 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug(f'Using cameras {cameras_list}')
 
-        image_dir = self.config['directories']['images']
+        image_dir = self.get_config('directories.images')
 
-        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
+        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times: {exptimes}")
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -349,7 +302,7 @@ class HuntsmanObservatory(Observatory):
         # Loop over cameras.
         for exptime in exptimes:
 
-            start_time = utils.current_time()
+            start_time = current_time()
 
             with suppress(AttributeError):
                 exptime = exptime.to_value(u.second)
@@ -367,7 +320,7 @@ class HuntsmanObservatory(Observatory):
                     dark_obs = self._create_dark_observation(exptime)
                     fits_headers = self.get_standard_headers(observation=dark_obs)
                     # Common start time for cameras
-                    fits_headers['start_time'] = utils.flatten_time(start_time)
+                    fits_headers['start_time'] = flatten_time(start_time)
 
                     filename = os.path.join(
                         image_dir,
@@ -439,6 +392,7 @@ class HuntsmanObservatory(Observatory):
 
         # Wait for cameras to be ready
         n_cameras = len(self.cameras)
+        num_cameras_ready = 0
         cameras_to_drop = []
         self.logger.debug('Waiting for cameras to be ready.')
         for i in range(1, max_attempts + 1):
@@ -451,7 +405,7 @@ class HuntsmanObservatory(Observatory):
                     continue
 
                 # If max attempts have been reached...
-                if (i == max_attempts):
+                if i == max_attempts:
                     msg = f'Max attempts reached while waiting for {cam_name} to be ready.'
 
                     # Raise PanError if we need all cameras
@@ -491,24 +445,22 @@ class HuntsmanObservatory(Observatory):
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
 
-        scheduler_config = self.config.get('scheduler', {})
+        scheduler_config = self.get_config('scheduler', default=dict())
         scheduler_type = scheduler_config.get('type', 'dispatch')
 
         # Read the targets from the file
         fields_file = scheduler_config.get('fields_file', 'simple.yaml')
-        fields_path = os.path.join(self.config['directories'][
-                                       'targets'], fields_file)
-        self.logger.debug('Creating scheduler: {}'.format(fields_path))
+        fields_path = os.path.join(self.get_config('directories.targets'), fields_file)
+
+        self.logger.debug(f'Creating scheduler: {fields_path}')
 
         if os.path.exists(fields_path):
 
             try:
                 # Load the required module
-                module = utils.load_module(
-                    'huntsman.scheduler.{}'.format(scheduler_type))
+                module = load_module(f'huntsman.scheduler.{scheduler_type}')
 
                 # Simple constraint for now
-                # constraints = [constraint.MoonAvoidance()]
                 constraints = [constraint.MoonAvoidance(), constraint.Duration(30 * u.deg)]
 
                 # Create the Scheduler instance
@@ -518,11 +470,10 @@ class HuntsmanObservatory(Observatory):
             except ImportError as e:
                 raise error.NotFound(msg=e)
         else:
-            raise error.NotFound(
-                msg="Fields file does not exist: {}".format(fields_file))
+            raise error.NotFound(msg=f"Fields file does not exist: {fields_file}")
 
     def _create_autoguider(self):
-        guider_config = self.config['guider']
+        guider_config = self.get_config('guider')
         guider = Guide(**guider_config)
 
         self.autoguider = guider
@@ -531,19 +482,21 @@ class HuntsmanObservatory(Observatory):
 
         # Specify coordinates for flat field
         if alt is None and az is None:
-            flat_config = self.config['flat_field']['twilight']
+            flat_config = self.get_config('flat_field.twilight')
             alt = flat_config['alt']
             az = flat_config['az']
             self.logger.debug(f'Using flat-field alt/az from config.')
-        flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
-                                           obstime=utils.current_time())
-        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03f}, {az:.03f}.')
+        flat_coords = altaz_to_radec(alt=alt,
+                                     az=az,
+                                     location=self.earth_location,
+                                     obstime=current_time())
+        self.logger.debug(f'Making flat-field observation for {alt=:.03f} {az=:.03f}.')
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
         # Create the Observation object
         obs = DitheredFlatObservation(position=flat_coords, *args, **kwargs)
-        obs.seq_time = utils.current_time(flatten=True)
-        self.logger.debug("Flat-field observation: {}".format(obs))
+        obs.seq_time = current_time(flatten=True)
+        self.logger.debug(f"Created flat-field observation: {obs}")
 
         return obs
 
@@ -552,7 +505,7 @@ class HuntsmanObservatory(Observatory):
         # Create the observation object
         dark_position = self.mount.get_current_coordinates()
         dark_obs = DarkObservation(dark_position, *args, **kwargs)
-        dark_obs.seq_time = utils.current_time(flatten=True)
+        dark_obs.seq_time = current_time(flatten=True)
 
         if isinstance(dark_obs, DarkObservation):
             dark_obs.exptime = exptime
@@ -604,9 +557,9 @@ class HuntsmanObservatory(Observatory):
                 break
 
             # Get the FITS headers with a common start time
-            start_time = utils.current_time()
+            start_time = current_time()
             fits_headers = self.get_standard_headers(observation=observation)
-            fits_headers['start_time'] = utils.flatten_time(start_time)
+            fits_headers['start_time'] = flatten_time(start_time)
 
             # Take the flat field observations (blocking)
             current_exptimes = {c: exptimes[c][-1] for c in cameras.keys() if not finished[c]}
@@ -641,8 +594,7 @@ class HuntsmanObservatory(Observatory):
                 elif is_too_faint:
                     self.logger.debug(f'Counts too low for flat-field'
                                       f' image on {cam_name}: {mean_counts:.0f}<{min_counts:.0f}.')
-                    # TODO Need to prevent NGAS push...
-                    os.remove(meta['filename'])
+                    # TODO Mark low counts somehow.
                 else:
                     n_good_exposures[cam_name] += 1
                 self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
@@ -657,7 +609,7 @@ class HuntsmanObservatory(Observatory):
                     continue
 
                 # Calculate next exposure time
-                elapsed_time = (utils.current_time() - start_time).sec
+                elapsed_time = (current_time() - start_time).sec
                 next_exptime = self._autoflat_next_exptime(
                     current_exptime, elapsed_time, target_counts[cam_name], mean_counts)
                 self.logger.debug('Suggested flat-field exposure time for '
@@ -698,7 +650,7 @@ class HuntsmanObservatory(Observatory):
 
             if attempt_number == max_attempts - 1:
                 self.logger.debug('Max attempts have been reached for flat-fielding '
-                                  f'in {filter_name} filter. Aborting.')
+                                  f'in {observation.filter_name} filter. Aborting.')
 
         # Return the exposure times
         return exptimes

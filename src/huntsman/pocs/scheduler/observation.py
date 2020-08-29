@@ -1,12 +1,11 @@
 import os
-from astropy import units as u
 from contextlib import suppress
 
+from astropy import units as u
+from huntsman.pocs.utils import dither
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils import listify
-
-from huntsman.pocs.utils import dither
 
 
 class DitheredObservation(Observation):
@@ -90,11 +89,16 @@ class DitheredFlatObservation(DitheredObservation):
                  *args, **kwargs):
         """
         Args:
-            position (str): Center of field, can be anything accepted by
-                `~astropy.coordinates.SkyCoord`.
+            position (str or astropy.coordinates.SkyCoord): Center of field, can
+                be anything accepted by `astropy.coordinates.SkyCoord`.
         """
         # Create the observation
-        field = Field('Flat Field', position.to_string('hmsdms'))
+
+        # Get the string from a coord object.
+        with suppress(AttributeError):
+            position = position.to_string('hmsdms')  # noqa
+
+        field = Field('Flat Field', position)
         super().__init__(field=field, *args, **kwargs)
 
         # Listify the exposure time
