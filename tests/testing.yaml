@@ -12,7 +12,7 @@ location:
   focus_horizon: -12 # Degrees - Focus between this and observe_horizon
   observe_horizon: -18 # Degrees - Sun below this limit to observe
   obstructions:
-    - [[45, 355], [45, 5]] # telstra tower rough coordinates
+    - [ [ 45, 355 ], [ 45, 5 ] ] # telstra tower rough coordinates
   timezone: Australia/Sydney
   twilight_horizon: 0 # Degrees
 db:
@@ -80,3 +80,12 @@ focusing:
 flat_field:
   take_evening_flats: False
   take_morning_flats: False
+
+########################### Pyro Items #########################################
+#
+################################################################################
+pyro:
+  nameserver:
+    ip: 0.0.0.0
+    port: 6564
+  devices: [ ]
