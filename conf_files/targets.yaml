@@ -5,6 +5,7 @@
    exptime: 300
    min_nexp: 5
    exp_set_size: 5
+   filter_name: g_band
 # -
 #   name: HAT-P-27
 #   position: 14h51m04.19s +05d56m50.5s
@@ -14,7 +15,7 @@
 # -
 #   name: Wasp 43
 #   position: 10h19m38.008s -09d48m22.59s
-#   priority: 500    
+#   priority: 500
 #   min_nexp: 30
 #   exp_set_size: 5
 #   exptime: 27
@@ -26,6 +27,7 @@
   exptime: 300
   min_nexp: 5
   exp_set_size: 5
+  filter_name: g_band
 -
   name: ESO270-017
   position: 13h34m47.3s -45d32m51s
@@ -33,20 +35,23 @@
   exptime: 300
   min_nexp: 5
   exp_set_size: 5
+  filter_name: g_band
 -
   name: MC_dust_filament
-  position: 03h33m08s -63d35m29s 
+  position: 03h33m08s -63d35m29s
   priority: 100
   exptime: 300
   min_nexp: 5
   exp_set_size: 5
+  filter_name: g_band
 -
   name: M8
   position: 18h3m37s -24d23m12s
   priority: 300
   exptime: 300
   min_nexp: 5
-  exp_set_size: 5 
+  exp_set_size: 5
+  filter_name: g_band
 # -
 #   name: stargazing_sn
 #   position: 13h10m28.38s -30d48m57.7s
