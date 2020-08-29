@@ -1,25 +1,21 @@
-import os
-import requests
-import urllib.parse
-from threading import Timer
 from contextlib import suppress
+from threading import Timer
 
 from Pyro5.api import Proxy
-
 from astropy import units as u
-from huntsman.pocs.utils import error, logger
-
-from panoptes.utils import get_quantity_value
-from panoptes.pocs.camera import AbstractCamera
-
-from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
+from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
+from huntsman.pocs.utils import error, logger
 from huntsman.pocs.utils.pyro.event import RemoteEvent
+from panoptes.pocs.camera import AbstractCamera
+from panoptes.utils import get_quantity_value
 
 
 class Camera(AbstractCamera):
-    """
-    Class representing the client side interface to a distributed camera
+    """A python remote object (pyro) camera client.
+
+    This class should be instantiated on the main control computer that is
+    running POCS, namely via an `Observatory` object.
     """
 
     def __init__(self,
@@ -37,10 +33,6 @@ class Camera(AbstractCamera):
         # Hardware that may be attached in connect method.
         self.focuser = None
         self.filterwheel = None
-
-        # Obtain the NGAS server IP.
-        self.ngas_ip = self.get_config('control.ip_address')
-        self.ngas_port = self.get_config('control.ngas_port', default=7778)
 
         # Connect to camera
         self.connect()
@@ -307,58 +299,3 @@ class Camera(AbstractCamera):
         if not is_set:
             timeout_event.set()
             raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
-
-    def _process_fits(self, file_path, info):
-        """
-        Override _process_fits, called by process_exposure in take_observation.
-
-        The difference is that we do an NGAS push following the processing.
-        """
-        # Call the super method
-        result = super()._process_fits(file_path, info)
-
-        # Do the NGAS push
-        self._ngas_push(file_path, info)
-
-        return result
-
-    def _ngas_push(self, filename, metadata, filename_ngas=None):
-        """
-        Parameters
-        ----------
-        filename (str):
-            The name of the local file to be pushed.
-        metadata:
-            A dict-like object containing metadata to build the NGAS filename.
-        filename_ngas (str, optional):
-            The NGAS filename. If None, auto-assign based on metadata.
-        port (int, optional):
-            The port of the NGAS server. Defaults to the TCP port.
-
-        """
-        # Define the NGAS filename
-        if filename_ngas is None:
-            extension = os.path.splitext(filename)[-1]
-            filename_ngas = f"{metadata['image_id']}{extension}"
-
-        # Escape the filename for url.
-        filename_ngas = urllib.parse.quote(filename_ngas)
-
-        # Post the file to the NGAS server
-        url = f'http://{self.ngas_ip}:{self.ngas_port}/QARCHIVE?filename={filename_ngas}&ignore_arcfile=1'
-        with open(filename, 'rb') as f:
-
-            self.logger.info(f'Pushing {filename} to NGAS as {filename_ngas}: {url}')
-
-            try:
-                # Post the file
-                response = requests.post(url, data=f)
-
-                self.logger.debug(f'NGAS response: {response.text}')
-
-                # Confirm success
-                response.raise_for_status()
-
-            except Exception as e:
-                self.logger.error(f'Error while performing NGAS push: {e!r}')
-                raise e
