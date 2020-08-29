@@ -1,0 +1,101 @@
+version: '3.8'
+services:
+  pocs-config-server:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pocs-config-server
+    hostname: pocs-config-server
+    privileged: true
+    network_mode: host
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+    restart: on-failure
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+  pyro-name-server:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pyro-name-server
+    hostname: pyro-name-server
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pocs-config-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver" ]
+#  pyro-http:
+#    image: huntsman-pocs:develop
+#    init: true
+#    tty: true
+#    container_name: pyro-http
+#    hostname: pyro-http
+#    privileged: true
+#    network_mode: host
+#    restart: on-failure
+#    depends_on:
+#      - "pyro-name-server"
+#    environment:
+#      HUNTSMAN_POCS: /var/huntsman
+#      PANDIR: /var/panoptes
+#      POCS: /var/panoptes/POCS
+#    volumes:
+#      - huntsman_dir:/var/huntsman
+#    command: [ "pyro5-httpgateway" ]
+#    peas-shell:
+#        image: gcr.io/panoptes-exp/panoptes-pocs:latest
+#        init: true
+#        tty: true
+#        container_name: peas-shell
+#        hostname: peas-shell
+#        privileged: true
+#        network_mode: host
+#        environment:
+#            PANDIR: /var/panoptes
+#            POCS: /var/panoptes/POCS
+#        volumes:
+#            - huntsman_dir:/var/huntsman
+#        # No-op to keep machine running, use $POCS/bin/peas-shell to access
+#        command: ["/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- tail -f /dev/null"]
+#    pocs-shell:
+#        image: gcr.io/panoptes-exp/panoptes-pocs:latest
+#        init: true
+#        container_name: pocs-shell
+#        hostname: pocs-shell
+#        privileged: true
+#        network_mode: host
+#        env_file: "${HUNTSMAN_DIR}/.env"
+#        depends_on:
+#            - "peas-shell"
+#        volumes:
+#            - pandir:/var/panoptes
+#            - huntsman_dir:/var/huntsman
+#        # No-op to keep machine running, use $POCS/bin/pocs-shell to access
+#        command:
+#            - "$PANDIR/panoptes-utils/bin/wait-for-it.sh"
+#            - "localhost:6563"
+#            - "--"
+#            - "tail"
+#            - "-f"
+#            - "/dev/null"
+volumes:
+  pandir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/panoptes
+      o: bind
+  huntsman_dir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/huntsman
+      o: bind
