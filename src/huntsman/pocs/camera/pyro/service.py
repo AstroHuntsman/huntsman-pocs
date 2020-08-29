@@ -1,9 +1,8 @@
 import os
 
 import Pyro5.server
-
-from panoptes.utils.library import load_module
 from panoptes.utils.config.client import get_config
+from panoptes.utils.library import load_module
 
 
 @Pyro5.server.expose
@@ -27,10 +26,11 @@ class CameraService(object):
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
 
-        camera_config = self.config.get('camera')
-        camera_config.update({'config': self.config})
+        camera_config = self.config.get('cameras')
+        camera_model = camera_config.get('model')
 
-        module = load_module('pocs.camera.{}'.format(camera_config['model']))
+        self.logger.info(f'Loading module for {camera_model=}')
+        module = load_module(f"pocs.camera.{camera_model}")
         self._camera = module.Camera(**camera_config)
 
     # Properties - rather than labouriously wrapping every camera property individually expose

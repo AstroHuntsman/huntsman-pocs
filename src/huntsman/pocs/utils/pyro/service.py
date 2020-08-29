@@ -2,12 +2,10 @@ from multiprocessing import Process
 
 import Pyro5.errors
 from Pyro5.api import Daemon as PyroDaemon
+from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
-
 from panoptes.utils.config.client import get_config
 from panoptes.utils.config.client import set_config
-
-from huntsman.pocs.utils.logger import logger
 from panoptes.utils.library import load_module
 
 
@@ -35,7 +33,7 @@ def pyro_service(service_class=None,
             but still return the completed process.
     """
     # Specify address
-    host = host or get_config('control_computer.pyro.ip', default='localhost')
+    host = host or get_config('control_computer.pyro.ip', default='0.0.0.0')
     # If port is not in config set to 0 so that Pyro will choose a random one.
     port = port or get_config('control_computer.pyro.port', default=0)
 
