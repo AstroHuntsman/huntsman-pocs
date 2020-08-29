@@ -4,7 +4,7 @@ set -e
 TAG="${1:-latest}"
 POCS_TAG="${1:-latest}"
 
-INCLUDE_CAMERA=${INCLUDE_UTILS:-true}
+INCLUDE_CAMERA=${INCLUDE_UTILS:-false}
 INCLUDE_DEVELOPER=${INCLUDE_DEVELOPER:-false}
 
 HUNTSMAN_POCS=${HUNTSMAN_POCS:-/var/huntsman/huntsman-pocs}
