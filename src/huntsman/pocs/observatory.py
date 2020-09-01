@@ -700,7 +700,7 @@ class HuntsmanObservatory(Observatory):
 
             if attempt_number == max_attempts-1:
                 self.logger.debug('Max attempts have been reached for flat-fielding '
-                                  f'in {filter_name} filter. Aborting.')
+                                  f'in {observation.filter_name} filter. Aborting.')
 
         # Return the exposure times
         return exptimes
