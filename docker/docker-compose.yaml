@@ -13,7 +13,7 @@ services:
     restart: on-failure
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
+    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
   pyro-name-server:
     image: huntsman-pocs:develop
     init: true
@@ -33,7 +33,7 @@ services:
       NS_PORT: 6564
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 30" ]
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
   pyro-http:
     image: huntsman-pocs:develop
     init: true
@@ -54,27 +54,6 @@ services:
     volumes:
       - huntsman_dir:/var/huntsman
     command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -e '.*'" ]
-#    pocs-shell:
-#        image: gcr.io/panoptes-exp/panoptes-pocs:latest
-#        init: true
-#        container_name: pocs-shell
-#        hostname: pocs-shell
-#        privileged: true
-#        network_mode: host
-#        env_file: "${HUNTSMAN_DIR}/.env"
-#        depends_on:
-#            - "peas-shell"
-#        volumes:
-#            - pandir:/var/panoptes
-#            - huntsman_dir:/var/huntsman
-#        # No-op to keep machine running, use $POCS/bin/pocs-shell to access
-#        command:
-#            - "$PANDIR/panoptes-utils/bin/wait-for-it.sh"
-#            - "localhost:6563"
-#            - "--"
-#            - "tail"
-#            - "-f"
-#            - "/dev/null"
 volumes:
   pandir:
     driver: local
