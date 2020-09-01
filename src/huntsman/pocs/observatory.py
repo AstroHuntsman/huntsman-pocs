@@ -268,7 +268,7 @@ class HuntsmanObservatory(Observatory):
             safety_func = partial(self.is_dark, horizon='flat')
 
         # Load the flat fielding config
-        flat_field_config = self.config["observatory"]["flat_fields"]
+        flat_field_config = self.config["flat_fields"]
         flat_field_config.update(kwargs)
 
         if camera_names is None:
