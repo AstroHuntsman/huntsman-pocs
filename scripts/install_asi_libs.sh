@@ -1,36 +1,47 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -eu
+set -e
+set -u
 
-export CAM_LIB_VERSION=1.15.0617
-export EFW_LIB_VERSION=1.5.0615
+BUILD_DIR=${1:-./ASIBuild}
 
-export BUILD_DIR=$HOME/ASIBuild
-mkdir ${BUILD_DIR}
+# Current lib versions.
+CAM_LIB_VERSION=1.15.0617
+EFW_LIB_VERSION=1.5.0615
+# Get the arch -> x86_64 == x86
+ARCH=${ARCH:-$(uname -m | cut -d'_' -f1)}
+
 # ZWO camera
-sudo apt-get -y install libusb-1.0-0-dev
-cd ${BUILD_DIR}
-mkdir BUILD_CAM
-cd BUILD_CAM
-export TARGET=ASI_linux_mac_SDK_V${CAM_LIB_VERSION}.tar.bz2
-wget https://astronomy-imaging-camera.com/software/$TARGET
-tar xvjf $TARGET
-cd lib
-sudo cp armv7/libASICamera2.so /usr/local/lib/
-sudo chmod a+rx /usr/local/lib/libASICamera2.so
-sudo install asi.rules /etc/udev/rules.d
-# ZWO filterwheel
-sudo apt-get -y install libudev-dev
-cd ${BUILD_DIR}
-mkdir BUILD_EFW
-cd BUILD_EFW
-export TARGET=EFW_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
-wget https://astronomy-imaging-camera.com/software/$TARGET
-tar xvjf $TARGET
-cd lib
-sudo cp armv7/libEFWFilter.so /usr/local/lib/
-sudo chmod a+rx /usr/local/lib/libEFWFilter.so
-sudo install efw.rules /etc/udev/rules.d
+function install_zwo() {
+  # Install dependencies.
+  apt-get update && apt-get --yes install libusb-1.0-0-dev libudev-dev
+
+  mkdir -p "${BUILD_DIR}/zwo" && cd "${BUILD_DIR}/zwo"
+  INSTALL_FILE=ASI_linux_mac_SDK_V${CAM_LIB_VERSION}.tar.bz2
+  wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
+  tar xvjf "${INSTALL_FILE}" && cd lib
+  # Move the library file.
+  cp "${ARCH}/libASICamera2.so" /usr/local/lib/
+  chmod a+rx /usr/local/lib/libASICamera2.so
+  install asi.rules /etc/udev/rules.d
+
+  # ZWO filterwheel
+  mkdir -p "${BUILD_DIR}/zwo-filterwheel" && cd "${BUILD_DIR}/zwo-filterwheel"
+  INSTALL_FILE=EFW_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
+  wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
+  tar xvjf "${INSTALL_FILE}" && cd lib
+  # Move the library file.
+  cp "${ARCH}/libEFWFilter.so" /usr/local/lib/
+  chmod a+rx /usr/local/lib/libEFWFilter.so
+  install efw.rules /etc/udev/rules.d
+}
+
+# Make the build dir.
+mkdir -p "${BUILD_DIR}"
+
+# Call the function.
+install_zwo
+
 # Clean up
 rm -rf ${BUILD_DIR}
-sudo ldconfig
+ldconfig
