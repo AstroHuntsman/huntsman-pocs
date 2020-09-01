@@ -9,6 +9,7 @@ from contextlib import suppress
 import pytest
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
+from huntsman.pocs.utils.pyro.service import pyro_service
 from panoptes.pocs import hardware
 from panoptes.utils.config.client import get_config
 from panoptes.utils.config.client import set_config
@@ -313,3 +314,32 @@ def caplog(_caplog):
     yield _caplog
     with suppress(ValueError):
         logger.remove(handler_id)
+
+
+@pytest.fixture(scope='module')
+def camera_service_name():
+    return 'TestCam00'
+
+
+# Start up a pyro camera service that we can test against.
+@pytest.fixture(scope='module', autouse=True)
+def pyro_camera_service(camera_service_name):
+    service_class = 'huntsman.pocs.camera.pyro.service.CameraService'
+
+    try:
+        logger.info(f'Creating TestPyro service {camera_service_name}')
+
+        service_proc = pyro_service(service_class=service_class,
+                                    service_name=camera_service_name,
+                                    host='localhost',
+                                    port=0,
+                                    auto_start=False)
+        logger.info(f'Starting TestPyro service {camera_service_name}')
+        service_proc.start()
+        service_proc.join()
+    except (KeyboardInterrupt, StopIteration):
+        logger.info(f'TestPyro service {camera_service_name} interrupted, shutting down.')
+    except Exception as e:  # noqa
+        logger.error(f'TestPyro {camera_service_name} shutdown unexpectedly {e!r}')
+    finally:
+        logger.info(f'TestPyro {camera_service_name} shut down.')

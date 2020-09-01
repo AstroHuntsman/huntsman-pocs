@@ -21,7 +21,7 @@ class CameraService(object):
 
     def __init__(self):
         # Fetch the config once during object creation
-        # TODO determine if we want to make all calls dynamic.
+        # TODO determine if we want to make all config calls dynamic.
         self.config = get_config()
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
@@ -31,7 +31,13 @@ class CameraService(object):
 
         self.logger.info(f'Loading module for {camera_model=}')
         module = load_module(f"pocs.camera.{camera_model}")
+
+        # Create a real instance of the camera.
         self._camera = module.Camera(**camera_config)
+
+        # Set up events for our exposure.
+        self._autofocus_event = None
+        self._exposure_event = None
 
     # Properties - rather than labouriously wrapping every camera property individually expose
     # them all with generic get and set methods.

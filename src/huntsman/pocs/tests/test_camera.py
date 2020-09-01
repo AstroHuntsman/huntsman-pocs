@@ -8,44 +8,17 @@ import pytest
 import os
 import time
 import glob
-import sys
 import shutil
 
 import astropy.units as u
 from astropy.io import fits
 
-import Pyro4
-import Pyro4.util
+from Pyro5.api import Proxy
 
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils import error
-
-from huntsman.pocs.camera.pyro import Camera as PyroCamera
-
-sys.excepthook = Pyro4.util.excepthook
-
-params = [PyroCamera]
-ids = ['pyro']
-
-
-# Ugly hack to access id inside fixture
-
-
-@pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
-def camera(request, images_dir_control, camera_server):
-    if request.param[0] == PyroCamera:
-        ns = Pyro4.locateNS()
-        cameras = ns.list(metadata_all={'POCS', 'Camera'})
-        cam_name, cam_uri = cameras.popitem()
-        camera = PyroCamera(port=cam_name, uri=cam_uri)
-
-    # This is a client-side pyro.Camera instance.
-    # Currently it does not get its config from the config server.
-    camera.config['directories']['images'] = images_dir_control
-
-    return camera
 
 
 @pytest.fixture(scope='module')
@@ -63,7 +36,19 @@ def patterns(camera, images_dir_device):
     return patterns
 
 
-def test_init(camera):
+@pytest.fixture(scope='module')
+def camera(camera_service_name):
+    proxy_name_lookup = f'PYRONAME:{camera_service_name}'
+
+    with Proxy(proxy_name_lookup) as p:
+        yield p
+
+
+def test_camera_detection(camera):
+    assert camera
+
+
+def test_init(pyro_camera_service):
     """
     Test that camera got initialised as expected
     """
