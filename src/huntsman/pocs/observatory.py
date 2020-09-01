@@ -15,6 +15,8 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
 
+from panoptes.utils.time import wait_for_events
+
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
@@ -775,9 +777,10 @@ class HuntsmanObservatory(Observatory):
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
-        while not all([info['event'].is_set() for info in camera_events.values()]):
-            self.logger.debug('Waiting for flat-field images...')
-            time.sleep(1)
+        timeout = max(exptimes.values()) + self._flat_field_timeout
+        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
+        if not wait_for_events(camera_events, timeout=timeout, sleep_delay=1):
+            self.logger.error("Timeout while waiting for flat fields.")
 
         return camera_events
 
