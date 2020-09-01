@@ -54,21 +54,6 @@ services:
     volumes:
       - huntsman_dir:/var/huntsman
     command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -e '.*'" ]
-#    peas-shell:
-#        image: gcr.io/panoptes-exp/panoptes-pocs:latest
-#        init: true
-#        tty: true
-#        container_name: peas-shell
-#        hostname: peas-shell
-#        privileged: true
-#        network_mode: host
-#        environment:
-#            PANDIR: /var/panoptes
-#            POCS: /var/panoptes/POCS
-#        volumes:
-#            - huntsman_dir:/var/huntsman
-#        # No-op to keep machine running, use $POCS/bin/peas-shell to access
-#        command: ["/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- tail -f /dev/null"]
 #    pocs-shell:
 #        image: gcr.io/panoptes-exp/panoptes-pocs:latest
 #        init: true

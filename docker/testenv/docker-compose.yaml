@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 services:
   testenv:
     image: huntsmanarray/testenv:latest
@@ -7,5 +7,15 @@ services:
     network_mode: host
     stdin_open: true
     tty: true
+    init: true
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
     volumes:
-       - "$HUNTSMAN_POCS:/var/huntsman/huntsman-pocs"
+      - huntsmandir:/var/huntsman/huntsman-pocs
+volumes:
+  huntsmandir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/huntsman
+      o: bind
