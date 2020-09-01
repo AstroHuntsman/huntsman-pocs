@@ -11,8 +11,6 @@ LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
 COPY ./scripts/install-camera-libs.sh /tmp/install-camera-libs.sh
 RUN /tmp/install-camera-libs.sh && \
     # Cleanup.
-    cd "${HOME}" && \
-    rm -rf /tmp && \
     apt-get autoremove --purge --yes && \
     apt-get autoclean --yes && \
     apt-get --yes clean && \
