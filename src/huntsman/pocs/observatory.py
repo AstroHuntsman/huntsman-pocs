@@ -59,6 +59,10 @@ class HuntsmanObservatory(Observatory):
         self._has_autoguider = with_autoguider
 
         self.flat_fields_required = take_flats
+        try:
+            self._flat_field_timeout = self.config["observatory"]["flat_field_timeout"]
+        except KeyError:
+            self._flat_field_timeout = 120
 
         # Attributes for focusing
         self.last_focus_time = None
@@ -777,7 +781,7 @@ class HuntsmanObservatory(Observatory):
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
-        timeout = max(exptimes.values()) + self._flat_field_timeout
+        timeout = max(exptimes.values()).to_value(u.second) + self._flat_field_timeout
         self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
         if not wait_for_events(camera_events, timeout=timeout, sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
