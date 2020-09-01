@@ -206,15 +206,18 @@ def pyro_test_nameserver():
     # Start the Pyro nameserver after the config-server.
     ns = pyro_nameserver()
 
-    ns.start()
-
-    while ns.is_alive() is False:
-        logger.log('testing', f'Waiting for nameserver to start...')
-        time.sleep(1)
+    # pyro_nameserver can either give back a Process or a nameserver
+    # If a Process, start it.
+    with suppress(AttributeError):
+        ns.start()
+        while ns.is_alive() is False:
+            logger.log('testing', f'Waiting for nameserver to start...')
+            time.sleep(1)
 
     yield ns
 
-    ns.kill()
+    with suppress(AttributeError):
+        ns.kill()
 
 
 @pytest.fixture

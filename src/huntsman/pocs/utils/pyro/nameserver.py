@@ -4,10 +4,9 @@ from multiprocessing.context import Process
 import Pyro5.errors
 from Pyro5.core import locate_ns
 from Pyro5.nameserver import start_ns_loop
-from panoptes.utils.config.client import get_config
-
-from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils import error
+from huntsman.pocs.utils.logger import logger
+from panoptes.utils.config.client import get_config
 
 
 def get_running_nameserver(host=None, port=None, broadcast=True):
@@ -64,7 +63,7 @@ def pyro_nameserver(host=None,
         logger.info('Checking for existing nameserver')
         nameserver = get_running_nameserver(host=host, port=port)
         logger.info(f"Pyro {nameserver=} already running.")
-        return
+        return nameserver
 
     Pyro5.config.NS_AUTOCLEAN = float(auto_clean)
 
