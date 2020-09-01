@@ -51,12 +51,16 @@ mount:
     driver: bisque
     model: 45
     template_dir: resources/bisque
-filterwheel:
-  flat_field_order:
-    - one
-    - deux
-    - drei
-    - quattro
+observatory:
+  flat_fields:
+    flat_field_order:
+      - one
+      - deux
+      - drei
+      - quattro
+    max_num_exposures: 5
+    max_attempts: 10
+    max_exptime: 120
 pointing:
     exptime: 30
     max_iterations: 3
