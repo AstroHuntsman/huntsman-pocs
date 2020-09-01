@@ -618,6 +618,7 @@ class HuntsmanObservatory(Observatory):
 
             # Take the flat field observations (blocking)
             current_exptimes = {c: exptimes[c][-1] for c in cameras.keys() if not finished[c]}
+            # Only cameras with successful exposures are kept in camera_events
             camera_events = self._take_flat_observation(current_exptimes, observation,
                                                         fits_headers=fits_headers)
 
@@ -697,16 +698,18 @@ class HuntsmanObservatory(Observatory):
             # Check if all the exposures in this loop are too bright
             if self.past_midnight:
                 if all_too_faint:
-                    self.logger.debug('All flat-field exposures are too faint. Waiting 30 seconds...')
+                    self.logger.debug('All flat-field exposures are too faint. '
+                                      'Waiting 30 seconds...')
                     time.sleep(30)
             else:
                 if all_too_bright:
-                    self.logger.debug('All flat-field exposures are too bright. Waiting 30 seconds...')
+                    self.logger.debug('All flat-field exposures are too bright. '
+                                      'Waiting 30 seconds...')
                     time.sleep(30)
 
             if attempt_number == max_attempts-1:
                 self.logger.debug('Max attempts have been reached for flat-fielding '
-                                  f'in {filter_name} filter. Aborting.')
+                                  f'in {observation.filter_name} filter. Aborting.')
 
         # Return the exposure times
         return exptimes
@@ -786,6 +789,9 @@ class HuntsmanObservatory(Observatory):
         if not wait_for_events(camera_events, timeout=timeout, sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
+        # Remove camera_events that timed out, removing them from the remaining flat-fielding
+        camera_events = {cam_name: event for cam_name, event in camera_events.items(
+                         ) if event.is_set()}
         return camera_events
 
     def _take_flat_field_darks(self, exptimes, observation, safety_func):
