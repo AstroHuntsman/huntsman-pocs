@@ -37,6 +37,9 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     usermod -l "${panuser}" panoptes && \
     usermod -d "/home/${panuser}" -m "${panuser}" && \
     groupmod -n "${panuser}" panoptes && \
+    echo "Linking the old panoptes dir to new home." && \
+    ln -s "/home/${panuser}" "/home/panoptes" && \
+    ls -l /home/ && \
     # Setup SSH so localhost works without password
     mkdir /home/${panuser}/.ssh && \
     ssh-keygen -b 2048 -t rsa -f /home/${panuser}/.ssh/id_rsa -N '' && \
@@ -53,7 +56,8 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     ln -s "${huntsman_dir}/logs" "${pan_dir}/logs" && \
     # Make sure PANUSER has permissions to Huntsman dir.
     mkdir -p "${HUNTSMAN_POCS}" && \
-    chown -R "${panuser}" "${huntsman_dir}"
+    chown -R "${panuser}" "${huntsman_dir}" && \
+    chown -R "${panuser}" "/home/panoptes"
 
 # Install the module.
 USER ${PANUSER}

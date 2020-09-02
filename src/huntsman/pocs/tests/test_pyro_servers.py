@@ -1,6 +1,5 @@
+import Pyro5.server
 import astropy.units as u
-import Pyro4
-
 from panoptes.utils import error
 
 
@@ -8,7 +7,7 @@ class NewError(Exception):
     pass
 
 
-@Pyro4.expose
+@Pyro5.server.expose
 class TestService(object):
 
     def quantity_argument(self, q):

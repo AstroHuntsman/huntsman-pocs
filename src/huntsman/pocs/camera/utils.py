@@ -1,12 +1,12 @@
 from collections import OrderedDict
 
 from huntsman.pocs.camera.pyro.client import Camera
-from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
-from panoptes.utils import error
-from panoptes.pocs.camera import create_cameras_from_config as create_local_cameras
-from panoptes.utils.config.client import get_config
-from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils import error
+from huntsman.pocs.utils.config import get_config
+from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
+from panoptes.pocs.camera import create_cameras_from_config as create_local_cameras
+from panoptes.utils import error
 
 
 # TODO This file seems ill-named or in the wrong place.

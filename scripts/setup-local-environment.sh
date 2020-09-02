@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-TAG="${1:-latest}"
-POCS_TAG="${1:-latest}"
+TAG="${1:-develop}"
+POCS_TAG="${1:-develop}"
 
 INCLUDE_CAMERA=${INCLUDE_UTILS:-false}
 INCLUDE_DEVELOPER=${INCLUDE_DEVELOPER:-false}

@@ -5,8 +5,8 @@ import Pyro5.errors
 from Pyro5.core import locate_ns
 from Pyro5.nameserver import start_ns_loop
 from huntsman.pocs.utils import error
+from huntsman.pocs.utils.config import get_config
 from huntsman.pocs.utils.logger import logger
-from panoptes.utils.config.client import get_config
 
 
 def get_running_nameserver(host=None, port=None, broadcast=True):
@@ -18,7 +18,7 @@ def get_running_nameserver(host=None, port=None, broadcast=True):
     """
 
     host = host or get_config('pyro.nameserver.ip')
-    port = port or get_config('pyro.nameserver.port')
+    port = int(port or get_config('pyro.nameserver.port', default=0))
 
     logger.info(f'Looking for nameserver on {host}:{port}')
     name_server = locate_ns(host=host, port=port, broadcast=broadcast)
@@ -57,10 +57,10 @@ def pyro_nameserver(host=None,
     """
     logger.info(f'Pyro nameserver start request: {host=} {port=} {auto_clean=} {auto_start=}')
     host = host or get_config('pyro.nameserver.ip')
-    port = port or get_config('pyro.nameserver.port')
+    port = int(port or get_config('pyro.nameserver.port', default=0))
 
     with suppress(error.PyroNameServerNotFound, Pyro5.errors.NamingError):
-        logger.info('Checking for existing nameserver')
+        logger.info(f'Checking for existing nameserver on {host}:{port}')
         nameserver = get_running_nameserver(host=host, port=port)
         logger.info(f"Pyro {nameserver=} already running.")
         return nameserver
@@ -74,7 +74,8 @@ def pyro_nameserver(host=None,
         except KeyboardInterrupt:  # noqa
             logger.info(f'Pyro nameserver requested shutdown by user.')
         except Exception as e:  # noqa
-            logger.error(f'Problem starting Pyro nameserver, is another nameserver already running?')
+            logger.warning(f'Problem starting Pyro nameserver, is another nameserver already running?')
+            logger.error(f'Error: {e!r}')
         finally:
             logger.info(f'Pyro nameserver shutting down.')
 

@@ -3,17 +3,12 @@ import os
 import shutil
 import stat
 import tempfile
-import time
 from contextlib import suppress
 
 import pytest
 from huntsman.pocs.utils.logger import logger
-from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
 from huntsman.pocs.utils.pyro.service import pyro_service
 from panoptes.pocs import hardware
-from panoptes.utils.config.client import get_config
-from panoptes.utils.config.client import set_config
-from panoptes.utils.config.server import config_server as pocs_config_server
 from panoptes.utils.database import PanDB
 
 _all_databases = ['file', 'memory']
@@ -176,50 +171,6 @@ def config_path(base_dir):
     return os.path.expandvars(f'{base_dir}/tests/testing.yaml')
 
 
-@pytest.fixture(scope='session', autouse=True)
-def static_config_server(config_path, images_dir, db_name):
-    logger.log('testing', f'Starting static_config_server for testing session')
-
-    proc = pocs_config_server(
-        config_path,
-        ignore_local=True,
-        auto_save=False
-    )
-
-    logger.log('testing', f'static_config_server started with {proc.pid=}')
-
-    # Give server time to start
-    while get_config('name') is None:  # pragma: no cover
-        logger.log('testing', f'Waiting for static_config_server {proc.pid=}, sleeping 1 second.')
-        time.sleep(1)
-
-    set_config('directories.images', images_dir)
-
-    logger.log('testing', f'Startup config_server name=[{get_config("name")}]')
-    yield
-    logger.log('testing', f'Killing static_config_server started with PID={proc.pid}')
-    proc.terminate()
-
-
-@pytest.fixture(scope='session', autouse=True)
-def pyro_test_nameserver():
-    # Start the Pyro nameserver after the config-server.
-    ns = pyro_nameserver()
-
-    # pyro_nameserver can either give back a Process or a nameserver
-    # If a Process, start it.
-    with suppress(AttributeError):
-        ns.start()
-        while ns.is_alive() is False:
-            logger.log('testing', f'Waiting for nameserver to start...')
-            time.sleep(1)
-
-    yield ns
-
-    with suppress(AttributeError):
-        ns.kill()
-
-
 @pytest.fixture
 def temp_file(tmp_path):
     d = tmp_path
@@ -319,6 +270,16 @@ def caplog(_caplog):
         logger.remove(handler_id)
 
 
+@pytest.fixture(scope='session')
+def pocs_config_port():
+    return 9999
+
+
+@pytest.fixture(scope='session')
+def pyro_namserver_port():
+    return 9998
+
+
 @pytest.fixture(scope='module')
 def camera_service_name():
     return 'TestCam00'
@@ -334,8 +295,6 @@ def pyro_camera_service(camera_service_name):
 
         service_proc = pyro_service(service_class=service_class,
                                     service_name=camera_service_name,
-                                    host='localhost',
-                                    port=0,
                                     auto_start=False)
         logger.info(f'Starting TestPyro service {camera_service_name}')
         service_proc.start()

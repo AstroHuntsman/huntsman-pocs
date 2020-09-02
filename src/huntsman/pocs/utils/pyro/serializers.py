@@ -4,17 +4,11 @@ This needs to be done for the server and the client. Currently custom serializer
 included for astropy Quantities and the custom exceptions from POCS (pocs.utils.error).
 """
 import re
-import sys
 
-import Pyro4
-from Pyro4.util import SerializerBase
+from Pyro5.api import register_class_to_dict, register_dict_to_class
 from astropy import units as u
 from astropy.io.misc import yaml as ayaml
-
 from panoptes.utils import error
-
-# Enable local display of remote tracebacks
-sys.excepthook = Pyro4.util.excepthook
 
 # serializers/deserializers
 error_pattern = re.compile(r"error\.(\w+)'>$")
@@ -67,12 +61,12 @@ def dict_to_value_error(class_name, d):
     return ValueError(*d["args"])
 
 
-SerializerBase.register_class_to_dict(u.Quantity, astropy_to_dict)
-SerializerBase.register_dict_to_class("astropy_yaml", dict_to_astropy)
+register_class_to_dict(u.Quantity, astropy_to_dict)
+register_dict_to_class("astropy_yaml", dict_to_astropy)
 
-SerializerBase.register_class_to_dict(error.PanError, panerror_to_dict)
-SerializerBase.register_dict_to_class("PanError", dict_to_panerror)
+register_class_to_dict(error.PanError, panerror_to_dict)
+register_dict_to_class("PanError", dict_to_panerror)
 
 # These two are only here as a temporary workaround for some typos in POCS
-SerializerBase.register_class_to_dict(ValueError, value_error_to_dict)
-SerializerBase.register_dict_to_class("ValueError", dict_to_value_error)
+register_class_to_dict(ValueError, value_error_to_dict)
+register_dict_to_class("ValueError", dict_to_value_error)

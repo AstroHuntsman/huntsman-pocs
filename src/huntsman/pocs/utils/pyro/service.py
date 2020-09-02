@@ -2,9 +2,9 @@ from multiprocessing import Process
 
 import Pyro5.errors
 from Pyro5.api import Daemon as PyroDaemon
+from huntsman.pocs.utils.config import get_config
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
-from panoptes.utils.config.client import get_config
 from panoptes.utils.config.client import set_config
 from panoptes.utils.library import load_module
 

@@ -13,7 +13,7 @@ services:
     restart: on-failure
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
+    command: [ "panoptes-config-server run --no-save --port 9999 /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
   pyro-name-server:
     image: huntsman-pocs:develop
     init: true
@@ -22,7 +22,6 @@ services:
     hostname: pyro-name-server
     privileged: true
     network_mode: host
-    restart: on-failure
     depends_on:
       - "pocs-config-server"
     environment:
@@ -30,16 +29,17 @@ services:
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
       NS_HOST: 0.0.0.0
-      NS_PORT: 6564
+      NS_PORT: 9998
+      POCS_CONFIG_PORT: 9999
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 30" ]
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:9999 -- huntsman-pyro nameserver --port 9998 --auto-clean 30" ]
   huntsman-pocs-testing:
     image: huntsman-pocs:develop
     init: true
     tty: true
-    container_name: pyro-name-server
-    hostname: pyro-name-server
+    container_name: pocs-testing
+    hostname: pocs-testing
     privileged: true
     network_mode: host
     restart: on-failure
@@ -50,10 +50,11 @@ services:
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
       NS_HOST: 0.0.0.0
-      NS_PORT: 6564
+      NS_PORT: 9998
+      POCS_CONFIG_PORT: 9999
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "pytest -xv --show-capture=no" ]
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:9999 -- scripts/testing/run-tests.sh" ]
 volumes:
   pandir:
     driver: local
