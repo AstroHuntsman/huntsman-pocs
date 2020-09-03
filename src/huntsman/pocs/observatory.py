@@ -787,7 +787,8 @@ class HuntsmanObservatory(Observatory):
         # Block until done exposing on all cameras
         timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
         self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout, sleep_delay=1):
+        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout,
+                               sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding
