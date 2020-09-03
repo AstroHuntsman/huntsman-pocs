@@ -15,6 +15,8 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs import utils
 
+from panoptes.utils.time import wait_for_events
+
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
@@ -265,13 +267,17 @@ class HuntsmanObservatory(Observatory):
         if safety_func is None:
             safety_func = partial(self.is_dark, horizon='flat')
 
+        # Load the flat fielding config
+        flat_field_config = self.config["flat_fields"]
+        flat_field_config.update(kwargs)
+
         if camera_names is None:
             cameras_all = self.cameras
         else:
             cameras_all = {c: self.cameras[c] for c in camera_names}
 
         # Obtain the filter order
-        filter_order = self.config['filterwheel']['flat_field_order'].copy()
+        filter_order = flat_field_config['flat_field_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
@@ -301,7 +307,8 @@ class HuntsmanObservatory(Observatory):
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
-            exptimes = self._take_autoflats(filter_cameras, obs, safety_func=safety_func, **kwargs)
+            exptimes = self._take_autoflats(filter_cameras, obs, safety_func=safety_func,
+                                            **flat_field_config)
 
             # Log the new exposure times we need to take darks with
             for cam_name in filter_cameras.keys():
@@ -311,7 +318,7 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Taking flat field dark frames.')
         obs = self._create_flat_field_observation(alt=alt, az=az)
         for exptime in exptimes_dark:
-            self._take_flat_field_darks(exptimes_dark, obs, safety_func)
+            self._take_flat_field_darks(exptimes_dark, obs, safety_func, **flat_field_config)
 
         self.logger.info('Finished flat-fielding.')
 
@@ -563,10 +570,9 @@ class HuntsmanObservatory(Observatory):
 
         return dark_obs
 
-    def _take_autoflats(self, cameras, observation, safety_func,
-                        tolerance=0.05, target_scaling=0.17, bias=32,
-                        min_exptime=1*u.second, max_exptime=60*u.second,
-                        max_num_exposures=10, max_attempts=20, *args, **kwargs):
+    def _take_autoflats(self, cameras, observation, safety_func, tolerance=0.05,
+                        target_scaling=0.17, bias=32, min_exptime=1*u.second,
+                        max_exptime=60*u.second, max_num_exposures=10, max_attempts=20, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
         Args:
@@ -612,8 +618,9 @@ class HuntsmanObservatory(Observatory):
 
             # Take the flat field observations (blocking)
             current_exptimes = {c: exptimes[c][-1] for c in cameras.keys() if not finished[c]}
+            # Only cameras with successful exposures are kept in camera_events
             camera_events = self._take_flat_observation(current_exptimes, observation,
-                                                        fits_headers=fits_headers)
+                                                        fits_headers=fits_headers, **kwargs)
 
             # Check whether each camera has finished
             all_too_bright = True
@@ -691,16 +698,18 @@ class HuntsmanObservatory(Observatory):
             # Check if all the exposures in this loop are too bright
             if self.past_midnight:
                 if all_too_faint:
-                    self.logger.debug('All flat-field exposures are too faint. Waiting 30 seconds...')
+                    self.logger.debug('All flat-field exposures are too faint. '
+                                      'Waiting 30 seconds...')
                     time.sleep(30)
             else:
                 if all_too_bright:
-                    self.logger.debug('All flat-field exposures are too bright. Waiting 30 seconds...')
+                    self.logger.debug('All flat-field exposures are too bright. '
+                                      'Waiting 30 seconds...')
                     time.sleep(30)
 
             if attempt_number == max_attempts-1:
                 self.logger.debug('Max attempts have been reached for flat-fielding '
-                                  f'in {filter_name} filter. Aborting.')
+                                  f'in {observation.filter_name} filter. Aborting.')
 
         # Return the exposure times
         return exptimes
@@ -739,7 +748,8 @@ class HuntsmanObservatory(Observatory):
             exptime = exptime * sky_factor
         return round(exptime.to_value(u.second)) * u.second
 
-    def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False):
+    def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False,
+                               flat_field_timeout=120, **kwargs):
         """
         Slew to flat field, take exposures and wait for them to complete.
         Returns a list of camera events for each camera.
@@ -775,13 +785,17 @@ class HuntsmanObservatory(Observatory):
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
-        while not all([info['event'].is_set() for info in camera_events.values()]):
-            self.logger.debug('Waiting for flat-field images...')
-            time.sleep(1)
+        timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
+        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
+        if not wait_for_events(camera_events, timeout=timeout, sleep_delay=1):
+            self.logger.error("Timeout while waiting for flat fields.")
 
+        # Remove camera_events that timed out, removing them from the remaining flat-fielding
+        camera_events = {cam_name: event for cam_name, event in camera_events.items(
+                         ) if event.is_set()}
         return camera_events
 
-    def _take_flat_field_darks(self, exptimes, observation, safety_func):
+    def _take_flat_field_darks(self, exptimes, observation, safety_func, **kwargs):
         """Take the dark flat fields for each camera.
 
         args:
@@ -801,7 +815,7 @@ class HuntsmanObservatory(Observatory):
 
             # Take the exposures, break out if safety fails
             if safety_func():
-                self._take_flat_observation(next_exptimes, observation, dark=True)
+                self._take_flat_observation(next_exptimes, observation, dark=True, **kwargs)
             else:
                 self.logger.debug('Aborting flat-field dark observations as no longer safe.')
                 return

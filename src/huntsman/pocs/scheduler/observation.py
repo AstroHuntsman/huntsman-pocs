@@ -91,11 +91,16 @@ class DitheredFlatObservation(DitheredObservation):
                  *args, **kwargs):
         """
         Args:
-            position (str): Center of field, can be anything accepted by
-                `~astropy.coordinates.SkyCoord`.
+            position (str or astropy.coordinates.SkyCoord): Center of field, can be 
+                a `astropy.coordinates.SkyCoord` or any valid constructor.
         """
         # Create the observation
-        field = Field('Flat Field', position.to_string('hmsdms'))
+        
+        # Convert from SkyCoord if required.
+        with suppress(AttributeError):
+            position = position.to_string('hmsdms')
+        
+        field = Field('Flat Field', position)
         super().__init__(field=field, *args, **kwargs)
 
         # Listify the exposure time
