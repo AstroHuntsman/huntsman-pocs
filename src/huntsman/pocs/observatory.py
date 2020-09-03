@@ -651,7 +651,7 @@ class HuntsmanObservatory(Observatory):
                     self.logger.debug(f'Counts too low for flat-field'
                                       f' image on {cam_name}: {mean_counts:.0f}<{min_counts:.0f}.')
                     # TODO Need to prevent NGAS push...
-                    os.remove(meta['filename'])
+                    # os.remove(meta['filename'])
                 else:
                     n_good_exposures[cam_name] += 1
                 self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
@@ -787,12 +787,12 @@ class HuntsmanObservatory(Observatory):
         # Block until done exposing on all cameras
         timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
         self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        if not wait_for_events(camera_events, timeout=timeout, sleep_delay=1):
+        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout, sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding
-        camera_events = {cam_name: event for cam_name, event in camera_events.items(
-                         ) if event.is_set()}
+        camera_events = {cam_name: value for cam_name, value in camera_events.items(
+                         ) if value["event"].is_set()}
         return camera_events
 
     def _take_flat_field_darks(self, exptimes, observation, safety_func, **kwargs):
