@@ -1,7 +1,7 @@
 import os
 import netifaces
-from pocs.utils import listify
-from pocs.utils.config import load_config as config_loader
+from panoptes.utils import listify
+from panoptes.utils.config.helpers import load_config as config_loader
 
 
 def load_config(config_files=None, **kwargs):
