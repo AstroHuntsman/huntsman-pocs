@@ -4,7 +4,7 @@ import os
 import subprocess
 import time
 
-from huntsman.pocs.utils import load_config
+from panoptes.utils.config.helpers import load_config
 
 # subprocess.call(cmd, shell=True)
 
