@@ -5,7 +5,6 @@ from panoptes.utils import wait_for_events
 def take_pics(field,
               observation,
               cameras,
-              filter_name,
               base_date=None,
               num_exposures=1,
               base_dir='/var/huntsman/images/temp'
@@ -25,13 +24,19 @@ def take_pics(field,
         for cam_name, camera in cameras.items():
             new_filename = f'{base_dir}/{base_date}/{camera.uid}/{timestamp}.fits'
 
-            camera.filterwheel.move_to(f'{filter_name}')
             exposure_events.append(camera.take_observation(observation, filename=new_filename, headers={}))
             print(f"Exposure {new_filename} started.")
 
         print(f"Waiting for exposures {i:03d}/{num_exposures:03d}")
         wait_for_events(exposure_events)
 
+
+def move_all_cameras_to_filter(cameras, filter_name):
+    filter_events = []
+    for cam_name, camera in cameras.items():
+        filter_events.append(camera.filterwheel.move_to(filter_name))
+        print(f"Waiting for cameras to move to filter {filter_name}")
+        wait_for_events(filter_events)
 
 if __name__ == '__main__':
 
@@ -42,6 +47,8 @@ if __name__ == '__main__':
     test_observation = Observation(field=test_field, exptime=test_exptime, min_nexp=1,
                                exp_set_size=1, priority=100, filter_name=filter_name)
 
+    move_all_cameras_to_filter(cameras=create_cameras_from_config(),
+                              filter_name=filter_name)
 
     take_pics(field=test_field,
               observation=test_observation,
