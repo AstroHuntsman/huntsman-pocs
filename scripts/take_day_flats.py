@@ -35,16 +35,18 @@ def take_pics(field,
 
 if __name__ == '__main__':
 
+    filter_name = 'halpha'
     test_exptime = 0.07 * u.second
     test_coordinates = SkyCoord('00h00m00s', '+00d00m00s', frame='icrs')
     test_field = Field(name='day_flats', position=test_coordinates)
     test_observation = Observation(field=test_field, exptime=test_exptime, min_nexp=1,
-                               exp_set_size=1, priority=100, filter_name='halpha')
+                               exp_set_size=1, priority=100, filter_name=filter_name)
 
 
     take_pics(field=test_field,
               observation=test_observation,
               cameras=create_cameras_from_config(), # or single camera if needed
+              filter_name=filter_name,
               base_date=None,
               exptime=test_exptime,
               num_exposures=1,
