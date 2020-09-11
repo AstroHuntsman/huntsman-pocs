@@ -36,8 +36,8 @@ def move_all_cameras_to_filter(cameras, filter_name):
     filter_events = []
     for cam_name, camera in cameras.items():
         filter_events.append(camera.filterwheel.move_to(filter_name))
-        print(f"Waiting for cameras to move to filter {filter_name}")
-        wait_for_events(filter_events)
+    print(f"Waiting for cameras to move to filter {filter_name}")
+    wait_for_events(filter_events)
 
 if __name__ == '__main__':
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
                                exp_set_size=1, priority=100, filter_name=filter_name)
 
     move_all_cameras_to_filter(cameras=create_cameras_from_config(),
-                              filter_name=filter_name)
+                               filter_name=filter_name)
 
     take_pics(field=test_field,
               observation=test_observation,
