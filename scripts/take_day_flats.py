@@ -46,4 +46,4 @@ if __name__ == '__main__':
               base_date=None,
               exptime=test_exptime,
               num_exposures=1,
-              base_dir='/var/huntsman/images/temp/')
+              base_dir='/var/huntsman/images/temp/dayflats/')
