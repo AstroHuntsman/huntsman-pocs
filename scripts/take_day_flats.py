@@ -32,6 +32,7 @@ def take_pics(field,
 
 
 def move_all_cameras_to_filter(cameras, filter_name):
+    """Move all cameras to the same filter"""
     filter_events = []
     for cam_name, camera in cameras.items():
         filter_events.append(camera.filterwheel.move_to(filter_name))
