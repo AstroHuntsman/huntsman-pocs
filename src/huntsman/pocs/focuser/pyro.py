@@ -122,6 +122,19 @@ class Focuser(AbstractFocuser):
     def autofocus_mask_dilations(self, dilations):
         self._proxy.set("autofocus_mask_dilations", dilations, "focuser")
 
+    @property
+    def autofocus_make_plots(self):
+        return self._proxy.get("autofocus_make_plots", "focuser")
+
+    @autofocus_make_plots.setter
+    def autofocus_make_plots(self, make_plots):
+        self._proxy.set("autofocus_make_plots", make_plots, "focuser")
+
+    @property
+    def autofocus_error(self):
+        """ Error message from the most recent autofocus or None, if there was no error."""
+        return self._proxy.get("autofocus_error", "focuser")
+
 ##################################################################################################
 # Methods
 ##################################################################################################
