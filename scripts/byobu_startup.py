@@ -13,7 +13,7 @@ WINDOWS = ["main-control",
            "camera-servers",
            "camera-logs",
            "dome-control",
-           "data managment"]
+           "data-managment"]
 
 POCS_STARTUP = ["from pocs.mount import create_mount_from_config",
                 "from pocs.scheduler import create_scheduler_from_config",
