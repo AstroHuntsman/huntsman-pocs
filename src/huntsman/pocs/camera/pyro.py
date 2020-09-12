@@ -229,6 +229,10 @@ class Camera(AbstractCamera):
                                   *args,
                                   **kwargs)
 
+        # Only want this timeout to trigger if the remote camera has completely died
+        # or lost network connection and is definitely never going to set the Event.
+        # Should use a fairly generous value for `self._timeout` (default from base
+        # class is 10 seconds).
         max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
         self._run_timeout("exposure", blocking, max_wait)
 
@@ -280,16 +284,27 @@ class Camera(AbstractCamera):
 
         self.logger.debug(f'Starting autofocus on {self}.')
 
-        # Remote method call to start the exposure
+        # Predict how long this might take.
+        seconds = kwargs.get("seconds", self.focuser.autofocus_seconds)
+        focus_step = kwargs.get("focus_step", self.focuser.autofocus_step)
+        focus_range = kwargs.get("focus_range", self.focuser.autofocus_range)
+        take_dark = kwargs.get("take_dark", self.focuser.autofocus_take_dark)
+        if kwargs.get("coarse"):
+            max_exposures = 2 + focus_range[1] / focus_step[1]
+        else:
+            max_exposures = 2 + focus_range[0] / focus_step[0]
+        if take_dark:
+            max_exposures += 1
+        # self._timeout needs to include enough leeway for focuser movement & data processing
+        max_time_per_exposure = seconds + self.readout_time + self._timeout
+        max_wait = max_exposures * max_time_per_exposure
+
+        # Remote method call to start the autofocus sequence
         self._proxy.autofocus(*args, **kwargs)
 
         # Proxy for remote _autofocus_event
         self._autofocus_event = RemoteEvent(self._proxy, event_type="focuser")
 
-        # In general it's very complicated to work out how long an autofocus should take
-        # because parameters can be set here or come from remote config. For now just make
-        # it 5 minutes.
-        max_wait = 300
         self._run_timeout("autofocus", blocking, max_wait)
 
         return self._autofocus_event
