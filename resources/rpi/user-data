@@ -1,16 +1,14 @@
 #cloud-config
 # https://cloudinit.readthedocs.io/
 
-# Set the first part of the name to your unit.
-hostname: huntsman-control
+# Set the first part of the name to camera device.
+hostname: huntsmanpi000
 
 # If you have set up ssh on github you can pull down your
 # key automatically so that you can log into the unit without
 # a password. Change 'CHANGEME' to your username below.
-#ssh_import_id:
-#- gh:CHANGEME
-
-####### NO PANOPTES CHANGES BELOW #######
+ssh_import_id:
+  - gh:huntsmanscope
 
 chpasswd:
   expire: true
@@ -51,6 +49,7 @@ ntp:
 packages:
   - htop
   - zsh
+  - speedometer
 
 ## Get and run the install script upon first boot.
 runcmd:
