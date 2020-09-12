@@ -1,0 +1,76 @@
+#cloud-config
+# https://cloudinit.readthedocs.io/
+
+# Set the first part of the name to your unit.
+hostname: huntsman-control
+
+# If you have set up ssh on github you can pull down your
+# key automatically so that you can log into the unit without
+# a password. Change 'CHANGEME' to your username below.
+#ssh_import_id:
+#- gh:CHANGEME
+
+####### NO PANOPTES CHANGES BELOW #######
+
+chpasswd:
+  expire: true
+  list:
+    - huntsman:huntsman
+
+ssh_pwauth: true
+
+groups:
+  - huntsman
+  - panoptes
+  - docker
+
+users:
+  - name: huntsman
+    gecos: Hunstman User
+    primary_group: huntsman
+    groups: users, admin, dialout, plugdev, docker, i2c, input, gpio, panoptes
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    shell: /bin/zsh
+
+## Update apt database and upgrade packages on first boot
+package_update: true
+package_upgrade: true
+
+byobu: enable
+
+ntp:
+  enabled: true
+  servers:
+    - 150.203.153.0/24
+    - time1.google.com
+    - time2.google.com
+    - time3.google.com
+    - time4.google.com
+
+## Install additional packages on first boot
+packages:
+  - htop
+  - zsh
+
+## Get and run the install script upon first boot.
+runcmd:
+  # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
+  - [ sh, -c, "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" ]
+
+#phone_home:
+#  url: "https://us-central1-huntsman-exp.cloudfunctions.net/record-pocs-install"
+#  post:
+#    - pub_key_rsa
+#    - instance_id
+#    - fqdn
+#  tries: 3
+
+power_state:
+  delay: '+2'
+  timeout: 30
+  mode: reboot
+  message: "It's alive!!!"
+
+final_message: "Welcome to Huntsman POCS!"
+
