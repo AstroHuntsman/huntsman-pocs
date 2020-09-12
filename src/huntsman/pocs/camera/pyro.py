@@ -122,6 +122,22 @@ class Camera(AbstractCamera):
         '''
         return self._proxy.get("is_ready")
 
+    @property
+    def can_take_internal_darks(self):
+        """ True if the camera can take internal dark exposures.
+        This will be true of cameras that have an internal mechanical shutter and can
+        be commanded to keep that shutter closed during the exposure. For cameras that
+        either lack a mechanical shutter or lack the option to keep it closed light must
+        be kept out of the camera during dark exposures by other means, e.g. an opaque
+        blank in a filterwheel, a lens cap, etc.
+        """
+        return self._proxy.get("can_take_internal_darks")
+
+    @property
+    def exposure_error(self):
+        """ Error message from the most recent exposure or None, if there was no error."""
+        return self._proxy.get("exposure_error")
+
 # Methods
 
     def connect(self):
