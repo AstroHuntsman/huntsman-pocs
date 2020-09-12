@@ -42,7 +42,6 @@ byobu: enable
 ntp:
   enabled: true
   servers:
-    - 150.203.153.0/24
     - time1.google.com
     - time2.google.com
     - time3.google.com
