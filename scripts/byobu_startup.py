@@ -30,6 +30,7 @@ POCS_STARTUP = ["from pocs.mount import create_mount_from_config",
                 "mount=mount, scheduler=scheduler, with_autoguider=True,"
                 " take_flats=True",
                 "pocs = POCS(observatory, simulator=['power','weather']",
+                # Uncomment the following lines for automatic running
                 "#pocs.initialize()",
                 "#pocs.run()"]
 
