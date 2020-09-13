@@ -13,7 +13,6 @@ ARG pocs_dir="${pan_dir}/POCS"
 ARG conda_env_name="panoptes"
 
 ARG pip_extras="[testing]"
-ARG huntsman_pass='$6$8JMUNEMnyGyHfKI5$aYUBMwEwJj7sQcR00TQLmNt6GhyvfmbQBvb5jVgGFZZ/KBhMaNlgt4AqQkNBhKTUdAFvHZSvrIWVPHSYidxux0'
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
