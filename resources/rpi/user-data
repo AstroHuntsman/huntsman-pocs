@@ -32,6 +32,8 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     lock_passwd: false
     shell: /bin/zsh
+    ssh_authorized_keys:
+      - <CONTROL COMPUTER SSH PUB KEY>
 
 ## Update apt database and upgrade packages on first boot
 package_update: true
@@ -42,6 +44,7 @@ byobu: enable
 ntp:
   enabled: true
   servers:
+    # - SSO NTP server
     - time1.google.com
     - time2.google.com
     - time3.google.com
