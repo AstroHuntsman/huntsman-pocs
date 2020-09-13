@@ -10,9 +10,11 @@ hostname: huntsmanpi000
 ssh_import_id:
   - gh:huntsmanscope
 
+# Setting "expire: true" will force a password change on first login.
 chpasswd:
   expire: true
   list:
+    # user:password
     - huntsman:huntsman
 
 ssh_pwauth: true
