@@ -47,24 +47,18 @@ ntp:
     - time3.google.com
     - time4.google.com
 
-## Install additional packages on first boot
+## Install additional packages on first boot.
 packages:
   - htop
   - zsh
   - speedometer
+  - ack
+  - vim-nox
 
 ## Get and run the install script upon first boot.
 runcmd:
   # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
   - [ sh, -c, "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" ]
-
-#phone_home:
-#  url: "https://us-central1-huntsman-exp.cloudfunctions.net/record-pocs-install"
-#  post:
-#    - pub_key_rsa
-#    - instance_id
-#    - fqdn
-#  tries: 3
 
 power_state:
   delay: '+2'
