@@ -94,9 +94,11 @@ class DitheredFlatObservation(DitheredObservation):
         """
         # Create the observation
 
-        # Get the string from a coord object.
+        # Convert from SkyCoord if required.
         with suppress(AttributeError):
             position = position.to_string('hmsdms')  # noqa
+
+        field = Field('Flat Field', position)
 
         field = Field('Flat Field', position)
         super().__init__(field=field, *args, **kwargs)
