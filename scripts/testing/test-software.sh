@@ -16,16 +16,23 @@ tail -F ${HUNTSMAN_DIR}/logs/huntsman-testing.log
 Tests will begin in 5 seconds. Press Ctrl-c to cancel.
 EOF
 
-SLEEP_TIME=${1:-5}
+sleep "${SLEEP_TIME:-5}"
 
-sleep "${SLEEP_TIME}"
+mkdir -p logs
 
 HUNTSMAN_DIR="${HUNTSMAN_DIR:-/var/huntsman}"
-HUNTSMAN_POCS="${HUNTSMAN_POCS:-/var/huntsman/huntsman-pocs}"
+HUNTSMAN_POCS="${HUNTSMAN_POCS:-${HUNTSMAN_DIR}/huntsman-pocs}"
 
-docker run --rm -it \
+docker run --rm -i \
   --init \
-  -v "${HUNTSMAN_POCS}":/var/huntsman/huntsman-pocs \
-  -v "${HUNTSMAN_DIR}/logs":/var/huntsman/logs \
+  --network "host" \
+  -e "PANOPTES_CONFIG_FILE=${HUNTSMAN_DIR}/huntsman-pocs/tests/testing.yaml" \
+  -e "PANOPTES_CONFIG_HOST=0.0.0.0" \
+  -e "PANOPTES_CONFIG_PORT=8765" \
+  -v "${PWD}":/var/huntsman/huntsman-pocs \
+  -v "${PWD}/logs":/var/huntsman/logs \
   huntsman-pocs:develop \
-  "/var/huntsman/huntsman-pocs/scripts/testing/run-tests.sh"
+  "${HUNTSMAN_DIR}/huntsman-pocs/scripts/testing/run-tests.sh"
+
+echo "test output dir ${HUNTSMAN_DIR}/logs:"
+ls "${HUNTSMAN_DIR}/logs/huntsman-testing.log"

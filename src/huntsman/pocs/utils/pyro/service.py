@@ -33,9 +33,9 @@ def pyro_service(service_class=None,
             but still return the completed process.
     """
     # Specify address
-    host = host or get_config('control_computer.pyro.ip', default='0.0.0.0')
+    host = host or get_config('pyro.nameserver.ip', default='0.0.0.0')
     # If port is not in config set to 0 so that Pyro will choose a random one.
-    port = port or get_config('control_computer.pyro.port', default=0)
+    port = port or get_config('pyro.nameserver.port', default=0)
 
     service_name = service_name or get_config('name', 'Generic Pyro Server')
 

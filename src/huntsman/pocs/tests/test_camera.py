@@ -3,22 +3,19 @@
 The intent is to apply all the same tests from there to the Camera class(es) in huntsman-pocs.
 This file should be updated to track any changes to the tests in POCS.
 """
-import pytest
-
-import os
-import time
 import glob
+import os
 import shutil
+import time
 
 import astropy.units as u
-from astropy.io import fits
-
+import pytest
 from Pyro5.api import Proxy
-
+from astropy.io import fits
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
-from panoptes.utils.images import fits as fits_utils
 from panoptes.utils import error
+from panoptes.utils.images import fits as fits_utils
 
 
 @pytest.fixture(scope='module')
@@ -48,7 +45,7 @@ def test_camera_detection(camera):
     assert camera
 
 
-def test_init(pyro_camera_service):
+def test_init(camera):
     """
     Test that camera got initialised as expected
     """

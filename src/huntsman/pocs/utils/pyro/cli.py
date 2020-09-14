@@ -7,24 +7,32 @@ from huntsman.pocs.utils.pyro.service import pyro_service
 
 @click.group()
 @click.option('--verbose/--no-verbose', help='Turn on logger for panoptes utils, default False')
-def entry_point(verbose=False):
+@click.option('--host', default=None, help='The config server IP address or host name. '
+                                           'If None, lookup in config-server, else default localhost.')
+@click.option('--port', default=None, help='The config server port. If None, lookup in config-server, else '
+                                           'default 0 for auto-assign.')
+@click.pass_context
+def entry_point(context, host=None, port=None, verbose=False):
+    context.ensure_object(dict)
+    context.obj['host'] = host
+    context.obj['port'] = port
+
     if verbose:
         logger.enable('panoptes')
 
 
 @click.command('nameserver')
-@click.option('--host', default=None, help='The config server IP address or host name. '
-                                           'If None, lookup in config-server, else default localhost.')
-@click.option('--port', default=None, help='The config server port. If None, lookup in config-server, else '
-                                           'default 0 for auto-assign.')
 @click.option('--auto-clean', default=0, help='Interval in seconds to perform automatic object cleanup, '
                                               'default 0 for no auto_cleaning.')
-def nameserver(host=None, port=None, auto_clean=0):
+@click.pass_context
+def nameserver(context, auto_clean=0):
     """Starts the pyro name server.
 
     This function is registered as an entry_point for the module and should be called from
     the command line accordingly.
     """
+    host = context.obj.get('host')
+    port = context.obj.get('port')
 
     try:
         logger.info(f'Creating Pyro nameserver')
@@ -47,16 +55,16 @@ def nameserver(host=None, port=None, auto_clean=0):
               help='The class to register with Pyro. '
                    'This should be the fully qualified namespace for the class, '
                    'e.g. huntsman.pocs.camera.pyro.CameraService.')
-@click.option('--host', default=None, help='The config server IP address or host name. '
-                                           'If None, lookup in config-server, else default localhost.')
-@click.option('--port', default=None, help='The config server port. If None, lookup in config-server, else '
-                                           'default 0 for auto-assign.')
-def service(service_name, service_class=None, host=None, port=None):
+@click.pass_context
+def service(context, service_name, service_class=None, host=None, port=None):
     """Starts a pyro service.
 
     This function is registered as an entry_point for the module and should be called from
     the command line on a remote (to the control computer) device.
     """
+    host = context.obj.get('host')
+    port = context.obj.get('port')
+
     logger.info(f'Starting pyro service {service_name=} for {service_class=}')
 
     try:

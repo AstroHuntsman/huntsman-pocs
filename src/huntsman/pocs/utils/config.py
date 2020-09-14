@@ -8,8 +8,8 @@ def get_config(host=None, port=None, *args, **kwargs):
 
     Note that this should make it's way upstream eventually.
     """
-    host = host or os.getenv('POCS_CONFIG_HOST', 'localhost')
-    port = port or os.getenv('POCS_CONFIG_PORT', 6563)
+    host = host or os.getenv('PANOPTES_CONFIG_HOST', 'localhost')
+    port = port or os.getenv('PANOPTES_CONFIG_PORT', 6563)
     return pocs_get_config(
         host=host,
         port=port,

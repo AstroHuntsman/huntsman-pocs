@@ -1,17 +1,9 @@
 # Named after an African nocturnal insectivore because for mysterious reasons these
 # tests were failing if run towards the end of the test suite.
 
-import pytest
-import Pyro4
-import Pyro4.errors
-from astropy import units as u
-
-from panoptes.utils import error
-
-
-def test_name_server(pyro_test_nameserver):
-    # Check that it's running.
-    assert pyro_test_nameserver.is_alive()
+# def test_name_server(pyro_test_nameserver):
+#     # Check that it's running.
+#     assert pyro_test_nameserver.is_alive()
 
 # def test_quantity_argument(test_proxy):
 #     test_proxy.quantity_argument(550 * u.nm)

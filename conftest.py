@@ -15,11 +15,20 @@ _all_databases = ['file', 'memory']
 
 logger.enable('panoptes')
 logger.level("testing", no=15, icon="🤖", color="<YELLOW><black>")
+log_fmt = "<lvl>{level:.1s}</lvl> " \
+          "<light-blue>{time:MM-DD HH:mm:ss.ss!UTC}</>" \
+          "<blue>({time:HH:mm:ss.ss})</> " \
+          "| <c>{name} {function}:{line}</c> | " \
+          "<lvl>{message}</lvl>\n"
+
+# Put the log file in the tmp dir.
 log_file_path = '/var/huntsman/logs/huntsman-testing.log'
-startup_message = ' STARTING NEW PYTEST RUN '
+startup_message = f' STARTING NEW PYTEST RUN - LOGS: {log_file_path} '
 logger.add(log_file_path,
            enqueue=True,  # multiprocessing
+           format=log_fmt,
            colorize=True,
+           # TODO decide on these options
            backtrace=True,
            diagnose=True,
            catch=True,
@@ -27,6 +36,7 @@ logger.add(log_file_path,
            rotation=lambda msg, _: startup_message in msg,
            level='TRACE')
 logger.log('testing', '*' * 25 + startup_message + '*' * 25)
+
 # Make the log file world readable.
 os.chmod(log_file_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 

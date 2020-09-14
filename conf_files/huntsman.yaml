@@ -93,6 +93,6 @@ flat_field:
 ################################################################################
 pyro:
     nameserver:
-        ip: localhost
+      host: localhost
         port: 0
     devices: []

@@ -32,10 +32,17 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
         ncurses-dev \
         readline-common \
         udev && \
-    # Change username, home directory, and group. We need to keep the uid=1000 but want a different name.
+    # Change username. We need to keep the uid=1000 but want a different name.
     usermod -l "${panuser}" panoptes && \
-    usermod -d "/home/${panuser}" -m "${panuser}" && \
+    # Change group. We need to keep the uid=1000 but want a different name.
     groupmod -n "${panuser}" panoptes && \
+    # Change home directory.
+    usermod -d "/home/${panuser}" -m "${panuser}" && \
+    # Make sure PANUSER has permissions to Huntsman dir.
+    mkdir -p "${HUNTSMAN_DIR}/logs" && \
+    mkdir -p "${HUNTSMAN_POCS}" && \
+    chown -R "${panuser}":"${panuser}" "${PANDIR}" && \
+    chown -R "${panuser}":"${panuser}" "${huntsman_dir}" && \
     echo "Linking the old panoptes dir to new home." && \
     ln -s "/home/${panuser}" "/home/panoptes" && \
     ls -l /home/ && \
@@ -50,13 +57,7 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     chown -R ${panuser}:${panuser} $PANDIR && \
     chown -R ${panuser}:${panuser} /home/${panuser} && \
     echo "export HUNTSMAN_DIR=${huntsman_dir}" >> /home/${panuser}/.zshrc && \
-    echo "export HUNTSMAN_POCS=${huntsman_dir}/huntsman-pocs" >> /home/${panuser}/.zshrc && \
-    # Link the Huntsman directory logs to the panoptes
-    ln -s "${huntsman_dir}/logs" "${pan_dir}/logs" && \
-    # Make sure PANUSER has permissions to Huntsman dir.
-    mkdir -p "${HUNTSMAN_POCS}" && \
-    chown -R "${panuser}" "${huntsman_dir}" && \
-    chown -R "${panuser}" "/home/panoptes"
+    echo "export HUNTSMAN_POCS=${huntsman_dir}/huntsman-pocs" >> /home/${panuser}/.zshrc
 
 # Install the module.
 USER ${PANUSER}
