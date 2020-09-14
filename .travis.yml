@@ -10,7 +10,7 @@ python:
 services:
   - docker
 before_install:
-  - HUNTSMAN_POCS=. INCLUDE_PANOPTES=true scripts/setup-local-environment.sh
+  - HUNTSMAN_POCS=. scripts/setup-local-environment.sh
 install: true
 script:
   - mkdir -p logs && chmod -R 777 logs
