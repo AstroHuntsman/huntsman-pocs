@@ -62,6 +62,10 @@ packages:
 runcmd:
   # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
   - [ sh, -c, "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" ]
+  - [ curl, -fsSL, get.docker.com, -o, get-docker.sh ]
+  - [ sh, get-docker.sh]
+  - [ pip, install, docker-compose ]  
+  - [ docker, pull, huntsmanarray/camera:tenlens ]
 
 power_state:
   delay: '+2'
