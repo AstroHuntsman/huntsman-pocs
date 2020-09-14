@@ -1,8 +1,19 @@
-#==============================================================================
-# Dockerfile for a distributed Huntsman camera.
-#==============================================================================
+ARG image_url=huntsmanarray/huntsman-pocs:develop
+FROM ${image_url} AS huntsman-base
 
-FROM huntsmanarray/arm_device:latest
+ARG arch="armv8"
+
+LABEL description="Image for a remote device running a remote camera."
+LABEL maintainers="developers@huntsman.space"
+LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
 
 # ZWO camera & EFW libraries
-RUN ${HUNTSMAN_POCS}/scripts/install_asi_libs.sh
+COPY ./scripts/install-camera-libs.sh /tmp/install-camera-libs.sh
+RUN /tmp/install-camera-libs.sh && \
+    # Cleanup.
+    apt-get autoremove --purge --yes && \
+    apt-get autoclean --yes && \
+    apt-get --yes clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/huntsman
