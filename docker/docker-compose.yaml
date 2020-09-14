@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.7'
 services:
   pocs-config-server:
     image: huntsman-pocs:develop
@@ -8,12 +8,20 @@ services:
     hostname: pocs-config-server
     privileged: true
     network_mode: host
+    ports:
+      - "${PANOPTES_CONFIG_PORT:-6563}:6563"
     environment:
-      HUNTSMAN_POCS: /var/huntsman
+      PANDIR:
+      POCS:
+      PANLOG:
+      HUNTSMAN_POCS:
+      PANOTPES_CONFIG_FILE:
+      PANOTPES_CONFIG_HOST:
+      PANOTPES_CONFIG_PORT:
     restart: on-failure
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+    command: [ "panoptes-config-server --verbose run" ]
   pyro-name-server:
     image: huntsman-pocs:develop
     init: true
@@ -26,9 +34,13 @@ services:
     depends_on:
       - "pocs-config-server"
     environment:
-      HUNTSMAN_POCS: /var/huntsman
-      PANDIR: /var/panoptes
-      POCS: /var/panoptes/POCS
+      PANDIR:
+      POCS:
+      PANLOG:
+      HUNTSMAN_POCS:
+      PANOTPES_CONFIG_FILE:
+      PANOTPES_CONFIG_HOST:
+      PANOTPES_CONFIG_PORT:
       NS_HOST: 0.0.0.0
       NS_PORT: 6564
     volumes:
@@ -46,9 +58,13 @@ services:
     depends_on:
       - "pyro-name-server"
     environment:
-      HUNTSMAN_POCS: /var/huntsman
-      PANDIR: /var/panoptes
-      POCS: /var/panoptes/POCS
+      PANDIR:
+      POCS:
+      PANLOG:
+      HUNTSMAN_POCS:
+      PANOTPES_CONFIG_FILE:
+      PANOTPES_CONFIG_HOST:
+      PANOTPES_CONFIG_PORT:
       NS_HOST: 0.0.0.0
       NS_PORT: 6564
     volumes:

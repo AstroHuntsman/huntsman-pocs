@@ -4,7 +4,6 @@ services:
     image: huntsmanarray/camera:tenlens
     build:
       context: .
-    user: huntsman
     privileged: true
     network_mode: host
     stdin_open: true
