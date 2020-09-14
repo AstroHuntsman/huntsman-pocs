@@ -1,9 +1,9 @@
 version: '3'
 services:
   camera:
-    image: huntsmanarray/camera:latest
+    image: huntsmanarray/camera:tenlens
     build:
-      context: "${HUNTSMAN_POCS}/docker/camera"
+      context: .
     user: huntsman
     privileged: true
     network_mode: host
@@ -11,4 +11,4 @@ services:
     tty: true
     volumes:
       - "~/.ssh:/home/huntsman/.ssh"
-      - "$PANDIR/logs:/var/huntsman/logs"
+#      - "$PANDIR/logs:/var/huntsman/logs"
