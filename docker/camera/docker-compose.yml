@@ -10,5 +10,4 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - "~/.ssh:/home/huntsman/.ssh"
-#      - "$PANDIR/logs:/var/huntsman/logs"
+      - "${HOME}/.ssh:/home/huntsman/.ssh"

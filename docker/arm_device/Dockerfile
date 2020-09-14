@@ -1,8 +1,3 @@
-#==============================================================================
-# Dockerfile for an ARM Huntsman device.
-#==============================================================================
-
-# This can be replaced with the official POCS docker image in future...
 FROM raspbian/jessie:latest
 
 # Environment variables
