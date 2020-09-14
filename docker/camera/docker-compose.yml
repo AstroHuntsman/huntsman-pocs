@@ -1,9 +1,7 @@
-version: '3'
+version: '3.7'
 services:
   camera:
-    image: huntsmanarray/camera:tenlens
-    build:
-      context: .
+    image: huntsmanarray/camera:${TAG:-develop}
     privileged: true
     network_mode: host
     stdin_open: true
