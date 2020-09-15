@@ -1,7 +1,7 @@
 ntp:
   enabled: true
   servers:
-    # - SSO NTP server
+    - <SSO NTP server>
     - time1.google.com
     - time2.google.com
     - time3.google.com
@@ -10,8 +10,8 @@ ntp:
 #cloud-config
 # https://cloudinit.readthedocs.io/
 
-# Set the first part of the name to camera device.
-hostname: huntsmanpi000
+# Set the first part of the name to camera device, e.g. huntsmanpi000
+hostname: <hostname>
 
 # If you have set up ssh on github you can pull down your
 # key automatically so that you can log into the unit without
@@ -35,20 +35,30 @@ groups:
 
 users:
   - name: huntsman
-    gecos: Hunstman User
+    gecos: Huntsman Camera <camera name>
     primary_group: huntsman
     groups: users, admin, dialout, plugdev, docker, i2c, input, gpio, panoptes
     sudo: ALL=(ALL) NOPASSWD:ALL
     lock_passwd: false
     shell: /bin/zsh
     ssh_authorized_keys:
-      - <CONTROL COMPUTER SSH PUB KEY>
+      - <camera_rsa.pub contents>
 
 ## Update apt database and upgrade packages on first boot
 package_update: true
 package_upgrade: true
 
 byobu: enable
+
+ssh_deletekeys: true  # remove existing
+ssh_keys:
+  rsa_private: |
+    -----BEGIN RSA PRIVATE KEY-----
+    <camera_rsa contents>
+    -----END RSA PRIVATE KEY-----
+  rsa_public: <camera_rsa.pub contents>
+ssh_authorized_keys:
+  - <camera_rsa.pub contents>
 
 ## Install additional packages on first boot.
 packages:
