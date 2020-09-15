@@ -52,7 +52,8 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     echo "export HUNTSMAN_DIR=${huntsman_dir}" >> /home/${panuser}/.zshrc && \
     echo "export HUNTSMAN_POCS=${huntsman_dir}/huntsman-pocs" >> /home/${panuser}/.zshrc && \
     # Grab the wait-for-it script
-    wget -qO - https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh > "/usr/local/bin/wait-for-it.sh"
+    wget -qO - https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh > "/usr/local/bin/wait-for-it.sh" && \
+    chmod a+x "/usr/local/bin/wait-for-it.sh"
 
 # Install the module.
 USER ${PANUSER}
