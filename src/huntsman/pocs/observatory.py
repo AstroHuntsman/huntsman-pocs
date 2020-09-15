@@ -327,6 +327,7 @@ class HuntsmanObservatory(Observatory):
                          sleep=10,
                          camera_names=None,
                          n_darks=10,
+                         imtype='dark',
                          *args, **kwargs
                          ):
         """Take n_darks dark frames for each exposure time specified,
@@ -337,6 +338,7 @@ class HuntsmanObservatory(Observatory):
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
             n_darks (int, optional): Number of darks to be taken per exptime
+            imtype (str, optional): type of image
         """
 
         if camera_names is None:
@@ -378,13 +380,14 @@ class HuntsmanObservatory(Observatory):
                     # Common start time for cameras
                     fits_headers['start_time'] = utils.flatten_time(start_time)
 
+                    # Create filename
+                    path = os.path.join(image_dir,
+                                        'darks',
+                                        camera.uid,
+                                        dark_obs.seq_time,)
+
                     filename = os.path.join(
-                        image_dir,
-                        'darks',
-                        camera.uid,
-                        f'{exptime}',
-                        dark_obs.seq_time,
-                        f'dark_{num:02d}.{camera.file_extension}')
+                        path, f'{imtype}_{dark_obs.current_exp_num:02d}.{camera.file_extension}')
 
                     # Take picture and get event
                     camera_event = camera.take_observation(
