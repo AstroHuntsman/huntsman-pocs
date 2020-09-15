@@ -18,7 +18,7 @@ echo "PANOPTES_CONFIG_PORT=${PANOPTES_CONFIG_PORT}"
 panoptes-config-server --verbose --host "${PANOPTES_CONFIG_HOST}" --port "${PANOPTES_CONFIG_PORT}" run --no-load-local --no-save-local &
 
 echo "Checking to make sure panoptes-config-server is running"
-/var/panoptes/POCS/scripts/wait-for-it.sh --timeout=30 --strict "${PANOPTES_CONFIG_HOST}:${PANOPTES_CONFIG_PORT}" -- echo "Config-server up"
+/usr/local/bin/wait-for-it.sh --timeout=30 --strict "${PANOPTES_CONFIG_HOST}:${PANOPTES_CONFIG_PORT}" -- echo "Config-server up"
 
 PYRO_NS_HOST="$(panoptes-config-server get pyro.nameserver.host)"
 PYRO_NS_PORT="$(panoptes-config-server get pyro.nameserver.port)"
