@@ -62,11 +62,13 @@ ssh_authorized_keys:
 
 ## Install additional packages on first boot.
 packages:
-  - htop
-  - zsh
-  - speedometer
   - ack
+  - htop
+  - httpie
+  - jq
+  - speedometer
   - vim-nox
+  - zsh
 
 ## Get and run the install script upon first boot.
 runcmd:
@@ -74,8 +76,8 @@ runcmd:
   - [ sh, -c, "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" ]
   - [ curl, -fsSL, get.docker.com, -o, get-docker.sh ]
   - [ sh, get-docker.sh]
-  - [ pip, install, docker-compose ]  
-  - [ docker, pull, huntsmanarray/camera:tenlens ]
+  - [ pip, install, docker-compose ]
+  - [ docker, pull, huntsmanarray/huntsman-pocs-camera:develop ]
 
 power_state:
   delay: '+2'
