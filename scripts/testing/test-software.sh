@@ -11,7 +11,7 @@ container, which allows for testing of any local changes.
 
 You can view the output for the tests in a separate terminal:
 
-tail -F ${HUNTSMAN_DIR}/logs/huntsman-testing.log
+tail -F ${PWD}/logs/huntsman-testing.log
 
 Tests will begin in 5 seconds. Press Ctrl-c to cancel.
 EOF
@@ -34,5 +34,5 @@ docker run --rm -i \
   huntsman-pocs:develop \
   "${HUNTSMAN_DIR}/huntsman-pocs/scripts/testing/run-tests.sh"
 
-echo "test output dir ${HUNTSMAN_DIR}/logs:"
-ls "${HUNTSMAN_DIR}/logs/huntsman-testing.log"
+echo "test output dir ${PWD}/logs:"
+ls "${PWD}/logs/huntsman-testing.log"
