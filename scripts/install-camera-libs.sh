@@ -3,13 +3,26 @@
 set -e
 set -u
 
-BUILD_DIR=${1:-./ASIBuild}
+BUILD_DIR="${1:-./ASIBuild}"
 
 # Current lib versions.
 CAM_LIB_VERSION=1.15.0617
 EFW_LIB_VERSION=1.5.0615
+
 # Get the arch -> x86_64 == x86
-ARCH=${ARCH:-$(uname -m | cut -d'_' -f1)}
+ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
+# Change aarch64 to armv8
+ARCH="${ARCH/aarch64/armv8}"
+
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit
+fi
+
+echo "BUILD_DIR: ${BUILD_DIR}"
+echo "CAM_LIB_VERSION: ${CAM_LIB_VERSION}"
+echo "EFW_LIB_VERSION: ${EFW_LIB_VERSION}"
+echo "ARCH=${ARCH}"
 
 # ZWO camera
 function install_zwo() {
