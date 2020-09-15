@@ -62,28 +62,59 @@ ssh_authorized_keys:
 
 ## Install additional packages on first boot.
 packages:
-  - ack
   - htop
-  - httpie
-  - jq
-  - speedometer
-  - vim-nox
   - zsh
+  - speedometer
+  - ack
+  - vim-nox
+
+write_files:
+  # Allow huntsman user to mount via sshfs.
+  - content: |
+      user_allow_other
+    path: /etc/fuse.conf
+    append: true
+  # Default zshrc file.
+  - content: |
+    # If you come from bash you might have to change your $PATH.
+    export PATH=$HOME/bin:/usr/local/bin:$PATH
+
+    # Path to your oh-my-zsh installation.
+    export ZSH="/home/huntsman/.oh-my-zsh"
+
+    ZSH_THEME="agnoster"
+
+    DISABLE_AUTO_UPDATE="true"
+    DISABLE_UPDATE_PROMPT="true"
+    export UPDATE_ZSH_DAYS=60
+
+    plugins=(git sudo bgnotify zsh-autosuggestions dotenv)
+
+    source $ZSH/oh-my-zsh.sh
+
+    # You may need to manually set your language environment
+    export LANG=en_US.UTF-8
+
+    # byobu panes have separate history.
+    unsetopt share_history
+
+  path: /home/huntsman/.zshrc
+  append: true
 
 ## Get and run the install script upon first boot.
 runcmd:
   # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
-  - [ sh, -c, "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" ]
+  - [ sh, -c, $(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O-) ]
   - [ curl, -fsSL, get.docker.com, -o, get-docker.sh ]
-  - [ sh, get-docker.sh]
+  - [ sh, get-docker.sh ]
   - [ pip, install, docker-compose ]
-  - [ docker, pull, huntsmanarray/huntsman-pocs-camera:develop ]
+  - [ docker, pull, huntsmanarray/camera:tenlens ]
+
 
 power_state:
   delay: '+2'
   timeout: 30
   mode: reboot
-  message: "It's alive!!!"
+  message: It's alive!!!
 
-final_message: "Welcome to Huntsman POCS!"
-
+final_message: Welcome to Huntsman POCS!
