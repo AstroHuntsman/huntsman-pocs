@@ -33,9 +33,9 @@ def pyro_service(service_class=None,
             but still return the completed process.
     """
     # Specify address
-    host = host or get_config('pyro.nameserver.ip', default='0.0.0.0')
+    host = host or get_config(f'pyro.{service_name}.ip', default='0.0.0.0')
     # If port is not in config set to 0 so that Pyro will choose a random one.
-    port = port or get_config('pyro.nameserver.port', default=0)
+    port = port or get_config(f'pyro.{service_name}.port', default=0)
 
     service_name = service_name or get_config('name', 'Generic Pyro Server')
 
@@ -43,7 +43,7 @@ def pyro_service(service_class=None,
     Pyro5.config.SERVERTYPE = "multiplex"
 
     try:
-        nameserver = get_running_nameserver(host=host, port=port)
+        nameserver = get_running_nameserver()
     except Exception as e:
         logger.warning(f"Pyro nameserver not running, can't create server. "
                        f"See 'huntsman-pyro nameserver' for details. {e!r}")
