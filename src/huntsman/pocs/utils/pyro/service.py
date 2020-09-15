@@ -53,7 +53,7 @@ def pyro_service(service_class=None,
         # Get the class for the service.
         service_class_ref = load_module(service_class)
 
-        with PyroDaemon(host=host, port=port) as daemon:
+        with PyroDaemon(host=host, port=int(port)) as daemon:
             logger.info(f'Creating pyro daemon service for {service_class=}')
             uri = daemon.register(service_class_ref)
             logger.info(f'Registered {service_class} pyro daemon: {uri}')
