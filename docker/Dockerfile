@@ -39,7 +39,8 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     # Change home directory.
     usermod -d "/home/${panuser}" -m "${panuser}" && \
     # Setup SSH so localhost works without password
-    echo "Host localhost\n\tStrictHostKeyChecking no\n" >> /home/${panuser}/.ssh/config && \
+    mkdir -p "${panuser}/.ssh"
+    echo "Host localhost\n\tStrictHostKeyChecking no\n" >> "/home/${panuser}/.ssh/config" && \
     # Make sure PANUSER has permissions to Huntsman dir.
     mkdir -p "${HUNTSMAN_DIR}/logs" && \
     mkdir -p "${HUNTSMAN_POCS}" && \
