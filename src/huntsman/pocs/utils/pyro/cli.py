@@ -1,5 +1,6 @@
-import click
+import socket
 
+import click
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
 from huntsman.pocs.utils.pyro.service import pyro_service
@@ -51,6 +52,9 @@ def nameserver(context, auto_clean=0):
 
 @click.command('service')
 @click.argument('service-name')
+@click.option('--service-name', default=None,
+              help='The name of the service to register with the nameserver.'
+                   'If the default `None`, then the device hostname will be used.')
 @click.option('--service-class', required=True, default=None,
               help='The class to register with Pyro. '
                    'This should be the fully qualified namespace for the class, '
@@ -64,6 +68,8 @@ def service(context, service_name, service_class=None):
     """
     host = context.obj.get('host')
     port = context.obj.get('port')
+
+    service_name = service_name or socket.gethostname()
 
     logger.info(f'Starting pyro service {service_name=} for {service_class=}')
 

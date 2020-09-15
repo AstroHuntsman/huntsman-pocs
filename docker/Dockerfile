@@ -38,24 +38,16 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
     groupmod -n "${panuser}" panoptes && \
     # Change home directory.
     usermod -d "/home/${panuser}" -m "${panuser}" && \
+    # Setup SSH so localhost works without password
+    echo "Host localhost\n\tStrictHostKeyChecking no\n" >> /home/${panuser}/.ssh/config && \
     # Make sure PANUSER has permissions to Huntsman dir.
     mkdir -p "${HUNTSMAN_DIR}/logs" && \
     mkdir -p "${HUNTSMAN_POCS}" && \
-    chown -R "${panuser}":"${panuser}" "${PANDIR}" && \
+    chown -R "${panuser}":"${panuser}" "${POCS}" && \
     chown -R "${panuser}":"${panuser}" "${huntsman_dir}" && \
     echo "Linking the old panoptes dir to new home." && \
     ln -s "/home/${panuser}" "/home/panoptes" && \
-    ls -l /home/ && \
-    # Setup SSH so localhost works without password
-    mkdir /home/${panuser}/.ssh && \
-    ssh-keygen -b 2048 -t rsa -f /home/${panuser}/.ssh/id_rsa -N '' && \
-    touch /home/${panuser}/.ssh/authorized_keys && \
-    cat /home/${panuser}/.ssh/id_rsa.pub >> /home/${panuser}/.ssh/authorized_keys && \
-    echo "Host localhost\n\tStrictHostKeyChecking no\n" >> /home/${panuser}/.ssh/config && \
-    chown -R ${panuser} /home/${panuser}/.ssh && \
-    # Make sure permissions are correct
-    chown -R ${panuser}:${panuser} $PANDIR && \
-    chown -R ${panuser}:${panuser} /home/${panuser} && \
+    chown -R "${panuser}":"${panuser}" "/home/${panuser}" && \
     echo "export HUNTSMAN_DIR=${huntsman_dir}" >> /home/${panuser}/.zshrc && \
     echo "export HUNTSMAN_POCS=${huntsman_dir}/huntsman-pocs" >> /home/${panuser}/.zshrc
 
