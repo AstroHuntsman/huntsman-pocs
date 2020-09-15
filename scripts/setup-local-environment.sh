@@ -5,7 +5,7 @@ TAG="${1:-develop}"
 
 # Options to control build.
 INCLUDE_PANOPTES="${INCLUDE_PANOPTES:-false}"
-INCLUDE_CAMERA="${INCLUDE_UTILS:-false}"
+INCLUDE_CAMERA="${INCLUDE_CAMERA:-false}"
 
 # Directories to build from.
 POCS="${POCS:-/var/panoptes/POCS}"
@@ -21,7 +21,7 @@ cd "${HUNTSMAN_POCS}"
 # Builds a local image for the PANOPTES items.
 build_panoptes() {
   echo "Building local ${POCS_IMAGE_URL} from ${POCS_IMAGE_URL} in ${HUNTSMAN_POCS}."
-  INCLUDE_BASE=true INCLUDE_UTILS=true "${HUNTSMAN_POCS}/scripts/setup-local-environment.sh"
+  INCLUDE_BASE=true INCLUDE_UTILS=true "${POCS}/scripts/setup-local-environment.sh"
   # Use our local image for build below instead of gcr.io image.
   POCS_IMAGE_URL="panoptes-pocs:${TAG}"
   echo "Setting POCS_IMAGE_URL=${POCS_IMAGE_URL}"
@@ -45,7 +45,7 @@ build_camera() {
   echo "Building local huntsman-pocs-camera:${TAG} from ${HUNTS_POCS_IMAGE_URL} in ${HUNTSMAN_POCS}"
   docker build \
     -t "huntsman-pocs-camera:${TAG}" \
-    --build-arg "image_url=${HUNTS_POCS_IMAGE_URL},arch=x86" \
+    --build-arg "image_url=${HUNTS_POCS_IMAGE_URL}" \
     -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" \
     "${HUNTSMAN_POCS}"
 }
