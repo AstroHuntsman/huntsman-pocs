@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import numpy as np
 from contextlib import suppress
 from functools import partial
 from collections import defaultdict
@@ -356,8 +357,14 @@ class HuntsmanObservatory(Observatory):
         # of cameras times the number of exptimes times n_darks.
         darks_filenames = []
 
+        if not isinstance(exptimes, list):
+            exptimes = [exptimes]
+
+        if not isinstance(n_darks, list):
+            n_darks = np.ones(len(exptimes)) * n_darks
+
         # Loop over cameras.
-        for exptime in exptimes:
+        for exptime, n_darks in zip(exptimes, n_darks):
 
             start_time = utils.current_time()
 
