@@ -364,6 +364,8 @@ class HuntsmanObservatory(Observatory):
             with suppress(AttributeError):
                 exptime = exptime.to_value(u.second)
 
+            dark_obs = self._create_dark_observation(exptime)
+
             # Loop over exposure times for each camera.
             for num in range(n_darks):
 
@@ -375,7 +377,6 @@ class HuntsmanObservatory(Observatory):
                 for camera in cameras_list.values():
 
                     # Create dark observation
-                    dark_obs = self._create_dark_observation(exptime)
                     fits_headers = self.get_standard_headers(observation=dark_obs)
                     # Common start time for cameras
                     fits_headers['start_time'] = utils.flatten_time(start_time)
@@ -387,7 +388,7 @@ class HuntsmanObservatory(Observatory):
                                         dark_obs.seq_time)
 
                     filename = os.path.join(
-                        path, f'{imtype}_{dark_obs.current_exp_num:02d}.{camera.file_extension}')
+                        path, f'{imtype}_{num:02d}.{camera.file_extension}')
 
                     # Take picture and get event
                     camera_event = camera.take_observation(
