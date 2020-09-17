@@ -263,7 +263,7 @@ def test_darks_collection_simulator(pocs, tmpdir):
         pocs.logger.info("I'm starting with dark-field exposures")
         ndarks_per_exp = 2
         darks = pocs.observatory.take_dark_fields(exptimes_list,
-                                                  n_darks=ndarks_per_exp)
+                                                  dark_sequence=ndarks_per_exp)
         expected_number_of_darks = (len(pocs.observatory.cameras.keys())
                                     * ndarks_per_exp * len(exptimes_list))
 
