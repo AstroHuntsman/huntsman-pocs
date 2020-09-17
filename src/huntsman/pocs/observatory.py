@@ -327,18 +327,18 @@ class HuntsmanObservatory(Observatory):
                          exptimes,
                          sleep=10,
                          camera_names=None,
-                         n_darks=10,
+                         dark_sequence=10,
                          imtype='dark',
                          *args, **kwargs
                          ):
-        """Take n_darks dark frames for each exposure time specified,
+        """Take a dark_sequence of dark frames for each exposure time specified,
            for each camera.
 
         Args:
             exptimes (list): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
-            n_darks (int, optional): Number of darks to be taken per exptime
+            dark_sequence (int or list, optional): Number of darks to be taken per exptime
             imtype (str, optional): type of image
         """
 
@@ -351,20 +351,20 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.config['directories']['images']
 
-        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
+        self.logger.debug(f"Going to take {dark_sequence} dark-fields for each of these exposure times {exptimes}")
 
         # List to check that the final number of darks is equal to the number
-        # of cameras times the number of exptimes times n_darks.
+        # of cameras times the number of exptimes times dark_sequence.
         darks_filenames = []
 
         if not isinstance(exptimes, list):
             exptimes = [exptimes]
 
-        if not isinstance(n_darks, list):
-            n_darks = np.ones(len(exptimes)) * n_darks
+        if not isinstance(dark_sequence, list):
+            dark_sequence = np.ones(len(exptimes), dtype=int) * dark_sequence
 
         # Loop over cameras.
-        for exptime, n_darks in zip(exptimes, n_darks):
+        for exptime, num_darks in zip(exptimes, dark_sequence):
 
             start_time = utils.current_time()
 
@@ -374,7 +374,7 @@ class HuntsmanObservatory(Observatory):
             dark_obs = self._create_dark_observation(exptime)
 
             # Loop over exposure times for each camera.
-            for num in range(n_darks):
+            for num in range(num_darks):
 
                 self.logger.debug(f'Darks sequence #{num} of exposure time {exptime}s')
 
