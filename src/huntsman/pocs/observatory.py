@@ -327,18 +327,18 @@ class HuntsmanObservatory(Observatory):
                          exptimes,
                          sleep=10,
                          camera_names=None,
-                         dark_sequence=10,
+                         n_darks=10,
                          imtype='dark',
                          *args, **kwargs
                          ):
-        """Take a dark_sequence of dark frames for each exposure time specified,
+        """Take a n_darks of dark frames for each exposure time specified,
            for each camera.
 
         Args:
             exptimes (list): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
-            dark_sequence (int or list, optional): Number of darks to be taken per exptime
+            n_darks (int or list, optional): Number of darks to be taken per exptime
             imtype (str, optional): type of image
         """
 
@@ -351,20 +351,20 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.config['directories']['images']
 
-        self.logger.debug(f"Going to take {dark_sequence} dark-fields for each of these exposure times {exptimes}")
+        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
 
         # List to check that the final number of darks is equal to the number
-        # of cameras times the number of exptimes times dark_sequence.
+        # of cameras times the number of exptimes times n_darks.
         darks_filenames = []
 
         if not isinstance(exptimes, list):
             exptimes = [exptimes]
 
-        if not isinstance(dark_sequence, list):
-            dark_sequence = np.ones(len(exptimes), dtype=int) * dark_sequence
+        if not isinstance(n_darks, list):
+            n_darks = np.ones(len(exptimes), dtype=int) * n_darks
 
         # Loop over cameras.
-        for exptime, num_darks in zip(exptimes, dark_sequence):
+        for exptime, num_darks in zip(exptimes, n_darks):
 
             start_time = utils.current_time()
 
