@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-import numpy as np
 from contextlib import suppress
 from functools import partial
 from collections import defaultdict
@@ -14,6 +13,7 @@ from pocs.observatory import Observatory
 from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
+from pocs.utils import listify
 from pocs import utils
 
 from panoptes.utils.time import wait_for_events
@@ -331,14 +331,18 @@ class HuntsmanObservatory(Observatory):
                          imtype='dark',
                          *args, **kwargs
                          ):
-        """Take a n_darks of dark frames for each exposure time specified,
+        """Take n_darks for each exposure time specified,
            for each camera.
 
         Args:
             exptimes (list): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
-            n_darks (int or list, optional): Number of darks to be taken per exptime
+            n_darks (int or list, optional): if int, the same number of darks will be taken
+                for each exptime. If list, the len has to be the same than len(exptimes), where each
+                element is the number of darks we want for the corresponding exptime, e.g.:
+                take_dark_fields(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
+                will take 30x1s, 10x60s, and 20x15s darks
             imtype (str, optional): type of image
         """
 
@@ -357,11 +361,10 @@ class HuntsmanObservatory(Observatory):
         # of cameras times the number of exptimes times n_darks.
         darks_filenames = []
 
-        if not isinstance(exptimes, list):
-            exptimes = [exptimes]
+        exptimes = listify(exptimes)
 
         if not isinstance(n_darks, list):
-            n_darks = np.ones(len(exptimes), dtype=int) * n_darks
+            n_darks = listify(n_darks) * len(exptimes)
 
         # Loop over cameras.
         for exptime, num_darks in zip(exptimes, n_darks):
