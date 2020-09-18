@@ -21,10 +21,14 @@ from os import path
 @click.option('--test-mode',
               default=True,
               help='If true, move commands are printed to stdout, not run.')
+@click.option('--loop',
+              default=False,
+              help="If true, run a loop until ctrl+c")
 def archive(newfile_basedir,
             archive_basedir,
             time_buffer,
             test_mode,
+            loop,
             image_types=["flats", "fields/*", "darks"],
             glob_string="/*/*/*.fits*"):
 
@@ -47,6 +51,9 @@ def archive(newfile_basedir,
                               now - datetime.fromtimestamp(path.getmtime(filename)))
                     if now - datetime.fromtimestamp(path.getmtime(filename)) > delta_t:
                         move_file(filename, newfile_basedir, archive_basedir, test_mode)
+            if not(loop):
+                break
+
             time.sleep(time_buffer)
     except KeyboardInterrupt:
         print('\n\nCtrl+C detected, halting fits image archiver\n\n')
