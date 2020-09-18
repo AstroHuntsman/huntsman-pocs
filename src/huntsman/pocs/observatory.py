@@ -13,6 +13,7 @@ from pocs.observatory import Observatory
 from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
+from pocs.utils import listify
 from pocs import utils
 
 from panoptes.utils.time import wait_for_events
@@ -360,11 +361,10 @@ class HuntsmanObservatory(Observatory):
         # of cameras times the number of exptimes times n_darks.
         darks_filenames = []
 
-        if not isinstance(exptimes, list):
-            exptimes = [exptimes]
+        exptimes = listify(exptimes)
 
         if not isinstance(n_darks, list):
-            n_darks = [n_darks] * len(exptimes)
+            n_darks = listify(n_darks) * len(exptimes)
 
         # Loop over cameras.
         for exptime, num_darks in zip(exptimes, n_darks):
