@@ -41,24 +41,12 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     lock_passwd: false
     shell: /bin/zsh
-    ssh_authorized_keys:
-      - <camera_rsa.pub contents>
 
 ## Update apt database and upgrade packages on first boot
 package_update: true
 package_upgrade: true
 
 byobu: enable
-
-ssh_deletekeys: true  # remove existing
-ssh_keys:
-  rsa_private: |
-    -----BEGIN RSA PRIVATE KEY-----
-    <camera_rsa contents>
-    -----END RSA PRIVATE KEY-----
-  rsa_public: <camera_rsa.pub contents>
-ssh_authorized_keys:
-  - <camera_rsa.pub contents>
 
 ## Install additional packages on first boot.
 packages:
@@ -102,14 +90,13 @@ write_files:
   append: true
 
 ## Get and run the install script upon first boot.
-runcmd:
-  # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
-  - [ sh, -c, $(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O-) ]
-  - [ curl, -fsSL, get.docker.com, -o, get-docker.sh ]
-  - [ sh, get-docker.sh ]
-  - [ pip, install, docker-compose ]
-  - [ docker, pull, huntsmanarray/camera:tenlens ]
-
+#runcmd:
+#  # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
+#  - [ sh, -c, $(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O-) ]
+#  - [ curl, -fsSL, get.docker.com, -o, get-docker.sh ]
+#  - [ sh, get-docker.sh ]
+#  - [ pip, install, docker-compose ]
+#  - [ docker, pull, huntsmanarray/camera:tenlens ]
 
 power_state:
   delay: '+2'
