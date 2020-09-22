@@ -175,7 +175,7 @@ def create_12_pane_window(window_name, session_name="1-Huntsman-Control"):
     call_byobu(f"select-layout tiled")
 
 
-def setup_session(session_name="1-Huntsman-Control", windows=['']):
+def setup_session(session_name="1-Huntsman-Control", windows=None):
     """Create a new byobu session and populate desired windows.
 
     Parameters
@@ -186,9 +186,12 @@ def setup_session(session_name="1-Huntsman-Control", windows=['']):
         List of byobu window names.
 
     """
-    # subprocess.call(f"byobu new-session -d -s '{session_name}'", shell=True)
-    subprocess.call(f"byobu new-session -d -s'{session_name}'", shell=True)
-    for window in windows:
+    windows = windows or list()
+    call_byobu(f"new-session -d -s '{session_name}'")
+    # first we will rename the existing window
+    rename_window(windows[0])
+    # now iterate through list of desired window names and create them
+    for window in windows[1:]:
         new_window(window)
     select_window(windows[0])
     return
