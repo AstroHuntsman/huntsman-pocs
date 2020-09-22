@@ -81,6 +81,19 @@ def new_window(window_name):
     return
 
 
+def rename_window(window_name):
+    """Rename current byobu window.
+
+    Parameters
+    ----------
+    window_name : type
+        Description of parameter `window_name`.
+
+    """
+    call_byobu(f"rename-window '{window_name}'")
+    return
+
+
 def send_command_to_pane(cmd, pane):
     """Send a command to selected pane within the current byobu window.
 
