@@ -45,6 +45,28 @@ WEATHER_STARTUP = ["cd $PANDIR/my-aag-weather",
                    "docker-compose up"]
 
 
+def call_byobu(cmd, screen_cmd='byobu', shell=True, executable='/bin/zsh'):
+    """Calls the given command within a byobu screen session.
+
+    Parameters
+    ----------
+    cmd : str
+        tmux scripting command to run.
+    screen_cmd : str
+        Default tmux manager is byobu but if desired the cmd can be run using
+        just tmux instead of byobu.
+    shell : bool
+        This argument sets whether to run the subprocess call cmd through a
+        shell, as opposed treating the input command as the name of an
+        executable to be run.
+    executable : sh
+        The path to the shell executable you wish to use.
+
+    """
+    run_cmd = f'{screen_cmd} {cmd}'
+    subprocess.call(run_cmd, shell=shell, executable='/bin/bash')
+
+
 def new_window(window_name):
     """Create a new window in a byobu session and give it a name.
 
