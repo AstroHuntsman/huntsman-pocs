@@ -13,7 +13,7 @@ WINDOWS = ["main-control",
            "camera-servers",
            "camera-logs",
            "dome-control",
-           "data-managment"]
+           "data-management"]
 
 POCS_STARTUP = ["from pocs.mount import create_mount_from_config",
                 "from pocs.scheduler import create_scheduler_from_config",
@@ -38,7 +38,7 @@ DOME_SHUTTER_STARTUP = ["from huntsman.pocs.dome.musca import HuntsmanDome",
                         "from huntsman.pocs.utils import load_config",
                         "config = load_config()",
                         "dome = HuntsmanDome(config=config)",
-                        "dome.status()"
+                        "dome.status()",
                         "#dome.open()"]
 
 WEATHER_STARTUP = ["cd $PANDIR/my-aag-weather",
@@ -348,7 +348,6 @@ if __name__ == "__main__":
                         default='device_info_local_28_02_2020')
 
     args = parser.parse_args()
-
     config = load_config(config_files=args.config)
     if not bool(config):
         sys.exit("Loaded config is empty, exiting.")
