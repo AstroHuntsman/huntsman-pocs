@@ -64,7 +64,7 @@ def call_byobu(cmd, screen_cmd='byobu', shell=True, executable='/bin/zsh'):
 
     """
     run_cmd = f'{screen_cmd} {cmd}'
-    subprocess.call(run_cmd, shell=shell, executable='/bin/bash')
+    subprocess.call(run_cmd, shell=shell, executable=executable)
 
 
 def new_window(window_name):
