@@ -3,6 +3,11 @@ import netifaces
 from pocs.utils import listify
 from pocs.utils.config import load_config as config_loader
 
+from pocs.mount import create_mount_from_config
+from huntsman.pocs.scheduler import create_scheduler_from_config
+from huntsman.pocs.camera import create_cameras_from_config
+from huntsman.pocs.observatory import HuntsmanObservatory
+
 
 def load_config(config_files=None, **kwargs):
     '''
@@ -18,6 +23,25 @@ def load_config(config_files=None, **kwargs):
 
     config = config_loader(config_files=config_files, **kwargs)
     return config
+
+
+def create_huntsman_observatory(config=None, **kwargs):
+    """
+    Create a `HuntsmanObservatory` instance from a config.
+    """
+    if config is None:
+        config = load_config()
+    # Create cameras (may take a few minutes)
+    cameras = create_cameras_from_config(config=config)
+    # Create mount
+    mount = create_mount_from_config(config=config)
+    mount.initialize()
+    # Create the scheduler
+    scheduler = create_scheduler_from_config(config=config)
+    # Create the observatory
+    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
+                                      **kwargs)
+    return observatory
 
 
 def get_own_ip(verbose=False, logger=None):
