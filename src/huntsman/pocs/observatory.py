@@ -26,22 +26,14 @@ from huntsman.pocs.utils import load_config
 
 class HuntsmanObservatory(Observatory):
 
-    def __init__(self,
-                 with_autoguider=False,
-                 hdr_mode=False,
-                 take_flats=False,
-                 config=None,
-                 *args, **kwargs
-                 ):
+    def __init__(self, with_autoguider=True, hdr_mode=False, take_flats=True, config=None,
+                 *args, **kwargs):
         """Huntsman POCS Observatory
 
         Args:
-            with_autoguider (bool, optional): If autoguider is attached,
-                defaults to True.
-            hdr_mode (bool, optional): If pics should be taken in HDR mode,
-                defaults to False.
-            take_flats (bool, optional): If flat field images should be take,
-                defaults to False.
+            with_autoguider (bool, optional): If autoguider is attached, defaults to True.
+            hdr_mode (bool, optional): If pics should be taken in HDR mode, defaults to False.
+            take_flats (bool, optional): If flat field images should be taken, defaults to True.
             *args: Description
             **kwargs: Description
         """
