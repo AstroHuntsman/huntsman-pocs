@@ -28,6 +28,13 @@ def load_config(config_files=None, **kwargs):
 def create_huntsman_observatory(config=None, **kwargs):
     """
     Create a `HuntsmanObservatory` instance from a config.
+
+    Args:
+        config (dict, optional): The config dictionary. If `None` (default), the default config
+            will be loaded from file.
+        **kwargs: Used to initialise the `HuntsmanObservatory` instance.
+    Returns:
+        `huntsman.pocs.observatory.HuntsmanObservatory`
     """
     if config is None:
         config = load_config()
