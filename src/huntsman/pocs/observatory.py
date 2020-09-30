@@ -13,6 +13,7 @@ from pocs.observatory import Observatory
 from pocs.scheduler import constraint
 from pocs.scheduler.observation import Field
 from pocs.utils import error
+from pocs.utils import listify
 from pocs import utils
 
 from panoptes.utils.time import wait_for_events
@@ -323,20 +324,28 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Finished flat-fielding.')
 
     def take_dark_fields(self,
-                         exptimes,
+                         exptimes=[],
                          sleep=10,
                          camera_names=None,
                          n_darks=10,
+                         imtype='dark',
+			 set_from_config=False,
                          *args, **kwargs
                          ):
-        """Take n_darks dark frames for each exposure time specified,
+        """Take n_darks for each exposure time specified,
            for each camera.
 
         Args:
-            exptimes (list): List of exposure times for darks
+            exptimes (list, optional): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
-            n_darks (int, optional): Number of darks to be taken per exptime
+            n_darks (int or list, optional): if int, the same number of darks will be taken
+                for each exptime. If list, the len has to be the same than len(exptimes), where each
+                element is the number of darks we want for the corresponding exptime, e.g.:
+                take_dark_fields(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
+                will take 30x1s, 10x60s, and 20x15s darks
+	    set_from_config (bool, optional): falg to set exptimes and n_darks directly from config file.
+            imtype (str, optional): type of image
         """
 
         if camera_names is None:
@@ -346,45 +355,77 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug(f'Using cameras {cameras_list}')
 
+        filterwheel_events = dict()
+
+        self.logger.debug(f'Moving all camera filterwheels to blank filter')
+
+        # Move all the camera filterwheels to the blank position.
+        for camera in cameras_list.values():
+            if camera.filterwheel.current_filter != "blank":
+                filterwheel_event = camera.filterwheel.move_to("blank")
+                filterwheel_events[camera] = filterwheel_event
+        self.logger.debug('Waiting for all the filterwheels to be on blank filter...')
+        wait_for_events(list(filterwheel_events.values()))
+
         image_dir = self.config['directories']['images']
 
         self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
 
         # List to check that the final number of darks is equal to the number
-        # of cameras times the number of exptimes times n_darks.
+        # of cameras times the number of exptimes times dark_sequence.
         darks_filenames = []
 
+        exptimes = listify(exptimes)
+
+        if not isinstance(n_darks, list):
+            n_darks = listify(n_darks) * len(exptimes)
+
+        if set_from_config:
+            exptimes = self.config["calibration"]["darks"]["exposure_time"]
+            n_darks = self.config["calibration"]["darks"]["n_darks"]
+
         # Loop over cameras.
-        for exptime in exptimes:
+        for exptime, num_darks in zip(exptimes, n_darks):
 
             start_time = utils.current_time()
 
             with suppress(AttributeError):
                 exptime = exptime.to_value(u.second)
 
+            dark_obs = self._create_dark_observation(exptime)
+
             # Loop over exposure times for each camera.
-            for num in range(n_darks):
+            for num in range(num_darks):
 
                 self.logger.debug(f'Darks sequence #{num} of exposure time {exptime}s')
 
                 camera_events = dict()
 
+                filterwheel_events = dict()
+
                 # Take a given number of exposures for each exposure time.
                 for camera in cameras_list.values():
 
+                    if camera.filterwheel.current_filter != "blank":
+                        filterwheel_event = camera.filterwheel.move_to("blank")
+                        filterwheel_events[camera] = {'event': filterwheel_event}
+                    while not all([blank_filter['event'].is_set() for blank_filter in filterwheel_events.values()]):
+                        self.logger.debug('Waiting for filterwheels to move to blank filter...')
+                        time.sleep(5)
+
                     # Create dark observation
-                    dark_obs = self._create_dark_observation(exptime)
                     fits_headers = self.get_standard_headers(observation=dark_obs)
                     # Common start time for cameras
                     fits_headers['start_time'] = utils.flatten_time(start_time)
 
+                    # Create filename
+                    path = os.path.join(image_dir,
+                                        'darks',
+                                        camera.uid,
+                                        dark_obs.seq_time)
+
                     filename = os.path.join(
-                        image_dir,
-                        'darks',
-                        camera.uid,
-                        f'{exptime}',
-                        dark_obs.seq_time,
-                        f'dark_{num:02d}.{camera.file_extension}')
+                        path, f'{imtype}_{num:02d}.{camera.file_extension}')
 
                     # Take picture and get event
                     camera_event = camera.take_observation(

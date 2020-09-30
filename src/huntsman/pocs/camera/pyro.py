@@ -1,8 +1,9 @@
 import os
 import requests
 from warnings import warn
-from threading import Timer
+from threading import Thread
 from contextlib import suppress
+import time
 
 from astropy import units as u
 import Pyro4
@@ -12,6 +13,7 @@ import Pyro4.errors
 from pocs.utils import load_module
 from pocs.utils import get_quantity_value
 from pocs.utils import error
+from pocs.utils import CountdownTimer
 from pocs.camera import AbstractCamera
 
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
@@ -34,12 +36,14 @@ class Camera(AbstractCamera):
                  model='pyro',
                  port=None,
                  *args, **kwargs):
-        super().__init__(name=name, port=port, model=model, *args, **kwargs)
+        super().__init__(name=port, port=port, model=model, *args, **kwargs)
         self._uri = uri
 
+        self._timeout = 100
+
         # Obtain the NGAS server IP
-        if 'ngas_ip' not in self.config.keys():
-            self.config['ngas_ip'] = query_config_server(key='control')['ip_address']
+        #if 'ngas_ip' not in self.config.keys():
+        #    self.config['ngas_ip'] = query_config_server(key='control')['ip_address']
 
         # Connect to camera
         self.connect()
@@ -128,13 +132,13 @@ class Camera(AbstractCamera):
         """
         (re)connect to the distributed camera.
         """
-        self.logger.debug('Connecting to {} at {}'.format(self.port, self._uri))
+        self.logger.debug(f'{self.name}: Connecting to {self.port} at {self._uri}')
 
         # Get a proxy for the camera
         try:
             self._proxy = Pyro4.Proxy(self._uri)
         except Pyro4.errors.NamingError as err:
-            msg = "Couldn't get proxy to camera {}: {}".format(self.port, err)
+            msg = f"{self.name}: Couldn't get proxy to camera {self.port}: {err}"
             warn(msg)
             self.logger.error(msg)
             return
@@ -148,14 +152,14 @@ class Camera(AbstractCamera):
 
         uid = self._proxy.get_uid()
         if not uid:
-            msg = "Couldn't connect to {} on {}!".format(self.name, self._uri)
+            msg = f"{self.name}: Couldn't connect to {self.name} on {self._uri}!"
             warn(msg)
             self.logger.error(msg)
             return
 
         # Retrieve and locally cache camera properties that won't change.
         self._serial_number = uid
-        self.name = self._proxy.get("name")
+        #self.name = self._proxy.get("name")
         self.model = self._proxy.get("model")
         self._readout_time = self._proxy.get("readout_time")
         self._file_extension = self._proxy.get("file_extension")
@@ -166,7 +170,7 @@ class Camera(AbstractCamera):
         self._exposure_event = RemoteEvent(self._proxy, event_type="camera")
 
         self._connected = True
-        self.logger.debug("{} connected".format(self))
+        self.logger.debug(f"{self.name}: {self} connected")
 
         if self._proxy.has_focuser:
             self.focuser = PyroFocuser(camera=self)
@@ -204,7 +208,7 @@ class Camera(AbstractCamera):
 
         """
         # Start the exposure
-        self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
+        self.logger.debug(f'{self.name}: Taking {seconds} second exposure on {self}: {filename}')
 
         # Remote method call to start the exposure
         self._proxy.take_exposure(seconds=seconds,
@@ -258,11 +262,11 @@ class Camera(AbstractCamera):
             ValueError: If invalid values are passed for any of the focus parameters.
         """
         if self.focuser is None:
-            msg = "Camera must have a focuser for autofocus!"
+            msg = f"{self.name}: Camera must have a focuser for autofocus!"
             self.logger.error(msg)
             raise AttributeError(msg)
 
-        self.logger.debug(f'Starting autofocus on {self}.')
+        self.logger.debug(f'{self.name}: Starting autofocus on {self}.')
 
         # Remote method call to start the exposure
         self._proxy.autofocus(*args, **kwargs)
@@ -273,7 +277,7 @@ class Camera(AbstractCamera):
         # In general it's very complicated to work out how long an autofocus should take
         # because parameters can be set here or come from remote config. For now just make
         # it 5 minutes.
-        max_wait = 300
+        max_wait = 600
         self._run_timeout("autofocus", blocking, max_wait)
 
         return self._autofocus_event
@@ -290,45 +294,50 @@ class Camera(AbstractCamera):
 
     def _run_timeout(self, timeout_type, blocking, max_wait):
         relevant_event = getattr(self, f"_{timeout_type}_event")
+        # If the remote operation fails after starting in such a way that the event doesn't
+        # get set then calling code could wait forever. Have a local timeout thread
+       	# to be safe.
+        timeout_thread = Thread(target=self._timeout_response,
+                                args=(timeout_type, relevant_event, max_wait))
+        timeout_thread.start()
         if blocking:
-            success = relevant_event.wait(timeout=max_wait)
-            if not success:
-                self._timeout_response(timeout_type, relevant_event)
-        else:
-            # If the remote operation fails after starting in such a way that the event doesn't
-            # get set then calling code could wait forever. Have a local timeout thread
-            # to be safe.
-            timeout_thread = Timer(interval=max_wait,
-                                   function=self._timeout_response,
-                                   args=(timeout_type, relevant_event))
-            timeout_thread.start()
+            timeout_thread.join()
 
-    def _timeout_response(self, timeout_type, timeout_event):
+    def _timeout_response(self, timeout_type, timeout_event, max_wait):
         # This could do more thorough checks for success, e.g. check is_exposing property,
         # check for existence of output file, etc. It's supposed to be a last resort though,
         # and most problems should be caught elsewhere.
-        is_set = True
-        # Can get a comms error if everything has finished and shutdown before the timeout,
-        # e.g. when running tests.
-        with suppress(Pyro4.errors.CommunicationError):
+        timer = CountdownTimer(duration=max_wait)
+        try:
             is_set = timeout_event.is_set()
-        if not is_set:
+            while not is_set:
+                if timer.expired():
+                    raise error.Timeout(f"{self.name}: timeout waiting for {timeout_type}.")
+                time.sleep(1)
+                is_set = timeout_event.is_set()
+        except Pyro4.errors.CommunicationError as err:
+            # Can get a comms error if everything has finished and shutdown before the timeout,
+            # e.g. when running tests. Might also indicate a genuine network failure.
+            raise error.PanError(f"{self.name}: Communication error while waiting for {timeout_type}: {err}")
+        else:
+            self.logger.debug(f"{self.name}: {timeout_type} finished.")
+        finally:
             timeout_event.set()
-            raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
 
-    def _process_fits(self, file_path, info):
+
+#    def _process_fits(self, file_path, info):
         '''
         Override _process_fits, called by process_exposure in take_observation.
 
         The difference is that we do an NGAS push following the processing.
         '''
         # Call the super method
-        result = super()._process_fits(file_path, info)
+#        result = super()._process_fits(file_path, info)
 
         # Do the NGAS push
-        self._ngas_push(file_path, info)
-
-        return result
+        #self._ngas_push(file_path, info)
+#
+#        return result
 
     def _ngas_push(self, filename, metadata, filename_ngas=None, port=7778):
         '''
