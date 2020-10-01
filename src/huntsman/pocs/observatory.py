@@ -15,6 +15,7 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs.utils import listify
 from pocs import utils
+from pocs.mount import create_mount_from_config
 
 from panoptes.utils.time import wait_for_events
 
@@ -22,6 +23,34 @@ from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.utils import load_config
+from huntsman.pocs.scheduler import create_scheduler_from_config
+from huntsman.pocs.camera import create_cameras_from_config
+
+
+def create_huntsman_observatory(config=None, **kwargs):
+    """
+    Create a `HuntsmanObservatory` instance from a config.
+
+    Args:
+        config (dict, optional): The config dictionary. If `None` (default), the default config
+            will be loaded from file.
+        **kwargs: Used to initialise the `HuntsmanObservatory` instance.
+    Returns:
+        `huntsman.pocs.observatory.HuntsmanObservatory`
+    """
+    if config is None:
+        config = load_config()
+    # Create cameras (may take a few minutes)
+    cameras = create_cameras_from_config(config=config)
+    # Create mount
+    mount = create_mount_from_config(config=config)
+    mount.initialize()
+    # Create the scheduler
+    scheduler = create_scheduler_from_config(config=config)
+    # Create the observatory
+    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
+                                      **kwargs)
+    return observatory
 
 
 class HuntsmanObservatory(Observatory):
