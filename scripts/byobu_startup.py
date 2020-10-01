@@ -13,7 +13,7 @@ WINDOWS = ["main-control",
            "camera-servers",
            "camera-logs",
            "dome-control",
-           "data-managment"]
+           "data-management"]
 
 POCS_STARTUP = ["from pocs.mount import create_mount_from_config",
                 "from pocs.scheduler import create_scheduler_from_config",
@@ -38,11 +38,33 @@ DOME_SHUTTER_STARTUP = ["from huntsman.pocs.dome.musca import HuntsmanDome",
                         "from huntsman.pocs.utils import load_config",
                         "config = load_config()",
                         "dome = HuntsmanDome(config=config)",
-                        "dome.status()"
+                        "dome.status()",
                         "#dome.open()"]
 
 WEATHER_STARTUP = ["cd $PANDIR/my-aag-weather",
                    "docker-compose up"]
+
+
+def call_byobu(cmd, screen_cmd='byobu', shell=True, executable='/bin/zsh'):
+    """Calls the given command within a byobu screen session.
+
+    Parameters
+    ----------
+    cmd : str
+        tmux scripting command to run.
+    screen_cmd : str
+        Default tmux manager is byobu but if desired the cmd can be run using
+        just tmux instead of byobu.
+    shell : bool
+        This argument sets whether to run the subprocess call cmd through a
+        shell, as opposed treating the input command as the name of an
+        executable to be run.
+    executable : sh
+        The path to the shell executable you wish to use.
+
+    """
+    run_cmd = f'{screen_cmd} {cmd}'
+    subprocess.call(run_cmd, shell=shell, executable=executable)
 
 
 def new_window(window_name):
@@ -54,8 +76,21 @@ def new_window(window_name):
         Name for the new byobu window.
 
     """
-    subprocess.call(f"byobu new-window", shell=True)
-    subprocess.call(f"byobu rename-window '{window_name}'", shell=True)
+    call_byobu("new-window")
+    rename_window(window_name)
+    return
+
+
+def rename_window(window_name):
+    """Rename current byobu window.
+
+    Parameters
+    ----------
+    window_name : type
+        Description of parameter `window_name`.
+
+    """
+    call_byobu(f"rename-window '{window_name}'")
     return
 
 
@@ -70,9 +105,9 @@ def send_command_to_pane(cmd, pane):
         The index of the target pane.
 
     """
-    subprocess.call(f"byobu select-pane -t {pane}", shell=True)
-    subprocess.call(f"byobu send-keys '{cmd}'", shell=True)
-    subprocess.call(f"byobu send-keys Enter", shell=True)
+    call_byobu(f"select-pane -t {pane}")
+    call_byobu(f"send-keys '{cmd}'")
+    call_byobu(f"send-keys Enter")
     return
 
 
@@ -81,9 +116,9 @@ def clear_current_pane():
 
     """
     # clear the pane
-    subprocess.call(f"byobu send-keys Enter", shell=True)
-    subprocess.call(f"byobu send-keys clear", shell=True)
-    subprocess.call(f"byobu send-keys Enter", shell=True)
+    call_byobu(f"send-keys Enter")
+    call_byobu(f"send-keys clear")
+    call_byobu(f"send-keys Enter")
     return
 
 
@@ -100,9 +135,8 @@ def select_window(window_name, pane=0, session_name="1-Huntsman-Control"):
         Name of the byobu session containing the desired window.
 
     """
-    subprocess.call(
-        f"byobu select-window -t '{session_name}':'{window_name}'", shell=True)
-    subprocess.call(f"byobu select-pane -t {pane}", shell=True)
+    call_byobu(f"select-window -t '{session_name}':'{window_name}'")
+    call_byobu(f"select-pane -t {pane}")
     return
 
 
@@ -119,29 +153,29 @@ def create_12_pane_window(window_name, session_name="1-Huntsman-Control"):
     """
     # start by splitting horizontally
     select_window(window_name, session_name=session_name)
-    subprocess.call("byobu split-window -h", shell=True)
-    subprocess.call("byobu split-window -h", shell=True)
-    subprocess.call("byobu select-layout even-horizontal", shell=True)
+    call_byobu(f"split-window -h")
+    call_byobu(f"split-window -h")
+    call_byobu(f"select-layout even-horizontal")
 
     # Now split each side into 5 panes to get 10 panes in total
-    subprocess.call("byobu select-pane -t 0", shell=True)
+    call_byobu(f"select-pane -t 0")
     for _ in range(3):
-        subprocess.call("byobu split-window -v", shell=True)
+        call_byobu(f"split-window -v")
 
-    subprocess.call("byobu select-pane -t 4", shell=True)
-
-    for _ in range(3):
-        subprocess.call("byobu split-window -v", shell=True)
-
-    subprocess.call("byobu select-pane -t 8", shell=True)
+    call_byobu(f"select-pane -t 4")
 
     for _ in range(3):
-        subprocess.call("byobu split-window -v", shell=True)
+        call_byobu(f"split-window -v")
 
-    subprocess.call("byobu select-layout tiled", shell=True)
+    call_byobu(f"select-pane -t 8")
+
+    for _ in range(3):
+        call_byobu(f"split-window -v")
+
+    call_byobu(f"select-layout tiled")
 
 
-def setup_session(session_name="1-Huntsman-Control", windows=['']):
+def setup_session(session_name="1-Huntsman-Control", windows=None):
     """Create a new byobu session and populate desired windows.
 
     Parameters
@@ -152,9 +186,12 @@ def setup_session(session_name="1-Huntsman-Control", windows=['']):
         List of byobu window names.
 
     """
-    # subprocess.call(f"byobu new-session -d -s '{session_name}'", shell=True)
-    subprocess.call(f"byobu new-session -d -s'{session_name}'", shell=True)
-    for window in windows:
+    windows = windows or list()
+    call_byobu(f"new-session -d -s '{session_name}'")
+    # first we will rename the existing window
+    rename_window(windows[0])
+    # now iterate through list of desired window names and create them
+    for window in windows[1:]:
         new_window(window)
     select_window(windows[0])
     return
@@ -172,27 +209,27 @@ def setup_main_control_window(cmd_prefix='#'):
     # setup the main-control window
     select_window(WINDOWS[0])
     # Select default pane. Probably an unnecessary line of code
-    subprocess.call(f"byobu select-pane -t 0", shell=True)
+    call_byobu(f"select-pane -t 0")
     # split window hoirzontaly
-    subprocess.call(f"byobu split-window -h", shell=True)
+    call_byobu(f"split-window -h")
     # select pane 0
-    subprocess.call(f"byobu select-pane -t 0", shell=True)
+    call_byobu(f"select-pane -t 0")
     # split selected pane vertically
-    subprocess.call(f"byobu split-window -v", shell=True)
+    call_byobu(f"split-window -v")
     # select the top pane
-    subprocess.call(f"byobu select-pane -t 0", shell=True)
+    call_byobu(f"select-pane -t 0")
     # split top pane vertically again
-    subprocess.call(f"byobu split-window -v", shell=True)
+    call_byobu(f"split-window -v")
     # select the top pane
-    subprocess.call(f"byobu select-pane -t 0", shell=True)
+    call_byobu(f"select-pane -t 0")
 
     clear_current_pane()
     # Now run the necessary commands in each pane
     send_command_to_pane(
-        cmd_prefix + '$HUNTSMAN_POCS/scripts/pyro_name_server.py', 0)
+        cmd_prefix + '${HUNTSMAN_POCS}/scripts/pyro_name_server.py', 0)
 
     send_command_to_pane(
-        cmd_prefix + 'python $HUNTSMAN_POCS/scripts/start_config_server.py', 1)
+        cmd_prefix + 'python ${HUNTSMAN_POCS}/scripts/start_config_server.py', 1)
 
     send_command_to_pane(f'ipython', 2)
 
@@ -202,7 +239,7 @@ def setup_main_control_window(cmd_prefix='#'):
         time.sleep(0.01)
 
     send_command_to_pane(
-        cmd_prefix + 'grc tail -F -n 1000 $PANDIR/logs/ipython-all.log', 3)
+       cmd_prefix + 'grc tail -F -n 1000 $PANDIR/logs/ipython-all.log', 3)
     return
 
 
@@ -217,16 +254,16 @@ def setup_shutter_weather_window(cmd_prefix='#'):
     """
     select_window(WINDOWS[1])
     # split window horizontally
-    subprocess.call("byobu split-window -h", shell=True)
+    call_byobu(f"split-window -h")
     select_window(WINDOWS[1], pane=0)
     # split left plane vertically
-    subprocess.call("byobu split-window -v", shell=True)
+    call_byobu(f"split-window -v")
     select_window(WINDOWS[1], pane=0)
     clear_current_pane()
     # pair control computer to Musca/TinyOS bluetooth device
     send_command_to_pane('sudo rfcomm connect rfcomm0 20:13:11:05:17:32', 0)
     # NB above command will prompt for password
-    send_command_to_pane('password', 0)
+    # send_command_to_pane('password', 0)
     # start ipython session in panel 1 for controlling shutter
     send_command_to_pane('ipython', 1)
     for cmd in DOME_SHUTTER_STARTUP:
@@ -234,7 +271,7 @@ def setup_shutter_weather_window(cmd_prefix='#'):
         time.sleep(0.1)
     # select right side pane and split vertically
     select_window(WINDOWS[1], pane=2)
-    subprocess.call("byobu split-window -v", shell=True)
+    call_byobu(f"split-window -v")
     for cmd in WEATHER_STARTUP:
         send_command_to_pane(cmd_prefix + cmd, 2)
     send_command_to_pane(
@@ -260,13 +297,11 @@ def setup_camera_server_window(config, cmd_prefix='#'):
     clear_current_pane()
     # config has keys dict_keys(['messaging,'control','ip1','ip2'...])
     for pane, ip in enumerate(list(config.keys())[2:]):
+        print(f'Setting up {pane} on {ip}')
         select_window(WINDOWS[2], pane=pane)
         cmd1 = cmd_prefix + f"ssh huntsman@{ip}"
-        # TODO, setup ssh keys so password isnt required
-        cmd2 = cmd_prefix + "password"
-        cmd3 = cmd_prefix + "$HUNTSMAN_POCS/scripts/run_device_container.sh"
+        cmd3 = cmd_prefix + 'python "${HUNTSMAN_POCS}/scripts/run_device.py"'
         send_command_to_pane(cmd1, pane)
-        send_command_to_pane(cmd2, pane)
         send_command_to_pane(cmd3, pane)
     return
 
@@ -290,12 +325,8 @@ def setup_camera_logs_window(config, cmd_prefix='#'):
     for pane, ip in enumerate(list(config.keys())[2:]):
         select_window(WINDOWS[3], pane=pane)
         cmd1 = cmd_prefix + f"ssh huntsman@{ip}"
-        # TODO, setup ssh keys so password isnt required
-        cmd2 = cmd_prefix + "password"
-        cmd3 = cmd_prefix + "grc tail -F -n 1000 $PANDIR/"\
-            "logs/pyro_camera_server.py-all.log"
+        cmd3 = cmd_prefix + "grc tail -F -n 1000 $PANDIR/logs/pyro_camera_server.py-all.log"
         send_command_to_pane(cmd1, pane)
-        send_command_to_pane(cmd2, pane)
         send_command_to_pane(cmd3, pane)
     return
 
@@ -330,7 +361,7 @@ def setup_data_management_window(cmd_prefix='#'):
 
     """
     select_window(WINDOWS[5], pane=0)
-    subprocess.call("byobu split-window -h", shell=True)
+    call_byobu(f"split-window -h")
     return
 
 
@@ -348,7 +379,6 @@ if __name__ == "__main__":
                         default='device_info_local_28_02_2020')
 
     args = parser.parse_args()
-
     config = load_config(config_files=args.config)
     if not bool(config):
         sys.exit("Loaded config is empty, exiting.")

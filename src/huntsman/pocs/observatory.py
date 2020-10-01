@@ -15,6 +15,7 @@ from pocs.scheduler.observation import Field
 from pocs.utils import error
 from pocs.utils import listify
 from pocs import utils
+from pocs.mount import create_mount_from_config
 
 from panoptes.utils.time import wait_for_events
 
@@ -22,26 +23,46 @@ from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.utils import load_config
+from huntsman.pocs.scheduler import create_scheduler_from_config
+from huntsman.pocs.camera import create_cameras_from_config
+
+
+def create_huntsman_observatory(config=None, **kwargs):
+    """
+    Create a `HuntsmanObservatory` instance from a config.
+
+    Args:
+        config (dict, optional): The config dictionary. If `None` (default), the default config
+            will be loaded from file.
+        **kwargs: Used to initialise the `HuntsmanObservatory` instance.
+    Returns:
+        `huntsman.pocs.observatory.HuntsmanObservatory`
+    """
+    if config is None:
+        config = load_config()
+    # Create cameras (may take a few minutes)
+    cameras = create_cameras_from_config(config=config)
+    # Create mount
+    mount = create_mount_from_config(config=config)
+    mount.initialize()
+    # Create the scheduler
+    scheduler = create_scheduler_from_config(config=config)
+    # Create the observatory
+    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
+                                      config=config, **kwargs)
+    return observatory
 
 
 class HuntsmanObservatory(Observatory):
 
-    def __init__(self,
-                 with_autoguider=False,
-                 hdr_mode=False,
-                 take_flats=False,
-                 config=None,
-                 *args, **kwargs
-                 ):
+    def __init__(self, with_autoguider=True, hdr_mode=False, take_flats=True, config=None,
+                 *args, **kwargs):
         """Huntsman POCS Observatory
 
         Args:
-            with_autoguider (bool, optional): If autoguider is attached,
-                defaults to True.
-            hdr_mode (bool, optional): If pics should be taken in HDR mode,
-                defaults to False.
-            take_flats (bool, optional): If flat field images should be take,
-                defaults to False.
+            with_autoguider (bool, optional): If autoguider is attached, defaults to True.
+            hdr_mode (bool, optional): If pics should be taken in HDR mode, defaults to False.
+            take_flats (bool, optional): If flat field images should be taken, defaults to True.
             *args: Description
             **kwargs: Description
         """
@@ -801,7 +822,8 @@ class HuntsmanObservatory(Observatory):
         # Block until done exposing on all cameras
         timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
         self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout, sleep_delay=1):
+        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout,
+                               sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding
