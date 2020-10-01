@@ -49,7 +49,7 @@ def create_huntsman_observatory(config=None, **kwargs):
     scheduler = create_scheduler_from_config(config=config)
     # Create the observatory
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
-                                      **kwargs)
+                                      config=config, **kwargs)
     return observatory
 
 
