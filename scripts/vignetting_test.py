@@ -90,7 +90,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
     """
     # Unit conversions
     alt = utils.get_quantity_value(alt, u.degree)
-    az = utils.get_quantity_value(alt, u.degree)
+    az = utils.get_quantity_value(az, u.degree)
     exposure_time = utils.get_quantity_value(exposure_time, u.second)
 
     # Define field
