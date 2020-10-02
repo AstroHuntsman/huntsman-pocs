@@ -3,43 +3,14 @@ Script to test vignetting at alt/az positions.
 """
 import os
 import time
+import argparse
+from datetime import datetime
 import numpy as np
-import pandas as pd
+import matplotlib.pyplot as plt
 from astropy import units as u
 from astropy.io import fits
 
-import matplotlib
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
-from pocs import utils
-from pocs.scheduler.field import Field
-from pocs.mount import create_mount_from_config
-from pocs.scheduler import create_scheduler_from_config
-from huntsman.camera import create_cameras_from_config
-from huntsman.observatory import HuntsmanObservatory
-from huntsman.utils import load_config
-
-
-def load_simulated_config():
-    """
-    Load the simulated config.
-    """
-    config = load_config(ignore_local=True)
-    config.update({
-        'dome': {
-            'brand': 'Simulacrum',
-            'driver': 'simulator',
-        },
-        'mount': {
-            'model': 'simulator',
-            'driver': 'simulator',
-            'serial': {
-                'port': 'simulator'
-            }
-        },
-    })
-    return config
+from huntsman.pocs.observatory import create_observatory_from_config
 
 
 def sample_coordinates(n_samples, alt_min, makeplots=False):
@@ -86,169 +57,89 @@ def sample_coordinates(n_samples, alt_min, makeplots=False):
     return alt_array, az_array
 
 
-def take_exposures(observatory, alt, az, exptime, filter_name, suffix=""):
+def take_exposures(observatory, alt, az, exposure_time, output_directory, suffix=""):
     """
     Slew to coordinates, take exposures and return images.
     """
-    # Slew to field
+    # Define field
     position = utils.altaz_to_radec(alt=alt, az=az, location=observatory.earth_location,
                                     obstime=utils.current_time())
     field = Field('DomeVigTest', position.to_string('hmsdms'))
     observatory.mount.set_target_coordinates(field)
+
+    # Slew to field
+    print(f"Slewing to alt={alt}, az={az}...")
     observatory.mount.slew_to_target()
 
     # Loop over cameras
-    camera_events = {}
-    exptime = exptime.to_value(u.second)
+    events = []
+    exposure_time = exposure_time.to_value(u.second)
     for cam_name, cam in observatory.cameras.items():
 
         # Create filename
-        path = observatory.config['directories']['images']
-        filename = os.path.join(path, 'vigtest', f'{cam.uid}')
+        filename = os.path.join(output_directory, f'{cam.uid}')
         filename += suffix + f".{cam.file_extension}"
 
-        # Move filterwheel
-        cam.filterwheel.move_to(filter_name, blocking=True)
-
         # Take exposure and get event
-        camera_event = cam.take_exposure(filename=filename, exptime=exptime)
-        camera_events[cam_name] = {'event': camera_event, 'filename': filename}
+        events.append(cam.take_exposure(filename=filename, seconds=exposure_time))
 
     # Block until finished exposing on all cameras
-    while not all([info['event'].is_set() for info in camera_events.values()]):
+    print("Waiting for exposures...")
+    while not all([e.is_set() for e in events]):
         time.sleep(1)
 
-    # Read the data
-    images = {}
-    for cam_name, cam in observatory.cameras.items():
-        images[cam_name] = fits.getdata(camera_events[cam_name]['filename'])
 
-        # Make check plot
-        fig, ax = plt.subplots()
-        vmin = np.quantile(images[cam_name], 0.05)
-        vmax = np.quantile(images[cam_name], 0.95)
-        im = ax.imshow(images[cam_name], vmin=vmin, vmax=vmax, cmap='binary')
-        # ax.imshow(images[cam_name], cmap='binary')
-        plt.colorbar(im, ax=ax)
-        filename = os.path.join(path, 'vigtest', f'{cam.uid}')
-        filename += suffix + ".png"
-        plt.savefig(filename, bbox_inches='tight')
-
-    return images
-
-
-def take_dome_darks(*args, **kwargs):
-    """
-    Take dark frames to be used as a reference. Can be refreshed over the
-    course of the calibration if sky conditions are changing.
-    """
-    # Require dome shutter to be closed
-    # Should be automated in future
-    input("The dome shutter must be closed to take dome darks. "
-          "Press enter once the dome is closed to begin.")
-
-    # Begin exposures and wait for them to finish
-    return take_exposures(*args, **kwargs)
-
-
-def measure_vignetted_fraction(image, dome_dark, sigma=5):
-    """
-    Calculate vignetted fraction assuming that the sky is significantly
-    brighter than inside of the dome.
-    """
-    rms = dome_dark.std()
-    vigfrac = ((image - dome_dark) <= sigma * rms).mean()
-    return vigfrac
-
-
-def measure_vignetted_fractions(images, dome_darks):
-    """
-    Measure the vignettied fraction for each camera.
-    """
-    # Loop over exposures and measure vignetted fraction
-    fractions = np.zeros(len(images))
-    for i, cam_name in enumerate(images.keys()):
-        fractions[i] = measure_vignetted_fraction(
-                                images[cam_name], dome_darks[cam_name])
-    return fractions
-
-
-def run_test(observatory, alt_min=30, exptime=5*u.second, alt_dark=60,
-             az_dark=90, filename=None, n_samples=50, filter_name="luminance"):
+def run_exposure_sequence(observatory, alt_min=30, exposure_time=5*u.second,
+                          n_samples=50, filter_name="luminance"):
     """
 
     """
-    # Get the alt/az coordinates
-    print("Obtaining alt/az samples...")
-    alt_array, az_array = sample_coordinates(n_samples, alt_min)
-    n_samples = alt_array.size
-    print(f"Number of samples: {alt_array.size}")
-
     # Wait for cameras to be ready
-    print("Preparing cameras...")
+    print(f"Preparing {len(observatory.cameras)} cameras...")
     observatory.prepare_cameras()
 
-    # Take dome darks
-    print("Taking dome darks...")
-    dome_darks = take_dome_darks(observatory, alt_dark, az_dark, exptime, filter_name,
-                                 suffix='_dark')
+    # Move the filterwheels into position
+    print(f"Moving filterwheels to {filter_name}...")
+    for cam in observatory.cameras.values():
+        cam.filterwheel.move_to(filter_name, blocking=True)
 
-    # Make sure dome shutter is open
-    input("The dome shutter must be open. "
-          "Press enter once the dome is open to continue.")
+    # Get the alt/az coordinates
+    print("Obtaining alt/az coordinates...")
+    alt_array, az_array = sample_coordinates(n_samples, alt_min)
+    n_samples = alt_array.size
 
-    # Measure vignetting
-    print("Measuring vignetting...")
-    vig_fractions = np.zeros((n_samples, len(cameras)))
+    # Specify output directory
+    timestr = datetime.now().strftime("%Y-%m-%d:%H-%M-%S")
+    path = observatory.config['directories']['images']
+    output_directory = os.path.join(path, timestr)
+    print(f"The output directory is {output_directory}.")
+    if os.path.exists(output_directory):
+        raise FileExistsError("Output directory already exsts.")
+
+    # Start exposures
+    print("Starting exposure sequence...")
     for i, (alt, az) in enumerate(zip(alt_array, az_array)):
-
         print(f"Exposure {i+1} of {n_samples}...")
-
         # Take the exposures
-        images = take_exposures(observatory, alt, az, exptime, filter_name, suffix=f'_{i}')
-
-        # Calculate vignetted fractions
-        vig_fractions[i, :] = measure_vignetted_fractions(images, dome_darks)
-    print("Done!")
-
-    # Write the output file
-    df = pd.DataFrame()
-    df['alt'] = alt_array
-    df['az'] = az_array
-    for i, cam in enumerate(cameras.values()):
-        df[f"{cam.uid}"] = vig_fractions[:, i]
-    if filename is None:
-        filename = os.path.join(os.environ["HOME"], "vigtest.csv")
-    df.to_csv(filename)
+        take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
+                       output_directory=output_directory, suffix=f'_{i}')
 
     # Finish up
+    print("Parking mount...")
     mount.park()
-    return df
 
 
 if __name__ == '__main__':
 
-    """
-    alt_array, az_array = sample_coordinates(50, 10, makeplots=True)
-    print(alt_array.size)
-    plt.show(block=False)
-    """
-
-    simulate = False
-
-    # Load the config
-    if simulate:
-        config = load_simulated_config()
-    else:
-        config = load_config()
+    # Parse args
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--exposure_time', default=1, type=float)
+    parser.add_argument('--filter_name', default="luminance", type=str)
+    args = parser.parse_args()
 
     # Create the observatory instance
-    cameras = create_cameras_from_config(config)
-    mount = create_mount_from_config(config)
-    mount.initialize()
-    mount.unpark()
-    scheduler = create_scheduler_from_config(config)
-    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler)
+    observatory = create_observatory_from_config()
 
-    # Run
-    df = run_test(observatory, exptime=1*u.second, n_samples=50)
+    # Run exposure sequence
+    run_exposure_sequence(observatory, exposure_time=1*u.second, n_samples=50,
+                          filter_name=args.filter_name, exposure_time=args.exposure_time)
