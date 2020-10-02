@@ -139,6 +139,10 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
     """
 
     """
+    if not observatory.mount.is_parked:
+        print("Un-parking mount...")
+        observatory.mount.unpark()
+
     # Wait for cameras to be ready
     print(f"Preparing {len(observatory.cameras)} cameras...")
     observatory.prepare_cameras()
