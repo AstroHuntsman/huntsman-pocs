@@ -71,7 +71,8 @@ class AltAzGenerator():
         """
         # Make the grid
         n_per_axis = int(np.floor(np.sqrt(self._n_samples)))
-        az_array, alt_array = np.meshgrid(np.linspace(self.alt_min, 90, n_per_axis),
+        alt_min = utils.get_quantity_value(self.alt_min, u.degree)
+        az_array, alt_array = np.meshgrid(np.linspace(alt_min, 90, n_per_axis),
                                           np.linspace(0, 360, n_per_axis))
         # Reshape and stack
         return np.vstack([az_array.reshape(-1), alt_array.reshape(-1)]).T * u.degree
