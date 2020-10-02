@@ -180,6 +180,7 @@ if __name__ == '__main__':
     parser.add_argument('--exposure_time', default=1, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=50, type=int)
+    parser.add_argument('--min_altitude', default=40, type=float)
     args = parser.parse_args()
 
     response = input("This script is intended to be run with the Sun below the horizon."
@@ -191,8 +192,8 @@ if __name__ == '__main__':
     observatory = create_observatory_from_config()
 
     # Create the coordinate generator
-    cgen = AltAzGenerator(location=observatory.location)
+    altaz_generator = AltAzGenerator(location=observatory.location, alt_min=args.min_altitude)
 
     # Run exposure sequence
     run_exposure_sequence(observatory, n_exposures=args.n_exposures, filter_name=args.filter_name,
-                          exposure_time=args.exposure_time)
+                          exposure_time=args.exposure_time, altaz_generator=altaz_generator)
