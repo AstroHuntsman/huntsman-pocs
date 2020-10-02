@@ -166,8 +166,8 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
         for i in range(n_exposures):
             # Sample a safe coordinate
             alt, az = altaz_generator.get_coordinate(exposure_time=exposure_time)
-            print(f"----------------------------------------------------")
-            print(f"Exposure {i+1} of {n_exposures}: alt/az={alt}/{az}.")
+            print(f"---------------------------------------------------------")
+            print(f"Exposure {i+1} of {n_exposures}:")
             # Take the exposures
             take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
                            output_directory=output_directory, suffix=f'_{i}',
