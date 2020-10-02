@@ -1,7 +1,9 @@
 """
-Script to test vignetting at alt/az positions.
+Script to test vignetting at alt/az positions. While this code is designed to avoid damage from
+looking at the Sun, it is strongly recommended to run only while the Sun is below the horizon.
 """
 import os
+import sys
 import time
 import argparse
 from datetime import datetime
@@ -47,8 +49,8 @@ class AltAzGenerator():
         """
         # Get time array
         time_now = Time(datetime.now())
-        time_period = time_now + exposure_time + overhead_time, sampling_interval
-        times = np.linspace(0, time_period)*u.second + time_now
+        time_period = time_now + exposure_time + overhead_time
+        times = np.linspace(0, time_period, sampling_interval)*u.second + time_now
 
         # Calculate Solar position
         frame = AltAz(obstime=times, location=self.location)
@@ -179,6 +181,11 @@ if __name__ == '__main__':
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=50, type=int)
     args = parser.parse_args()
+
+    response = input("This script is intended to be run with the Sun below the horizon."
+                     " Would you like to continue?")
+    if response not in ["", "y", "Y"]:
+        sys.exit()
 
     # Create the observatory instance
     observatory = create_observatory_from_config()
