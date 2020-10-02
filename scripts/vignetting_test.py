@@ -15,7 +15,7 @@ from astropy.time import Time
 from astropy.coordinates import get_sun, AltAz
 
 from panoptes.utils import utils
-from pocs.scheduler import Field
+from pocs.scheduler.field import Field
 from huntsman.pocs.observatory import create_observatory_from_config
 
 
