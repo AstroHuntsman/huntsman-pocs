@@ -83,6 +83,12 @@ class AltAzGenerator():
         return coordinates
 
 
+def _move_fws(observatory, filter_name):
+    fw_events = [c.filterwheel.move_to(filter_name) for c in observatory.cameras.values()]
+    while not all([e.is_set() for e in fw_events]):
+        time.sleep(1)
+
+
 def take_exposures(observatory, alt, az, exposure_time, filter_name, output_directory, suffix=""):
     """
     Slew to coordinates, take exposures and return images.
@@ -100,8 +106,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
 
     # Move the filterwheels into blank position for slew
     print(f"Moving filterwheels to blank position before slewing...")
-    for cam in observatory.cameras.values():
-        cam.filterwheel.move_to("blank", blocking=True)
+    _move_fws(observatory, filter_name="blank")
 
     # Slew to field
     print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
@@ -109,8 +114,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
 
     # Move the filterwheels into position
     print(f"Moving filterwheels to {filter_name}...")
-    for cam in observatory.cameras.values():
-        cam.filterwheel.move_to(filter_name, blocking=True)
+    _move_fws(observatory, filter_name=filter_name)
 
     # Loop over cameras
     events = []
@@ -178,8 +182,7 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
     finally:
         # Move the filterwheels back into blank position
         print(f"Moving filterwheels to blank position...")
-        for cam in observatory.cameras.values():
-            cam.filterwheel.move_to("blank", blocking=True)
+        _move_fws(observatory, filter_name="blank")
 
         # Finish up
         print("Parking mount...")
