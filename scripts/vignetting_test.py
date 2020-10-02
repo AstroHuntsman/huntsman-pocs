@@ -33,14 +33,14 @@ class AltAzGenerator():
         self._coordinates = self._sample_coordinates()
         print(f"Sampled {len(self._coordinates)} alt/az coordinates.")
 
-    def get_coordinate(self):
+    def get_coordinate(self, exposure_time, **kwargs):
         """
         Get a random alt/az coordinate that is safe.
         """
         while True:
             for idx in range(len(self._coordinates)):
                 alt, az = self._coordinates[idx]
-                if self._is_safe(alt, az):
+                if self._is_safe(alt, az, exposure_time=exposure_time, **kwargs):
                     return alt, az
 
     def _is_safe(self, alt, az, exposure_time, sampling_interval=30, overhead_time=60):
@@ -134,7 +134,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
                 hdu.header['AZ-MNT'] = f"{az:.3f}"
 
 
-def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_time=5*u.second,
+def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_time=5,
                           n_exposures=50, filter_name="luminance"):
     """
 
@@ -160,7 +160,7 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
         print("Starting exposure sequence...")
         for i in range(n_exposures):
             # Sample a safe coordinate
-            alt, az = altaz_generator.get_coordinate()
+            alt, az = altaz_generator.get_coordinate(exposure_time=exposure_time)
             print(f"Exposure {i+1} of {n_exposures}: alt/az={alt}/{az}.")
             # Take the exposures
             take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
