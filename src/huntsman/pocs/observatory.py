@@ -345,18 +345,19 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Finished flat-fielding.')
 
     def take_dark_fields(self,
-                         exptimes,
+                         exptimes=[],
                          sleep=10,
                          camera_names=None,
                          n_darks=10,
                          imtype='dark',
+			             set_from_config=False,
                          *args, **kwargs
                          ):
         """Take n_darks for each exposure time specified,
            for each camera.
 
         Args:
-            exptimes (list): List of exposure times for darks
+            exptimes (list, optional): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
             n_darks (int or list, optional): if int, the same number of darks will be taken
@@ -364,6 +365,7 @@ class HuntsmanObservatory(Observatory):
                 element is the number of darks we want for the corresponding exptime, e.g.:
                 take_dark_fields(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
                 will take 30x1s, 10x60s, and 20x15s darks
+	    set_from_config (bool, optional): falg to set exptimes and n_darks directly from config file.
             imtype (str, optional): type of image
         """
 
@@ -374,18 +376,34 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug(f'Using cameras {cameras_list}')
 
+        filterwheel_events = dict()
+
+        self.logger.debug(f'Moving all camera filterwheels to blank filter')
+
+        # Move all the camera filterwheels to the blank position.
+        for camera in cameras_list.values():
+            if camera.filterwheel.current_filter != "blank":
+                filterwheel_event = camera.filterwheel.move_to("blank")
+                filterwheel_events[camera] = filterwheel_event
+        self.logger.debug('Waiting for all the filterwheels to be on blank filter...')
+        wait_for_events(list(filterwheel_events.values()))
+
         image_dir = self.config['directories']['images']
 
         self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
 
         # List to check that the final number of darks is equal to the number
-        # of cameras times the number of exptimes times n_darks.
+        # of cameras times the number of exptimes times dark_sequence.
         darks_filenames = []
 
         exptimes = listify(exptimes)
 
         if not isinstance(n_darks, list):
             n_darks = listify(n_darks) * len(exptimes)
+
+        if set_from_config:
+            exptimes = self.config["calibration"]["darks"]["exposure_time"]
+            n_darks = self.config["calibration"]["darks"]["n_darks"]
 
         # Loop over cameras.
         for exptime, num_darks in zip(exptimes, n_darks):
@@ -404,8 +422,17 @@ class HuntsmanObservatory(Observatory):
 
                 camera_events = dict()
 
+                filterwheel_events = dict()
+
                 # Take a given number of exposures for each exposure time.
                 for camera in cameras_list.values():
+
+                    if camera.filterwheel.current_filter != "blank":
+                        filterwheel_event = camera.filterwheel.move_to("blank")
+                        filterwheel_events[camera] = {'event': filterwheel_event}
+                    while not all([blank_filter['event'].is_set() for blank_filter in filterwheel_events.values()]):
+                        self.logger.debug('Waiting for filterwheels to move to blank filter...')
+                        time.sleep(5)
 
                     # Create dark observation
                     fits_headers = self.get_standard_headers(observation=dark_obs)

@@ -58,6 +58,8 @@ class Scheduler(dispatch.Scheduler):
 
             else:
                 obs = Observation(field, **field_config)
+                obs.filter_list = field_config.get('filters', dict())
+                self.logger.debug(f'Setting filter list to {obs.filter_list}')
         except Exception as e:
             self.logger.warning(
                 "Skipping invalid field config: {}".format(field_config))
