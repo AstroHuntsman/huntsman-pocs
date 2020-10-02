@@ -8,8 +8,9 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy import units as u
-from astropy.io import fits
 
+from panoptes.utils import utils
+from pocs.scheduler import Field
 from huntsman.pocs.observatory import create_observatory_from_config
 
 
@@ -126,7 +127,7 @@ def run_exposure_sequence(observatory, alt_min=30, exposure_time=5*u.second,
 
     # Finish up
     print("Parking mount...")
-    mount.park()
+    observatory.mount.park()
 
 
 if __name__ == '__main__':
@@ -141,5 +142,5 @@ if __name__ == '__main__':
     observatory = create_observatory_from_config()
 
     # Run exposure sequence
-    run_exposure_sequence(observatory, exposure_time=1*u.second, n_samples=50,
-                          filter_name=args.filter_name, exposure_time=args.exposure_time)
+    run_exposure_sequence(observatory, n_samples=50, filter_name=args.filter_name,
+                          exposure_time=args.exposure_time)
