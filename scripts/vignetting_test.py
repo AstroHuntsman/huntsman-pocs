@@ -104,7 +104,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
         cam.filterwheel.move_to("blank", blocking=True)
 
     # Slew to field
-    print(f"Slewing to alt={alt}, az={az}...")
+    print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
     observatory.mount.slew_to_target()
 
     # Move the filterwheels into position
@@ -166,6 +166,7 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
         for i in range(n_exposures):
             # Sample a safe coordinate
             alt, az = altaz_generator.get_coordinate(exposure_time=exposure_time)
+            print(f"----------------------------------------------------")
             print(f"Exposure {i+1} of {n_exposures}: alt/az={alt}/{az}.")
             # Take the exposures
             take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
