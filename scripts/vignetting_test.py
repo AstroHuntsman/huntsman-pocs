@@ -12,7 +12,7 @@ import numpy as np
 from astropy.io import fits
 from astropy import units as u
 from astropy.time import Time
-from astropy.coordinates import get_sun, AltAz
+from astropy.coordinates import get_sun, AltAz, EarthLocation
 
 from panoptes.utils import utils
 from pocs.scheduler.field import Field
@@ -26,7 +26,8 @@ class AltAzGenerator():
     """
 
     def __init__(self, location, safe_sun_distance=40, alt_min=30, n_samples=10000):
-        self.location = location
+        self.location = EarthLocation(lat=location["latitude"], lon=location["longitude"],
+                                      height=location["elevation"])
         self.safe_sun_distance = safe_sun_distance * u.degree
         self.alt_min = alt_min
         self._n_samples = n_samples
