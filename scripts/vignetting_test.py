@@ -16,7 +16,7 @@ from astropy.coordinates import get_sun, AltAz
 
 from panoptes.utils import utils
 from pocs.scheduler.field import Field
-from huntsman.pocs.observatory import create_observatory_from_config
+from huntsman.pocs.observatory import create_huntsman_observatory
 
 
 class AltAzGenerator():
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         sys.exit()
 
     # Create the observatory instance
-    observatory = create_observatory_from_config()
+    observatory = create_huntsman_observatory()
 
     # Create the coordinate generator
     altaz_generator = AltAzGenerator(location=observatory.location, alt_min=args.min_altitude)
