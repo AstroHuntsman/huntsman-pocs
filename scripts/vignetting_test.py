@@ -78,7 +78,7 @@ class AltAzGenerator():
             # Convert to alt / az
             alt = (-np.arccos(z) * 180 / np.pi + 90) * u.degree
             az = (np.arccos(x) * 180 / np.pi - 90) * u.degree
-            if alt >= alt:
+            if alt >= self.alt_min:
                 coordinates.append([alt, az])
         return coordinates
 
