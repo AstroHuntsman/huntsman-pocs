@@ -31,18 +31,21 @@ class AltAzGenerator():
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.alt_min = utils.get_quantity_value(alt_min, u.degree) * u.degree
         self._n_samples = n_samples
+        self._idx = 0
         self._coordinates = self._sample_coordinates()
         print(f"Sampled {len(self._coordinates)} alt/az coordinates.")
 
     def get_coordinate(self, exposure_time, **kwargs):
         """
-        Get a random alt/az coordinate that is safe.
+        Get the next alt/az coordinate that is safe.
         """
         while True:
-            for idx in range(len(self._coordinates)):
-                alt, az = self._coordinates[idx]
-                if self._is_safe(alt, az, exposure_time=exposure_time, **kwargs):
-                    return alt, az
+            if self._idx == len(self._coordinates):
+                self._idx = 0
+            alt, az = self._coordinates[self._idx]
+            self._idx += 1
+            if self._is_safe(alt, az, exposure_time=exposure_time, **kwargs):
+                return alt, az
 
     def _is_safe(self, alt, az, exposure_time, sampling_interval=30, overhead_time=60):
         """
