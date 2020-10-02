@@ -25,15 +25,23 @@ class AltAzGenerator():
     away from the Sun and are at a minimum altitude.
     """
 
-    def __init__(self, location, safe_sun_distance=40, alt_min=30, n_samples=10000):
+    def __init__(self, location, safe_sun_distance=40, alt_min=30, n_samples=100):
         self.location = EarthLocation(lat=location["latitude"], lon=location["longitude"],
                                       height=location["elevation"])
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.alt_min = utils.get_quantity_value(alt_min, u.degree) * u.degree
-        self._n_samples = n_samples
         self._idx = 0
-        self._coordinates = self._sample_coordinates()
+        self._coordinates = self._sample_coordinates(n_samples)
+        self.n_samples = self._coordinates.shape[0]  # May be different to n_samples
+        self._n_visited = 0
         print(f"Sampled {len(self._coordinates)} alt/az coordinates.")
+
+    def generate(self, exposure_time):
+        """Generate the next safe coordinate until all are visited."""
+        if self._n_visited == self.n_samples:
+            return
+        yield self.get_coordinate(exposure_time=exposure_time)
+        self._n_visited += 1
 
     def get_coordinate(self, exposure_time, **kwargs):
         """
@@ -65,12 +73,12 @@ class AltAzGenerator():
 
         return all([coord.separation(c) > self.safe_sun_distance for c in sunaltazs])
 
-    def _sample_coordinates(self):
+    def _sample_coordinates(self, n_samples):
         """
         Sample alt/az coordinates on a grid, favouring high altitudes.
         """
         # Make the grid
-        n_per_axis = int(np.floor(np.sqrt(self._n_samples)))
+        n_per_axis = int(np.floor(np.sqrt(n_samples)))
         alt_min = utils.get_quantity_value(self.alt_min, u.degree)
         az_array, alt_array = np.meshgrid(np.linspace(alt_min, 90, n_per_axis),
                                           np.linspace(0, 360, n_per_axis))
@@ -140,7 +148,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
                 hdu.header['AZ-MNT'] = f"{az:.3f}"
 
 
-def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_time=5,
+def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_time=1,
                           n_exposures=50, filter_name="luminance"):
     """
 
@@ -164,15 +172,15 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
     try:
         # Start exposures
         print("Starting exposure sequence...")
-        for i in range(n_exposures):
-            # Sample a safe coordinate
-            alt, az = altaz_generator.get_coordinate(exposure_time=exposure_time)
+        i = 0
+        for (alt, az) in altaz_generator.generate(exposure_time=exposure_time):
             print(f"---------------------------------------------------------")
-            print(f"Exposure {i+1} of {n_exposures}:")
+            print(f"Exposure {i+1} of {altaz_generator.n_samples}:")
             # Take the exposures
             take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
                            output_directory=output_directory, suffix=f'_{i}',
                            filter_name=filter_name)
+            i += 1
     except Exception as err:
         print("Premature termination due to error.")
         raise(err)
@@ -209,5 +217,5 @@ if __name__ == '__main__':
                                      n_samples=args.n_exposures)
 
     # Run exposure sequence
-    run_exposure_sequence(observatory, n_exposures=args.n_exposures, filter_name=args.filter_name,
+    run_exposure_sequence(observatory, filter_name=args.filter_name,
                           exposure_time=args.exposure_time, altaz_generator=altaz_generator)
