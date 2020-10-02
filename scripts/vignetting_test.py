@@ -195,7 +195,7 @@ if __name__ == '__main__':
         sys.exit()
 
     # Create the observatory instance
-    observatory = create_huntsman_observatory()
+    observatory = create_huntsman_observatory(with_autoguider=False)
 
     # Create the coordinate generator
     altaz_generator = AltAzGenerator(location=observatory.location, alt_min=args.min_altitude)
