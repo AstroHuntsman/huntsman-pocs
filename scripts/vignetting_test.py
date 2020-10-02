@@ -36,10 +36,10 @@ class AltAzGenerator():
         Get a random alt/az coordinate that is safe.
         """
         while True:
-            idx = np.random.randint(len(self._coordinates))
-            alt, az = self._coordinates[idx]
-            if self._is_safe(alt, az):
-                return alt, az
+            for idx in range(len(self._coordinates)):
+                alt, az = self._coordinates[idx]
+                if self._is_safe(alt, az):
+                    return alt, az
 
     def _is_safe(self, alt, az, exposure_time, sampling_interval=30, overhead_time=60):
         """
@@ -56,9 +56,9 @@ class AltAzGenerator():
 
         # Calculate angular separation
         coord = AltAz(alt=alt, az=az)
-        sep_deg = coord.separation(sunaltazs).to_value(u.deg)
+        sep_deg = [coord.separation(c).to_value(u.deg) for c in sunaltazs]
 
-        return sep_deg > self.safe_sun_distance
+        return all([s > self.safe_sun_distance for s in sep_deg])
 
     def _sample_coordinates(self):
         """
@@ -81,7 +81,7 @@ class AltAzGenerator():
         return coordinates
 
 
-def take_exposures(observatory, alt, az, exposure_time, output_directory, suffix=""):
+def take_exposures(observatory, alt, az, exposure_time, filter_name, output_directory, suffix=""):
     """
     Slew to coordinates, take exposures and return images.
     """
@@ -91,9 +91,19 @@ def take_exposures(observatory, alt, az, exposure_time, output_directory, suffix
     field = Field('DomeVigTest', position.to_string('hmsdms'))
     observatory.mount.set_target_coordinates(field)
 
+    # Move the filterwheels into blank position for slew
+    print(f"Moving filterwheels to blank position before slewing...")
+    for cam in observatory.cameras.values():
+        cam.filterwheel.move_to("blank", blocking=True)
+
     # Slew to field
     print(f"Slewing to alt={alt}, az={az}...")
     observatory.mount.slew_to_target()
+
+    # Move the filterwheels into position
+    print(f"Moving filterwheels to {filter_name}...")
+    for cam in observatory.cameras.values():
+        cam.filterwheel.move_to(filter_name, blocking=True)
 
     # Loop over cameras
     events = []
@@ -131,32 +141,34 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
     print(f"Preparing {len(observatory.cameras)} cameras...")
     observatory.prepare_cameras()
 
-    # Move the filterwheels into position
-    print(f"Moving filterwheels to {filter_name}...")
-    for cam in observatory.cameras.values():
-        cam.filterwheel.move_to(filter_name, blocking=True)
-
     # Specify output directory
     timestr = datetime.now().strftime("%Y-%m-%d:%H-%M-%S")
-    path = observatory.config['directories']['images']
-    output_directory = os.path.join(path, timestr)
-    print(f"The output directory is {output_directory}.")
+    output_directory = os.path.join(observatory.config['directories']['images'], "vigtest",
+                                    timestr)
+    print(f"The output directory is: {output_directory}.")
     if os.path.exists(output_directory):
-        raise FileExistsError("Output directory already exsts.")
+        raise FileExistsError("Output directory already exists.")
 
-    # Start exposures
-    print("Starting exposure sequence...")
-    for i in range(n_exposures):
-        # Sample a safe coordinate
-        alt, az = altaz_generator.get_coordinate()
-        print(f"Exposure {i+1} of {n_exposures}: alt/az={alt}/{az}.")
-        # Take the exposures
-        take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
-                       output_directory=output_directory, suffix=f'_{i}')
+    try:
+        # Start exposures
+        print("Starting exposure sequence...")
+        for i in range(n_exposures):
+            # Sample a safe coordinate
+            alt, az = altaz_generator.get_coordinate()
+            print(f"Exposure {i+1} of {n_exposures}: alt/az={alt}/{az}.")
+            # Take the exposures
+            take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
+                           output_directory=output_directory, suffix=f'_{i}',
+                           filter_name=filter_name)
+    finally:
+        # Move the filterwheels back into blank position
+        print(f"Moving filterwheels to blank position...")
+        for cam in observatory.cameras.values():
+            cam.filterwheel.move_to("blank", blocking=True)
 
-    # Finish up
-    print("Parking mount...")
-    observatory.mount.park()
+        # Finish up
+        print("Parking mount...")
+        observatory.mount.park()
 
 
 if __name__ == '__main__':
