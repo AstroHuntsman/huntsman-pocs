@@ -49,7 +49,7 @@ class AltAzGenerator():
         """
         # Get time array
         time_now = Time(datetime.now())
-        time_period = time_now + exposure_time + overhead_time
+        time_period = exposure_time + overhead_time
         times = np.linspace(0, time_period, sampling_interval)*u.second + time_now
 
         # Calculate Solar position
