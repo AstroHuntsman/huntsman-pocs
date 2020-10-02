@@ -147,11 +147,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--exposure_time', default=1, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
+    parser.add_argument('--n_samples', default=50, type=int)
     args = parser.parse_args()
 
     # Create the observatory instance
     observatory = create_observatory_from_config()
 
     # Run exposure sequence
-    run_exposure_sequence(observatory, n_samples=50, filter_name=args.filter_name,
+    run_exposure_sequence(observatory, n_samples=args.n_samples, filter_name=args.filter_name,
                           exposure_time=args.exposure_time)
