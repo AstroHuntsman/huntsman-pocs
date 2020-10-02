@@ -7,6 +7,8 @@ import argparse
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+
+from astropy.io import fits
 from astropy import units as u
 
 from panoptes.utils import utils
@@ -74,6 +76,7 @@ def take_exposures(observatory, alt, az, exposure_time, output_directory, suffix
 
     # Loop over cameras
     events = []
+    filenames = []
     exposure_time = exposure_time.to_value(u.second)
     for cam_name, cam in observatory.cameras.items():
 
@@ -83,11 +86,19 @@ def take_exposures(observatory, alt, az, exposure_time, output_directory, suffix
 
         # Take exposure and get event
         events.append(cam.take_exposure(filename=filename, seconds=exposure_time))
+        filenames.append(filename)
 
     # Block until finished exposing on all cameras
     print("Waiting for exposures...")
     while not all([e.is_set() for e in events]):
         time.sleep(1)
+
+    # Now we need to edit the fits headers to add alt-az info
+    for filename in filenames:
+        with fits.open(filename, 'update') as f:
+            for hdu in f:
+                hdu.header['ALT-MNT'] = f"{alt:.3f}"
+                hdu.header['AZ-MNT'] = f"{az:.3f}"
 
 
 def run_exposure_sequence(observatory, alt_min=30, exposure_time=5*u.second,
