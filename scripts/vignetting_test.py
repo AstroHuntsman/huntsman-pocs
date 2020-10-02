@@ -90,7 +90,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
     # Unit conversions
     alt = utils.get_quantity_value(alt, u.degree)
     az = utils.get_quantity_value(alt, u.degree)
-    exposure_time = exposure_time.to_value(u.second)
+    exposure_time = utils.get_quantity_value(exposure_time, u.second)
 
     # Define field
     position = utils.altaz_to_radec(alt=alt, az=az, location=observatory.earth_location,
@@ -171,6 +171,9 @@ def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_tim
             take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
                            output_directory=output_directory, suffix=f'_{i}',
                            filter_name=filter_name)
+    except Exception as err:
+        print("Premature termination due to error.")
+        raise(err)
     finally:
         # Move the filterwheels back into blank position
         print(f"Moving filterwheels to blank position...")
