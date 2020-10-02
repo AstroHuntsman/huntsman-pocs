@@ -134,6 +134,8 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
     print("Waiting for exposures...")
     while not all([e.is_set() for e in events]):
         time.sleep(1)
+    while not all([os.path.isfile(f) for f in filenames]):
+        time.sleep(1)
 
     # Now we need to edit the fits headers to add alt-az info
     for filename in filenames:
