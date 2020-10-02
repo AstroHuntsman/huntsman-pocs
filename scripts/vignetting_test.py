@@ -87,9 +87,12 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
     """
     Slew to coordinates, take exposures and return images.
     """
-    # Define field
+    # Unit conversions
     alt = utils.get_quantity_value(alt, u.degree)
     az = utils.get_quantity_value(alt, u.degree)
+    exposure_time = exposure_time.to_value(u.second)
+
+    # Define field
     position = utils.altaz_to_radec(alt=alt, az=az, location=observatory.earth_location,
                                     obstime=utils.current_time())
     field = Field('DomeVigTest', position.to_string('hmsdms'))
@@ -112,7 +115,7 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
     # Loop over cameras
     events = []
     filenames = []
-    exposure_time = exposure_time.to_value(u.second)
+    print("Taking exposures...")
     for cam_name, cam in observatory.cameras.items():
 
         # Create filename
