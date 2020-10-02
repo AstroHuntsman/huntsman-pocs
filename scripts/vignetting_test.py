@@ -12,7 +12,7 @@ import numpy as np
 from astropy.io import fits
 from astropy import units as u
 from astropy.time import Time
-from astropy.coordinates import get_sun, AltAz, EarthLocation
+from astropy.coordinates import get_sun, AltAz
 
 from panoptes.utils import utils
 from pocs.scheduler.field import Field
@@ -26,8 +26,7 @@ class AltAzGenerator():
     """
 
     def __init__(self, location, safe_sun_distance=40, alt_min=30, n_samples=100):
-        self.location = EarthLocation(lat=location["latitude"], lon=location["longitude"],
-                                      height=location["elevation"])
+        self.location = location
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.alt_min = utils.get_quantity_value(alt_min, u.degree) * u.degree
         self._idx = 0
@@ -75,7 +74,7 @@ class AltAzGenerator():
 
     def _sample_coordinates(self, n_samples):
         """
-        Sample alt/az coordinates on a grid, favouring high altitudes.
+        Sample alt/az coordinates on a grid, favouring coordinates near zenith.
         """
         # Make the grid
         n_per_axis = int(np.floor(np.sqrt(n_samples)))
@@ -213,7 +212,8 @@ if __name__ == '__main__':
     observatory = create_huntsman_observatory(with_autoguider=False)
 
     # Create the coordinate generator
-    altaz_generator = AltAzGenerator(location=observatory.location, alt_min=args.min_altitude,
+    altaz_generator = AltAzGenerator(location=observatory.earth_location,
+                                     alt_min=args.min_altitude,
                                      n_samples=args.n_exposures)
 
     # Run exposure sequence
