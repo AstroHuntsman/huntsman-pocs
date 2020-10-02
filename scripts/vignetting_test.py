@@ -80,7 +80,7 @@ class AltAzGenerator():
             alt = -np.arccos(z) * 180 / np.pi + 90
             az = np.arccos(x) * 180 / np.pi - 90
             if alt >= self.alt_min:
-                coordinates.append([alt, az])
+                coordinates.append([alt*u.degree, az*u.degree])
         return coordinates
 
 
@@ -190,7 +190,7 @@ if __name__ == '__main__':
 
     response = input("This script is intended to be run with the Sun below the horizon."
                      " Would you like to continue?")
-    if response not in ["", "y", "Y"]:
+    if response not in ["", "y", "Y", "yes", "Yes"]:
         sys.exit()
 
     # Create the observatory instance
