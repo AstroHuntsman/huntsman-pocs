@@ -77,9 +77,9 @@ class AltAzGenerator():
             x = np.cos(theta) * radius
             z = np.sin(theta) * radius
             # Convert to alt / az
-            alt = -np.arccos(z) * 180 / np.pi + 90
-            az = np.arccos(x) * 180 / np.pi - 90
-            if alt >= self.alt_min:
+            alt = (-np.arccos(z) * 180 / np.pi + 90) * u.degree
+            az = (np.arccos(x) * 180 / np.pi - 90) * u.degree
+            if alt >= alt:
                 coordinates.append([alt*u.degree, az*u.degree])
         return coordinates
 
