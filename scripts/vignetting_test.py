@@ -28,8 +28,8 @@ class AltAzGenerator():
     def __init__(self, location, safe_sun_distance=40, alt_min=30, n_samples=10000):
         self.location = EarthLocation(lat=location["latitude"], lon=location["longitude"],
                                       height=location["elevation"])
-        self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree)
-        self.alt_min = utils.get_quantity_value(alt_min, u.degree)
+        self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
+        self.alt_min = utils.get_quantity_value(alt_min, u.degree) * u.degree
         self._n_samples = n_samples
         self._coordinates = self._sample_coordinates()
         print(f"Sampled {len(self._coordinates)} alt/az coordinates.")
@@ -89,6 +89,8 @@ def take_exposures(observatory, alt, az, exposure_time, filter_name, output_dire
     Slew to coordinates, take exposures and return images.
     """
     # Define field
+    alt = utils.get_quantity_value(alt, u.degree)
+    az = utils.get_quantity_value(alt, u.degree)
     position = utils.altaz_to_radec(alt=alt, az=az, location=observatory.earth_location,
                                     obstime=utils.current_time())
     field = Field('DomeVigTest', position.to_string('hmsdms'))
