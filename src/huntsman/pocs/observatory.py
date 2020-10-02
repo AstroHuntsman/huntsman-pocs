@@ -23,7 +23,7 @@ from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.observation import DitheredObservation, DitheredFlatObservation
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.utils import load_config
-from pocs.scheduler import create_scheduler_from_config
+from huntsman.pocs.scheduler import create_scheduler_from_config
 from huntsman.pocs.camera import create_cameras_from_config
 
 
