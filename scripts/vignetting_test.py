@@ -67,23 +67,14 @@ class AltAzGenerator():
 
     def _sample_coordinates(self):
         """
-        Sample alt/az coordinates using Fibonachi sphere method.
-        https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere
+        Sample alt/az coordinates on a grid, favouring high altitudes.
         """
-        phi = np.pi * (3. - np.sqrt(5.))  # golden angle in radians
-        coordinates = []
-        for i in range(self._n_samples):
-            y = 1 - (i / float(self._n_samples - 1)) * 2  # y goes from 1 to -1
-            radius = np.sqrt(1 - y * y)                   # radius at y
-            theta = phi * i                               # golden angle increment
-            x = np.cos(theta) * radius
-            z = np.sin(theta) * radius
-            # Convert to alt / az
-            alt = (-np.arccos(z) * 180 / np.pi + 90) * u.degree
-            az = (np.arccos(x) * 180 / np.pi - 90) * u.degree
-            if alt >= self.alt_min:
-                coordinates.append([alt, az])
-        return coordinates
+        # Make the grid
+        n_per_axis = int(np.floor(np.sqrt(self._n_samples)))
+        az_array, alt_array = np.meshgrid(np.linspace(self.alt_min, 90, n_per_axis),
+                                          np.linspace(0, 360, n_per_axis))
+        # Reshape and stack
+        return np.vstack([az_array.reshape(-1), alt_array.reshape(-1)]).T * u.degree
 
 
 def _move_fws(observatory, filter_name):
@@ -213,7 +204,8 @@ if __name__ == '__main__':
     observatory = create_huntsman_observatory(with_autoguider=False)
 
     # Create the coordinate generator
-    altaz_generator = AltAzGenerator(location=observatory.location, alt_min=args.min_altitude)
+    altaz_generator = AltAzGenerator(location=observatory.location, alt_min=args.min_altitude,
+                                     n_samples=args.n_exposures)
 
     # Run exposure sequence
     run_exposure_sequence(observatory, n_exposures=args.n_exposures, filter_name=args.filter_name,
