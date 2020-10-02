@@ -29,7 +29,7 @@ class AltAzGenerator():
         self.location = EarthLocation(lat=location["latitude"], lon=location["longitude"],
                                       height=location["elevation"])
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree)
-        self.alt_min = utils.get_quantity_value(alt_min, * u.degree)
+        self.alt_min = utils.get_quantity_value(alt_min, u.degree)
         self._n_samples = n_samples
         self._coordinates = self._sample_coordinates()
         print(f"Sampled {len(self._coordinates)} alt/az coordinates.")
