@@ -59,9 +59,8 @@ class AltAzGenerator():
 
         # Calculate angular separation
         coord = AltAz(alt=alt, az=az)
-        sep_deg = [coord.separation(c).to_value(u.deg) for c in sunaltazs]
 
-        return all([s > self.safe_sun_distance for s in sep_deg])
+        return all([coord.separation(c) > self.safe_sun_distance for c in sunaltazs])
 
     def _sample_coordinates(self):
         """
