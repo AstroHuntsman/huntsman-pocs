@@ -2,20 +2,19 @@
 Script to test vignetting at alt/az positions. While this code is designed to avoid damage from
 looking at the Sun, it is strongly recommended to run only while the Sun is below the horizon.
 """
-import os
 import sys
 import time
 import argparse
 from datetime import datetime
 import numpy as np
 
-from astropy.io import fits
 from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import get_sun, AltAz
 
 from panoptes.utils import utils
 from pocs.scheduler.field import Field
+from pocs.sheduler.observation import Observation
 from huntsman.pocs.observatory import create_huntsman_observatory
 
 
@@ -85,112 +84,104 @@ class AltAzGenerator():
         return np.vstack([az_array.reshape(-1), alt_array.reshape(-1)]).T * u.degree
 
 
-def _move_fws(observatory, filter_name):
-    fw_events = [c.filterwheel.move_to(filter_name) for c in observatory.cameras.values()]
-    while not all([e.is_set() for e in fw_events]):
-        time.sleep(1)
+class ExposureSequence():
 
+    def __init__(self, observatory, filter_name, exposure_time, n_exposures=100,
+                 field_name='DomeVigTest', **kwargs):
+        self.observatory = observatory
+        self.cameras = observatory.cameras
+        self.mount = observatory.mount
+        self.earth_location = observatory.earth_location
+        self.field_name = field_name
+        self.filter_name = filter_name
+        self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
+        # Create the coordinate generator
+        self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
+                                          **kwargs).generate(exposure_time=self.exposure_time)
+        self.n_exposures = len(self.coordinates)
 
-def take_exposures(observatory, alt, az, exposure_time, filter_name, output_directory, suffix=""):
-    """
-    Slew to coordinates, take exposures and return images.
-    """
-    # Unit conversions
-    alt = utils.get_quantity_value(alt, u.degree)
-    az = utils.get_quantity_value(az, u.degree)
-    exposure_time = utils.get_quantity_value(exposure_time, u.second)
+    def run(self):
+        """
+        Prepare telescope and start exposure sequence.
+        """
+        # Unpark mount
+        if self.mount.is_parked:
+            print("Un-parking mount...")
+            observatory.mount.unpark()
+        # Wait for cameras to be ready
+        print(f"Preparing {len(observatory.cameras)} cameras...")
+        self.observatory.prepare_cameras()
+        try:
+            self._take_exposure_sequence()
+        except Exception as err:
+            print("Error encountered during exposure sequence.")
+            raise(err)
+        finally:
+            # Finish up
+            print("Parking mount...")
+            observatory.mount.park()
 
-    # Define field
-    position = utils.altaz_to_radec(alt=alt, az=az, location=observatory.earth_location,
-                                    obstime=utils.current_time())
-    field = Field('DomeVigTest', position.to_string('hmsdms'))
-    observatory.mount.set_target_coordinates(field)
-
-    # Move the filterwheels into blank position for slew
-    print(f"Moving filterwheels to blank position before slewing...")
-    _move_fws(observatory, filter_name="blank")
-
-    # Slew to field
-    print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
-    observatory.mount.slew_to_target()
-
-    # Move the filterwheels into position
-    print(f"Moving filterwheels to {filter_name}...")
-    _move_fws(observatory, filter_name=filter_name)
-
-    # Loop over cameras
-    events = []
-    filenames = []
-    print("Taking exposures...")
-    for cam_name, cam in observatory.cameras.items():
-
-        # Create filename
-        filename = os.path.join(output_directory, f'{cam.uid}')
-        filename += suffix + f".{cam.file_extension}"
-
-        # Take exposure and get event
-        events.append(cam.take_exposure(filename=filename, seconds=exposure_time))
-        filenames.append(filename)
-
-    # Block until finished exposing on all cameras
-    print("Waiting for exposures...")
-    while not all([e.is_set() for e in events]):
-        time.sleep(1)
-    while not all([os.path.isfile(f) for f in filenames]):
-        time.sleep(1)
-
-    # Now we need to edit the fits headers to add alt-az info
-    for filename in filenames:
-        with fits.open(filename, 'update') as f:
-            for hdu in f:
-                hdu.header['ALT-MNT'] = f"{alt:.3f}"
-                hdu.header['AZ-MNT'] = f"{az:.3f}"
-
-
-def run_exposure_sequence(observatory, altaz_generator, alt_min=30, exposure_time=1,
-                          n_exposures=50, filter_name="luminance"):
-    """
-
-    """
-    if observatory.mount.is_parked:
-        print("Un-parking mount...")
-        observatory.mount.unpark()
-
-    # Wait for cameras to be ready
-    print(f"Preparing {len(observatory.cameras)} cameras...")
-    observatory.prepare_cameras()
-
-    # Specify output directory
-    timestr = datetime.now().strftime("%Y-%m-%d:%H-%M-%S")
-    output_directory = os.path.join(observatory.config['directories']['images'], "vigtest",
-                                    timestr)
-    print(f"The output directory is: {output_directory}.")
-    if os.path.exists(output_directory):
-        raise FileExistsError("Output directory already exists.")
-
-    try:
-        # Start exposures
-        print("Starting exposure sequence...")
-        i = 0
-        for (alt, az) in altaz_generator.generate(exposure_time=exposure_time):
+    def _take_exposure_sequence(self):
+        """
+        Take the exposure sequence, moving the FW to the blank position between exposures.
+        """
+        print("Starting exposure sequence.")
+        for i, (alt, az) in enumerate(self.coordinates):
             print(f"---------------------------------------------------------")
-            print(f"Exposure {i+1} of {altaz_generator.n_samples}:")
-            # Take the exposures
-            take_exposures(observatory, alt=alt, az=az, exposure_time=exposure_time,
-                           output_directory=output_directory, suffix=f'_{i}',
-                           filter_name=filter_name)
-            i += 1
-    except Exception as err:
-        print("Premature termination due to error.")
-        raise(err)
-    finally:
-        # Move the filterwheels back into blank position
-        print(f"Moving filterwheels to blank position...")
-        _move_fws(observatory, filter_name="blank")
+            print(f"Exposure {i+1} of {self.n_exposures}:")
 
-        # Finish up
-        print("Parking mount...")
-        observatory.mount.park()
+            # Move the filterwheels into blank position before slewing
+            print(f"Moving filterwheels to blank position before slewing...")
+            self._move_fws(filter_name="blank")
+            try:
+                self._take_exposure(alt=alt, az=az, suffix=f'_{i}')
+            finally:
+                # Move the filterwheels into blank position before slewing
+                print(f"Moving filterwheels to blank position after exposure...")
+                self._move_fws(filter_name="blank")
+
+    def _take_exposure(self, alt, az, suffix=""):
+        """
+        Slew to coordinates, take exposures and return images.
+        """
+        # Unit conversions
+        alt = utils.get_quantity_value(alt, u.degree)
+        az = utils.get_quantity_value(az, u.degree)
+
+        # Make observation
+        observation = self._make_observation(alt, az)
+        headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}
+
+        # Slew to field
+        print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
+        self.mount.set_target_coordinates(observation.field)
+        self.mount.slew_to_target()
+
+        # Take observations
+        events = []
+        print("Taking exposures...")
+        for cam_name, cam in observatory.cameras.items():
+            events.append(cam.take_observation(observation, headers=headers))
+
+        # Block until finished exposing on all cameras
+        print("Waiting for exposures...")
+        while not all([e.is_set() for e in events]):
+            time.sleep(1)
+
+    def _make_observation(self, alt, az):
+        """Make an observation for the alt/az position."""
+        position = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+                                        obstime=utils.current_time())
+        field = Field(self.field_name, position.to_string('hmsdms'))
+        observation = Observation(field=field, filter_name=self.filter_name,
+                                  exposure_time=self.exposure_time)
+        return observation
+
+    def _move_fws(self, filter_name):
+        """Move all the FWs to the filter (blocking)."""
+        fw_events = [c.filterwheel.move_to(filter_name) for c in self.cameras.values()]
+        while not all([e.is_set() for e in fw_events]):
+            time.sleep(1)
 
 
 if __name__ == '__main__':
@@ -199,7 +190,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--exposure_time', default=1, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
-    parser.add_argument('--n_exposures', default=50, type=int)
+    parser.add_argument('--n_exposures', default=49, type=int)
     parser.add_argument('--min_altitude', default=40, type=float)
     args = parser.parse_args()
 
@@ -211,11 +202,6 @@ if __name__ == '__main__':
     # Create the observatory instance
     observatory = create_huntsman_observatory(with_autoguider=False)
 
-    # Create the coordinate generator
-    altaz_generator = AltAzGenerator(location=observatory.earth_location,
-                                     alt_min=args.min_altitude,
-                                     n_samples=args.n_exposures)
-
     # Run exposure sequence
-    run_exposure_sequence(observatory, filter_name=args.filter_name,
-                          exposure_time=args.exposure_time, altaz_generator=altaz_generator)
+    ExposureSequence(observatory, exposure_time=args.exposure_time, filter_name=args.filter_name,
+                     n_exposures=args.n_exposures, alt_min=args.min_altitude).run()
