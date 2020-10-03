@@ -107,7 +107,7 @@ class ExposureSequence():
         # Unpark mount
         if self.mount.is_parked:
             print("Un-parking mount...")
-            observatory.mount.unpark()
+            self.mount.unpark()
         # Wait for cameras to be ready
         print(f"Preparing {len(observatory.cameras)} cameras...")
         self.observatory.prepare_cameras()
@@ -119,7 +119,7 @@ class ExposureSequence():
         finally:
             # Finish up
             print("Parking mount...")
-            observatory.mount.park()
+            self.mount.park()
 
     def _take_exposure_sequence(self):
         """
