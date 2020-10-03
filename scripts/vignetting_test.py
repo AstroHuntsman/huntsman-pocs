@@ -119,7 +119,7 @@ class ExposureSequence():
         finally:
             # Finish up
             print("Parking mount...")
-            self.mount.park()
+            self._park_mount()
 
     def _take_exposure_sequence(self):
         """
@@ -129,16 +129,7 @@ class ExposureSequence():
         for i, (alt, az) in enumerate(self.coordinates):
             print(f"---------------------------------------------------------")
             print(f"Exposure {i+1} of {self.n_exposures}:")
-
-            # Move the filterwheels into blank position before slewing
-            print(f"Moving filterwheels to blank position before slewing...")
-            self._move_fws(filter_name="blank")
-            try:
-                self._take_exposure(alt=alt, az=az, suffix=f'_{i}')
-            finally:
-                # Move the filterwheels into blank position before slewing
-                print(f"Moving filterwheels to blank position after exposure...")
-                self._move_fws(filter_name="blank")
+            self._take_exposure(alt=alt, az=az, suffix=f'_{i}')
 
     def _take_exposure(self, alt, az, suffix=""):
         """
@@ -154,8 +145,7 @@ class ExposureSequence():
 
         # Slew to field
         print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
-        self.mount.set_target_coordinates(observation.field)
-        self.mount.slew_to_target()
+        self._slew_to_field(self, observation.field)
 
         # Take observations
         events = []
@@ -167,6 +157,19 @@ class ExposureSequence():
         print("Waiting for exposures...")
         while not all([e.is_set() for e in events]):
             time.sleep(1)
+
+    def _slew_to_field(self, field):
+        """Slew to the field, moving FWs to blank beforehand."""
+        print(f"Moving filterwheels to blank position before slewing...")
+        self._move_fws(filter_name="blank")
+        self.mount.set_target_coordinates(field)
+        self.mount.slew_to_target()
+
+    def _park_mount(self):
+        """Park mount after moving FWs to blank positions"""
+        print(f"Moving filterwheels to blank position before slewing...")
+        self._move_fws(filter_name="blank")
+        self.mount.park()
 
     def _make_observation(self, alt, az):
         """Make an observation for the alt/az position."""
