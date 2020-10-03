@@ -24,10 +24,10 @@ class AltAzGenerator():
     away from the Sun and are at a minimum altitude.
     """
 
-    def __init__(self, location, safe_sun_distance=40, alt_min=30, n_samples=100):
+    def __init__(self, location, safe_sun_distance=40, min_altitude=30, n_samples=100):
         self.location = location
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
-        self.alt_min = utils.get_quantity_value(alt_min, u.degree) * u.degree
+        self.min_altitude = utils.get_quantity_value(min_altitude, u.degree) * u.degree
         self._idx = 0
         self._coordinates = self._sample_coordinates(n_samples)
         self.n_samples = self._coordinates.shape[0]  # May be different to n_samples
@@ -77,8 +77,8 @@ class AltAzGenerator():
         """
         # Make the grid
         n_per_axis = int(np.floor(np.sqrt(n_samples)))
-        alt_min = utils.get_quantity_value(self.alt_min, u.degree)
-        az_array, alt_array = np.meshgrid(np.linspace(alt_min, 90, n_per_axis),
+        min_altitude = utils.get_quantity_value(self.min_altitude, u.degree)
+        az_array, alt_array = np.meshgrid(np.linspace(min_altitude, 90, n_per_axis),
                                           np.linspace(0, 360, n_per_axis))
         # Reshape and stack
         return np.vstack([az_array.reshape(-1), alt_array.reshape(-1)]).T * u.degree
@@ -204,4 +204,4 @@ if __name__ == '__main__':
 
     # Run exposure sequence
     ExposureSequence(observatory, exposure_time=args.exposure_time, filter_name=args.filter_name,
-                     n_exposures=args.n_exposures, alt_min=args.min_altitude).run()
+                     n_exposures=args.n_exposures, min_altitude=args.min_altitude).run()
