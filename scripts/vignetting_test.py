@@ -24,22 +24,31 @@ class AltAzGenerator():
     away from the Sun and are at a minimum altitude.
     """
 
-    def __init__(self, location, safe_sun_distance=40, min_altitude=30, n_samples=100):
+    def __init__(self, location, exposure_time, safe_sun_distance=40, min_altitude=30,
+                 n_samples=100):
         self.location = location
+        self.exposure_time = exposure_time
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.min_altitude = utils.get_quantity_value(min_altitude, u.degree) * u.degree
         self._idx = 0
-        self._coordinates = self._sample_coordinates(n_samples)
-        self.n_samples = self._coordinates.shape[0]  # May be different to n_samples
         self._n_visited = 0
-        print(f"Sampled {len(self._coordinates)} alt/az coordinates.")
+        # Create the coordinate grid
+        self._coordinates = self._make_coordinate_grid(n_samples)
+        print(f"Sampled {len(self)} alt/az coordinates.")
 
-    def generate(self, exposure_time):
-        """Generate the next safe coordinate until all are visited."""
-        if self._n_visited == self.n_samples:
-            return
-        yield self.get_coordinate(exposure_time=exposure_time)
+    def __len__(self):
+        return self._coordinates.shape[0]
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._n_visited == len(self):
+            raise StopIteration
+        crd = self.get_coordinate(exposure_time=self.exposure_time)
+        self._idx += 1
         self._n_visited += 1
+        return crd
 
     def get_coordinate(self, exposure_time, **kwargs):
         """
@@ -71,7 +80,7 @@ class AltAzGenerator():
 
         return all([coord.separation(c) > self.safe_sun_distance for c in sunaltazs])
 
-    def _sample_coordinates(self, n_samples):
+    def _make_coordinate_grid(self, n_samples):
         """
         Sample alt/az coordinates on a grid, favouring coordinates near zenith.
         """
@@ -97,8 +106,8 @@ class ExposureSequence():
         self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
         # Create the coordinate generator
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
-                                          **kwargs).generate(exposure_time=self.exposure_time)
-        self.n_exposures = len(self.coordinates)
+                                          exposure_time=self.exposure_time, **kwargs)
+        self.n_exposures = len(self.coordinates)  # May be different from n_exposures
 
     def run(self):
         """
