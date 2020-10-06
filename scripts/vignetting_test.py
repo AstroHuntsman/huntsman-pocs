@@ -153,7 +153,7 @@ class ExposureSequence():
 
         # Slew to field
         print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
-        self._slew_to_field(self, observation.field)
+        self._slew_to_field(observation.field)
 
         # Take observations
         events = []
