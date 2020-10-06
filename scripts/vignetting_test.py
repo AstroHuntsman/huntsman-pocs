@@ -27,7 +27,7 @@ class AltAzGenerator():
     def __init__(self, location, exposure_time, safe_sun_distance=40, min_altitude=30,
                  n_samples=100):
         self.location = location
-        self.exposure_time = exposure_time
+        self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.min_altitude = utils.get_quantity_value(min_altitude, u.degree) * u.degree
         # Create the coordinate grid
@@ -55,19 +55,19 @@ class AltAzGenerator():
                 if self._visited[i]:
                     continue
                 alt, az = self._coordinates[i]
-                if self._is_safe(alt, az, exposure_time=exposure_time, **kwargs):
+                if self._is_safe(alt, az, **kwargs):
                     self._visited[i] = True
                     return alt, az
             print(f"No safe coordinates. Sleeping for {sleep_time}s.")
             time.sleep(sleep_time)
 
-    def _is_safe(self, alt, az, exposure_time, sampling_interval=30, overhead_time=60):
+    def _is_safe(self, alt, az, sampling_interval=30, overhead_time=60):
         """
         Check a coordinate is far enough away from the sun for its whole exposure time + overhead.
         """
         # Get time array
         time_now = Time(datetime.now())
-        time_period = exposure_time + overhead_time
+        time_period = self.exposure_time + overhead_time
         times = np.linspace(0, time_period, sampling_interval)*u.second + time_now
 
         # Calculate Solar position
@@ -102,7 +102,7 @@ class ExposureSequence():
         self.earth_location = observatory.earth_location
         self.field_name = field_name
         self.filter_name = filter_name
-        self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
+        self.exposure_time = utils.get_quantity_value(exposure_time, u.second) * u.second
         # Create the coordinate generator
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
                                           exposure_time=self.exposure_time, **kwargs)
