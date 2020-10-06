@@ -148,12 +148,12 @@ class ExposureSequence():
         az = utils.get_quantity_value(az, u.degree)
 
         # Make observation
-        observation = self._make_observation(alt, az)
+        field, observation = self._make_observation(alt, az)
         headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}
 
         # Slew to field
         print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
-        self._slew_to_field(observation.field)
+        self._slew_to_field(field)
 
         # Take observations
         events = []
@@ -186,7 +186,7 @@ class ExposureSequence():
         field = Field(self.field_name, position.to_string('hmsdms'))
         observation = Observation(field=field, filter_name=self.filter_name,
                                   exptime=self.exposure_time)
-        return observation
+        return field, observation
 
     def _move_fws(self, filter_name):
         """Move all the FWs to the filter (blocking)."""
