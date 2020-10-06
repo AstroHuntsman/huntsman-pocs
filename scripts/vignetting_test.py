@@ -175,7 +175,7 @@ class ExposureSequence():
 
     def _park_mount(self):
         """Park mount after moving FWs to blank positions"""
-        print(f"Moving filterwheels to blank position before slewing...")
+        print(f"Moving filterwheels to blank position before parking...")
         self._move_fws(filter_name="blank")
         self.mount.park()
 
@@ -185,7 +185,7 @@ class ExposureSequence():
                                         obstime=utils.current_time())
         field = Field(self.field_name, position.to_string('hmsdms'))
         observation = Observation(field=field, filter_name=self.filter_name,
-                                  exposure_time=self.exposure_time)
+                                  exptime=self.exposure_time)
         return observation
 
     def _move_fws(self, filter_name):
