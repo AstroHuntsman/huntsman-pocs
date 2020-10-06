@@ -21,7 +21,7 @@ from huntsman.pocs.observatory import create_huntsman_observatory
 class AltAzGenerator():
     """
     Class to generate alt-az positions uniformly over the sphere, that are a minimum distance
-    away from the Sun and are at a minimum altitude.
+    away from the Sun and are at a minimum altitude. Used as an iterator.
     """
 
     def __init__(self, location, exposure_time, safe_sun_distance=40, min_altitude=30,
@@ -30,10 +30,9 @@ class AltAzGenerator():
         self.exposure_time = exposure_time
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.min_altitude = utils.get_quantity_value(min_altitude, u.degree) * u.degree
-        self._idx = 0
-        self._n_visited = 0
         # Create the coordinate grid
         self._coordinates = self._make_coordinate_grid(n_samples)
+        self._visited = np.zeros(self._coordinates.shape[0], dtype="bool")
         print(f"Sampled {len(self)} alt/az coordinates.")
 
     def __len__(self):
@@ -43,24 +42,24 @@ class AltAzGenerator():
         return self
 
     def __next__(self):
-        if self._n_visited == len(self):
+        if self._visited.all():
             raise StopIteration
-        crd = self.get_coordinate(exposure_time=self.exposure_time)
-        self._idx += 1
-        self._n_visited += 1
-        return crd
+        return self._get_coordinate(exposure_time=self.exposure_time)
 
-    def get_coordinate(self, exposure_time, **kwargs):
+    def _get_coordinate(self, exposure_time, sleep_time=60, **kwargs):
         """
         Get the next alt/az coordinate that is safe.
         """
         while True:
-            if self._idx == len(self._coordinates):
-                self._idx = 0
-            alt, az = self._coordinates[self._idx]
-            self._idx += 1
-            if self._is_safe(alt, az, exposure_time=exposure_time, **kwargs):
-                return alt, az
+            for i in range(len(self)):
+                if self._visited[i]:
+                    continue
+                alt, az = self._coordinates[i]
+                if self._is_safe(alt, az, exposure_time=exposure_time, **kwargs):
+                    self._visited[i] = True
+                    return alt, az
+            print(f"No safe coordinates. Sleeping for {sleep_time}s.")
+            time.sleep(sleep_time)
 
     def _is_safe(self, alt, az, exposure_time, sampling_interval=30, overhead_time=60):
         """
