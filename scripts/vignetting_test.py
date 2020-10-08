@@ -201,7 +201,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--exposure_time', default=1, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
-    parser.add_argument('--n_exposures', default=49, type=int)
+    parser.add_argument('--n_exposures', default=100, type=int)
     parser.add_argument('--min_altitude', default=40, type=float)
     args = parser.parse_args()
 
