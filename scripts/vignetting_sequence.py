@@ -2,12 +2,18 @@
 Script to test vignetting at alt/az positions. While this code is designed to avoid damage from
 looking at the Sun, it is strongly recommended to run only while the Sun is below the horizon.
 """
+import os
 import sys
 import time
 import argparse
-from datetime import datetime
+from tempfile import TemporaryDirectory
+from contextlib import suppress
 import numpy as np
 
+from datetime import datetime
+from dateutil.parser import parse as parse_date_dateutil
+
+from astropy.io import fits
 from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import get_sun, AltAz
@@ -16,6 +22,21 @@ from panoptes.utils import utils
 from pocs.scheduler.field import Field
 from pocs.scheduler.observation import Observation
 from huntsman.pocs.observatory import create_huntsman_observatory
+
+
+def parse_date(object):
+    """
+    Parse a date as a `datetime.datetime`.
+    Args:
+        object (Object): The object to parse.
+    Returns:
+        A `datetime.datetime` object.
+    """
+    with suppress(AttributeError):
+        object = object.strip("(UTC)")
+    if type(object) is datetime:
+        return object
+    return parse_date_dateutil(object)
 
 
 class AltAzGenerator():
@@ -92,6 +113,69 @@ class AltAzGenerator():
         return np.vstack([az_array.reshape(-1), alt_array.reshape(-1)]).T * u.degree
 
 
+def ExposureTimeCalculator():
+    """
+    Class to estimate the next exposure time required to keep the count rate steady.
+    """
+
+    def __init__(self, window_size=50, sizex=5496, sizey=3672, saturate=4094):
+        self._saturate = saturate
+        window_size = int(window_size)
+        r = window_size / 2
+        self._xmin = int(sizex / 2 - r)
+        self._ymin = int(sizey / 2 - r)
+        self._xmax = self._xmin + window_size
+        self._ymax = self._ymin + window_size
+        self._target_counts = 0.16 * saturate
+        self._date_prev = None
+        self._mean_counts_prev = None
+        self._exptime_prev = None
+
+    def set_values_from_file(self, filename):
+        self._mean_counts_prev = self._get_mean_counts(filename)
+        self._date_prev, self._exposure_time_prev = self._extract_header(filename)
+
+    def calculate_exptime(self, filename, past_midnight):
+
+        # Extract data from file
+        mean_counts = self._get_mean_counts(filename)
+        date, exposure_time = self._extract_header(filename)
+
+        # Calculate next exposure time
+        if mean_counts == self._saturate:
+            exposure_time = self._exptime_prev / 5
+        else:
+            exposure_time = self._calculate_exptime(mean_counts, exposure_time, date)
+
+        # Update stored data
+        self._mean_counts_prev = mean_counts
+        self._date_prev = date
+        self._exptime_prev = exposure_time
+
+        return exposure_time
+
+    def _get_mean_counts(self, filename, bias=32):
+        data = fits.getdata(filename).astype("int32")
+        mean_counts = data[self._ymin: self._ymax, self._xmin: self._xmax].mean() - bias
+        return mean_counts
+
+    def _extract_header(self, filename):
+        header = fits.getheader(filename)
+        date = parse_date(header["DATE-OBS"])
+        exposure_time = header["EXPTIME"] * u.second
+        return date, exposure_time
+
+    def _calculate_exptime(self, mean_counts, exposure_time_prev, date, past_midnight):
+        elapsed_time = (date - self._date_prev).seconds
+        exptime = self._exptime_prev * (self._target_counts / mean_counts)
+        sky_factor = 2.0 ** (elapsed_time / 180.0)
+        if past_midnight:
+            exptime = exptime / sky_factor
+        else:
+            exptime = exptime * sky_factor
+        return round(exptime.to_value(u.second)) * u.second
+
+
 class ExposureSequence():
 
     def __init__(self, observatory, filter_name, exposure_time, n_exposures=100,
@@ -107,6 +191,8 @@ class ExposureSequence():
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
                                           exposure_time=self.exposure_time, **kwargs)
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
+        # Create the exposure time calculators
+        self.etcs = [ExposureTimeCalculator() for _ in range(len(observatory.cameras))]
 
     def run(self):
         """
@@ -135,11 +221,14 @@ class ExposureSequence():
         """
         print("Starting exposure sequence.")
         for i, (alt, az) in enumerate(self.coordinates):
+            calibrate_exptime = i == 0  # Only on the first exposure
             print(f"---------------------------------------------------------")
             print(f"Exposure {i+1} of {self.n_exposures}:")
-            self._take_exposure(alt=alt, az=az, suffix=f'_{i}')
+            self._take_exposure(alt=alt, az=az, suffix=f'_{i}',
+                                calibrate_exptime=calibrate_exptime)
+            print("Finished.")
 
-    def _take_exposure(self, alt, az, suffix=""):
+    def _take_exposure(self, alt, az, suffix="", calibrate_exptime=False):
         """
         Slew to coordinates, take exposures and return images.
         """
@@ -155,11 +244,24 @@ class ExposureSequence():
         print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
         self._slew_to_field(field)
 
+        if calibrate_exptime:
+            print("Calibrating exposure time...")
+            self._calibrate_exptime(observation)
+
         # Take observations
+        self._take_blocking_observation(observation, headers=headers)
+
+    def _take_blocking_observation(self, observation, headers=None, filename_dict=None):
+        """
+        """
         events = []
         print("Taking exposures...")
         for cam_name, cam in observatory.cameras.items():
-            events.append(cam.take_observation(observation, headers=headers))
+            if filename_dict is None:
+                filename = None
+            else:
+                filename = filename_dict[cam_name]
+            events.append(cam.take_observation(observation, headers=headers, filename=filename))
 
         # Block until finished exposing on all cameras
         print("Waiting for exposures...")
@@ -193,6 +295,25 @@ class ExposureSequence():
         fw_events = [c.filterwheel.move_to(filter_name) for c in self.cameras.values()]
         while not all([e.is_set() for e in fw_events]):
             time.sleep(1)
+
+    def _calibrate_exptime(self, observation, target_counts=1000, tolerance=200,
+                           initial_exptime=1):
+        """Calculate the initial exposure time by taking the median estimate from all cameras."""
+        filename_dict = {}
+        with TemporaryDirectory() as tdir:
+            for cam_name in self.cameras.keys():
+                filename_dict[cam_name] = os.path.join(tdir.name, f"{cam_name}.fits")
+            self._take_blocking_observation(observation, filename_dict=filename_dict)
+            # Set initial values for ETCs
+            for cam_name, filename in filename_dict.items():
+                self.etcs[cam_name].set_values(filename)
+                # Remove file
+                os.remove(filename)
+            # Calculate updated ETs
+            self._take_blocking_observation(observation, filename_dict=filename_dict)
+            for cam_name, filename in filename_dict.items():
+                self.etcs[cam_name].calculate_exptime(filename, self.observatory.past_midnight)
+                os.remove(filename)
 
 
 if __name__ == '__main__':
