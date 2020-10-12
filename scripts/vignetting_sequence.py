@@ -48,7 +48,7 @@ class AltAzGenerator():
     def __init__(self, location, exposure_time, safe_sun_distance=50, min_altitude=30,
                  n_samples=100):
         self.location = location
-        self.set_exposure_time(utils.get_quantity_value)
+        self.set_exposure_time(exposure_time)
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.min_altitude = utils.get_quantity_value(min_altitude, u.degree) * u.degree
         # Create the coordinate grid
