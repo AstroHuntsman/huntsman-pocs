@@ -168,6 +168,7 @@ class ExposureTimeCalculator():
         mean_counts = data[self._ymin: self._ymax, self._xmin: self._xmax].mean() - bias
         if mean_counts >= self._saturate:
             print("WARNING: Counts are saturated.")
+        print(f"Mean counts: {mean_counts:.0f}")
         return mean_counts
 
     def _extract_header(self, filename):
@@ -244,7 +245,7 @@ class ExposureSequence():
             print("Calibrating exposure time...")
             self._calibrate_exptime(alt, az)
         exptime = self._get_next_exptime()
-        print(f"Exposure time: {exptime}.")
+        print(f"Exposure time: {utils.get_quantity_value(exptime, u.second):.1f}.")
 
         # Make observation
         observation = self._make_observation(alt, az, exposure_time=exptime)
