@@ -131,28 +131,27 @@ def ExposureTimeCalculator():
         self._mean_counts_prev = None
         self._exptime_prev = None
 
-    def set_values_from_file(self, filename):
+    def add_exposure(self, filename):
         self._mean_counts_prev = self._get_mean_counts(filename)
         self._date_prev, self._exposure_time_prev = self._extract_header(filename)
 
-    def calculate_exptime(self, filename, past_midnight):
+    def calculate_exptime(self, date, past_midnight):
+        """
+        Calculate the next exposure time given the datetime using previous exposure data.
 
-        # Extract data from file
-        mean_counts = self._get_mean_counts(filename)
-        date, exposure_time = self._extract_header(filename)
-
-        # Calculate next exposure time
-        if mean_counts == self._saturate:
-            exposure_time = self._exptime_prev / 5
+        Args:
+            date (Object): An object that can be interpreted as a date by `parse_date`.
+            past_midnight (bool): True if currently past midnight. TODO: remove.
+        """
+        date = parse_date(date)
+        elapsed_time = (date - self._date_prev).seconds
+        exptime = self._exptime_prev * (self._target_counts / self._mean_counts_prev)
+        sky_factor = 2.0 ** (elapsed_time / 180.0)
+        if past_midnight:
+            exptime = exptime / sky_factor
         else:
-            exposure_time = self._calculate_exptime(mean_counts, exposure_time, date)
-
-        # Update stored data
-        self._mean_counts_prev = mean_counts
-        self._date_prev = date
-        self._exptime_prev = exposure_time
-
-        return exposure_time
+            exptime = exptime * sky_factor
+        return exptime.to_value(u.second) * u.second
 
     def _get_mean_counts(self, filename, bias=32):
         data = fits.getdata(filename).astype("int32")
@@ -165,20 +164,10 @@ def ExposureTimeCalculator():
         exposure_time = header["EXPTIME"] * u.second
         return date, exposure_time
 
-    def _calculate_exptime(self, mean_counts, exposure_time_prev, date, past_midnight):
-        elapsed_time = (date - self._date_prev).seconds
-        exptime = self._exptime_prev * (self._target_counts / mean_counts)
-        sky_factor = 2.0 ** (elapsed_time / 180.0)
-        if past_midnight:
-            exptime = exptime / sky_factor
-        else:
-            exptime = exptime * sky_factor
-        return round(exptime.to_value(u.second)) * u.second
-
 
 class ExposureSequence():
 
-    def __init__(self, observatory, filter_name, exposure_time, n_exposures=100,
+    def __init__(self, observatory, filter_name, inital_exptime, n_exposures=100,
                  field_name='DomeVigTest', **kwargs):
         self.observatory = observatory
         self.cameras = observatory.cameras
@@ -186,7 +175,7 @@ class ExposureSequence():
         self.earth_location = observatory.earth_location
         self.field_name = field_name
         self.filter_name = filter_name
-        self.exposure_time = utils.get_quantity_value(exposure_time, u.second) * u.second
+        self.inital_exptime = utils.get_quantity_value(inital_exptime, u.second) * u.second
         # Create the coordinate generator
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
                                           exposure_time=self.exposure_time, **kwargs)
@@ -236,17 +225,19 @@ class ExposureSequence():
         alt = utils.get_quantity_value(alt, u.degree)
         az = utils.get_quantity_value(az, u.degree)
 
+        # Perform exposure time calibration if required
+        if calibrate_exptime:
+            print("Calibrating exposure time...")
+            self._calibrate_exptime(alt, az)
+
         # Make observation
-        field, observation = self._make_observation(alt, az)
+        exptime = self._get_next_exptime()
+        field, observation = self._make_observation(alt, az, exposure_time=exptime)
         headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}
 
         # Slew to field
         print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
         self._slew_to_field(field)
-
-        if calibrate_exptime:
-            print("Calibrating exposure time...")
-            self._calibrate_exptime(observation)
 
         # Take observations
         self._take_blocking_observation(observation, headers=headers)
@@ -281,13 +272,12 @@ class ExposureSequence():
         self._move_fws(filter_name="blank")
         self.mount.park()
 
-    def _make_observation(self, alt, az):
+    def _make_observation(self, alt, az, exposure_time):
         """Make an observation for the alt/az position."""
         position = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                         obstime=utils.current_time())
         field = Field(self.field_name, position.to_string('hmsdms'))
-        observation = Observation(field=field, filter_name=self.filter_name,
-                                  exptime=self.exposure_time)
+        observation = Observation(field=field, filter_name=self.filter_name, exptime=exposure_time)
         return field, observation
 
     def _move_fws(self, filter_name):
@@ -296,24 +286,34 @@ class ExposureSequence():
         while not all([e.is_set() for e in fw_events]):
             time.sleep(1)
 
-    def _calibrate_exptime(self, observation, target_counts=1000, tolerance=200,
-                           initial_exptime=1):
-        """Calculate the initial exposure time by taking the median estimate from all cameras."""
-        filename_dict = {}
+    def _calibrate_exptime(self, alt, az):
+        """Take initial exposures to determine appropriate exposure times."""
+        # Create observation with initial exposure time
+        field, observation = self._make_observation(alt, az, exposure_time=self.inital_exptime)
+        # Slew to the field
+        print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
+        self._slew_to_field(field)
+        # Determine required exposure times
         with TemporaryDirectory() as tdir:
+            # Store the exposures in the temp dir
+            filename_dict = {}
             for cam_name in self.cameras.keys():
                 filename_dict[cam_name] = os.path.join(tdir.name, f"{cam_name}.fits")
-            self._take_blocking_observation(observation, filename_dict=filename_dict)
             # Set initial values for ETCs
-            for cam_name, filename in filename_dict.items():
-                self.etcs[cam_name].set_values(filename)
-                # Remove file
-                os.remove(filename)
-            # Calculate updated ETs
             self._take_blocking_observation(observation, filename_dict=filename_dict)
             for cam_name, filename in filename_dict.items():
-                self.etcs[cam_name].calculate_exptime(filename, self.observatory.past_midnight)
-                os.remove(filename)
+                self.etcs[cam_name].add_exposure(filename)
+        return
+
+    def _get_next_exptime(self):
+        """
+        Use the median estimate from the cameras to determine the next exptime.
+        """
+        exptimes = []
+        for etc in self.etcs:
+            exptimes.append(etc.calculate_exptime(date=datetime.utcnow(),
+                                                  past_midnight=self.observatory.past_midnight))
+        return np.median(exptimes)
 
 
 if __name__ == '__main__':
