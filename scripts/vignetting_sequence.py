@@ -161,11 +161,9 @@ class ExposureTimeCalculator():
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor
-        print(elapsed_time, exptime, sky_factor)
-        print(self._exptime_prev, self._target_counts, self._mean_counts_prev)
         return exptime.to_value(u.second) * u.second
 
-    def _get_mean_counts(self, filename, bias=32):
+    def _get_mean_counts(self, filename, bias=35):
         data = fits.getdata(filename).astype("int32")
         mean_counts = data[self._ymin: self._ymax, self._xmin: self._xmax].mean() - bias
         if mean_counts >= self._saturate:
@@ -368,6 +366,7 @@ if __name__ == '__main__':
     # Parse args
     parser = argparse.ArgumentParser()
     parser.add_argument('--initial_exptime', default=1, type=float)
+    parser.add_argument('--max_exptime', default=10, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=100, type=int)
     parser.add_argument('--min_altitude', default=50, type=float)
@@ -384,5 +383,5 @@ if __name__ == '__main__':
     # Run exposure sequence
     expseq = ExposureSequence(observatory, initial_exptime=args.initial_exptime,
                               filter_name=args.filter_name, n_exposures=args.n_exposures,
-                              min_altitude=args.min_altitude)
+                              min_altitude=args.min_altitude, max_exptime=args.max_exptime)
     expseq.run()
