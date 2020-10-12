@@ -32,10 +32,12 @@ def parse_date(object):
     Returns:
         A `datetime.datetime` object.
     """
-    with suppress(AttributeError):
-        object = object.strip("(UTC)")
     if type(object) is datetime:
         return object
+    if type(object) is Time:
+        return object.to_datetime()
+    with suppress(AttributeError):
+        object = object.strip("(UTC)")
     return parse_date_dateutil(object)
 
 
