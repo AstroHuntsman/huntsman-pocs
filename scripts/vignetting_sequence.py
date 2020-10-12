@@ -181,7 +181,7 @@ class ExposureTimeCalculator():
 class ExposureSequence():
 
     def __init__(self, observatory, filter_name, initial_exptime, n_exposures=100,
-                 field_name='DomeVigTest', min_exptime=0, max_exptime=10, **kwargs):
+                 field_name='VigTest', min_exptime=0, max_exptime=10, **kwargs):
         self.observatory = observatory
         self.cameras = observatory.cameras
         self.mount = observatory.mount
