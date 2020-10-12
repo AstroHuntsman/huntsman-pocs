@@ -347,9 +347,10 @@ class ExposureSequence():
         """
         exptimes = []
         for etc in self.etcs.values():
-            exptimes.append(etc.calculate_exptime(date=utils.current_time(),
-                                                  past_midnight=self.observatory.past_midnight))
-        exptime = np.median(exptimes)
+            exptime = etc.calculate_exptime(date=utils.current_time(),
+                                            past_midnight=self.observatory.past_midnight)
+            exptimes.append(utils.get_quantity_value(exptime, u.second))
+        exptime = np.median(exptimes) * u.second
         if exptime >= self.max_exptime:
             print("WARNING: max exptime reached.")
             exptime = self.max_exptime
