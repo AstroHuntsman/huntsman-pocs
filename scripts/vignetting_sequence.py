@@ -213,8 +213,6 @@ class ExposureSequence():
             print("Error encountered during exposure sequence.")
             raise(err)
         finally:
-            # Finish up
-            print("Parking mount...")
             self._park_mount()
 
     def _take_exposure_sequence(self):
@@ -277,7 +275,7 @@ class ExposureSequence():
             time.sleep(1)
 
         # Update ETCs
-        for cam_name in observatory.cameras.keys():
+        for cam_name in self.cameras.keys():
             self.etcs[cam_name].add_exposure(filename_dict[cam_name])
 
     def _get_filenames(self, observation):
@@ -304,6 +302,7 @@ class ExposureSequence():
         """Park mount after moving FWs to blank positions"""
         print(f"Moving filterwheels to blank position before parking...")
         self._move_fws(filter_name="blank")
+        print("Parking mount...")
         self.mount.park()
 
     def _make_observation(self, alt, az, exposure_time):
