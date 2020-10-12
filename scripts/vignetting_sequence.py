@@ -193,7 +193,9 @@ class ExposureSequence():
                                           exposure_time=initial_exptime, **kwargs)
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
-        self.etcs = {cam_name: ExposureTimeCalculator() for cam_name in self.cameras.keys()}
+        self.etcs = {}
+        for cam_name in self.camers.values():
+            self.etcs[cam_name] = ExposureTimeCalculator()
         self.image_dir = self.observatory.config["directories"]["images"]
 
     def run(self):
