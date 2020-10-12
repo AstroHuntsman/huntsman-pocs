@@ -328,7 +328,7 @@ class ExposureSequence():
             # Store the exposures in the temp dir
             filename_dict = {}
             for cam_name in self.cameras.keys():
-                filename_dict[cam_name] = os.path.join(tdir.name, f"{cam_name}.fits")
+                filename_dict[cam_name] = os.path.join(tdir, f"{cam_name}.fits")
             # Set initial values for ETCs
             print(f"Taking ET calibration exposures of {self.inital_exptime}.")
             self._take_blocking_observation(observation, filename_dict=filename_dict)
