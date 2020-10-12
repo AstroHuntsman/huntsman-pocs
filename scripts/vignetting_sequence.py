@@ -118,7 +118,7 @@ def ExposureTimeCalculator():
     Class to estimate the next exposure time required to keep the count rate steady.
     """
 
-    def __init__(self, window_size=50, sizex=5496, sizey=3672, saturate=4094):
+    def __init__(self, window_size=50, sizex=5496, sizey=3672, saturate=4094, target_scaling=0.16):
         self._saturate = saturate
         window_size = int(window_size)
         r = window_size / 2
@@ -126,12 +126,15 @@ def ExposureTimeCalculator():
         self._ymin = int(sizey / 2 - r)
         self._xmax = self._xmin + window_size
         self._ymax = self._ymin + window_size
-        self._target_counts = 0.16 * saturate
+        self._target_counts = target_scaling * saturate
         self._date_prev = None
         self._mean_counts_prev = None
         self._exptime_prev = None
 
     def add_exposure(self, filename):
+        """
+        Update the ETC with the previous exposure.
+        """
         self._mean_counts_prev = self._get_mean_counts(filename)
         self._date_prev, self._exposure_time_prev = self._extract_header(filename)
 
@@ -168,7 +171,7 @@ def ExposureTimeCalculator():
 class ExposureSequence():
 
     def __init__(self, observatory, filter_name, inital_exptime, n_exposures=100,
-                 field_name='DomeVigTest', **kwargs):
+                 field_name='DomeVigTest', min_exptime=0, max_exptime=10, **kwargs):
         self.observatory = observatory
         self.cameras = observatory.cameras
         self.mount = observatory.mount
@@ -176,6 +179,8 @@ class ExposureSequence():
         self.field_name = field_name
         self.filter_name = filter_name
         self.inital_exptime = utils.get_quantity_value(inital_exptime, u.second) * u.second
+        self.max_exptime = utils.get_quantity_value(max_exptime, u.second) * u.second
+        self.min_exptime = utils.get_quantity_value(min_exptime, u.second) * u.second
         # Create the coordinate generator
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
                                           exposure_time=self.exposure_time, **kwargs)
@@ -224,6 +229,7 @@ class ExposureSequence():
         # Unit conversions
         alt = utils.get_quantity_value(alt, u.degree)
         az = utils.get_quantity_value(az, u.degree)
+        print(f"alt={alt:.2f}, az={az:.2f}...")
 
         # Perform exposure time calibration if required
         if calibrate_exptime:
@@ -232,12 +238,8 @@ class ExposureSequence():
 
         # Make observation
         exptime = self._get_next_exptime()
-        field, observation = self._make_observation(alt, az, exposure_time=exptime)
-        headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}
-
-        # Slew to field
-        print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
-        self._slew_to_field(field)
+        observation = self._make_observation(alt, az, exposure_time=exptime)
+        headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}  # These don't get written...
 
         # Take observations
         self._take_blocking_observation(observation, headers=headers)
@@ -245,19 +247,39 @@ class ExposureSequence():
     def _take_blocking_observation(self, observation, headers=None, filename_dict=None):
         """
         """
+        print("Slewing to target...")
+        self._slew_to_field(observation.field)
+        # We need to access the files to update the exposure times
+        # This means we need to specify the filenames!
+        if filename_dict is None:
+            filename_dict = self._get_filenames(observation)
+
         events = []
         print("Taking exposures...")
         for cam_name, cam in observatory.cameras.items():
-            if filename_dict is None:
-                filename = None
-            else:
-                filename = filename_dict[cam_name]
+            filename = filename_dict[cam_name]
             events.append(cam.take_observation(observation, headers=headers, filename=filename))
 
         # Block until finished exposing on all cameras
         print("Waiting for exposures...")
         while not all([e.is_set() for e in events]):
             time.sleep(1)
+
+        # Update ETCs
+        for cam_name in observatory.cameras.keys():
+            self.etcs[cam_name].add_exposure(filename_dict[cam_name])
+
+    def _get_filenames(self, observation):
+        """
+        Return a dictionary of cam_name: filename for the given observation.
+        """
+        filename_dict = {}
+        start_time = utils.current_time(flatten=True)
+        for cam_name, camera in self.cameras.items():
+            image_dir = os.path.join(observation.directory, camera.uid, start_time)
+            filename_dict[cam_name] = os.path.join(image_dir,
+                                                   f'{start_time}.{camera.file_extension}')
+        return filename_dict
 
     def _slew_to_field(self, field):
         """Slew to the field, moving FWs to blank beforehand."""
@@ -287,12 +309,13 @@ class ExposureSequence():
             time.sleep(1)
 
     def _calibrate_exptime(self, alt, az):
-        """Take initial exposures to determine appropriate exposure times."""
+        """Take initial exposures to determine appropriate exposure times.
+        Args:
+            alt (float): Altitude of observation.
+            az (float): Azimuth of observation.
+        """
         # Create observation with initial exposure time
         field, observation = self._make_observation(alt, az, exposure_time=self.inital_exptime)
-        # Slew to the field
-        print(f"Slewing to alt={alt:.2f}, az={az:.2f}...")
-        self._slew_to_field(field)
         # Determine required exposure times
         with TemporaryDirectory() as tdir:
             # Store the exposures in the temp dir
@@ -300,10 +323,10 @@ class ExposureSequence():
             for cam_name in self.cameras.keys():
                 filename_dict[cam_name] = os.path.join(tdir.name, f"{cam_name}.fits")
             # Set initial values for ETCs
+            print(f"Taking ET calibration exposures of {self.inital_exptime}.")
             self._take_blocking_observation(observation, filename_dict=filename_dict)
             for cam_name, filename in filename_dict.items():
                 self.etcs[cam_name].add_exposure(filename)
-        return
 
     def _get_next_exptime(self):
         """
@@ -311,16 +334,23 @@ class ExposureSequence():
         """
         exptimes = []
         for etc in self.etcs:
-            exptimes.append(etc.calculate_exptime(date=datetime.utcnow(),
+            exptimes.append(etc.calculate_exptime(date=utils.current_time(),
                                                   past_midnight=self.observatory.past_midnight))
-        return np.median(exptimes)
+        exptime = np.median(exptimes)
+        if exptime >= self.max_exptime:
+            print("WARNING: max exptime reached.")
+            exptime = self.max_exptime
+        elif exptime <= self.min_exptime:
+            print("WARNING: min exptime reached.")
+            exptime = self.min_exptime
+        return exptime
 
 
 if __name__ == '__main__':
 
     # Parse args
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exposure_time', default=1, type=float)
+    parser.add_argument('--initial_exptime', default=1, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=100, type=int)
     parser.add_argument('--min_altitude', default=50, type=float)
@@ -335,5 +365,6 @@ if __name__ == '__main__':
     observatory = create_huntsman_observatory(with_autoguider=False)
 
     # Run exposure sequence
-    ExposureSequence(observatory, exposure_time=args.exposure_time, filter_name=args.filter_name,
-                     n_exposures=args.n_exposures, min_altitude=args.min_altitude).run()
+    ExposureSequence(observatory, initial_exptime=args.initial_exptime,
+                     filter_name=args.filter_name, n_exposures=args.n_exposures,
+                     min_altitude=args.min_altitude).run()
