@@ -161,6 +161,8 @@ class ExposureTimeCalculator():
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor
+        print(elapsed_time, exptime, sky_factor)
+        print(self._exptime_prev, self._target_counts, self._mean_counts_prev)
         return exptime.to_value(u.second) * u.second
 
     def _get_mean_counts(self, filename, bias=32):
