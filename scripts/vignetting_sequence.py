@@ -311,7 +311,7 @@ class ExposureSequence():
                                         obstime=utils.current_time())
         field = Field(self.field_name, position.to_string('hmsdms'))
         observation = Observation(field=field, filter_name=self.filter_name, exptime=exposure_time)
-        return field, observation
+        return observation
 
     def _move_fws(self, filter_name):
         """Move all the FWs to the filter (blocking)."""
@@ -326,7 +326,7 @@ class ExposureSequence():
             az (float): Azimuth of observation.
         """
         # Create observation with initial exposure time
-        field, observation = self._make_observation(alt, az, exposure_time=self.inital_exptime)
+        observation = self._make_observation(alt, az, exposure_time=self.inital_exptime)
         # Determine required exposure times
         with TemporaryDirectory() as tdir:
             # Store the exposures in the temp dir
