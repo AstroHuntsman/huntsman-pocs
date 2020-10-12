@@ -48,7 +48,7 @@ class AltAzGenerator():
     def __init__(self, location, exposure_time, safe_sun_distance=50, min_altitude=30,
                  n_samples=100):
         self.location = location
-        self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
+        self.set_exposure_time(utils.get_quantity_value)
         self.safe_sun_distance = utils.get_quantity_value(safe_sun_distance, u.degree) * u.degree
         self.min_altitude = utils.get_quantity_value(min_altitude, u.degree) * u.degree
         # Create the coordinate grid
@@ -66,6 +66,10 @@ class AltAzGenerator():
         if self._visited.all():
             raise StopIteration
         return self._get_coordinate(exposure_time=self.exposure_time)
+
+    def set_exposure_time(self, exposure_time):
+        """Set the exposure time."""
+        self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
 
     def _get_coordinate(self, exposure_time, sleep_time=60, **kwargs):
         """
@@ -183,7 +187,7 @@ class ExposureSequence():
         self.min_exptime = utils.get_quantity_value(min_exptime, u.second) * u.second
         # Create the coordinate generator
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
-                                          exposure_time=self.exposure_time, **kwargs)
+                                          exposure_time=initial_exptime, **kwargs)
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
         self.etcs = [ExposureTimeCalculator() for _ in range(len(observatory.cameras))]
@@ -243,6 +247,9 @@ class ExposureSequence():
 
         # Take observations
         self._take_blocking_observation(observation, headers=headers)
+
+        # Update Alt-Az generator with most recent ET
+        self.coordinates.set_exposure_time(exptime)
 
     def _take_blocking_observation(self, observation, headers=None, filename_dict=None):
         """
