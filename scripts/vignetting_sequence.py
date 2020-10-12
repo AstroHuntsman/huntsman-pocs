@@ -117,7 +117,7 @@ class AltAzGenerator():
         return np.vstack([az_array.reshape(-1), alt_array.reshape(-1)]).T * u.degree
 
 
-def ExposureTimeCalculator():
+class ExposureTimeCalculator():
     """
     Class to estimate the next exposure time required to keep the count rate steady.
     """
@@ -193,9 +193,7 @@ class ExposureSequence():
                                           exposure_time=initial_exptime, **kwargs)
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
-        self.etcs = {}
-        for cam_name in self.cameras.values():
-            self.etcs[cam_name] = ExposureTimeCalculator()
+        self.etcs = {cam_name: ExposureTimeCalculator() for cam_name in self.cameras.values()}
         self.image_dir = self.observatory.config["directories"]["images"]
 
     def run(self):
