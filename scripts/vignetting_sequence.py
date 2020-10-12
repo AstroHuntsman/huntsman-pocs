@@ -170,7 +170,7 @@ def ExposureTimeCalculator():
 
 class ExposureSequence():
 
-    def __init__(self, observatory, filter_name, inital_exptime, n_exposures=100,
+    def __init__(self, observatory, filter_name, initial_exptime, n_exposures=100,
                  field_name='DomeVigTest', min_exptime=0, max_exptime=10, **kwargs):
         self.observatory = observatory
         self.cameras = observatory.cameras
@@ -178,7 +178,7 @@ class ExposureSequence():
         self.earth_location = observatory.earth_location
         self.field_name = field_name
         self.filter_name = filter_name
-        self.inital_exptime = utils.get_quantity_value(inital_exptime, u.second) * u.second
+        self.inital_exptime = utils.get_quantity_value(initial_exptime, u.second) * u.second
         self.max_exptime = utils.get_quantity_value(max_exptime, u.second) * u.second
         self.min_exptime = utils.get_quantity_value(min_exptime, u.second) * u.second
         # Create the coordinate generator
