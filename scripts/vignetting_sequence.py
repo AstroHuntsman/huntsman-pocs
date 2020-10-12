@@ -344,7 +344,7 @@ class ExposureSequence():
         Use the median estimate from the cameras to determine the next exptime.
         """
         exptimes = []
-        for etc in self.etcs:
+        for etc in self.etcs.values():
             exptimes.append(etc.calculate_exptime(date=utils.current_time(),
                                                   past_midnight=self.observatory.past_midnight))
         exptime = np.median(exptimes)
@@ -376,6 +376,8 @@ if __name__ == '__main__':
     observatory = create_huntsman_observatory(with_autoguider=False)
 
     # Run exposure sequence
-    ExposureSequence(observatory, initial_exptime=args.initial_exptime,
-                     filter_name=args.filter_name, n_exposures=args.n_exposures,
-                     min_altitude=args.min_altitude).run()
+    expseq = ExposureSequence(observatory, initial_exptime=args.initial_exptime,
+                              filter_name=args.filter_name, n_exposures=args.n_exposures,
+                              min_altitude=args.min_altitude)
+    print(expseq.etcs)
+    expseq.run()
