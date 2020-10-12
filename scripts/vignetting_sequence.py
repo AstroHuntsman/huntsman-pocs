@@ -131,6 +131,7 @@ def ExposureTimeCalculator():
         self._xmax = self._xmin + window_size
         self._ymax = self._ymin + window_size
         self._target_counts = target_scaling * saturate
+        self._saturate = saturate
         self._date_prev = None
         self._mean_counts_prev = None
         self._exptime_prev = None
@@ -163,6 +164,8 @@ def ExposureTimeCalculator():
     def _get_mean_counts(self, filename, bias=32):
         data = fits.getdata(filename).astype("int32")
         mean_counts = data[self._ymin: self._ymax, self._xmin: self._xmax].mean() - bias
+        if mean_counts >= self.saturate:
+            print("WARNING: Counts are saturated.")
         return mean_counts
 
     def _extract_header(self, filename):
@@ -233,7 +236,7 @@ class ExposureSequence():
         # Unit conversions
         alt = utils.get_quantity_value(alt, u.degree)
         az = utils.get_quantity_value(az, u.degree)
-        print(f"alt={alt:.2f}, az={az:.2f}...")
+        print(f"alt={alt:.2f}, az={az:.2f}.")
 
         # Perform exposure time calibration if required
         if calibrate_exptime:
@@ -251,7 +254,7 @@ class ExposureSequence():
         # Update Alt-Az generator with most recent ET
         self.coordinates.set_exposure_time(exptime)
 
-    def _take_blocking_observation(self, observation, headers=None, filename_dict=None):
+    def _take_blocking_observation(self, observation, headers={}, filename_dict=None):
         """
         """
         print("Slewing to target...")
