@@ -329,7 +329,7 @@ class ExposureSequence():
         # Create observation with initial exposure time
         observation = self._make_observation(alt, az, exposure_time=self.inital_exptime)
         # Determine required exposure times
-        with TemporaryDirectory(dir=self.images_dir) as tdir:
+        with TemporaryDirectory(dir=self.image_dir) as tdir:
             # Store the exposures in the temp dir
             filename_dict = {}
             for cam_name in self.cameras.keys():
