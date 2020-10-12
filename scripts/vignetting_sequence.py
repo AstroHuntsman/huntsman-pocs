@@ -164,7 +164,7 @@ class ExposureTimeCalculator():
     def _get_mean_counts(self, filename, bias=32):
         data = fits.getdata(filename).astype("int32")
         mean_counts = data[self._ymin: self._ymax, self._xmin: self._xmax].mean() - bias
-        if mean_counts >= self.saturate:
+        if mean_counts >= self._saturate:
             print("WARNING: Counts are saturated.")
         return mean_counts
 
