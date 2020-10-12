@@ -193,7 +193,8 @@ class ExposureSequence():
                                           exposure_time=initial_exptime, **kwargs)
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
-        self.etcs = [ExposureTimeCalculator() for _ in range(len(observatory.cameras))]
+        self.etcs = {cam_name: ExposureTimeCalculator() for cam_name in self.cameras.keys()}
+        self.image_dir = self.observatory.config["directories"]["images"]
 
     def run(self):
         """
@@ -258,7 +259,6 @@ class ExposureSequence():
     def _take_blocking_observation(self, observation, headers={}, filename_dict=None):
         """
         """
-        print("Slewing to target...")
         self._slew_to_field(observation.field)
         # We need to access the files to update the exposure times
         # This means we need to specify the filenames!
@@ -297,6 +297,7 @@ class ExposureSequence():
         print(f"Moving filterwheels to blank position before slewing...")
         self._move_fws(filter_name="blank")
         self.mount.set_target_coordinates(field)
+        print("Slewing to target...")
         self.mount.slew_to_target()
 
     def _park_mount(self):
@@ -328,7 +329,7 @@ class ExposureSequence():
         # Create observation with initial exposure time
         observation = self._make_observation(alt, az, exposure_time=self.inital_exptime)
         # Determine required exposure times
-        with TemporaryDirectory() as tdir:
+        with TemporaryDirectory(dir=self.images_dir) as tdir:
             # Store the exposures in the temp dir
             filename_dict = {}
             for cam_name in self.cameras.keys():
