@@ -143,7 +143,7 @@ class ExposureTimeCalculator():
         Update the ETC with the previous exposure.
         """
         self._mean_counts_prev = self._get_mean_counts(filename)
-        self._date_prev, self._exposure_time_prev = self._extract_header(filename)
+        self._date_prev, self._exptime_prev = self._extract_header(filename)
 
     def calculate_exptime(self, date, past_midnight):
         """
