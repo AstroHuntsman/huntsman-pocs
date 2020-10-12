@@ -242,9 +242,10 @@ class ExposureSequence():
         if calibrate_exptime:
             print("Calibrating exposure time...")
             self._calibrate_exptime(alt, az)
+        exptime = self._get_next_exptime()
+        print(f"Exposure time: {exptime}.")
 
         # Make observation
-        exptime = self._get_next_exptime()
         observation = self._make_observation(alt, az, exposure_time=exptime)
         headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}  # These don't get written...
 
