@@ -194,7 +194,7 @@ class ExposureSequence():
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
         self.etcs = {}
-        for cam_name in self.camers.values():
+        for cam_name in self.cameras.values():
             self.etcs[cam_name] = ExposureTimeCalculator()
         self.image_dir = self.observatory.config["directories"]["images"]
 
