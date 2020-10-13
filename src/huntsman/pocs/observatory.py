@@ -304,7 +304,7 @@ class HuntsmanObservatory(Observatory):
             cameras_all = {c: self.cameras[c] for c in camera_names}
 
         # Obtain the filter order
-        filter_order = flat_field_config['flat_field_order'].copy()
+        filter_order = flat_field_config['filter_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
