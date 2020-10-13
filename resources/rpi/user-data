@@ -1,3 +1,6 @@
+#cloud-config
+# https://cloudinit.readthedocs.io/
+
 ntp:
   enabled: true
   servers:
@@ -6,9 +9,6 @@ ntp:
     - time2.google.com
     - time3.google.com
     - time4.google.com
-
-#cloud-config
-# https://cloudinit.readthedocs.io/
 
 # Set the first part of the name to camera device, e.g. huntsmanpi000
 hostname: <hostname>
