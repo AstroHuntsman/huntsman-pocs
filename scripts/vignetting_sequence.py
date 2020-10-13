@@ -166,7 +166,7 @@ class ExposureTimeCalculator():
     def _get_mean_counts(self, filename, bias=35):
         data = fits.getdata(filename).astype("int32")
         mean_counts = data[self._ymin: self._ymax, self._xmin: self._xmax].mean() - bias
-        if mean_counts >= self._saturate:
+        if mean_counts >= self._saturate - bias:
             print("WARNING: Counts are saturated.")
         print(f"Mean counts: {mean_counts:.0f}")
         return mean_counts
@@ -245,7 +245,7 @@ class ExposureSequence():
             print("Calibrating exposure time...")
             self._calibrate_exptime(alt, az)
         exptime = self._get_next_exptime()
-        print(f"Exposure time: {utils.get_quantity_value(exptime, u.second):.1f}.")
+        print(f"Exposure time: {utils.get_quantity_value(exptime, u.second):.4f}.")
 
         # Make observation
         observation = self._make_observation(alt, az, exposure_time=exptime)
@@ -339,8 +339,6 @@ class ExposureSequence():
             # Set initial values for ETCs
             print(f"Taking ET calibration exposures of {self.inital_exptime}.")
             self._take_blocking_observation(observation, filename_dict=filename_dict)
-            for cam_name, filename in filename_dict.items():
-                self.etcs[cam_name].add_exposure(filename)
 
     def _get_next_exptime(self):
         """
