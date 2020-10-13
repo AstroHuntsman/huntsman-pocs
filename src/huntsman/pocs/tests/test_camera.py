@@ -12,6 +12,7 @@ import astropy.units as u
 import pytest
 from Pyro5.api import Proxy
 from astropy.io import fits
+from huntsman.pocs.utils import logger
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils import error
@@ -38,7 +39,9 @@ def camera(camera_service_name):
     proxy_name_lookup = f'PYRONAME:{camera_service_name}'
 
     with Proxy(proxy_name_lookup) as p:
+        logger.log('testing', f'Yielding {camera}')
         yield p
+        logger.log('testing', f'Unyielding {camera}')
 
 
 def test_camera_detection(camera):

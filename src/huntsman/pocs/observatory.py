@@ -5,47 +5,17 @@ from collections import defaultdict
 from contextlib import suppress
 from functools import partial
 
+from astropy import stats
 from astropy import units as u
 from astropy.io import fits
-from astropy import stats
-
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.scheduler.observation import DitheredFlatObservation
 from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
-from panoptes.utils import error, altaz_to_radec
+from panoptes.utils import error, altaz_to_radec, listify
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, flatten_time, wait_for_events
-from huntsman.pocs.utils import load_config
-from huntsman.pocs.scheduler import create_scheduler_from_config
-from huntsman.pocs.camera import create_cameras_from_config
-
-
-def create_huntsman_observatory(config=None, **kwargs):
-    """
-    Create a `HuntsmanObservatory` instance from a config.
-
-    Args:
-        config (dict, optional): The config dictionary. If `None` (default), the default config
-            will be loaded from file.
-        **kwargs: Used to initialise the `HuntsmanObservatory` instance.
-    Returns:
-        `huntsman.pocs.observatory.HuntsmanObservatory`
-    """
-    if config is None:
-        config = load_config()
-    # Create cameras (may take a few minutes)
-    cameras = create_cameras_from_config(config=config)
-    # Create mount
-    mount = create_mount_from_config(config=config)
-    mount.initialize()
-    # Create the scheduler
-    scheduler = create_scheduler_from_config(config=config)
-    # Create the observatory
-    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
-                                      config=config, **kwargs)
-    return observatory
 
 
 class HuntsmanObservatory(Observatory):
@@ -548,8 +518,8 @@ class HuntsmanObservatory(Observatory):
         return dark_obs
 
     def _take_autoflats(self, cameras, observation, safety_func, tolerance=0.05,
-                        target_scaling=0.17, bias=32, min_exptime=1*u.second,
-                        max_exptime=60*u.second, max_num_exposures=10, max_attempts=20,
+                        target_scaling=0.17, bias=32, min_exptime=1 * u.second,
+                        max_exptime=60 * u.second, max_num_exposures=10, max_attempts=20,
                         *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
@@ -770,7 +740,7 @@ class HuntsmanObservatory(Observatory):
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding
         camera_events = {cam_name: value for cam_name, value in camera_events.items(
-                         ) if value["event"].is_set()}
+        ) if value["event"].is_set()}
         return camera_events
 
     def _take_flat_field_darks(self, exptimes, observation, safety_func, **kwargs):

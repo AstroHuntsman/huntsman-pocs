@@ -14,7 +14,7 @@ from panoptes.utils.database import PanDB
 _all_databases = ['file', 'memory']
 
 logger.enable('panoptes')
-logger.level("testing", no=15, icon="🤖", color="<YELLOW><black>")
+logger.level("testing", no=15, icon="🤖", color="<LIGHT-BLUE><black>")
 log_fmt = "<lvl>{level:.1s}</lvl> " \
           "<light-blue>{time:MM-DD HH:mm:ss.ss!UTC}</>" \
           "<blue>({time:HH:mm:ss.ss})</> " \

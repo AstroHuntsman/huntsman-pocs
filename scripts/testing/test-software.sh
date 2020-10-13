@@ -26,13 +26,11 @@ HUNTSMAN_POCS="${HUNTSMAN_POCS:-${HUNTSMAN_DIR}/huntsman-pocs}"
 docker run --rm -i \
   --init \
   --network "host" \
-  -e "PANOPTES_CONFIG_FILE=${HUNTSMAN_DIR}/huntsman-pocs/tests/testing.yaml" \
-  -e "PANOPTES_CONFIG_HOST=0.0.0.0" \
-  -e "PANOPTES_CONFIG_PORT=8765" \
+  --env-file "./tests/env" \
   -v "${PWD}":/var/huntsman/huntsman-pocs \
   -v "${PWD}/logs":/var/huntsman/logs \
   huntsman-pocs:develop \
   "${HUNTSMAN_DIR}/huntsman-pocs/scripts/testing/run-tests.sh"
 
-echo "test output dir ${PWD}/logs:"
+echo "test output dir ${PANLOG}:"
 ls "${PWD}/logs/huntsman-testing.log"
