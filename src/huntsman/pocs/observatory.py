@@ -17,12 +17,41 @@ from panoptes.pocs.scheduler import constraint
 from panoptes.utils import error, altaz_to_radec
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, flatten_time, wait_for_events
+from huntsman.pocs.utils import load_config
+from huntsman.pocs.scheduler import create_scheduler_from_config
+from huntsman.pocs.camera import create_cameras_from_config
+
+
+def create_huntsman_observatory(config=None, **kwargs):
+    """
+    Create a `HuntsmanObservatory` instance from a config.
+
+    Args:
+        config (dict, optional): The config dictionary. If `None` (default), the default config
+            will be loaded from file.
+        **kwargs: Used to initialise the `HuntsmanObservatory` instance.
+    Returns:
+        `huntsman.pocs.observatory.HuntsmanObservatory`
+    """
+    if config is None:
+        config = load_config()
+    # Create cameras (may take a few minutes)
+    cameras = create_cameras_from_config(config=config)
+    # Create mount
+    mount = create_mount_from_config(config=config)
+    mount.initialize()
+    # Create the scheduler
+    scheduler = create_scheduler_from_config(config=config)
+    # Create the observatory
+    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
+                                      config=config, **kwargs)
+    return observatory
 
 
 class HuntsmanObservatory(Observatory):
 
     def __init__(self,
-                 with_autoguider=False,
+                 with_autoguider=True,
                  hdr_mode=False,
                  take_flats=False,
                  config=None,
@@ -31,12 +60,9 @@ class HuntsmanObservatory(Observatory):
         """Huntsman POCS Observatory
 
         Args:
-            with_autoguider (bool, optional): If autoguider is attached,
-                defaults to True.
-            hdr_mode (bool, optional): If pics should be taken in HDR mode,
-                defaults to False.
-            take_flats (bool, optional): If flat field images should be take,
-                defaults to False.
+            with_autoguider (bool, optional): If autoguider is attached, defaults to True.
+            hdr_mode (bool, optional): If pics should be taken in HDR mode, defaults to False.
+            take_flats (bool, optional): If flat field images should be taken, defaults to True.
             *args: Description
             **kwargs: Description
         """
@@ -67,10 +93,6 @@ class HuntsmanObservatory(Observatory):
             except Exception as e:
                 self._has_autoguider = False
                 self.logger.warning(f"Problem setting autoguider, continuing without: {e!r}")
-
-    ##########################################################################
-    # Properties
-    ##########################################################################
 
     @property
     def has_hdr_mode(self):
@@ -112,10 +134,6 @@ class HuntsmanObservatory(Observatory):
 
         # If the nearest midnight is in the past, it's the morning...
         return midnight < current_time()
-
-    ##########################################################################
-    # Methods
-    ##########################################################################
 
     def initialize(self):
         """Initialize the observatory and connected hardware """
@@ -278,16 +296,22 @@ class HuntsmanObservatory(Observatory):
                          sleep=10,
                          camera_names=None,
                          n_darks=10,
+                         imtype='dark',
                          *args, **kwargs
                          ):
-        """Take n_darks dark frames for each exposure time specified,
+        """Take n_darks for each exposure time specified,
            for each camera.
 
         Args:
             exptimes (list): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
-            n_darks (int, optional): Number of darks to be taken per exptime
+            n_darks (int or list, optional): if int, the same number of darks will be taken
+                for each exptime. If list, the len has to be the same than len(exptimes), where each
+                element is the number of darks we want for the corresponding exptime, e.g.:
+                take_dark_fields(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
+                will take 30x1s, 10x60s, and 20x15s darks
+            imtype (str, optional): type of image
         """
 
         if camera_names is None:
@@ -305,16 +329,23 @@ class HuntsmanObservatory(Observatory):
         # of cameras times the number of exptimes times n_darks.
         darks_filenames = []
 
+        exptimes = listify(exptimes)
+
+        if not isinstance(n_darks, list):
+            n_darks = listify(n_darks) * len(exptimes)
+
         # Loop over cameras.
-        for exptime in exptimes:
+        for exptime, num_darks in zip(exptimes, n_darks):
 
             start_time = current_time()
 
             with suppress(AttributeError):
                 exptime = exptime.to_value(u.second)
 
+            dark_obs = self._create_dark_observation(exptime)
+
             # Loop over exposure times for each camera.
-            for num in range(n_darks):
+            for num in range(num_darks):
 
                 self.logger.debug(f'Darks sequence #{num} of exposure time {exptime}s')
 
@@ -323,18 +354,18 @@ class HuntsmanObservatory(Observatory):
                 # Take a given number of exposures for each exposure time.
                 for camera in cameras_list.values():
                     # Create dark observation
-                    dark_obs = self._create_dark_observation(exptime)
                     fits_headers = self.get_standard_headers(observation=dark_obs)
                     # Common start time for cameras
                     fits_headers['start_time'] = flatten_time(start_time)
 
+                    # Create filename
+                    path = os.path.join(image_dir,
+                                        'darks',
+                                        camera.uid,
+                                        dark_obs.seq_time)
+
                     filename = os.path.join(
-                        image_dir,
-                        'darks',
-                        camera.uid,
-                        f'{exptime}',
-                        dark_obs.seq_time,
-                        f'dark_{num:02d}.{camera.file_extension}')
+                        path, f'{imtype}_{num:02d}.{camera.file_extension}')
 
                     # Take picture and get event
                     camera_event = camera.take_observation(
@@ -443,10 +474,6 @@ class HuntsmanObservatory(Observatory):
         # Raise a `PanError` if no cameras are ready.
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
-
-    ##########################################################################
-    # Private Methods
-    ##########################################################################
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
@@ -737,7 +764,8 @@ class HuntsmanObservatory(Observatory):
         # Block until done exposing on all cameras
         timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
         self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout, sleep_delay=1):
+        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout,
+                               sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding
