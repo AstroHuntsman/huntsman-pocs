@@ -151,10 +151,8 @@ class ExposureTimeCalculator():
             if mean_counts < self._min_counts:
                 print("Counts are too low. Assuming vignetted and ignoring for ETC.")
                 return
-        print("Hello")
         self._mean_counts_prev = mean_counts
         self._date_prev, self._exptime_prev = self._extract_header(filename)
-        print(self._date_prev)
 
     def calculate_exptime(self, date, past_midnight):
         """
@@ -164,7 +162,6 @@ class ExposureTimeCalculator():
             date (Object): An object that can be interpreted as a date by `parse_date`.
             past_midnight (bool): True if currently past midnight. TODO: remove.
         """
-        print(date, self._date_prev)
         date = parse_date(date)
         elapsed_time = (date - self._date_prev).seconds
         exptime = self._exptime_prev * (self._target_counts / self._mean_counts_prev)
