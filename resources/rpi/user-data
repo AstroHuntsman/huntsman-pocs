@@ -90,13 +90,37 @@ write_files:
   append: true
 
 ## Get and run the install script upon first boot.
-#runcmd:
-#  # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
-#  - [ sh, -c, $(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O-) ]
-#  - [ curl, -fsSL, get.docker.com, -o, get-docker.sh ]
-#  - [ sh, get-docker.sh ]
-#  - [ pip, install, docker-compose ]
-#  - [ docker, pull, huntsmanarray/camera:tenlens ]
+runcmd:
+  # Oh my zsh on the Pi host. Because it's better. TODO add a default zshrc file.
+  - [ sh, -c, "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" ]
+  # Append some statements to .zshrc
+  - echo "export PROMPT='%F{240}%n%F{red}@%F{green}%m:%F{101}%d$ %F{reset}'" >> /home/huntsman/.zshrc
+  - echo "\n#HUNTSMAN-POCS" >> /home/huntsman/.zshrc
+  - echo "export PANDIR=/var/huntsman" >> /home/huntsman/.zshrc
+  - echo "export HUNTSMAN_POCS=$PANDIR/huntsman-pocs" >> /home/huntsman/.zshrc
+  - source ~/.zshrc
+  # install a few extra packages
+  - sudo apt update
+  - sudo apt -y install git python3-pip byobu vim grc
+  # docker setup
+  - sudo apt -y install apt-transport-https ca-certificates software-properties-common
+  - curl -fsSL get.docker.com -o get-docker.sh && sh get-docker.sh
+  - sudo usermod -aG docker huntsman
+  - sudo pip3 install docker-compose
+  # install minimal huntsman-pocs
+  - sudo mkdir -p $PANDIR
+  - sudo chown -R huntsman $PANDIR
+  - cd $PANDIR
+  - git clone https://github.com/AstroHuntsman/huntsman-pocs.git
+  # pull latest camera docker image
+  - docker pull huntsmanarray/camera:latest
+
+# example of how to setup cronjobs
+#write_files:
+#  - content: |
+#      0 13 * * 0 huntsman /script-to-run
+#    path: /etc/crontab
+#    append: true
 
 power_state:
   delay: '+2'
