@@ -375,7 +375,7 @@ if __name__ == '__main__':
     parser.add_argument('--initial_exptime', default=0.0001, type=float)
     parser.add_argument('--max_exptime', default=30, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
-    parser.add_argument('--n_exposures', default=100, type=int)
+    parser.add_argument('--n_exposures', default=49, type=int)
     parser.add_argument('--min_altitude', default=50, type=float)
     args = parser.parse_args()
 
