@@ -125,7 +125,7 @@ class ExposureTimeCalculator():
     """
 
     def __init__(self, window_size=50, sizex=5496, sizey=3672, saturate=4094, target_scaling=0.16,
-                 counts_tolerance=0.5):
+                 minumum_scaling=0.05):
         self._saturate = saturate
         window_size = int(window_size)
         r = window_size / 2
@@ -138,7 +138,7 @@ class ExposureTimeCalculator():
         self._date_prev = None
         self._mean_counts_prev = None
         self._exptime_prev = None
-        self._max_counts_decrease = counts_tolerance * self._target_counts
+        self._min_counts = minumum_scaling * saturate
 
     def add_exposure(self, filename):
         """
@@ -148,8 +148,8 @@ class ExposureTimeCalculator():
         # If the exposure is vignetted, a large change in counts may be observed
         # We want to ingore these cases for the next ETC
         if self._mean_counts_prev is not None:
-            if (self._mean_counts_prev - mean_counts) > self._max_counts_decrease:
-                print("Counts are too low compared to previous exposure. Ignoring for ETC.")
+            if mean_counts < self._min_counts:
+                print("Counts are too low. Assuming vignetted and ignoring for ETC.")
                 return
         self._mean_counts_prev = mean_counts
         self._date_prev, self._exptime_prev = self._extract_header(filename)
@@ -372,8 +372,8 @@ if __name__ == '__main__':
 
     # Parse args
     parser = argparse.ArgumentParser()
-    parser.add_argument('--initial_exptime', default=0.0005, type=float)
-    parser.add_argument('--max_exptime', default=60, type=float)
+    parser.add_argument('--initial_exptime', default=0.0001, type=float)
+    parser.add_argument('--max_exptime', default=30, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=100, type=int)
     parser.add_argument('--min_altitude', default=50, type=float)
