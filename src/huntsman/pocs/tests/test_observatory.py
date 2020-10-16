@@ -1,13 +1,13 @@
 import os
 import pytest
 
-from pocs.core import POCS
-from pocs.utils.location import create_location_from_config
-from pocs.scheduler import create_scheduler_from_config
-from pocs.dome import create_dome_from_config
-from pocs.mount import create_mount_from_config
+from panoptes.pocs.core import POCS
+from panoptes.pocs.utils.location import create_location_from_config
+from panoptes.pocs.scheduler import create_scheduler_from_config
+from panoptes.pocs.dome import create_dome_from_config
+from panoptes.pocs.mount import create_mount_from_config
 
-from huntsman.pocs.camera import create_cameras_from_config
+from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
@@ -46,6 +46,7 @@ def pocs(config_with_simulated_stuff, observatory):
     yield pocs
     pocs.power_down()
 
+
 # ==============================================================================
 
 def test_prepare_cameras_dropping(observatory):
@@ -57,7 +58,7 @@ def test_prepare_cameras_dropping(observatory):
     cameras[camera_names[0]].is_ready = False
     # This should drop the unready camera
     observatory.prepare_cameras(max_attempts=1)
-    assert len(observatory.cameras) == len(camera_names)-1
+    assert len(observatory.cameras) == len(camera_names) - 1
 
 
 def test_bad_observatory(config):

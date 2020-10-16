@@ -10,7 +10,9 @@ class RemoteEvent(Event):
     
     Current supported types are: `camera`, `focuser`, `filterwheel`.
     """
+
     def __init__(self, proxy, event_type):
+        super().__init__()
         self._proxy = proxy
         if event_type not in event_types:
             raise ValueError(f"Event type {event_type} not one of allowed types: {event_types}")

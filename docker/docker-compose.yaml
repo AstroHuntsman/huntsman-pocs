@@ -1,0 +1,69 @@
+version: '3.8'
+services:
+  pocs-config-server:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pocs-config-server
+    hostname: pocs-config-server
+    privileged: true
+    network_mode: host
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+    restart: on-failure
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+  pyro-name-server:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pyro-name-server
+    hostname: pyro-name-server
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pocs-config-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      NS_HOST: 0.0.0.0
+      NS_PORT: 6564
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
+  pyro-http:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pyro-http
+    hostname: pyro-http
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pyro-name-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      NS_HOST: 0.0.0.0
+      NS_PORT: 6564
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -e '.*'" ]
+volumes:
+  pandir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/panoptes
+      o: bind
+  huntsman_dir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/huntsman
+      o: bind
