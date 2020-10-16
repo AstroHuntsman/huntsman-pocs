@@ -414,28 +414,27 @@ def test_run(pocs):
     pocs.run(exit_when_done=True, run_once=True)
     assert pocs.state == 'sleeping'
 
-
-def test_run_power_down_interrupt(observatory):
-    def start_pocs():
-        pocs = POCS(observatory)
-        pocs.initialize()
-        pocs.observatory.scheduler.fields_list = [{'name': 'KIC 8462852',
-                                                   'position': '20h06m15.4536s +44d27m24.75s',
-                                                   'priority': '100',
-                                                   'exptime': 2,
-                                                   'min_nexp': 1,
-                                                   'exp_set_size': 1,
-                                                   }]
-        pocs.logger.info('Starting observatory run')
-        pocs.run()
-
-    pocs_thread = threading.Thread(target=start_pocs, daemon=True)
-    pocs_thread.start()
-
-    try:
-        assert wait_for_state(msg_subscriber, 'scheduling')
-    finally:
-        cmd_publisher.send_message('POCS-CMD', 'shutdown')
-        pocs_thread.join(timeout=30)
-
-    assert pocs_thread.is_alive() is False
+# def test_run_power_down_interrupt(observatory):
+#     def start_pocs():
+#         pocs = POCS(observatory)
+#         pocs.initialize()
+#         pocs.observatory.scheduler.fields_list = [{'name': 'KIC 8462852',
+#                                                    'position': '20h06m15.4536s +44d27m24.75s',
+#                                                    'priority': '100',
+#                                                    'exptime': 2,
+#                                                    'min_nexp': 1,
+#                                                    'exp_set_size': 1,
+#                                                    }]
+#         pocs.logger.info('Starting observatory run')
+#         pocs.run()
+#
+#     pocs_thread = threading.Thread(target=start_pocs, daemon=True)
+#     pocs_thread.start()
+#
+#     try:
+#         assert wait_for_state(msg_subscriber, 'scheduling')
+#     finally:
+#         cmd_publisher.send_message('POCS-CMD', 'shutdown')
+#         pocs_thread.join(timeout=30)
+#
+#     assert pocs_thread.is_alive() is False
