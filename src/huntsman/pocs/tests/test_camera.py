@@ -1,55 +1,26 @@
-"""This is lightly edited copy of pocs/tests/test_camera.py from POCS.
+"""This is lightly edited copy of pocs/tests/test_camera.py from panoptes.pocs.
 
 The intent is to apply all the same tests from there to the Camera class(es) in huntsman-pocs.
-This file should be udpated to track any changes to the tests in POCS.
+This file should be updated to track any changes to the tests in POCS.
 """
-import pytest
-
-import os
-import time
 import glob
-import sys
+import os
 import shutil
+import time
 
 import astropy.units as u
+import pytest
+from Pyro5.api import Proxy
 from astropy.io import fits
-
-import Pyro4
-import Pyro4.util
-
-from pocs.scheduler.field import Field
-from pocs.scheduler.observation import Observation
-from pocs.utils.images import fits as fits_utils
-from pocs.utils import error
-
-from huntsman.pocs.camera.pyro import Camera as PyroCamera
-
-sys.excepthook = Pyro4.util.excepthook
-
-params = [PyroCamera]
-ids = ['pyro']
-
-# Ugly hack to access id inside fixture
-
-
-@pytest.fixture(scope='module', params=zip(params, ids), ids=ids)
-def camera(request, images_dir_control, camera_server):
-    if request.param[0] == PyroCamera:
-        ns = Pyro4.locateNS()
-        cameras = ns.list(metadata_all={'POCS', 'Camera'})
-        cam_name, cam_uri = cameras.popitem()
-        camera = PyroCamera(port=cam_name, uri=cam_uri)
-
-    # This is a client-side pyro.Camera instance.
-    # Currently it does not get its config from the config server.
-    camera.config['directories']['images'] = images_dir_control
-
-    return camera
+from huntsman.pocs.utils.logger import logger
+from panoptes.pocs.scheduler.field import Field
+from panoptes.pocs.scheduler.observation import Observation
+from panoptes.utils import error
+from panoptes.utils.images import fits as fits_utils
 
 
 @pytest.fixture(scope='module')
 def patterns(camera, images_dir_device):
-
     # It would be better to replace images_dir_device by images_dir_control.
     # However, problems with rmtree and SSHFS causes the autofocus code to hang.
 
@@ -61,6 +32,20 @@ def patterns(camera, images_dir_device):
                 'coarse_plot': os.path.join(images_dir_device, 'focus', camera.uid, '*',
                                             'coarse_focus.png')}
     return patterns
+
+
+@pytest.fixture(scope='module')
+def camera(camera_service_name):
+    proxy_name_lookup = f'PYRONAME:{camera_service_name}'
+
+    with Proxy(proxy_name_lookup) as p:
+        logger.log('testing', f'Yielding {camera}')
+        yield p
+        logger.log('testing', f'Unyielding {camera}')
+
+
+def test_camera_detection(camera):
+    assert camera
 
 
 def test_init(camera):
@@ -239,7 +224,7 @@ def test_exposure_scaling(camera, tmpdir):
         image_data, image_header = fits.getdata(fits_path, header=True)
         assert bit_depth == image_header['BITDEPTH'] * u.bit
         pad_bits = image_header['BITPIX'] - image_header['BITDEPTH']
-        assert (image_data % 2**pad_bits).any()
+        assert (image_data % 2 ** pad_bits).any()
 
 
 def test_exposure_no_filename(camera):
@@ -463,7 +448,7 @@ def test_autofocus_camera_disconnected(camera):
     except AttributeError:
         pytest.skip("Camera does not have an exposed focuser attribute")
     initial_focus = camera.focuser.position
-    camera._proxy.set("_connected",  False)
+    camera._proxy.set("_connected", False)
     with pytest.raises(AssertionError):
         camera.autofocus()
     camera._proxy.set("_connected", True)

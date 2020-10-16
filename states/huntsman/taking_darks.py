@@ -1,5 +1,5 @@
 def on_enter(event_data):
-    """taking_darks State
+    """ Take dark images state.
     """
     pocs = event_data.model
 

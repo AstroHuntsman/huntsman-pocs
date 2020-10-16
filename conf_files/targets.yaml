@@ -1,12 +1,18 @@
--
-   name: NGC6744
-   position: 19h09m46.1s -63d51m27s
-   priority: 100
-   exptime: 300
-   min_nexp: 5
-   exp_set_size: 5
-   filter_name: g_band
-# -
+- name: Target Example
+  position: 212deg +57deg
+  priority: 100
+  exptime: 60
+  min_nexp: 5
+  exp_set_size: 5
+  filters:
+    camera.zwo.0: g
+    camera.zwo.1: g
+    camera.zwo.2: g
+    camera.zwo.3: r
+    camera.zwo.5: r
+    camera.zwo.6: r
+    camera.zwo.9: luminance
+
 #   name: HAT-P-27
 #   position: 14h51m04.19s +05d56m50.5s
 #   priority: 500
@@ -20,32 +26,28 @@
 #   exp_set_size: 5
 #   exptime: 27
 #   no_dither: true
--
-  name: NGC6300
+- name: NGC6300
   position: 17h16m59.5s -62d49m14s
   priority: 100
   exptime: 300
   min_nexp: 5
   exp_set_size: 5
   filter_name: g_band
--
-  name: ESO270-017
+- name: ESO270-017
   position: 13h34m47.3s -45d32m51s
   priority: 100
   exptime: 300
   min_nexp: 5
   exp_set_size: 5
   filter_name: g_band
--
-  name: MC_dust_filament
+- name: MC_dust_filament
   position: 03h33m08s -63d35m29s
   priority: 100
   exptime: 300
   min_nexp: 5
   exp_set_size: 5
   filter_name: g_band
--
-  name: M8
+- name: M8
   position: 18h3m37s -24d23m12s
   priority: 300
   exptime: 300

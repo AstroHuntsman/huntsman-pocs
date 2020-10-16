@@ -5,11 +5,11 @@ from functools import partial
 
 
 def wait_for_twilight(pocs):
-    '''
+    """
     Wait for twilight. Temporary solution until something better is found.
 
     Twilight when Sun between flat and focus horizons.
-    '''
+    """
     pocs.logger.debug('Waiting for twilight...')
     while pocs.is_safe(horizon='flat'):
         if pocs.is_dark(horizon='focus'):
@@ -25,12 +25,12 @@ def safety_func(pocs):
 
 
 def on_enter(event_data):
-    '''
+    """
     Calibrating state. If safe to do so, take flats and darks. Should be
     called once at the beginning and end of the night.
 
     If evening, the next state will be coarse_focusing, else, parking.
-    '''
+    """
     pocs = event_data.model
     pocs.next_state = 'parking'
 
