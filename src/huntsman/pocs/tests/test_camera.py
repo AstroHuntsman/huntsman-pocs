@@ -12,7 +12,7 @@ import astropy.units as u
 import pytest
 from Pyro5.api import Proxy
 from astropy.io import fits
-from huntsman.pocs.utils import logger
+from huntsman.pocs.utils.logger import logger
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils import error

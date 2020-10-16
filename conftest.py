@@ -296,7 +296,7 @@ def camera_service_name():
 
 
 # Start up a pyro camera service that we can test against.
-@pytest.fixture(scope='module', autouse=True)
+@pytest.fixture(scope='module', autouse=False)
 def pyro_camera_service(camera_service_name):
     service_class = 'huntsman.pocs.camera.pyro.service.CameraService'
 
