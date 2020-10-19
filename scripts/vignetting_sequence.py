@@ -256,9 +256,11 @@ class ExposureSequence():
         exptime = self._get_next_exptime()
         print(f"Exposure time: {utils.get_quantity_value(exptime, u.second):.4f}.")
 
-        # Make observation
+        # Make observation and get headers
         observation = self._make_observation(alt, az, exposure_time=exptime)
-        headers = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}  # These don't get written...
+        headers = self.observatory.get_standard_headers(observation=observation)
+        # These don't get written...
+        headers.update = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}
 
         # Take observations
         self._take_blocking_observation(observation, headers=headers)
