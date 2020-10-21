@@ -1,8 +1,11 @@
 import os
-
 import Pyro5.server
+
+from panoptes.pocs.utils.logger import get_logger
 from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
+
+from huntsman.pocs.utils.config import get_own_ip
 
 
 @Pyro5.server.expose
@@ -19,21 +22,23 @@ class CameraService(object):
                         "focuser": ("_autofocus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
-    def __init__(self):
+    def __init__(self, config_identifier=None):
+        self.logger = get_logger()
         # Fetch the config once during object creation
         # TODO determine if we want to make all config calls dynamic.
         self.config = get_config()
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
 
-        camera_config = self.config.get('cameras')
-        camera_model = camera_config.get('model')
+        # Prepare the camera config
+        self.camera_config = self._get_camera_config(config_identifier)
 
+        camera_model = self.camera_config.get('model')
         self.logger.info(f'Loading module for {camera_model=}')
-        module = load_module(f"pocs.camera.{camera_model}")
+        module = load_module(camera_model)
 
         # Create a real instance of the camera.
-        self._camera = module.Camera(**camera_config)
+        self._camera = module.Camera(**self.camera_config)
 
         # Set up events for our exposure.
         self._autofocus_event = None
@@ -53,6 +58,10 @@ class CameraService(object):
         if subcomponent:
             obj = getattr(obj, subcomponent)
         setattr(obj, property_name, value)
+
+    @property
+    def is_connected(self):
+        return self._camera.is_connected
 
     # Methods
 
@@ -115,3 +124,24 @@ class CameraService(object):
 
     def event_wait(self, event_type, timeout):
         return self._get_event(event_type).wait(timeout)
+
+    def _get_camera_config(self, config_identifier=None):
+        """
+        Retrieve the instance-specific camera config from the config server.
+        Args:
+            config_identifier (str, optional): The string used to query the
+              config server. If None, will attempt to use own IP address.
+        Returns:
+            dict: The camera config dictionary.
+        """
+        if config_identifier is None:
+            self.logger.info("Using own IP address to obtain camera config.")
+            config_identifier = get_own_ip()
+
+        self.logger.info(f"Querying for camera config with identifier: {config_identifier}.")
+        try:
+            camera_config = self.config.get("cameras")["devices"][config_identifier]
+        except KeyError:
+            raise RuntimeError(f"Camera not found for identifier {config_identifier}.")
+            
+        return camera_config

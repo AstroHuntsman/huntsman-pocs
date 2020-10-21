@@ -31,10 +31,11 @@ directories:
   targets: /var/huntsman/huntsman-pocs/conf_files
   webcam: webcams
 cameras:
-  auto_detect: False
   devices:
-    - model: simulator_sdk
-    - model: simulator_sdk
+    TestCam00:
+      model: panoptes.pocs.camera.simulator.ccd
+      name: TestCam00
+      serial_number: "1241asf2"
 dome:
   template_dir: resources/bisque
   driver: bisque

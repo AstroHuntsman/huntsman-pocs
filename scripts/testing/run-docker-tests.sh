@@ -30,7 +30,7 @@ docker run --rm -i \
   -v "${PWD}":/var/huntsman/huntsman-pocs \
   -v "${PWD}/logs":/var/huntsman/logs \
   huntsman-pocs:develop \
-  "${HUNTSMAN_DIR}/huntsman-pocs/scripts/testing/run-tests.sh"
+  "${HUNTSMAN_DIR}/huntsman-pocs/scripts/testing/run-local-tests.sh"
 
 echo "test output dir ${PANLOG}:"
 ls "${PWD}/logs/huntsman-testing.log"

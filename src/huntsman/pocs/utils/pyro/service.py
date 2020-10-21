@@ -1,3 +1,4 @@
+from functools import partial
 from multiprocessing import Process
 
 import Pyro5.errors
@@ -14,7 +15,8 @@ def pyro_service(service_class=None,
                  service_name=None,
                  host=None,
                  port=None,
-                 auto_start=True):
+                 auto_start=True,
+                 config_identifier=None):
     """Creates and runs a Pyro Service.
 
     This is the "server" portion of the Pyro communication, which should be started
@@ -27,6 +29,8 @@ def pyro_service(service_class=None,
     host (str): The host or ip of the device running the service.
     port (str or int): The port to attach the device to, default 0/None for auto-select.
     auto_start (bool): If the pyro service process should automatically be started.
+    config_identifier (str): Used to get the instance specific service config from
+      the config server. If None (default), the service will attempt to self-identify.
 
     Returns:
         multiprocess.Process: The process responsible for running the service. Note that if the
@@ -38,9 +42,9 @@ def pyro_service(service_class=None,
     # If port is not in config set to 0 so that Pyro will choose a random one.
     port = int(port or get_config(f'pyro.{service_name}.port', default=0))
 
-    # Get the class object who's instance will be exposed
+    # Get the class instance to expose
     service_name = service_name or get_config('name', 'Generic Pyro Server')
-    service_class_ref = load_module(service_class)
+    service_instance = load_module(service_class)(config_identifier=config_identifier)
 
     # TODO figure out if we really want multiplex.
     Pyro5.config.SERVERTYPE = "multiplex"
@@ -57,9 +61,9 @@ def pyro_service(service_class=None,
             return
 
         logger.info(f'Starting {service_name=} on {host=}:{port}')
-        with PyroDaemon(host=host, port=int(port)) as daemon:
+        with PyroDaemon(host=host, port=port) as daemon:
             logger.info(f'Creating pyro daemon service for {service_class=}')
-            uri = daemon.register(service_class_ref)
+            uri = daemon.register(service_instance)
             logger.info(f'Registered {service_class} pyro daemon: {uri}')
 
             # Register service with the nameserver.

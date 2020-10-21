@@ -58,8 +58,13 @@ def nameserver(context, auto_clean=0):
               help='The class to register with Pyro. '
                    'This should be the fully qualified namespace for the class, '
                    'e.g. huntsman.pocs.camera.pyro.CameraService.')
+@click.option('--config-identifier', required=False, default=None,
+              help='The identifier used to identify the instance-specific '
+                    'config. If unspecified, the service will attempt to '
+                    'self-identify.')
+
 @click.pass_context
-def service(context, service_name, service_class=None):
+def service(context, service_name, service_class=None, config_identifier=None):
     """Starts a pyro service.
 
     This function is registered as an entry_point for the module and should be called from
@@ -79,7 +84,8 @@ def service(context, service_name, service_class=None):
                                     service_name=service_name,
                                     host=host,
                                     port=port,
-                                    auto_start=False)
+                                    auto_start=False,
+                                    config_identifier=config_identifier)
         logger.info(f'Starting Pyro service process {service_name} from cli')
         service_proc.start()
         service_proc.join()

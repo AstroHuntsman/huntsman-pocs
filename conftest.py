@@ -297,6 +297,7 @@ def camera_service_name():
 
 # Start up a pyro camera service that we can test against.
 # TODO This isn't working at all.
+"""
 @pytest.fixture(scope='module', autouse=False)
 def pyro_camera_service(camera_service_name):
     service_class = 'huntsman.pocs.camera.pyro.service.CameraService'
@@ -316,3 +317,4 @@ def pyro_camera_service(camera_service_name):
         logger.error(f'TestPyro {camera_service_name} shutdown unexpectedly {e!r}')
     finally:
         logger.info(f'TestPyro {camera_service_name} shut down.')
+"""
