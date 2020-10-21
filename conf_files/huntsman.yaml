@@ -1,98 +1,182 @@
 ---
-name: HuntsmanSSO
-log_file: huntsman
+######################### PANOPTES UNIT ########################################
+# name:   Can be anything you want it to be. This name is displayed in several
+#         places and should be a "personal" name for the unit.
+#
+# pan_id: This is an identification number assigned by the PANOPTES team and is
+#         the official designator for your unit. This id is used to store image
+#         files and communicate with the Google Cloud network.
+#
+#         Leave the pan_id at `PAN000` for testing until you have been assigned
+#         an official id. Update pocs_local.yaml with official name once received.
+################################################################################
+name: Generic PANOPTES Unit
+pan_id: PAN000
+
 location:
-    name: Siding Spring Observatory
-    latitude: -31.16 # Degrees
-    longitude: 149.13 # Degrees
-    elevation: 1160.0 # Meters
-    utc_offset: 10.00 # Hours
-    horizon: 30 # Degrees - Targets above this limit
-    flat_horizon: -6 # Degrees - Flats between this and focus_horizon
-    focus_horizon: -12 # Degrees - Focus between this and observe_horizon
-    observe_horizon: -18 # Degrees - Sun below this limit to observe
-    obstructions:
-        - [[45, 355], [45, 5]] # telstra tower rough coordinates
-    timezone: Australia/Sydney
-    twilight_horizon: 0 # Degrees
-db:
-    name: huntsman
-    type: file
-scheduler:
-    type: dispatch
-    fields_file: targets.yaml
-    check_file: True
+  name: Mauna Loa Observatory
+  latitude: 19.54 deg
+  longitude: -155.58 deg
+  elevation: 3400.0 m
+  horizon: 30 deg # targets must be above this to be considered valid.
+  flat_horizon: -6 deg # Flats when sun between this and focus horizon.
+  focus_horizon: -12 deg # Dark enough to focus on stars.
+  observe_horizon: -18 deg # Sun below this limit to observe.
+  obstructions: [ ]
+  timezone: US/Hawaii
+  gmt_offset: -600 # Offset in minutes from GMT during.
+
 directories:
-    base: /var/huntsman
-    data: data
-    images: images
-    mounts: POCS/resources/mounts
-    resources: POCS/resources/
-    targets: /var/huntsman/huntsman-pocs/conf_files
-    webcam: webcams
-cameras:
-    auto_detect: False
-    devices:
-        -   model: simulator_sdk
-        -   model: simulator_sdk
-dome:
-    template_dir: resources/bisque
-    driver: bisque
-    brand: bisque
-    port: /dev/tty.Tinyos-DevB
-guider:
-    bin_size: 1
-    image_path: /var/huntsman/temp/guide_image.fits
-    template_dir: resources/bisque/guider
+  base: /var/panoptes
+  images: images
+  data: data
+  resources: POCS/resources/
+  targets: POCS/resources/targets
+  mounts: POCS/resources/mounts
+
+db:
+  name: panoptes
+  type: file
+  folder: metadata
+
+wait_delay: 180 # time in seconds before checking safety/etc while waiting.
+max_transition_attempts: 5  # number of transitions attempts.
+status_check_interval: 60 # periodic status check.
+
+state_machine: simple_state_table
+
+scheduler:
+  type: dispatch
+  fields_file: simple.yaml
+  check_file: False
+
 mount:
-    brand: bisque
-    driver: bisque
-    model: 45
-    template_dir: resources/bisque
-flat_fields:
-  flat_field_order:
-    - one
-    - deux
-    - drei
-    - quattro
-  max_num_exposures: 5
-  max_attempts: 10
-  max_exptime: 120
+  brand: ioptron
+  model: 30
+  driver: ioptron
+  serial:
+    port: /dev/ttyUSB0
+    timeout: 0.
+    baudrate: 9600
+  non_sidereal_available: True
+  min_tracking_threshold: 100 # ms
+  max_tracking_threshold: 99999 # ms
+
 pointing:
-    exptime: 30
-    max_iterations: 3
-    threshold: 0.05
-messaging:
-    cmd_port: 6500
-    msg_port: 6510
-state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
-focusing:
-    coarse:
-        frequency: 2
-        frequency_unit: hour
-        timeout: 600
+  auto_correct: True
+  threshold: 100 # arcseconds ~ 10 pixels
+  exptime: 30 # seconds
+  max_iterations: 5
 
-########################### Flat Fields ########################################
-# Controls various aspects of flat fields, both for evening and morning.
+cameras:
+  defaults:
+    primary: None
+    auto_detect: False
+    file_extension: fits
+    compress_fits: False
+    make_pretty_images: False
+    keep_jpgs: False
+    readout_time: 0.5  # seconds
+    timeout: 10  # seconds
+    filter_type: RGGB
+    cooling:
+      enabled: False
+      temperature:
+        target: 0  # celsius
+        tolerance: 0.1  # celsius
+      stable_time: 60  # seconds
+      check_interval: 5  # seconds
+      timeout: 300  # seconds
+    filterwheel:
+      model: panoptes.pocs.filterwheel.simulator.FilterWheel
+      filter_names: [ ]
+      move_time: 0.1  # seconds
+      timeout: 0.5  # seconds
+    focuser:
+      enabled: False
+      autofocus_seconds: 0.1  # seconds
+      autofocus_size: 500  # seconds
+      autofocus_keep_files: False
+  devices:
+    - model: panoptes.pocs.camera.gphoto.canon.Camera
+      name: dslr.00
+      file_extension: cr2
+    - model: panoptes.pocs.camera.gphoto.canon.Camera
+      name: dslr.01
+      file_extension: cr2
+
+######################### Environmental Sensors ################################
+# Configure the environmental sensors that are attached.
 #
-# Note: The times at which flat-fielding will occur are controlled by the
-# `location.flat_horizon` and `location.observe_horizon` config entries.
+# Use `auto_detect: True` for most options. Or use a manual configuration:
 #
-# take_evening_flats: If we should try to take flats during evening twilight
-# take_morning_flats: If we should try to take flats during morning twilight
-# evening:            The coordinates should be roughly opposite the sun.
-# morning:            The coordinates should be roughly opposite the sun.
+#   camera_board:
+#       serial_port: /dev/ttyACM0
+#   control_board:
+#       serial_port: /dev/ttyACM1
 ################################################################################
-flat_field:
-    take_evening_flats: False
-    take_morning_flats: False
+environment:
+  auto_detect: False
+  camera_board:
+    serial_port: /dev/ttyACM0
+  control_board:
+    serial_port: /dev/ttyACM1
+  weather:
+    url: http://localhost:5000/latest.json
 
 
-########################### Pyro Items #########################################
+########################## Observations ########################################
+# An observation folder contains a contiguous sequence of images of a target/field
+# recorded by a single camera, with no slewing of the mount during the sequence;
+# there may be tracking adjustments during the observation.
 #
+# An example folder structure would be:
+#
+#   $PANDIR/images/fields/Hd189733/14d3bd/20180901T120001/
+#
+# In this folder will be stored JPG and FITS images. A timelapse of the
+# observation can be made (one per camera) and the JPGs optionally removed
+# afterward.
+#
+# TODO: Add options for cleaning up old data (e.g. >30 days)
 ################################################################################
+observations:
+  make_timelapse: True
+  compress_fits: True
+  record_observations: True
+  make_pretty_images: True
+  keep_jpgs: True
+
+######################## Google Network ########################################
+# By default all images are stored on googlecloud servers and we also
+# use a few google services to store metadata, communicate with servers, etc.
+#
+# See $PANDIR/panoptes/utils/google/README.md for details about authentication.
+#
+# Options to change:
+#   image_storage: If images should be uploaded to Google Cloud Storage.
+#   service_account_key: Location of the JSON service account key.
+################################################################################
+panoptes_network:
+  image_storage: False
+  service_account_key: # Location of JSON account key
+  project_id: panoptes-survey
+  buckets:
+    images: panoptes-survey
+
+############################### pocs ##################################
+# POCS status flags. The values below represent initial values but
+# they can be switched at run-time if needed.
+#######################################################################
+pocs:
+  INITIALIZED: false
+  INTERRUPTED: false
+  KEEP_RUNNING: true
+  DO_STATES: true
+  RUN_ONCE: false
+
+######################## Pyro ##################################
 pyro:
-    nameserver:
-      host: localhost
-        port: 0
-    devices: []
+  nameserver:
+    ip: "localhost"
+    port: 6564

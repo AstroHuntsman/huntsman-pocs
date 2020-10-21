@@ -51,7 +51,6 @@ def nameserver(context, auto_clean=0):
 
 
 @click.command('service')
-@click.argument('service-name')
 @click.option('--service-name', default=None,
               help='The name of the service to register with the nameserver.'
                    'If the default `None`, then the device hostname will be used.')

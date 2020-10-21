@@ -2,11 +2,12 @@ from multiprocessing import Process
 
 import Pyro5.errors
 from Pyro5.api import Daemon as PyroDaemon
+
+from panoptes.utils.config.client import set_config
+from panoptes.utils.library import load_module
 from huntsman.pocs.utils.config import get_config
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
-from panoptes.utils.config.client import set_config
-from panoptes.utils.library import load_module
 
 
 def pyro_service(service_class=None,
@@ -35,25 +36,27 @@ def pyro_service(service_class=None,
     # Specify address
     host = host or get_config(f'pyro.{service_name}.ip', default='0.0.0.0')
     # If port is not in config set to 0 so that Pyro will choose a random one.
-    port = port or get_config(f'pyro.{service_name}.port', default=0)
+    port = int(port or get_config(f'pyro.{service_name}.port', default=0))
 
+    # Get the class object who's instance will be exposed
     service_name = service_name or get_config('name', 'Generic Pyro Server')
+    service_class_ref = load_module(service_class)
 
     # TODO figure out if we really want multiplex.
     Pyro5.config.SERVERTYPE = "multiplex"
 
-    try:
-        nameserver = get_running_nameserver()
-    except Exception as e:
-        logger.warning(f"Pyro nameserver not running, can't create server. "
-                       f"See 'huntsman-pyro nameserver' for details. {e!r}")
-        return
 
     def start_service():
-        # Get the class for the service.
-        service_class_ref = load_module(service_class)
+        # Locate the NS
+        # NOTE: Moving this block outside start_service can lead to broken pipe errors
+        try:
+            nameserver = get_running_nameserver()
+        except Exception as e:
+            logger.warning(f"Pyro nameserver not running, can't create server. "
+                           f"See 'huntsman-pyro nameserver' for details. {e!r}")
+            return
 
-        logger.info(f'Starting {service_name=} on {host=}:{int(port)}')
+        logger.info(f'Starting {service_name=} on {host=}:{port}')
         with PyroDaemon(host=host, port=int(port)) as daemon:
             logger.info(f'Creating pyro daemon service for {service_class=}')
             uri = daemon.register(service_class_ref)
@@ -63,6 +66,7 @@ def pyro_service(service_class=None,
             nameserver.register(service_name, uri, safe=True)
             logger.info(f'Registered {service_class} with nameserver as {service_name}')
 
+            # assert False
             # Save uri in the generic POCS config.
             # TODO do better checks if config-server is running rather than just a warning.
             try:
