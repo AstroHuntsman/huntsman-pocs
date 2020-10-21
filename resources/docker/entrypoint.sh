@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -eu
 
-# chown volumes
-sudo chown -R huntsman ${HUNTSMAN_POCS}
+# chown huntsman-pocs
+sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
 
 # Pass arguments
-exec gosu huntsman /usr/bin/env zsh -ic "$@"
+exec gosu ${PANUSER} /usr/bin/env zsh -ic "$@"

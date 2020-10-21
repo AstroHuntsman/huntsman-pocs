@@ -32,10 +32,9 @@ directories:
   webcam: webcams
 cameras:
   devices:
-    TestCam00:
-      model: panoptes.pocs.camera.simulator.ccd
-      name: TestCam00
-      serial_number: "1241asf2"
+  - model: panoptes.pocs.camera.simulator.ccd
+    name: TestCam00
+    serial_number: "1241asf2"
 dome:
   template_dir: resources/bisque
   driver: bisque

@@ -69,5 +69,5 @@ Done building the local images.
 
 To run the tests enter:
 
-scripts/testing/test-software.sh
+scripts/testing/test-docker-software.sh
 EOF

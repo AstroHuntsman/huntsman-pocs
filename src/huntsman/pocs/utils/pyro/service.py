@@ -15,8 +15,7 @@ def pyro_service(service_class=None,
                  service_name=None,
                  host=None,
                  port=None,
-                 auto_start=True,
-                 config_identifier=None):
+                 auto_start=True):
     """Creates and runs a Pyro Service.
 
     This is the "server" portion of the Pyro communication, which should be started
@@ -25,12 +24,11 @@ def pyro_service(service_class=None,
     Parameters
     ----------
     service_class (str): The class that has been exposed by Pyro.
-    service_name (str): A name for the service that will be registered with the nameserver.
+    service_name (str): A name for the service that will be registered with the nameserver. Will
+        attempt to use service_name to query the config server for the device config.
     host (str): The host or ip of the device running the service.
     port (str or int): The port to attach the device to, default 0/None for auto-select.
     auto_start (bool): If the pyro service process should automatically be started.
-    config_identifier (str): Used to get the instance specific service config from
-      the config server. If None (default), the service will attempt to self-identify.
 
     Returns:
         multiprocess.Process: The process responsible for running the service. Note that if the
@@ -44,11 +42,10 @@ def pyro_service(service_class=None,
 
     # Get the class instance to expose
     service_name = service_name or get_config('name', 'Generic Pyro Server')
-    service_instance = load_module(service_class)(config_identifier=config_identifier)
+    service_instance = load_module(service_class)(device_name=service_name)
 
     # TODO figure out if we really want multiplex.
     Pyro5.config.SERVERTYPE = "multiplex"
-
 
     def start_service():
         # Locate the NS

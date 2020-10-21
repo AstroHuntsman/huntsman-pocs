@@ -22,7 +22,7 @@ class CameraService(object):
                         "focuser": ("_autofocus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
-    def __init__(self, config_identifier=None):
+    def __init__(self, device_name=None):
         self.logger = get_logger()
         # Fetch the config once during object creation
         # TODO determine if we want to make all config calls dynamic.
@@ -31,14 +31,17 @@ class CameraService(object):
         self.user = os.getenv('PANUSER', 'huntsman')
 
         # Prepare the camera config
-        self.camera_config = self._get_camera_config(config_identifier)
+        self.camera_config = self._get_camera_config(device_name)
 
         camera_model = self.camera_config.get('model')
         self.logger.info(f'Loading module for {camera_model=}')
         module = load_module(camera_model)
 
         # Create a real instance of the camera.
+        self.logger.info(self.camera_config)
+
         self._camera = module.Camera(**self.camera_config)
+        self.logger.info("d")
 
         # Set up events for our exposure.
         self._autofocus_event = None
@@ -125,23 +128,32 @@ class CameraService(object):
     def event_wait(self, event_type, timeout):
         return self._get_event(event_type).wait(timeout)
 
-    def _get_camera_config(self, config_identifier=None):
+    def _get_camera_config(self, device_name=None):
         """
         Retrieve the instance-specific camera config from the config server.
         Args:
-            config_identifier (str, optional): The string used to query the
-              config server. If None, will attempt to use own IP address.
+            device_name (str, optional): The string used to query the config server for the
+                instance-specific camera config. If None or not found will attempt to use
+                the device's own IP address.
         Returns:
             dict: The camera config dictionary.
         """
-        if config_identifier is None:
-            self.logger.info("Using own IP address to obtain camera config.")
-            config_identifier = get_own_ip()
+        device_configs = self.config.get("cameras")["devices"]
 
-        self.logger.info(f"Querying for camera config with identifier: {config_identifier}.")
+        # Try and use the device name to select the device config
+        if device_name is not None:
+            for config in device_configs:
+                if config["name"] == device_name:
+                    self.logger.debug(f"Found camera config by name for {device_name}.")
+                    return config
+
+        # If no match for device name, attempt to use IP address
+        ip_address = get_own_ip()
+        self.logger.debug(f"Querying for camera config with identifier: {ip_address}.")
         try:
-            camera_config = self.config.get("cameras")["devices"][config_identifier]
-        except KeyError:
-            raise RuntimeError(f"Camera not found for identifier {config_identifier}.")
-            
-        return camera_config
+            config = device_configs[ip_address]
+        except KeyError as err:
+            msg = f"Unable to find camera config entry for {ip_address}."
+            self.logger.error(msg)
+            raise KeyError(msg)
+        return config
