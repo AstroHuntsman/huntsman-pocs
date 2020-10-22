@@ -1,11 +1,14 @@
 import os
 import Pyro5.server
 
-from panoptes.pocs.utils.logger import get_logger
 from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
 
+from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.config import get_own_ip
+# This import is needed to set up the custom (de)serializers in the same scope
+# as the CameraServer and the Camera client's proxy.
+from huntsman.pocs.utils.pyro import serializers
 
 
 @Pyro5.server.expose
@@ -18,12 +21,12 @@ class CameraService(object):
     should exist in a real Camera class and this should merely be used as
     a thin-wrapper that can run on the device.
     """
-    _event_locations = {"camera": ("_exposure_event",),
-                        "focuser": ("_autofocus_event",),
+    _event_locations = {"camera": ("_camera", "_is_exposing_event"),
+                        "focuser": ("_camera", "focuser", "_autofocus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
     def __init__(self, device_name=None):
-        self.logger = get_logger()
+        self.logger = logger
         # Fetch the config once during object creation
         # TODO determine if we want to make all config calls dynamic.
         self.config = get_config()
@@ -37,15 +40,11 @@ class CameraService(object):
         self.logger.info(f'Loading module for {camera_model=}')
         module = load_module(camera_model)
 
-        # Create a real instance of the camera.
-        self.logger.info(self.camera_config)
-
-        self._camera = module.Camera(**self.camera_config)
-        self.logger.info("d")
+        # Create a real instance of the camera
+        self._camera = module.Camera(logger=self.logger, **self.camera_config)
 
         # Set up events for our exposure.
         self._autofocus_event = None
-        self._exposure_event = None
 
     # Properties - rather than labouriously wrapping every camera property individually expose
     # them all with generic get and set methods.
@@ -117,15 +116,19 @@ class CameraService(object):
         return obj
 
     def event_set(self, event_type):
+        self.logger.info(f"Setting {event_type}")
         return self._get_event(event_type).set()
 
     def event_clear(self, event_type):
+        self.logger.info(f"Clearing {event_type}")
         return self._get_event(event_type).clear()
 
     def event_is_set(self, event_type):
+        self.logger.info(f"Checking {event_type}")
         return self._get_event(event_type).is_set()
 
     def event_wait(self, event_type, timeout):
+        self.logger.info(f"Waiting for {event_type}")
         return self._get_event(event_type).wait(timeout)
 
     def _get_camera_config(self, device_name=None):

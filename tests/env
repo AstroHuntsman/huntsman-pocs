@@ -7,7 +7,7 @@
 #
 PANUSER=huntsman
 PANDIR=/var/huntsman
-POCS=/var/huntsman/POCS
+POCS=/var/panoptes/POCS
 PANLOG=/var/huntsman/logs
 PANOPTES_CONFIG_FILE=/var/huntsman/huntsman-pocs/tests/testing.yaml
 PANOPTES_CONFIG_HOST=0.0.0.0

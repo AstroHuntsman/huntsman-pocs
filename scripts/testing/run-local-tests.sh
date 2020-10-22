@@ -27,7 +27,7 @@ echo "Starting the Pyro nameserver on ${PYRO_NS_HOST}:${PYRO_NS_PORT}"
 huntsman-pyro --verbose --host "${PYRO_NS_HOST}" --port "${PYRO_NS_PORT}" nameserver --auto-clean 300 &
 
 echo "Creating testing Pyro CameraService"
-huntsman-pyro --verbose service --service-name TestCam00 --service-class huntsman.pocs.camera.pyro.service.CameraService --config-identifier TestCam00 &
+huntsman-pyro --verbose service --service-name dslr.00 --service-class huntsman.pocs.camera.pyro.service.CameraService &
 
 echo "Starting testing"
 coverage run "$(command -v pytest)"

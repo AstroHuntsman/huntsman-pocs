@@ -1,14 +1,18 @@
 from contextlib import suppress
 from threading import Timer
-
-from Pyro5.api import Proxy
 from astropy import units as u
+from Pyro5.api import Proxy
+
+from panoptes.pocs.camera import AbstractCamera
+from panoptes.utils import get_quantity_value
+
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils import error, logger
 from huntsman.pocs.utils.pyro.event import RemoteEvent
-from panoptes.pocs.camera import AbstractCamera
-from panoptes.utils import get_quantity_value
+# This import is needed to set up the custom (de)serializers in the same scope
+# as the CameraServer and the Camera client's proxy.
+from huntsman.pocs.utils.pyro import serializers
 
 
 class Camera(AbstractCamera):
@@ -18,13 +22,9 @@ class Camera(AbstractCamera):
     running POCS, namely via an `Observatory` object.
     """
 
-    def __init__(self,
-                 uri,
-                 name='Pyro Camera',
-                 model='pyro',
-                 port=None,
-                 *args, **kwargs):
+    def __init__(self, uri, name='Pyro Camera', model='pyro', port=None, *args, **kwargs):
         super().__init__(name=name, port=port, model=model, *args, **kwargs)
+
         self._uri = uri
 
         # The proxy used for communication with the remote instance.
@@ -104,6 +104,14 @@ class Camera(AbstractCamera):
     def is_exposing(self):
         return self._proxy.get("is_exposing")
 
+    @is_exposing.setter
+    def is_exposing(self, is_exposing):
+        """Setter required by base class."""
+        try:
+            self._proxy.set("is_exposing", is_exposing)
+        except AttributeError:
+            self.logger.warning(f"Unable to set `is_exposing` on {self}.")
+
     @property
     def is_temperature_stable(self):
         return self._proxy.get("is_temperature_stable")
@@ -132,7 +140,6 @@ class Camera(AbstractCamera):
         # Force camera proxy to connect by getting the camera uid.
         # This will trigger the remote object creation & (re)initialise the camera & focuser,
         # which can take a long time with real hardware.
-
         uid = self._proxy.get_uid()
         if not uid:
             self.logger.error(f"Could't connect to {self.name} on {self._uri}, no uid found.")
@@ -147,8 +154,9 @@ class Camera(AbstractCamera):
         self._is_cooled_camera = self._proxy.get("is_cooled_camera")
         self._filter_type = self._proxy.get("filter_type")
 
-        # Set up proxy for remote camera's _exposure_event
-        self._exposure_event = RemoteEvent(self._proxy, event_type="camera")
+        # Set up proxies for remote camera's events
+        self._exposure_event = RemoteEvent(self._uri, event_type="camera")
+        self._autofocus_event = RemoteEvent(self._uri, event_type="focuser")
 
         self._connected = True
         self.logger.debug(f"{self} connected")
@@ -159,13 +167,8 @@ class Camera(AbstractCamera):
         if self._proxy.has_filterwheel:
             self.filterwheel = PyroFilterWheel(camera=self)
 
-    def take_exposure(self,
-                      seconds=1.0 * u.second,
-                      filename=None,
-                      dark=False,
-                      blocking=False,
-                      *args,
-                      **kwargs):
+    def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False,
+                      blocking=False, *args, **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
 
         Args:
@@ -182,20 +185,15 @@ class Camera(AbstractCamera):
 
         Returns:
             threading.Event: Event that will be set when exposure is complete.
-
         """
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
 
         # Remote method call to start the exposure
-        self._proxy.take_exposure(seconds=seconds,
-                                  filename=filename,
-                                  dark=bool(dark),
-                                  *args,
-                                  **kwargs)
+        self._proxy.take_exposure(seconds=seconds, filename=filename, dark=dark, *args, **kwargs)
 
         max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
-        self._run_timeout("exposure", blocking, max_wait)
+        self._run_timeout("exposure", "camera", blocking, max_wait)
 
         return self._exposure_event
 
@@ -248,14 +246,11 @@ class Camera(AbstractCamera):
         # Remote method call to start the exposure
         self._proxy.autofocus(*args, **kwargs)
 
-        # Proxy for remote _autofocus_event
-        self._autofocus_event = RemoteEvent(self._proxy, event_type="focuser")
-
         # In general it's very complicated to work out how long an autofocus should take
         # because parameters can be set here or come from remote config. For now just make
         # it 5 minutes.
         max_wait = 300
-        self._run_timeout("autofocus", blocking, max_wait)
+        self._run_timeout("autofocus", "focuser", blocking, max_wait)
 
         return self._autofocus_event
 
@@ -269,33 +264,42 @@ class Camera(AbstractCamera):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
 
-    def _run_timeout(self, timeout_type, blocking, max_wait):
-        relevant_event = getattr(self, f"_{timeout_type}_event")
+    def _run_timeout(self, event_name, event_type, blocking, max_wait):
         if blocking:
-            success = relevant_event.wait(timeout=max_wait)
+            event = getattr(self, f"_{event_name}_event")
+            success = event.wait(timeout=max_wait)
             if not success:
-                self._timeout_response(timeout_type, relevant_event)
+                self._timeout_response(event_name, event_type, max_wait)
         else:
             # If the remote operation fails after starting in such a way that the event doesn't
             # get set then calling code could wait forever. Have a local timeout thread
             # to be safe.
-            timeout_thread = Timer(interval=max_wait,
-                                   function=self._timeout_response,
-                                   args=(timeout_type, relevant_event))
+            timeout_thread = Timer(interval=max_wait, function=self._timeout_response,
+                                   args=(event_name, event_type, max_wait))
             timeout_thread.start()
 
-    def _timeout_response(self, timeout_type, timeout_event):
+    def _timeout_response(self, event_name, event_type, max_wait):
+        # We need an event specific to this thread
+        event = RemoteEvent(self._uri, event_type=event_type)
         # This could do more thorough checks for success, e.g. check is_exposing property,
         # check for existence of output file, etc. It's supposed to be a last resort though,
         # and most problems should be caught elsewhere.
         is_set = True
-
         # TODO error below has changed but this might not apply any more.
         # Can get a comms error if everything has finished and shutdown before the timeout,
         # e.g. when running tests.
         with suppress(error.PyroError):
-            is_set = timeout_event.is_set()
-
+            is_set = event.is_set()
         if not is_set:
-            timeout_event.set()
-            raise error.Timeout(f"Timeout waiting for blocking {timeout_type} on {self}.")
+            event.set()
+            raise error.Timeout(f"Timeout of {max_wait} reached while waiting for"
+                                f" {event_name} on {self}.")
+
+
+    def _set_cooling_enabled(self):
+        """Dummy method required by the abstract class"""
+        raise NotImplementedError
+
+    def _set_target_temperature(self):
+        """Dummy method required by the abstract class"""
+        raise NotImplementedError

@@ -7,16 +7,19 @@ import glob
 import os
 import shutil
 import time
+import pytest
 
 import astropy.units as u
-import pytest
-from Pyro5.api import Proxy
 from astropy.io import fits
-from huntsman.pocs.utils.logger import logger
+
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
+
+from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
+from huntsman.pocs.camera.pyro.client import Camera
 
 
 @pytest.fixture(scope='module')
@@ -36,12 +39,9 @@ def patterns(camera, images_dir_device):
 
 @pytest.fixture(scope='module')
 def camera(camera_service_name):
-    proxy_name_lookup = f'PYRONAME:{camera_service_name}'
-
-    with Proxy(proxy_name_lookup) as p:
-        logger.log('testing', f'Yielding {camera}')
-        yield p
-        logger.log('testing', f'Unyielding {camera}')
+    nameserver = get_running_nameserver()
+    camera_client = Camera(uri=nameserver.lookup(camera_service_name))
+    return camera_client
 
 
 def test_camera_detection(camera):
@@ -144,7 +144,7 @@ def test_exposure(camera, tmpdir):
     assert camera.is_ready
     assert not camera.is_exposing
     # A one second normal exposure.
-    exp_event = camera.take_exposure(filename=fits_path)
+    exp_event = camera.take_exposure(seconds=1, filename=fits_path)
     assert camera.is_exposing
     assert not exp_event.is_set()
     assert not camera.is_ready

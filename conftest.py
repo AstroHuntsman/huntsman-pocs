@@ -292,7 +292,7 @@ def pyro_namserver_port():
 
 @pytest.fixture(scope='module')
 def camera_service_name():
-    return 'TestCam00'
+    return 'dslr.00'
 
 
 # Start up a pyro camera service that we can test against.
