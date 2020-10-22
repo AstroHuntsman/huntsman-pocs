@@ -116,19 +116,19 @@ class CameraService(object):
         return obj
 
     def event_set(self, event_type):
-        self.logger.info(f"Setting {event_type}")
+        self.logger.info(f"Setting {event_type} from service.")
         return self._get_event(event_type).set()
 
     def event_clear(self, event_type):
-        self.logger.info(f"Clearing {event_type}")
+        self.logger.info(f"Clearing {event_type} from service")
         return self._get_event(event_type).clear()
 
     def event_is_set(self, event_type):
-        self.logger.info(f"Checking {event_type}")
+        self.logger.info(f"Checking {event_type} from service")
         return self._get_event(event_type).is_set()
 
     def event_wait(self, event_type, timeout):
-        self.logger.info(f"Waiting for {event_type}")
+        self.logger.info(f"Waiting for {event_type} from service")
         return self._get_event(event_type).wait(timeout)
 
     def _get_camera_config(self, device_name=None):

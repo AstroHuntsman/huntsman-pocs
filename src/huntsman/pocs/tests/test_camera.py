@@ -144,15 +144,13 @@ def test_exposure(camera, tmpdir):
     assert camera.is_ready
     assert not camera.is_exposing
     # A one second normal exposure.
-    exp_event = camera.take_exposure(seconds=1, filename=fits_path)
+    camera.take_exposure(seconds=1, filename=fits_path)
     assert camera.is_exposing
-    assert not exp_event.is_set()
     assert not camera.is_ready
     # By default take_exposure is non-blocking, need to give it some time to complete.
     time.sleep(5)
     # Output file should exist, Event should be set and camera should say it's not exposing.
     assert os.path.exists(fits_path)
-    assert exp_event.is_set()
     assert not camera.is_exposing
     assert camera.is_ready
     # If can retrieve some header data there's a good chance it's a valid FITS file
@@ -168,7 +166,11 @@ def test_exposure_blocking(camera, tmpdir):
     fits_path = str(tmpdir.join('test_exposure_blocking.fits'))
     # A one second exposure, command should block until complete so FITS
     # should exist immediately afterwards
+    assert camera.is_ready
+    assert not camera.is_exposing
     camera.take_exposure(filename=fits_path, blocking=True)
+    assert camera.is_ready
+    assert not camera.is_exposing
     assert os.path.exists(fits_path)
     # If can retrieve some header data there's a good chance it's a valid FITS file
     header = fits_utils.getheader(fits_path)

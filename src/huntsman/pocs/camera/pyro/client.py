@@ -8,7 +8,8 @@ from panoptes.utils import get_quantity_value
 
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
-from huntsman.pocs.utils import error, logger
+from huntsman.pocs.utils import error
+from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.event import RemoteEvent
 # This import is needed to set up the custom (de)serializers in the same scope
 # as the CameraServer and the Camera client's proxy.
@@ -23,12 +24,17 @@ class Camera(AbstractCamera):
     """
 
     def __init__(self, uri, name='Pyro Camera', model='pyro', port=None, *args, **kwargs):
-        super().__init__(name=name, port=port, model=model, *args, **kwargs)
-
-        self._uri = uri
-
+        self.logger = logger
         # The proxy used for communication with the remote instance.
-        self._proxy = None
+        self._uri = uri
+        self.logger.debug(f'Connecting to {port} at {self._uri}')
+        try:
+            self._proxy = Proxy(self._uri)
+        except error.PyroProxyError as err:
+            logger.error(f"Couldn't get proxy to camera on {port=}: {err!r}")
+            return
+
+        super().__init__(name=name, port=port, model=model, logger=self.logger, *args, **kwargs)
 
         # Hardware that may be attached in connect method.
         self.focuser = None
@@ -107,10 +113,7 @@ class Camera(AbstractCamera):
     @is_exposing.setter
     def is_exposing(self, is_exposing):
         """Setter required by base class."""
-        try:
-            self._proxy.set("is_exposing", is_exposing)
-        except AttributeError:
-            self.logger.warning(f"Unable to set `is_exposing` on {self}.")
+        self._proxy.set("is_exposing", is_exposing)
 
     @property
     def is_temperature_stable(self):
@@ -128,15 +131,6 @@ class Camera(AbstractCamera):
     def connect(self):
         """ Connect to the distributed camera.
         """
-        self.logger.debug(f'Connecting to {self.port} at {self._uri}')
-
-        # Get a proxy for the camera.
-        try:
-            self._proxy = Proxy(self._uri)
-        except error.PyroProxyError as err:
-            logger.error(f"Couldn't get proxy to camera on {self.port=}: {err!r}")
-            return
-
         # Force camera proxy to connect by getting the camera uid.
         # This will trigger the remote object creation & (re)initialise the camera & focuser,
         # which can take a long time with real hardware.
