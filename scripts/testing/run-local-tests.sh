@@ -4,6 +4,7 @@ set -e
 COVERAGE_REPORT_FILE=${COVERAGE_REPORT_FILE:-/var/panoptes/logs/coverage.xml}
 PANOPTES_CONFIG_HOST="${PANOPTES_CONFIG_HOST:-localhost}"
 PANOPTES_CONFIG_PORT="${PANOPTES_CONFIG_PORT:-8765}"
+PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/tests/testing.yaml"
 
 # This assumes we are always running in a docker container.
 export COVERAGE_PROCESS_START="/var/huntsman/huntsman-pocs/setup.cfg"
@@ -15,7 +16,7 @@ echo "Starting config server in background"
 echo "PANOPTES_CONFIG_FILE=${PANOPTES_CONFIG_FILE}"
 echo "PANOPTES_CONFIG_HOST=${PANOPTES_CONFIG_HOST}"
 echo "PANOPTES_CONFIG_PORT=${PANOPTES_CONFIG_PORT}"
-panoptes-config-server --host "${PANOPTES_CONFIG_HOST}" --port "${PANOPTES_CONFIG_PORT}" run --no-load-local --no-save-local &
+panoptes-config-server --host "${PANOPTES_CONFIG_HOST}" --port "${PANOPTES_CONFIG_PORT}" run --no-load-local --no-save-local --config-file ${PANOPTES_CONFIG_FILE} &
 
 echo "Checking to make sure panoptes-config-server is running"
 /usr/local/bin/wait-for-it.sh --timeout=30 --strict "${PANOPTES_CONFIG_HOST}:${PANOPTES_CONFIG_PORT}" -- echo "Config-server up"

@@ -15,7 +15,8 @@ def pyro_service(service_class=None,
                  service_name=None,
                  host=None,
                  port=None,
-                 auto_start=True):
+                 auto_start=True,
+                 metadata=None):
     """Creates and runs a Pyro Service.
 
     This is the "server" portion of the Pyro communication, which should be started
@@ -29,6 +30,8 @@ def pyro_service(service_class=None,
     host (str): The host or ip of the device running the service.
     port (str or int): The port to attach the device to, default 0/None for auto-select.
     auto_start (bool): If the pyro service process should automatically be started.
+    metadata (list of str): Metadata to be stored on the NS. If `None`, will create metadata
+        based on service class using the config server.
 
     Returns:
         multiprocess.Process: The process responsible for running the service. Note that if the
@@ -39,6 +42,12 @@ def pyro_service(service_class=None,
     host = host or get_config(f'pyro.{service_name}.ip', default='0.0.0.0')
     # If port is not in config set to 0 so that Pyro will choose a random one.
     port = int(port or get_config(f'pyro.{service_name}.port', default=0))
+    # Specify metadata to be stored on NS
+    if metadata is None:
+        service_class_base = service_class.split(".")[-1]
+        metadata = get_config(f"pyro.{service_class_base}.metadata", None)
+    if metadata is not None:
+        metadata = set(metadata)
 
     # Get the class instance to expose
     service_name = service_name or get_config('name', 'Generic Pyro Server')
@@ -61,10 +70,11 @@ def pyro_service(service_class=None,
         with PyroDaemon(host=host, port=port) as daemon:
             logger.info(f'Creating pyro daemon service for {service_class=}')
             uri = daemon.register(service_instance)
-            logger.info(f'Registered {service_class} pyro daemon: {uri}')
+            logger.info(f'Registered {service_class} pyro daemon with uri={uri}'
+                        f' and metadata={metadata}.')
 
             # Register service with the nameserver.
-            nameserver.register(service_name, uri, safe=True)
+            nameserver.register(service_name, uri, safe=True, metadata=metadata)
             logger.info(f'Registered {service_class} with nameserver as {service_name}')
 
             # assert False

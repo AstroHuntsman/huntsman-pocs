@@ -6,10 +6,13 @@ import tempfile
 from contextlib import suppress
 
 import pytest
+from _pytest.logging import caplog as _caplog  # noqa
+
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.service import pyro_service
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
+from panoptes.utils.config.client import set_config, get_config
 
 _all_databases = ['file', 'memory']
 
@@ -159,18 +162,6 @@ def base_dir():
     return os.getenv('HUNTSMAN_POCS', '/var/huntsman/huntsman-pocs')
 
 
-@pytest.fixture(scope='module')
-def images_dir_control(tmpdir_factory):
-    directory = tmpdir_factory.mktemp('images')
-    return str(directory)
-
-
-@pytest.fixture(scope='module')
-def images_dir_device(tmpdir_factory):
-    directory = tmpdir_factory.mktemp('images_local')
-    return str(directory)
-
-
 @pytest.fixture(scope="session")
 def db_name():
     return 'huntsman_testing'
@@ -190,10 +181,11 @@ def temp_file(tmp_path):
     f.unlink(missing_ok=True)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def images_dir(tmpdir_factory):
-    directory = tmpdir_factory.mktemp('images')
-    return str(directory)
+    directory = str(tmpdir_factory.mktemp('images'))
+    set_config("directories.images", directory)
+    return directory
 
 
 @pytest.fixture(scope='function', params=_all_databases)
@@ -278,6 +270,11 @@ def caplog(_caplog):
     yield _caplog
     with suppress(ValueError):
         logger.remove(handler_id)
+
+
+@pytest.fixture(scope="module")
+def config_with_simulated_stuff():
+    return get_config()
 
 
 @pytest.fixture(scope='session')

@@ -4,50 +4,47 @@ import pytest
 from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
-from panoptes.pocs.dome import create_dome_from_config
-from panoptes.pocs.mount import create_mount_from_config
+from panoptes.pocs.mount import create_mount_simulator
+from panoptes.pocs.dome import create_dome_simulator
+# from panoptes.pocs.camera import create_camera_simulator
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 @pytest.fixture(scope='function')
-def cameras(config_with_simulated_stuff):
-    return create_cameras_from_config(config_with_simulated_stuff)
+def cameras():
+    return create_cameras_from_config()
 
 
 @pytest.fixture(scope='function')
-def scheduler(config_with_simulated_stuff):
-    site_details = create_location_from_config(config_with_simulated_stuff)
-    return create_scheduler_from_config(config_with_simulated_stuff,
-                                        observer=site_details['observer'])
+def mount():
+    return create_mount_simulator()
+
+
+@pytest.fixture
+def observatory(mount, cameras, images_dir):
+    """Return a valid Observatory instance with a specific config."""
+
+    site_details = create_location_from_config()
+    scheduler = create_scheduler_from_config(observer=site_details['observer'])
+
+    obs = Observatory(scheduler=scheduler)
+    obs.set_mount(mount)
+    for cam_name, cam in cameras.items():
+        obs.add_camera(cam_name, cam)
+
+    return obs
 
 
 @pytest.fixture(scope='function')
-def dome(config_with_simulated_stuff):
-    return create_dome_from_config(config_with_simulated_stuff)
-
-
-@pytest.fixture(scope='function')
-def mount(config_with_simulated_stuff):
-    return create_mount_from_config(config_with_simulated_stuff)
-
-
-@pytest.fixture(scope='function')
-def observatory(config_with_simulated_stuff, db_type, cameras, scheduler, dome, mount):
-    observatory = Observatory(config=config_with_simulated_stuff, cameras=cameras,
-                              scheduler=scheduler, dome=dome, mount=mount, db_type=db_type)
-    return observatory
-
-
-@pytest.fixture(scope='function')
-def pocs(config_with_simulated_stuff, observatory):
-    pocs = POCS(observatory, run_once=True, config=config_with_simulated_stuff)
+def pocs(observatory):
+    pocs = POCS(observatory, run_once=True)
     yield pocs
     pocs.power_down()
 
-
 # ==============================================================================
+
 
 def test_prepare_cameras_dropping(observatory):
     """Test that unready camera is dropped."""

@@ -3,8 +3,10 @@ from threading import Timer
 from astropy import units as u
 from Pyro5.api import Proxy
 
-from panoptes.pocs.camera import AbstractCamera
 from panoptes.utils import get_quantity_value
+from panoptes.utils import CountdownTimer
+
+from panoptes.pocs.camera import AbstractCamera
 
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
@@ -124,6 +126,7 @@ class Camera(AbstractCamera):
         """
         True if camera is ready to start another exposure, otherwise False.
         """
+        self.logger.debug(f"{self._proxy.get('is_ready')} ~already in progress~")
         return self._proxy.get("is_ready")
 
     # Methods
@@ -148,7 +151,7 @@ class Camera(AbstractCamera):
         self._is_cooled_camera = self._proxy.get("is_cooled_camera")
         self._filter_type = self._proxy.get("filter_type")
 
-        # Set up proxies for remote camera's events
+        # Set up proxies for remote camera's events required by class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
         self._autofocus_event = RemoteEvent(self._uri, event_type="focuser")
 
@@ -185,7 +188,6 @@ class Camera(AbstractCamera):
 
         # Remote method call to start the exposure
         self._proxy.take_exposure(seconds=seconds, filename=filename, dark=dark, *args, **kwargs)
-
         max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
         self._run_timeout("exposure", "camera", blocking, max_wait)
 
@@ -260,19 +262,25 @@ class Camera(AbstractCamera):
 
     def _run_timeout(self, event_name, event_type, blocking, max_wait):
         if blocking:
+            self.logger.debug("e")
             event = getattr(self, f"_{event_name}_event")
-            success = event.wait(timeout=max_wait)
-            if not success:
-                self._timeout_response(event_name, event_type, max_wait)
+            timer = CountdownTimer(duration=max_wait)
+            while not timer.expired():
+                self.logger.debug("c")
+                if not event.is_set():
+                    return
+            self.logger.debug("d")
+            self._timeout_response(event_name, event_type, max_wait, blocking)
+
         else:
             # If the remote operation fails after starting in such a way that the event doesn't
             # get set then calling code could wait forever. Have a local timeout thread
             # to be safe.
             timeout_thread = Timer(interval=max_wait, function=self._timeout_response,
-                                   args=(event_name, event_type, max_wait))
+                                   args=(event_name, event_type, max_wait, blocking))
             timeout_thread.start()
 
-    def _timeout_response(self, event_name, event_type, max_wait):
+    def _timeout_response(self, event_name, event_type, max_wait, blocking):
         # We need an event specific to this thread
         event = RemoteEvent(self._uri, event_type=event_type)
         # This could do more thorough checks for success, e.g. check is_exposing property,
@@ -284,11 +292,11 @@ class Camera(AbstractCamera):
         # e.g. when running tests.
         with suppress(error.PyroError):
             is_set = event.is_set()
-        if not is_set:
-            event.set()
+        if is_set:
+            event.clear()
+            block_str = " blocking " if blocking else ""
             raise error.Timeout(f"Timeout of {max_wait} reached while waiting for"
-                                f" {event_name} on {self}.")
-
+                                f" {block_str}{event_name} on {self}.")
 
     def _set_cooling_enabled(self):
         """Dummy method required by the abstract class"""
