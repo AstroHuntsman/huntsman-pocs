@@ -1,13 +1,12 @@
 from astropy import units as u
 from contextlib import suppress
 
-from pocs.scheduler.field import Field
-from pocs.scheduler.observation import Observation
-from pocs.utils import listify
+from panoptes.pocs.scheduler.field import Field
+from panoptes.pocs.scheduler.observation import Observation
+from panoptes.utils import listify
 
 
 class DarkObservation(Observation):
-
     """ A Dark-field observation
 
     Dark observations will consist of multiple exposure. As the mount will be

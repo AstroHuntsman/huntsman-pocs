@@ -1,14 +1,20 @@
-version: '3'
+version: '3.7'
 services:
   camera:
-    image: huntsmanarray/camera:latest
-    build:
-      context: "${HUNTSMAN_POCS}/docker/camera"
-    user: huntsman
+    image: huntsman-pocs-camera:${TAG:-develop}
     privileged: true
     network_mode: host
     stdin_open: true
     tty: true
+    environment:
+      PANDIR:
+      POCS:
+      PANLOG:
+      HUNTSMAN_POCS:
+      PANOPTES_CONFIG_FILE:
+      PANOPTES_CONFIG_HOST:
+      PANOPTES_CONFIG_PORT:
+    command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:
       - "~/.ssh:/home/huntsman/.ssh"
-      - "$PANDIR/logs:/var/huntsman/logs"
+      - "/var/huntsman/images:/var/huntsman/images"

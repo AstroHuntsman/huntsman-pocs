@@ -1,11 +1,70 @@
-version: '3'
+version: '3.8'
 services:
-  testenv:
-    image: huntsmanarray/testenv:latest
-    user: huntsman
+  pocs-config-server:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pocs-config-server
+    hostname: pocs-config-server
     privileged: true
     network_mode: host
-    stdin_open: true
-    tty: true
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+    restart: on-failure
     volumes:
-       - "$HUNTSMAN_POCS:/var/huntsman/huntsman-pocs"
+      - huntsman_dir:/var/huntsman
+    command: [ "panoptes-config-server run --no-save --port 9999 /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
+  pyro-name-server:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pyro-name-server
+    hostname: pyro-name-server
+    privileged: true
+    network_mode: host
+    depends_on:
+      - "pocs-config-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      NS_HOST: 0.0.0.0
+      NS_PORT: 9998
+      POCS_CONFIG_PORT: 9999
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:9999 -- huntsman-pyro nameserver --port 9998 --auto-clean 30" ]
+  huntsman-pocs-testing:
+    image: huntsman-pocs:develop
+    init: true
+    tty: true
+    container_name: pocs-testing
+    hostname: pocs-testing
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pocs-config-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      NS_HOST: 0.0.0.0
+      NS_PORT: 9998
+      POCS_CONFIG_PORT: 9999
+    volumes:
+      - huntsman_dir:/var/huntsman
+    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:9999 -- scripts/testing/run-tests.sh" ]
+volumes:
+  pandir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/panoptes
+      o: bind
+  huntsman_dir:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/huntsman
+      o: bind

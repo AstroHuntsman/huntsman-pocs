@@ -12,7 +12,7 @@ location:
     focus_horizon: -12 # Degrees - Focus between this and observe_horizon
     observe_horizon: -18 # Degrees - Sun below this limit to observe
     obstructions:
-      - [[45, 355], [45, 5]] # telstra tower rough coordinates
+        - [[45, 355], [45, 5]] # telstra tower rough coordinates
     timezone: Australia/Sydney
     twilight_horizon: 0 # Degrees
 db:
@@ -33,10 +33,8 @@ directories:
 cameras:
     auto_detect: False
     devices:
-    -
-        model: simulator_sdk
-    -
-        model: simulator_sdk
+        -   model: simulator_sdk
+        -   model: simulator_sdk
 dome:
     template_dir: resources/bisque
     driver: bisque
@@ -69,10 +67,10 @@ messaging:
     msg_port: 6510
 state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
 focusing:
-  coarse:
-    frequency: 2
-    frequency_unit: hour
-    timeout: 600
+    coarse:
+        frequency: 2
+        frequency_unit: hour
+        timeout: 600
 
 ########################### Flat Fields ########################################
 # Controls various aspects of flat fields, both for evening and morning.
@@ -88,3 +86,13 @@ focusing:
 flat_field:
     take_evening_flats: False
     take_morning_flats: False
+
+
+########################### Pyro Items #########################################
+#
+################################################################################
+pyro:
+    nameserver:
+      host: localhost
+        port: 0
+    devices: []

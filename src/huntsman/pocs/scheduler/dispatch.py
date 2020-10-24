@@ -1,9 +1,9 @@
 from astropy import units as u
 
-from pocs.scheduler import dispatch
-from pocs.scheduler.field import Field
-from pocs.utils import current_time
-from pocs.scheduler.observation import Observation
+from panoptes.pocs.scheduler import dispatch
+from panoptes.pocs.scheduler.field import Field
+from panoptes.utils import current_time
+from panoptes.pocs.scheduler.observation import Observation
 
 from huntsman.pocs.scheduler.observation import DitheredObservation
 from huntsman.pocs.utils import dither

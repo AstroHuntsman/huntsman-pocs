@@ -7,7 +7,7 @@ def on_enter(event_data):
     pocs.next_state = 'parking'
     pocs.observatory.mount.unpark()
 
-    # Check if we need to foucs
+    # Check if we need to focus.
     if pocs.is_dark(horizon='focus') and pocs.observatory.coarse_focus_required:
         pocs.next_state = 'coarse_focusing'
 

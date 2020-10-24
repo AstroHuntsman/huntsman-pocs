@@ -1,14 +1,14 @@
 import os
 import pytest
 
-from pocs.core import POCS
-from pocs import utils
-from pocs.utils.location import create_location_from_config
-from pocs.scheduler import create_scheduler_from_config
-from pocs.dome import create_dome_from_config
-from pocs.mount import create_mount_from_config
+from panoptes.pocs.core import POCS
+from panoptes.pocs import utils
+from panoptes.pocs.utils.location import create_location_from_config
+from panoptes.pocs.scheduler import create_scheduler_from_config
+from panoptes.pocs.dome import create_dome_from_config
+from panoptes.pocs.mount import create_mount_from_config
 
-from huntsman.pocs.camera import create_cameras_from_config
+from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
@@ -47,6 +47,7 @@ def pocs(config_with_simulated_stuff, observatory):
     yield pocs
     pocs.power_down()
 
+
 # ==============================================================================
 
 
@@ -64,7 +65,7 @@ def test_entering_darks_state(pocs, db):
     # Insert a dummy night
     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
     # Make sure it is dark.
-    assert(pocs.is_dark(horizon='observe'))
+    assert (pocs.is_dark(horizon='observe'))
 
     # Insert a dummy weather record
     db.insert_current('weather', {'safe': False})
@@ -101,7 +102,7 @@ def test_sleeping_stop(pocs):
     pocs.initialize()
     pocs.get_ready()
     pocs._obs_run_retries = -1
-    assert(not pocs.should_retry)
+    assert (not pocs.should_retry)
     # Make sure its dark
     assert pocs.is_dark(horizon='observe')
     # Get into the sleeping state
