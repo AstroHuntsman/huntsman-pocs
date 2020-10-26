@@ -1,4 +1,5 @@
 import os
+from threading import Event
 import Pyro5.server
 
 from panoptes.utils.config.client import get_config
@@ -22,7 +23,7 @@ class CameraService(object):
     a thin-wrapper that can run on the device.
     """
     _event_locations = {"camera": ("_camera", "_is_exposing_event"),
-                        "focuser": ("_camera", "focuser", "_autofocus_event",),
+                        "focuser": ("_camera", "focuser", "_focus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
     def __init__(self, device_name=None):
@@ -37,14 +38,15 @@ class CameraService(object):
         self.camera_config = self._get_camera_config(device_name)
 
         camera_model = self.camera_config.get('model')
-        self.logger.info(f'Loading module for {camera_model=}')
+        self.logger.info(f'Loading module for camera model={camera_model}')
         module = load_module(camera_model)
 
         # Create a real instance of the camera
         self._camera = module.Camera(logger=self.logger, **self.camera_config)
 
         # Set up events for our exposure.
-        self._autofocus_event = None
+        self._exposure_event = Event()
+        self._autofocus_event = Event()
 
     # Properties - rather than labouriously wrapping every camera property individually expose
     # them all with generic get and set methods.
@@ -74,15 +76,17 @@ class CameraService(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, *args, **kwargs):
+    def take_exposure(self, *args, blocking=False, **kwargs):
         # Start the exposure non-blocking so that camera server can still respond to
         # status requests.
-        self._exposure_event = self._camera.take_exposure(blocking=False, *args, **kwargs)
+        # self._exposure_event = self._camera.take_exposure(blocking=False, *args, **kwargs)
+        self._exposure_event = self._camera.take_exposure(*args, **kwargs, blocking=blocking)
 
-    def autofocus(self, *args, **kwargs):
+    def autofocus(self, *args, blocking=False, **kwargs):
         # Start the autofocus non-blocking so that camera server can still respond to
         # status requests.
-        self._autofocus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
+        # self._autofocus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
+        self._autofocus_event = self._camera.autofocus(*args, **kwargs, blocking=blocking)
 
     # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
@@ -145,14 +149,13 @@ class CameraService(object):
                 if config["name"] == device_name:
                     self.logger.debug(f"Found camera config by name for {device_name}.")
                     return config
+            self.logger.debug(f"Unable to find config entry for {device_name}.")
 
         # If no match for device name, attempt to use IP address
         ip_address = get_own_ip()
         self.logger.debug(f"Querying for camera config with identifier: {ip_address}.")
-        try:
-            config = device_configs[ip_address]
-        except KeyError as err:
-            msg = f"Unable to find camera config entry for {ip_address}."
-            self.logger.error(msg)
-            raise KeyError(msg)
-        return config
+        for config in device_configs:
+            if config["name"] == ip_address:
+                return config
+
+        raise RuntimeError(f"Unable to find camera config entry for {ip_address}.")

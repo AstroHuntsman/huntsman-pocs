@@ -1,12 +1,13 @@
 ---
 name: HuntsmanSSO
+
 log_file: huntsman
+
 location:
   name: Siding Spring Observatory
   latitude: -31.16 deg
   longitude: 149.13 deg
   elevation: 1160.0 m
-  utc_offset: 10.00 # Hours
   horizon: 30 deg # Degrees - Targets above this limit
   flat_horizon: -6 deg # Degrees - Flats between this and focus_horizon
   focus_horizon: -12 deg # Degrees - Focus between this and observe_horizon
@@ -15,7 +16,7 @@ location:
     - [ [ 45, 355 ], [ 45, 5 ] ] # telstra tower rough coordinates
   timezone: Australia/Sydney
   twilight_horizon: 0 # Degrees
-  
+
 db:
   name: huntsman
   type: file
@@ -38,24 +39,27 @@ cameras:
   devices:
     - model: panoptes.pocs.camera.simulator.dslr
       name: dslr.00
-      port: /dev/fake/dslr.00
-      readout_time: 0.5
+      port: /dev/fake/dslr.focuser.00
       is_distributed: True
-
-dome:
-  template_dir: resources/bisque
-  driver: bisque
-  brand: bisque
-  port: /dev/tty.Tinyos-DevB
-
-guider:
-  bin_size: 1
-  image_path: /var/huntsman/temp/guide_image.fits
-  template_dir: resources/bisque/guider
+      focuser:
+        model: panoptes.pocs.focuser.simulator.Focuser
+        focus_port: /dev/fake/focuser.00
+        initial_position: 20000
+        autofocus_range: [ 40, 80 ]
+        autofocus_step: [ 10, 20 ]
+        autofocus_seconds: 0.1
+        autofocus_size: 500
+        autofocus_keep_files: False
 
 mount:
-  brand: bisque
-  driver: simulator
+  brand: ioptron
+  model: 30
+  driver: ioptron
+  serial:
+    port: /dev/ttyUSB0
+    timeout: 0.
+    baudrate: 9600
+  non_sidereal_available: True
 
 filterwheel:
   flat_field_order:
@@ -77,24 +81,15 @@ focusing:
     frequency_unit: hour
     timeout: 600
 
-########################### Flat Fields ########################################
-# Controls various aspects of flat fields, both for evening and morning.
-#
-# Note: The times at which flat-fielding will occur are controlled by the
-# `location.flat_horizon` and `location.observe_horizon` config entries.
-#
-# take_evening_flats: If we should try to take flats during evening twilight
-# take_morning_flats: If we should try to take flats during morning twilight
-# evening:            The coordinates should be roughly opposite the sun.
-# morning:            The coordinates should be roughly opposite the sun.
-################################################################################
+pocs:
+  INITIALIZED: false
+  CONNECTED: false
+  INTERRUPTED: false
+
 flat_field:
   take_evening_flats: False
   take_morning_flats: False
 
-########################### Pyro Items #########################################
-#
-################################################################################
 pyro:
   nameserver:
     host: localhost

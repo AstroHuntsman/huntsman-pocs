@@ -66,9 +66,9 @@ def pyro_service(service_class=None,
                            f"See 'huntsman-pyro nameserver' for details. {e!r}")
             return
 
-        logger.info(f'Starting {service_name=} on {host=}:{port}')
+        logger.info(f'Starting service_name={service_name} on host={host}:{port}')
         with PyroDaemon(host=host, port=port) as daemon:
-            logger.info(f'Creating pyro daemon service for {service_class=}')
+            logger.info(f'Creating pyro daemon service for service_class={service_class}')
             uri = daemon.register(service_instance)
             logger.info(f'Registered {service_class} pyro daemon with uri={uri}'
                         f' and metadata={metadata}.')
@@ -98,13 +98,13 @@ def pyro_service(service_class=None,
                 logger.info(f'Unregistered {service_name} from pyro nameserver')
 
     # Set up pyro service process.
-    logger.info(f'Setting up Pyro {service_name=}.')
+    logger.info(f'Setting up Pyro service_name={service_name}.')
     service_process = Process(target=start_service)
 
     if auto_start:
-        logger.info(f"Auto-starting new pyro {service_name=}")
+        logger.info(f"Auto-starting new pyro service_name={service_name}")
         service_process.start()
-        logger.success("Pyro nameserver started, will block until finished...(Ctrl-c/Cmd-c to exit)")
+        logger.success("Pyro nameserver started, blocking until finished...(Ctrl-c/Cmd-c to exit)")
         service_process.join()
 
     return service_process

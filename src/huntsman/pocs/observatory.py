@@ -24,7 +24,6 @@ class HuntsmanObservatory(Observatory):
                  with_autoguider=True,
                  hdr_mode=False,
                  take_flats=False,
-                 config=None,
                  *args, **kwargs
                  ):
         """Huntsman POCS Observatory
@@ -38,13 +37,12 @@ class HuntsmanObservatory(Observatory):
         """
         # Load the config file
         try:
-            assert os.getenv('HUNTSMAN_POCS')
+            assert os.getenv('HUNTSMAN_POCS') is not None
         except AssertionError:
-            sys.exit("Must set HUNTSMAN_POCS variable")
+            raise RuntimeError("The HUNTSMAN_POCS environment variable is not set.")
 
         # If we don't receive a config then load a local
-        config = config or self.get_config()
-        super().__init__(config=config, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
@@ -54,7 +52,8 @@ class HuntsmanObservatory(Observatory):
         # Attributes for focusing
         self.last_focus_time = None
         coarse_focus_config = self.get_config('focusing.coarse')
-        self._focus_frequency = coarse_focus_config['frequency'] * u.Unit(coarse_focus_config['frequency_unit'])
+        self._focus_frequency = coarse_focus_config['frequency'] \
+            * u.Unit(coarse_focus_config['frequency_unit'])
 
         if self.has_autoguider:
             self.logger.info("Setting up autoguider")
@@ -178,8 +177,7 @@ class HuntsmanObservatory(Observatory):
 
         return result
 
-    def take_flat_fields(self, camera_names=None, alt=None, az=None,
-                         safety_func=None, **kwargs):
+    def take_flat_fields(self, camera_names=None, alt=None, az=None, safety_func=None, **kwargs):
         """
         Take flat fields for each camera in each filter, respecting filter order.
 
@@ -208,6 +206,8 @@ class HuntsmanObservatory(Observatory):
 
         # Load the flat fielding config
         flat_field_config = self.get_config('flat_fields')
+        if flat_field_config is None:
+            flat_field_config = dict()
         flat_field_config.update(kwargs)
 
         if camera_names is None:
@@ -485,7 +485,9 @@ class HuntsmanObservatory(Observatory):
 
         # Specify coordinates for flat field
         if alt is None and az is None:
-            flat_config = self.get_config('flat_field.twilight')
+            flat_config = self.get_config('flat_fields')
+            if flat_config is None:
+                flat_config = dict()
             alt = flat_config['alt']
             az = flat_config['az']
             self.logger.debug(f'Using flat-field alt/az from config.')
@@ -493,7 +495,7 @@ class HuntsmanObservatory(Observatory):
                                      az=az,
                                      location=self.earth_location,
                                      obstime=current_time())
-        self.logger.debug(f'Making flat-field observation for {alt=:.03f} {az=:.03f}.')
+        self.logger.debug(f'Making flat-field observation for alt={alt:.03f} az={az:.03f}.')
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
         # Create the Observation object

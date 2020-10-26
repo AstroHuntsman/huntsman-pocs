@@ -1,49 +1,42 @@
 import os
 import pytest
 
+from panoptes.utils import current_time
+
 from panoptes.pocs.core import POCS
-from panoptes.pocs import utils
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
-from panoptes.pocs.dome import create_dome_from_config
-from panoptes.pocs.mount import create_mount_from_config
+from panoptes.pocs.mount import create_mount_simulator
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 @pytest.fixture(scope='function')
-def cameras(config_with_simulated_stuff):
-    return create_cameras_from_config(config_with_simulated_stuff)
+def cameras():
+    return create_cameras_from_config()
 
 
 @pytest.fixture(scope='function')
-def scheduler(config_with_simulated_stuff):
-    site_details = create_location_from_config(config_with_simulated_stuff)
-    return create_scheduler_from_config(config_with_simulated_stuff,
-                                        observer=site_details['observer'])
+def mount():
+    return create_mount_simulator()
+
+
+@pytest.fixture
+def observatory(mount, cameras, images_dir):
+    """Return a valid Observatory instance with a specific config."""
+
+    site_details = create_location_from_config()
+    scheduler = create_scheduler_from_config(observer=site_details['observer'])
+
+    obs = Observatory(scheduler=scheduler, cameras=cameras, mount=mount)
+
+    return obs
 
 
 @pytest.fixture(scope='function')
-def dome(config_with_simulated_stuff):
-    return create_dome_from_config(config_with_simulated_stuff)
-
-
-@pytest.fixture(scope='function')
-def mount(config_with_simulated_stuff):
-    return create_mount_from_config(config_with_simulated_stuff)
-
-
-@pytest.fixture(scope='function')
-def observatory(config_with_simulated_stuff, db_type, cameras, scheduler, dome, mount):
-    observatory = Observatory(config=config_with_simulated_stuff, cameras=cameras,
-                              scheduler=scheduler, dome=dome, mount=mount, db_type=db_type)
-    return observatory
-
-
-@pytest.fixture(scope='function')
-def pocs(config_with_simulated_stuff, observatory):
-    pocs = POCS(observatory, run_once=True, config=config_with_simulated_stuff)
+def pocs(observatory):
+    pocs = POCS(observatory, run_once=True)
     yield pocs
     pocs.power_down()
 
@@ -51,7 +44,7 @@ def pocs(config_with_simulated_stuff, observatory):
 # ==============================================================================
 
 
-def test_entering_darks_state(pocs, db):
+def test_entering_darks_state(pocs):
     '''
     Test if parked state transitions to taking_darks given the required
     conditions, namely that it is dark and cannot observe (i.e. bad weather).
@@ -60,7 +53,7 @@ def test_entering_darks_state(pocs, db):
     assert pocs.is_initialized is True
     pocs.get_ready()
 
-    pocs.config['simulator'] = ['camera', 'mount', 'night']
+    pocs.set_config('simulator', ['camera', 'mount', 'night'])
 
     # Insert a dummy night
     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
@@ -68,7 +61,7 @@ def test_entering_darks_state(pocs, db):
     assert (pocs.is_dark(horizon='observe'))
 
     # Insert a dummy weather record
-    db.insert_current('weather', {'safe': False})
+    pocs.db.insert_current('weather', {'safe': False})
     # Make sure the weather is *not* safe to observe.
     assert not pocs.is_weather_safe()
 
@@ -85,7 +78,7 @@ def test_parking_ready(pocs):
     '''
     pocs.initialize()
     pocs.get_ready()
-    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
+    pocs.set_config('simulator', ['camera', 'mount'])
     os.environ['POCSTIME'] = '2020-04-29 23:00:00'
     assert not pocs.is_dark(horizon='observe')
     pocs.next_state = 'parking'
@@ -99,6 +92,7 @@ def test_sleeping_stop(pocs):
     '''
     Test if ready transitions to sleeping and then stops if still dark.
     '''
+    os.environ['POCSTIME'] = '2020-10-29 13:00:00'
     pocs.initialize()
     pocs.get_ready()
     pocs._obs_run_retries = -1
@@ -107,19 +101,18 @@ def test_sleeping_stop(pocs):
     assert pocs.is_dark(horizon='observe')
     # Get into the sleeping state
     pocs.next_state = 'parking'
-    for state in ['parking', 'parked', 'housekeeping', 'sleeping']:
+    for state in ['parking', 'parked', 'taking_darks', 'housekeeping', 'sleeping']:
         assert pocs.next_state == state
         pocs.goto_next_state()
-        if state == 'sleeping':
-            assert pocs._do_states is False
 
 
 def test_ready_scheduling_1(pocs):
     '''
     Test if ready goes into observe if its dark enough.
     '''
+    os.environ['POCSTIME'] = '2020-10-29 13:00:00'
     pocs.initialize()
-    pocs.observatory.last_focus_time = utils.current_time()
+    pocs.observatory.last_focus_time = current_time()
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert not pocs.observatory.coarse_focus_required
@@ -133,9 +126,9 @@ def test_ready_scheduling_2(pocs):
     and its not dark enough to start observing but its dark enough to focus.
     '''
     os.environ['POCSTIME'] = '2020-04-29 08:40:00'
-    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
+    pocs.set_config('simulator', ['camera', 'mount'])
     pocs.initialize()
-    pocs.observatory.last_focus_time = utils.current_time()
+    pocs.observatory.last_focus_time = current_time()
     assert not pocs.observatory.past_midnight
     assert not pocs.observatory.coarse_focus_required
     assert not pocs.is_dark(horizon='observe')
@@ -145,27 +138,31 @@ def test_ready_scheduling_2(pocs):
     assert pocs.next_state == 'scheduling'
 
 
+@pytest.mark.skip("Need to update pyro camera code.")
 def test_ready_coarse_focusing_scheduling(pocs):
     '''
     Test if ready goes into observe if its dark enough via coarse focusing.
     '''
+    os.environ['POCSTIME'] = '2020-04-29 08:40:00'
+    pocs.set_config('simulator', ['camera', 'mount', 'power', 'weather'])
     pocs.initialize()
     pocs.get_ready()
     assert pocs.state == 'ready'
-    assert pocs.is_dark(horizon='observe')
+    assert pocs.is_dark(horizon='focus')
     assert pocs.observatory.coarse_focus_required
     for state in ['coarse_focusing', 'scheduling']:
         assert pocs.next_state == state
         pocs.goto_next_state()
 
 
+@pytest.mark.skip("Need to update pyro camera code.")
 def test_evening_setup(pocs):
     '''
     Test the states in the evening before observing starts.
     '''
     # Preconditions to ready state
     os.environ['POCSTIME'] = '2020-04-29 08:10:00'
-    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
+    pocs.set_config('simulator', ['camera', 'mount', 'power'])
     assert pocs.observatory.coarse_focus_required
     assert not pocs.observatory.past_midnight
     assert not pocs.is_dark(horizon='observe')
@@ -195,8 +192,8 @@ def test_morning_parking(pocs):
     '''
     os.environ['POCSTIME'] = '2020-04-29 19:30:00'
     pocs.initialize()
-    pocs.observatory.last_focus_time = utils.current_time()
-    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
+    pocs.observatory.last_focus_time = current_time()
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.observatory.past_midnight
@@ -212,6 +209,7 @@ def test_morning_parking(pocs):
         assert pocs.state == state
 
 
+@pytest.mark.skip("Need to update pyro camera code.")
 def test_morning_coarse_focusing_parking(pocs):
     '''
     Test morning transition between coarse focusing, flat fielding and parking.
@@ -219,7 +217,7 @@ def test_morning_coarse_focusing_parking(pocs):
     os.environ['POCSTIME'] = '2020-04-29 19:30:00'
     pocs.initialize()
     pocs.get_ready()
-    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
+    pocs.set_config('simulator', ['camera', 'mount'])
     assert pocs.state == 'ready'
     assert pocs.observatory.past_midnight
     assert pocs.observatory.coarse_focus_required

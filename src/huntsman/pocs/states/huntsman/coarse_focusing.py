@@ -6,7 +6,7 @@ def on_enter(event_data):
     pocs = event_data.model
     pocs.next_state = 'parking'
 
-    coarse_focus_timeout = pocs.config['focusing']['coarse']['timeout']
+    coarse_focus_timeout = pocs.get_config("focusing.coarse.timeout")
 
     # Do the autofocusing
     pocs.say("Coarse focusing all cameras.")

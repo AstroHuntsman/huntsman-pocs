@@ -1,12 +1,12 @@
 import os
 import pytest
 
+from panoptes.utils import error
+
 from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.mount import create_mount_simulator
-from panoptes.pocs.dome import create_dome_simulator
-# from panoptes.pocs.camera import create_camera_simulator
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
@@ -49,23 +49,32 @@ def pocs(observatory):
 def test_prepare_cameras_dropping(observatory):
     """Test that unready camera is dropped."""
     cameras = observatory.cameras
-    camera_names = cameras.keys()
-    assert len(camera_names) > 1, "Expeted more than one camera."
-    # Override class method
-    cameras[camera_names[0]].is_ready = False
-    # This should drop the unready camera
-    observatory.prepare_cameras(max_attempts=1)
-    assert len(observatory.cameras) == len(camera_names) - 1
+    camera_names = list(cameras.keys())
+    n_cameras = len(camera_names)
+    assert n_cameras >= 1, "No cameras found in Observatory instance."
+    # Ensure at least one camera is not ready
+    cameras[camera_names[0]]._exposure_event.set()
+    n_not_ready = 0
+    for camera in cameras.values():
+        if not camera.is_ready:
+            n_not_ready += 1
+    assert n_not_ready != 0
+    # TODO: Split into two tests
+    if n_not_ready == n_cameras:
+        with pytest.raises(error.PanError):
+            observatory.prepare_cameras(max_attempts=1, sleep=1)
+    else:
+        observatory.prepare_cameras(max_attempts=1, sleep=1)
+        assert len(observatory.cameras) == n_cameras - n_not_ready
 
 
-def test_bad_observatory(config):
+def test_bad_observatory():
+    """Test the observatory raises a RuntimeError if HUNTSMAN_POCS is not set."""
     huntsman_pocs = os.environ['HUNTSMAN_POCS']
     try:
         del os.environ['HUNTSMAN_POCS']
-        with pytest.raises(SystemExit) as pytest_wrapped_e:
+        with pytest.raises(RuntimeError):
             Observatory()
-        assert pytest_wrapped_e.type == SystemExit
-        assert pytest_wrapped_e.value.code == 'Must set HUNTSMAN_POCS variable'
     finally:
         os.environ['HUNTSMAN_POCS'] = huntsman_pocs
 
@@ -74,13 +83,8 @@ def test_take_flat_fields(pocs):
     """
 
     """
-    os.environ['POCSTIME'] = '2020-04-29 08:10:00'
-    pocs.config['simulator'] = [s for s in pocs.config['simulator'] if s != 'night']
+    os.environ['POCSTIME'] = '2020-10-09 12:00:00'
+    assert pocs.observatory.is_dark(horizon='flat') is True
     pocs.initialize()
-    assert not pocs.observatory.past_midnight
-    assert not pocs.is_dark(horizon='observe')
-    assert not pocs.is_dark(horizon='focus')
-    assert pocs.is_dark(horizon='flat')
     pocs.get_ready()
-    pocs.observatory.take_flat_fields(alt=60, az=90, max_num_exposures=1,
-                                      tolerance=0.5)
+    pocs.observatory.take_flat_fields(alt=60, az=90, max_num_exposures=1, tolerance=0.5)

@@ -33,7 +33,7 @@ class Camera(AbstractCamera):
         try:
             self._proxy = Proxy(self._uri)
         except error.PyroProxyError as err:
-            logger.error(f"Couldn't get proxy to camera on {port=}: {err!r}")
+            logger.error(f"Couldn't get proxy to camera on port={port}: {err!r}")
             return
 
         super().__init__(name=name, port=port, model=model, logger=self.logger, *args, **kwargs)
@@ -187,7 +187,8 @@ class Camera(AbstractCamera):
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
 
         # Remote method call to start the exposure
-        self._proxy.take_exposure(seconds=seconds, filename=filename, dark=dark, *args, **kwargs)
+        self._proxy.take_exposure(seconds=seconds, blocking=blocking, filename=filename, dark=dark,
+                                  *args, **kwargs)
         max_wait = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
         self._run_timeout("exposure", "camera", blocking, max_wait)
 
@@ -240,7 +241,8 @@ class Camera(AbstractCamera):
         self.logger.debug(f'Starting autofocus on {self}.')
 
         # Remote method call to start the exposure
-        self._proxy.autofocus(*args, **kwargs)
+        # self._proxy.autofocus(*args, **kwargs)
+        self._proxy.autofocus(*args, **kwargs, blocking=blocking)
 
         # In general it's very complicated to work out how long an autofocus should take
         # because parameters can be set here or come from remote config. For now just make
@@ -262,14 +264,11 @@ class Camera(AbstractCamera):
 
     def _run_timeout(self, event_name, event_type, blocking, max_wait):
         if blocking:
-            self.logger.debug("e")
             event = getattr(self, f"_{event_name}_event")
             timer = CountdownTimer(duration=max_wait)
             while not timer.expired():
-                self.logger.debug("c")
                 if not event.is_set():
                     return
-            self.logger.debug("d")
             self._timeout_response(event_name, event_type, max_wait, blocking)
 
         else:

@@ -1,7 +1,7 @@
 ---
 name: huntsman
 initial: sleeping
-location: states
+location: huntsman.pocs.states
 states:
     parking:
         tags: always_safe

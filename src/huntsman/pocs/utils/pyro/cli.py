@@ -72,7 +72,7 @@ def service(context, service_name, service_class=None, config_identifier=None):
 
     service_name = service_name or socket.gethostname()
 
-    logger.info(f'Starting pyro service {service_name=} for {service_class=}')
+    logger.info(f'Starting pyro service_name={service_name} for service_class={service_class}')
 
     try:
         logger.info(f'Creating Pyro service {service_name}')
