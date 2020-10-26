@@ -32,7 +32,7 @@ jobs:
         python-version: [ 3.7 ]
     steps:
       - name: Make coverage directory
-        run: mkdir ${{ env.COVERAGE_DIR }} && chmod -R 777 ${{ env.COVERAGE_DIR }}
+        run: mkdir ${{ env.HUNTSMAN_COVDIR }} && chmod -R 777 ${{ env.HUNTSMAN_COVDIR }}
       - name: Checkout huntsman-pocs
         uses: actions/checkout@v2
         with:
@@ -48,5 +48,5 @@ jobs:
         if: success()
         with:
           name: codecov-upload
-          file: ${{ env.COVERAGE_DIR }}/coverage.xml
+          file: ${{ env.HUNTSMAN_COVDIR }}/coverage.xml
           fail_ci_if_error: true
