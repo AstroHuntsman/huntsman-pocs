@@ -4,7 +4,7 @@ set -eu
 # Specify directories inside the docker container
 HUNTSMAN_DIR_DOCKER="${HUNTSMAN_DIR_DOCKER:-/var/huntsman}"
 HUNTSMAN_POCS_DOCKER="${HUNTSMAN_POCS_DOCKER:-${HUNTSMAN_DIR_DOCKER}/huntsman-pocs}"
-HUNTSMAN_COVDIR_DOCKER="${HUNTSMAN_COVDIR_DOCKER}:-${HUNTSMAN_DIR_DOCKER}/coverage"
+HUNTSMAN_COVDIR_DOCKER="${HUNTSMAN_COVDIR_DOCKER:-${HUNTSMAN_DIR_DOCKER}/coverage}"
 
 # Run tests inside docker container
 docker-compose -f ${HUNTSMAN_POCS}/docker/testing/docker-compose.yml run --rm \
