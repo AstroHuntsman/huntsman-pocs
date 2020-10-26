@@ -17,7 +17,6 @@ from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 
-from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
 
@@ -176,7 +175,6 @@ def test_exposure_blocking(camera, tmpdir):
     assert not camera._proxy.event_is_set("camera")
     assert camera.is_ready
     assert not camera.is_exposing
-    time.sleep(0.5)  # TODO: Fix simulated camera and remove
     assert os.path.isfile(fits_path)
     # If can retrieve some header data there's a good chance it's a valid FITS file
     header = fits_utils.getheader(fits_path)
@@ -191,7 +189,6 @@ def test_exposure_dark(camera, tmpdir):
     fits_path = str(tmpdir.join('test_exposure_dark.fits'))
     # A 1 second dark exposure
     camera.take_exposure(filename=fits_path, dark=True, blocking=True)
-    time.sleep(0.5)  # TODO: Fix simulated camera and remove
     assert os.path.exists(fits_path)
     # If can retrieve some header data there's a good chance it's a valid FITS file
     header = fits_utils.getheader(fits_path)
@@ -230,7 +227,6 @@ def test_exposure_scaling(camera, tmpdir):
     else:
         fits_path = str(tmpdir.join('test_exposure_scaling.fits'))
         camera.take_exposure(filename=fits_path, dark=True, blocking=True)
-        time.sleep(0.5)  # TODO: Fix simulated camera and remove
         image_data, image_header = fits.getdata(fits_path, header=True)
         assert bit_depth == image_header['BITDEPTH'] * u.bit
         pad_bits = image_header['BITPIX'] - image_header['BITDEPTH']
@@ -330,7 +326,7 @@ def test_observation_nofilter(camera, images_dir):
         os.remove(_)
 
 
-@pytest.mark.skip("Need to update camera code.")
+@pytest.mark.skip("Need to update pyro camera code.")
 def test_autofocus_coarse(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
