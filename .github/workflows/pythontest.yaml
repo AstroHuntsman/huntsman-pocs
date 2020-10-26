@@ -42,7 +42,7 @@ jobs:
         run: docker-compose build
       - name: Test with pytest in huntsman-pocs container
         working-directory: ${{ env.HUNTSMAN_POCS }}
-        run: scripts/testing/run_docker_tests.sh
+        run: scripts/testing/run-docker-tests.sh
       - name: Upload coverage report to codecov.io
         uses: codecov/codecov-action@v1
         if: success()
