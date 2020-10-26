@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   pocs-config-server:
-    image: huntsman-pocs:develop
+    image: huntsmanarray/huntsman-pocs:develop
     init: true
     tty: true
     container_name: pocs-config-server
@@ -16,7 +16,7 @@ services:
     # command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
     command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
   pyro-name-server:
-    image: huntsman-pocs:develop
+    image: huntsmanarray/huntsman-pocs:develop
     init: true
     tty: true
     container_name: pyro-name-server
@@ -35,7 +35,7 @@ services:
       - huntsman_dir:/var/huntsman
     command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
   pyro-http:
-    image: huntsman-pocs:develop
+    image: huntsmanarray/huntsman-pocs:develop
     init: true
     tty: true
     container_name: pyro-http

@@ -1,0 +1,15 @@
+version: '3'
+services:
+  python_tests:
+    image: huntsmanarray/huntsman-pocs:develop
+    build:
+      context: "${HUNTSMAN_POCS}"
+      dockerfile: docker/Dockerfile
+    network_mode: "host"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${HUNTSMAN_POCS}:/var/huntsman/huntsman-pocs
+    environment:
+      - HUNTSMAN_DRP=/var/huntsman/huntsman-pocs
+    command: /var/huntsman/huntsman-pocs/scripts/testing/run_local_tests.sh

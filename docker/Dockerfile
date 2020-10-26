@@ -1,4 +1,4 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-pocs:latest
+ARG image_url=gcr.io/panoptes-exp/panoptes-pocs:develop
 FROM ${image_url} AS pocs-base
 
 LABEL description="Huntsman - PANOPTES Observatory Control System"

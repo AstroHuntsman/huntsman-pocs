@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-COVERAGE_REPORT_FILE=${COVERAGE_REPORT_FILE:-/var/panoptes/logs/coverage.xml}
+HUNTSMAN_COVERAGE_DIR="${HUNTSMAN_COVDIR:-${HUNTSMAN_POCS}/coverage}"
+COVERAGE_REPORT_FILE="${HUNTSMAN_COVDIR}/coverage.xml"
 PANOPTES_CONFIG_HOST="${PANOPTES_CONFIG_HOST:-localhost}"
 PANOPTES_CONFIG_PORT="${PANOPTES_CONFIG_PORT:-8765}"
 PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/tests/testing.yaml"
 
-# This assumes we are always running in a docker container.
-export COVERAGE_PROCESS_START="/var/huntsman/huntsman-pocs/setup.cfg"
+export COVERAGE_PROCESS_START="${HUNTSMAN_POCS}/setup.cfg"
 
 # Install huntsman-pocs
 echo "pip installing local huntsman-pocs"
@@ -15,25 +15,26 @@ cd ${HUNTSMAN_POCS} && pip install -e . && cd -
 
 coverage erase
 
-# Run coverage over the pytest suite.
+# Start the config server
 echo "Starting config server in background"
 echo "PANOPTES_CONFIG_FILE=${PANOPTES_CONFIG_FILE}"
 echo "PANOPTES_CONFIG_HOST=${PANOPTES_CONFIG_HOST}"
 echo "PANOPTES_CONFIG_PORT=${PANOPTES_CONFIG_PORT}"
 panoptes-config-server --host "${PANOPTES_CONFIG_HOST}" --port "${PANOPTES_CONFIG_PORT}" run --no-load-local --no-save-local --config-file ${PANOPTES_CONFIG_FILE} &
-
 echo "Checking to make sure panoptes-config-server is running"
-/usr/local/bin/wait-for-it.sh --timeout=30 --strict "${PANOPTES_CONFIG_HOST}:${PANOPTES_CONFIG_PORT}" -- echo "Config-server up"
+/usr/local/bin/wait-for-it.sh --timeout=30 --strict "${PANOPTES_CONFIG_HOST}:${PANOPTES_CONFIG_PORT}" -- echo "Config-server up."
 
+# Start the pyro name server
 PYRO_NS_HOST="$(panoptes-config-server get pyro.nameserver.host)"
 PYRO_NS_PORT="$(panoptes-config-server get pyro.nameserver.port)"
-
 echo "Starting the Pyro nameserver on ${PYRO_NS_HOST}:${PYRO_NS_PORT}"
 huntsman-pyro --verbose --host "${PYRO_NS_HOST}" --port "${PYRO_NS_PORT}" nameserver --auto-clean 300 &
 
+# Start a pyro camera service
 echo "Creating testing Pyro CameraService"
 huntsman-pyro --verbose service --service-name dslr.00 --service-class huntsman.pocs.camera.pyro.service.CameraService &
 
+# Run the tests
 echo "Starting testing"
 coverage run "$(command -v pytest)"
 
