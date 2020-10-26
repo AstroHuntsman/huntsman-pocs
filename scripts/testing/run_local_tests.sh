@@ -10,9 +10,8 @@ PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/tests/testing.yaml"
 export COVERAGE_PROCESS_START="${HUNTSMAN_POCS}/setup.cfg"
 
 # Install huntsman-pocs
-export PYTHONPATH="${PYTHONPATH}:${HUNTSMAN_POCS}/src"
-# echo "pip installing local huntsman-pocs"
-# cd ${HUNTSMAN_POCS} && pip install -e . && cd -
+echo "pip installing local huntsman-pocs"
+cd ${HUNTSMAN_POCS} && pip install -e . && cd -
 
 coverage erase
 
