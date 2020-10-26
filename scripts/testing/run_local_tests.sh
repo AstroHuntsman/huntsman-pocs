@@ -41,7 +41,7 @@ coverage run "$(command -v pytest)"
 # TODO shutdown pyro service?
 
 echo "Stopping config server"
-panoptes-config-server --verbose --host ${PANOPTES_CONFIG_HOST}" --port "${PANOPTES_CONFIG_PORT}" stop
+panoptes-config-server --verbose --host "${PANOPTES_CONFIG_HOST}" --port "${PANOPTES_CONFIG_PORT}" stop
 
 echo "Combining coverage for ${COVERAGE_REPORT_FILE}"
 coverage combine
