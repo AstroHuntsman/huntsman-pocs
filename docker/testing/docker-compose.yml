@@ -8,8 +8,16 @@ services:
     network_mode: "host"
     stdin_open: true
     tty: true
+    environment:
+      - PANUSER=huntsman
+      - PANDIR=/var/huntsman
+      - POCS=/var/panoptes/POCS
+      - PANLOG=/var/huntsman/logs
+      - HUNTSMAN_POCS=/var/huntsman/huntsman-pocs
+      - PANOPTES_CONFIG_FILE=/var/huntsman/huntsman-pocs/tests/testing.yaml
+      - PANOPTES_CONFIG_HOST=0.0.0.0
+      - PANOPTES_CONFIG_PORT=8765
     volumes:
       - ${HUNTSMAN_POCS}:/var/huntsman/huntsman-pocs
-    environment:
-      - HUNTSMAN_DRP=/var/huntsman/huntsman-pocs
+      - ${PANLOG}:/var/huntsman/logs
     command: /var/huntsman/huntsman-pocs/scripts/testing/run_local_tests.sh

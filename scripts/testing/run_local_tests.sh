@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-HUNTSMAN_COVERAGE_DIR="${HUNTSMAN_COVDIR:-${HUNTSMAN_POCS}/coverage}"
+HUNTSMAN_COVDIR="${HUNTSMAN_COVDIR:-${PANLOG}/huntsman-coverage}"
 COVERAGE_REPORT_FILE="${HUNTSMAN_COVDIR}/coverage.xml"
 PANOPTES_CONFIG_HOST="${PANOPTES_CONFIG_HOST:-localhost}"
 PANOPTES_CONFIG_PORT="${PANOPTES_CONFIG_PORT:-8765}"
@@ -10,8 +10,9 @@ PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/tests/testing.yaml"
 export COVERAGE_PROCESS_START="${HUNTSMAN_POCS}/setup.cfg"
 
 # Install huntsman-pocs
-echo "pip installing local huntsman-pocs"
-cd ${HUNTSMAN_POCS} && pip install -e . && cd -
+export PYTHONPATH="${PYTHONPATH}:${HUNTSMAN_POCS}/src"
+# echo "pip installing local huntsman-pocs"
+# cd ${HUNTSMAN_POCS} && pip install -e . && cd -
 
 coverage erase
 

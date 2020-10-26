@@ -25,14 +25,14 @@ jobs:
     needs: lint
     env:
       HUNTSMAN_POCS: ${{ github.workspace }}/huntsman-pocs
-      HUNTSMAN_COVDIR: ${{ github.workspace }}/coverage
+      PANLOG: ${{ github.workspace }}/logs
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [ 3.7 ]
     steps:
       - name: Make coverage directory
-        run: mkdir ${{ env.HUNTSMAN_COVDIR }} && chmod -R 777 ${{ env.HUNTSMAN_COVDIR }}
+        run: mkdir -p ${{ env.PANLOG }}/huntsman-coverage && chmod -R 777 ${{ env.PANLOG }}
       - name: Checkout huntsman-pocs
         uses: actions/checkout@v2
         with:
@@ -48,5 +48,5 @@ jobs:
         if: success()
         with:
           name: codecov-upload
-          file: ${{ env.HUNTSMAN_COVDIR }}/coverage.xml
+          file: ${{ env.PANLOG }}/huntsman-coverage/coverage.xml
           fail_ci_if_error: true
