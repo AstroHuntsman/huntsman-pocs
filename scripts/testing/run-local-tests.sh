@@ -11,7 +11,7 @@ export COVERAGE_PROCESS_START="/var/huntsman/huntsman-pocs/setup.cfg"
 
 # Install huntsman-pocs
 echo "pip installing local huntsman-pocs"
-ch ${HUNTSMAN_POCS} && pip install -e .
+cd ${HUNTSMAN_POCS} && pip install -e . && cd -
 
 coverage erase
 
