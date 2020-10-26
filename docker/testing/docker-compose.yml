@@ -14,7 +14,7 @@ services:
       - POCS=/var/panoptes/POCS
       - PANLOG=/var/huntsman/logs
       - HUNTSMAN_POCS=/var/huntsman/huntsman-pocs
-      - PANOPTES_CONFIG_FILE=/var/huntsman/huntsman-pocs/tests/testing.yaml
+      - PANOPTES_CONFIG_FILE=/var/huntsman/huntsman-pocs/conf_files/testing.yaml
       - PANOPTES_CONFIG_HOST=0.0.0.0
       - PANOPTES_CONFIG_PORT=8765
     volumes:

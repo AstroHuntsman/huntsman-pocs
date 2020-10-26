@@ -5,15 +5,15 @@ HUNTSMAN_COVDIR="${HUNTSMAN_COVDIR:-${PANLOG}/huntsman-coverage}"
 COVERAGE_REPORT_FILE="${HUNTSMAN_COVDIR}/coverage.xml"
 PANOPTES_CONFIG_HOST="${PANOPTES_CONFIG_HOST:-localhost}"
 PANOPTES_CONFIG_PORT="${PANOPTES_CONFIG_PORT:-8765}"
-PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/tests/testing.yaml"
+PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/conf_files/testing.yaml"
 
 export COVERAGE_PROCESS_START="${HUNTSMAN_POCS}/setup.cfg"
+coverage erase
 
 # Install huntsman-pocs
 echo "pip installing local huntsman-pocs"
+sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
 cd ${HUNTSMAN_POCS} && pip install -e . && cd -
-
-coverage erase
 
 # Start the config server
 echo "Starting config server in background"

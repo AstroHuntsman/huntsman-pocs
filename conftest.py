@@ -6,10 +6,8 @@ import tempfile
 from contextlib import suppress
 
 import pytest
-from _pytest.logging import caplog as _caplog  # noqa
 
 from huntsman.pocs.utils.logger import logger
-from huntsman.pocs.utils.pyro.service import pyro_service
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
 from panoptes.utils.config.client import set_config, get_config
@@ -169,7 +167,7 @@ def db_name():
 
 @pytest.fixture(scope='session')
 def config_path(base_dir):
-    return os.path.expandvars(f'{base_dir}/tests/testing.yaml')
+    return os.path.expandvars(f'{base_dir}/conf_files/testing.yaml')
 
 
 @pytest.fixture
