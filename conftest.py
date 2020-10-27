@@ -169,7 +169,7 @@ def db_name():
 
 @pytest.fixture(scope='session')
 def config_path(base_dir):
-    return os.path.expandvars(f'{base_dir}/conf_files/testing.yaml')
+    return os.path.expandvars(f'{base_dir}/tests/testing.yaml')
 
 
 @pytest.fixture

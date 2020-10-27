@@ -2,16 +2,12 @@ from collections import OrderedDict
 from contextlib import suppress
 
 from panoptes.utils.config.client import get_config
+from panoptes.utils import error
 
 from huntsman.pocs.camera.pyro.client import Camera
-from huntsman.pocs.utils import error
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from panoptes.pocs.camera import create_cameras_from_config as create_local_cameras
-from panoptes.utils import error
-
-
-# TODO This file seems ill-named or in the wrong place.
 
 
 def create_cameras_from_config(config=None, **kwargs):
@@ -40,7 +36,6 @@ def create_cameras_from_config(config=None, **kwargs):
 
     config = config or get_config()
     camera_config = config["cameras"]
-    logger.debug(f"a {camera_config}")
 
     if camera_config.get("devices", None) is None:
         logger.info('No camera devices found in config.')
@@ -56,8 +51,6 @@ def create_cameras_from_config(config=None, **kwargs):
         n_local = len(config_local['devices'])
     logger.debug(f"Found {n_local} local cameras in config.")
 
-    logger.debug(f"b {camera_config}")
-
     # Get a config specific to the distibuted cameras
     config_distributed = camera_config.copy()
     n_dist = 0
@@ -67,8 +60,6 @@ def create_cameras_from_config(config=None, **kwargs):
                                          "is_distributed", False)]
         n_dist = len(config_distributed['devices'])
     logger.debug(f"Found {n_dist} distributed cameras in config.")
-
-    logger.debug(f"c {config_distributed}")
 
     # Create local cameras
     if n_local > 0:

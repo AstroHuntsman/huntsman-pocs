@@ -205,9 +205,7 @@ class HuntsmanObservatory(Observatory):
             safety_func = partial(self.is_dark, horizon='flat')
 
         # Load the flat fielding config
-        flat_field_config = self.get_config('flat_fields')
-        if flat_field_config is None:
-            flat_field_config = dict()
+        flat_field_config = self.get_config('flat_fields', default=dict())
         flat_field_config.update(kwargs)
 
         if camera_names is None:
@@ -485,11 +483,9 @@ class HuntsmanObservatory(Observatory):
 
         # Specify coordinates for flat field
         if alt is None and az is None:
-            flat_config = self.get_config('flat_fields')
-            if flat_config is None:
-                flat_config = dict()
-            alt = flat_config['alt']
-            az = flat_config['az']
+            flat_field_config = self.get_config('flat_fields', default=dict())
+            alt = flat_field_config['alt']
+            az = flat_field_config['az']
             self.logger.debug(f'Using flat-field alt/az from config.')
         flat_coords = altaz_to_radec(alt=alt,
                                      az=az,
