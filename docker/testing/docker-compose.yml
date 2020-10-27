@@ -19,4 +19,4 @@ services:
       - PANOPTES_CONFIG_PORT=8765
     volumes:
       - ${PANLOG}:/var/huntsman/logs
-    command: /var/huntsman/huntsman-pocs/scripts/testing/run_local_tests.sh
+    command: /var/huntsman/huntsman-pocs/scripts/testing/run_docker_tests.sh
