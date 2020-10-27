@@ -11,7 +11,7 @@ from panoptes.utils.database import PanDB
 from panoptes.utils.config.client import set_config, get_config
 
 from huntsman.pocs.utils.logger import logger
-from huntsman.pocs.utils.pyro.service import pyro_service
+# from huntsman.pocs.utils.pyro.service import pyro_service
 
 
 _all_databases = ['file', 'memory']
