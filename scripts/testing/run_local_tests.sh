@@ -11,9 +11,8 @@ export COVERAGE_PROCESS_START="${HUNTSMAN_POCS}/setup.cfg"
 coverage erase
 
 # Install huntsman-pocs
-cd ${HUNTSMAN_POCS} && python setup.py develop && cd -
-# sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
-# cd ${HUNTSMAN_POCS} && pip install -e . && cd -
+sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
+cd ${HUNTSMAN_POCS} && pip install -e . && cd -
 
 # Start the config server
 echo "Starting config server in background"

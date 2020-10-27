@@ -88,9 +88,6 @@ def test_take_flat_fields(pocs):
     """
 
     """
-    for camera in pocs.cameras.values():
-        camera.is_exposing = False      # TODO: Remove this once camera service is fixture
-        assert camera.is_ready
     os.environ['POCSTIME'] = '2020-10-09 12:00:00'
     assert pocs.observatory.is_dark(horizon='flat') is True
     pocs.initialize()
