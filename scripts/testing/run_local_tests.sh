@@ -12,7 +12,6 @@ coverage erase
 
 # Install huntsman-pocs
 echo "pip installing local huntsman-pocs"
-mkdir ${HUNTSMAN_POCS}
 ln -sr /var/huntsman/huntsman-pocs-mount ${HUNTSMAN_POCS}
 cd ${HUNTSMAN_POCS}
 pip install -e .
