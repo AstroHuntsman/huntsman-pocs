@@ -22,8 +22,8 @@ ENV PANLOG="${huntsman_dir}/logs"
 ENV PANUSER=$panuser
 ENV POCS=$pocs_dir
 
-ENV HUNTSMAN_DIR "${huntsman_dir}"
-ENV HUNTSMAN_POCS "${huntsman_dir}/huntsman-pocs"
+ENV HUNTSMAN_DIR="${huntsman_dir}"
+ENV HUNTSMAN_POCS="${huntsman_dir}/huntsman-pocs"
 
 # Install system dependencies.
 USER root
