@@ -18,6 +18,6 @@ services:
       - PANOPTES_CONFIG_HOST=0.0.0.0
       - PANOPTES_CONFIG_PORT=8765
     volumes:
-      - ${HUNTSMAN_POCS}:/var/huntsman/huntsman-pocs-mount
+      - ${HUNTSMAN_POCS}:/var/huntsman/huntsman-pocs
       - ${PANLOG}:/var/huntsman/logs
     command: /var/huntsman/huntsman-pocs/scripts/testing/run_local_tests.sh

@@ -203,63 +203,6 @@ def db(db_type, db_name):
     return PanDB(db_type=db_type, db_name=db_name, connect=True)
 
 
-@pytest.fixture(scope='function')
-def memory_db(db_name):
-    PanDB.permanently_erase_database('memory', db_name, really='Yes', dangerous='Totally')
-    return PanDB(db_type='memory', db_name=db_name)
-
-
-@pytest.fixture(scope='session')
-def data_dir():
-    return os.path.expandvars('${POCS}/tests/data')
-
-
-@pytest.fixture(scope='function')
-def unsolved_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'unsolved.fits')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def solved_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'solved.fits.fz')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def tiny_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'tiny.fits')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def noheader_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'noheader.fits')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def cr2_file(data_dir):
-    cr2_path = os.path.join(data_dir, 'canon.cr2')
-
-    if not os.path.exists(cr2_path):
-        pytest.skip("No CR2 file found, skipping test.")
-
-    return cr2_path
-
-
 @pytest.fixture()
 def caplog(_caplog):
     class PropagatedHandler(logging.Handler):
