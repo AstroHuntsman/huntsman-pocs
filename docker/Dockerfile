@@ -18,7 +18,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 
 ENV PANDIR=$pan_dir
-ENV PANLOG="$pan_dir/logs"
+ENV PANLOG="${huntsman_dir}/logs"
 ENV PANUSER=$panuser
 ENV POCS=$pocs_dir
 

@@ -53,19 +53,24 @@ def test_prepare_cameras_dropping(observatory):
     n_cameras = len(camera_names)
     assert n_cameras >= 1, "No cameras found in Observatory instance."
     # Ensure at least one camera is not ready
-    cameras[camera_names[0]]._exposure_event.set()
-    n_not_ready = 0
-    for camera in cameras.values():
-        if not camera.is_ready:
-            n_not_ready += 1
-    assert n_not_ready != 0
-    # TODO: Split into two tests
-    if n_not_ready == n_cameras:
-        with pytest.raises(error.PanError):
+    cam_not_ready = cameras[camera_names[0]]
+    cam_not_ready._exposure_event.set()
+    assert not cameras[camera_names[0]].is_ready
+    try:
+        n_not_ready = 0
+        for camera in cameras.values():
+            if not camera.is_ready:
+                n_not_ready += 1
+        assert n_not_ready != 0
+        # TODO: Split into two tests
+        if n_not_ready == n_cameras:
+            with pytest.raises(error.PanError):
+                observatory.prepare_cameras(max_attempts=1, sleep=1)
+        else:
             observatory.prepare_cameras(max_attempts=1, sleep=1)
-    else:
-        observatory.prepare_cameras(max_attempts=1, sleep=1)
-        assert len(observatory.cameras) == n_cameras - n_not_ready
+            assert len(observatory.cameras) == n_cameras - n_not_ready
+    finally:
+        cam_not_ready._exposure_event.clear()  # Clear the exposure event
 
 
 def test_bad_observatory():

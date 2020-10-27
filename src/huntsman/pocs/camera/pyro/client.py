@@ -114,8 +114,11 @@ class Camera(AbstractCamera):
 
     @is_exposing.setter
     def is_exposing(self, is_exposing):
-        """Setter required by base class."""
-        self._proxy.set("is_exposing", is_exposing)
+        """Set or clear the remote exposure event."""
+        if is_exposing:
+            self._exposure_event.set()
+        else:
+            self._exposure_event.clear()
 
     @property
     def is_temperature_stable(self):
@@ -126,7 +129,6 @@ class Camera(AbstractCamera):
         """
         True if camera is ready to start another exposure, otherwise False.
         """
-        self.logger.debug(f"{self._proxy.get('is_ready')} ~already in progress~")
         return self._proxy.get("is_ready")
 
     # Methods
@@ -151,12 +153,12 @@ class Camera(AbstractCamera):
         self._is_cooled_camera = self._proxy.get("is_cooled_camera")
         self._filter_type = self._proxy.get("filter_type")
 
-        # Set up proxies for remote camera's events required by class
+        # Set up proxies for remote camera's events required by base class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
         self._autofocus_event = RemoteEvent(self._uri, event_type="focuser")
 
         self._connected = True
-        self.logger.debug(f"{self} connected")
+        self.logger.debug(f"{self} connected.")
 
         if self._proxy.has_focuser:
             self.focuser = PyroFocuser(camera=self)
@@ -280,7 +282,7 @@ class Camera(AbstractCamera):
             timeout_thread.start()
 
     def _timeout_response(self, event_name, event_type, max_wait, blocking):
-        # We need an event specific to this thread
+        # We need to make a RemoteEvent specific to this thread for Pyro5
         event = RemoteEvent(self._uri, event_type=event_type)
         # This could do more thorough checks for success, e.g. check is_exposing property,
         # check for existence of output file, etc. It's supposed to be a last resort though,

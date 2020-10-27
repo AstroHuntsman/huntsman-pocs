@@ -12,8 +12,12 @@ coverage erase
 
 # Install huntsman-pocs
 echo "pip installing local huntsman-pocs"
-sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
-cd ${HUNTSMAN_POCS} && pip install -e . && cd -
+mkdir ${HUNTSMAN_POCS}
+ln -sr /var/huntsman/huntsman-pocs-mount ${HUNTSMAN_POCS}
+cd ${HUNTSMAN_POCS}
+pip install -e .
+# sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
+# cd ${HUNTSMAN_POCS} && pip install -e . && cd -
 
 # Start the config server
 echo "Starting config server in background"
@@ -31,6 +35,7 @@ echo "Starting the Pyro nameserver on ${PYRO_NS_HOST}:${PYRO_NS_PORT}"
 huntsman-pyro --verbose --host "${PYRO_NS_HOST}" --port "${PYRO_NS_PORT}" nameserver --auto-clean 300 &
 
 # Start a pyro camera service
+# TODO: Move inside conftest
 echo "Creating testing Pyro CameraService"
 huntsman-pyro --verbose service --service-name dslr.00 --service-class huntsman.pocs.camera.pyro.service.CameraService &
 

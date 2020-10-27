@@ -4,13 +4,15 @@ import shutil
 import stat
 import tempfile
 from contextlib import suppress
-
 import pytest
 
-from huntsman.pocs.utils.logger import logger
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
 from panoptes.utils.config.client import set_config, get_config
+
+from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.pyro.service import pyro_service
+
 
 _all_databases = ['file', 'memory']
 
@@ -290,9 +292,9 @@ def camera_service_name():
     return 'dslr.00'
 
 
+"""
 # Start up a pyro camera service that we can test against.
 # TODO This isn't working at all.
-"""
 @pytest.fixture(scope='module', autouse=False)
 def pyro_camera_service(camera_service_name):
     service_class = 'huntsman.pocs.camera.pyro.service.CameraService'
