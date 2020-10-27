@@ -10,10 +10,6 @@ PANOPTES_CONFIG_FILE="${HUNTSMAN_POCS}/tests/testing.yaml"
 export COVERAGE_PROCESS_START="${HUNTSMAN_POCS}/setup.cfg"
 coverage erase
 
-# Install huntsman-pocs
-sudo chown -R ${PANUSER} ${HUNTSMAN_POCS}
-cd ${HUNTSMAN_POCS} && pip install -e . && cd -
-
 # Start the config server
 echo "Starting config server in background"
 echo "PANOPTES_CONFIG_FILE=${PANOPTES_CONFIG_FILE}"
