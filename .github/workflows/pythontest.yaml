@@ -50,3 +50,9 @@ jobs:
           name: codecov-upload
           file: ${{ env.PANLOG }}/huntsman-coverage/coverage.xml
           fail_ci_if_error: true
+      - name: Create log file artifact
+        uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: log-files
+          path: ${{ env.PANLOG }}/huntsman-testing.log

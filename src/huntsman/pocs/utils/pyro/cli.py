@@ -61,7 +61,7 @@ def nameserver(context, auto_clean=0):
 
 
 @click.pass_context
-def service(context, service_name, service_class=None, config_identifier=None):
+def service(context, service_name, service_class=None):
     """Starts a pyro service.
 
     This function is registered as an entry_point for the module and should be called from

@@ -55,8 +55,8 @@ def pyro_nameserver(host=None,
             nameserver was started via `autostart=True`, the function will block until terminated,
             but still return the completed process.
     """
-    logger.info(f'Pyro nameserver start request: host={host} port={port} auto_clean={auto_clean} \
-                auto_start={auto_start}.')
+    logger.info(f"Pyro nameserver start request: host={host}, port={port}, auto_clean={auto_clean}"
+                f", auto_start={auto_start}.")
     host = host or get_config('pyro.nameserver.ip')
     port = int(port or get_config('pyro.nameserver.port', default=0))
 
