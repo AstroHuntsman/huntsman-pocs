@@ -1,8 +1,15 @@
 import os
-
+from threading import Event
 import Pyro5.server
+
 from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
+
+from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.config import get_own_ip
+# This import is needed to set up the custom (de)serializers in the same scope
+# as the CameraServer and the Camera client's proxy.
+from huntsman.pocs.utils.pyro import serializers
 
 
 @Pyro5.server.expose
@@ -15,29 +22,31 @@ class CameraService(object):
     should exist in a real Camera class and this should merely be used as
     a thin-wrapper that can run on the device.
     """
-    _event_locations = {"camera": ("_exposure_event",),
-                        "focuser": ("_autofocus_event",),
+    _event_locations = {"camera": ("_camera", "_is_exposing_event"),
+                        "focuser": ("_camera", "focuser", "_focus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
-    def __init__(self):
+    def __init__(self, device_name=None):
+        self.logger = logger
         # Fetch the config once during object creation
         # TODO determine if we want to make all config calls dynamic.
         self.config = get_config()
         self.host = self.config.get('host')
         self.user = os.getenv('PANUSER', 'huntsman')
 
-        camera_config = self.config.get('cameras')
-        camera_model = camera_config.get('model')
+        # Prepare the camera config
+        self.camera_config = self._get_camera_config(device_name)
 
-        self.logger.info(f'Loading module for {camera_model=}')
-        module = load_module(f"pocs.camera.{camera_model}")
+        camera_model = self.camera_config.get('model')
+        self.logger.info(f'Loading module for camera model={camera_model}')
+        module = load_module(camera_model)
 
-        # Create a real instance of the camera.
-        self._camera = module.Camera(**camera_config)
+        # Create a real instance of the camera
+        self._camera = module.Camera(logger=self.logger, **self.camera_config)
 
         # Set up events for our exposure.
-        self._autofocus_event = None
-        self._exposure_event = None
+        self._exposure_event = Event()
+        self._autofocus_event = Event()
 
     # Properties - rather than labouriously wrapping every camera property individually expose
     # them all with generic get and set methods.
@@ -54,6 +63,10 @@ class CameraService(object):
             obj = getattr(obj, subcomponent)
         setattr(obj, property_name, value)
 
+    @property
+    def is_connected(self):
+        return self._camera.is_connected
+
     # Methods
 
     def get_uid(self):
@@ -63,15 +76,17 @@ class CameraService(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, *args, **kwargs):
+    def take_exposure(self, *args, blocking=False, **kwargs):
         # Start the exposure non-blocking so that camera server can still respond to
         # status requests.
-        self._exposure_event = self._camera.take_exposure(blocking=False, *args, **kwargs)
+        # self._exposure_event = self._camera.take_exposure(blocking=False, *args, **kwargs)
+        self._exposure_event = self._camera.take_exposure(*args, **kwargs, blocking=blocking)
 
-    def autofocus(self, *args, **kwargs):
+    def autofocus(self, *args, blocking=False, **kwargs):
         # Start the autofocus non-blocking so that camera server can still respond to
         # status requests.
-        self._autofocus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
+        # self._autofocus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
+        self._autofocus_event = self._camera.autofocus(*args, **kwargs, blocking=blocking)
 
     # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
@@ -115,3 +130,32 @@ class CameraService(object):
 
     def event_wait(self, event_type, timeout):
         return self._get_event(event_type).wait(timeout)
+
+    def _get_camera_config(self, device_name=None):
+        """
+        Retrieve the instance-specific camera config from the config server.
+        Args:
+            device_name (str, optional): The string used to query the config server for the
+                instance-specific camera config. If None or not found will attempt to use
+                the device's own IP address.
+        Returns:
+            dict: The camera config dictionary.
+        """
+        device_configs = self.config.get("cameras")["devices"]
+
+        # Try and use the device name to select the device config
+        if device_name is not None:
+            for config in device_configs:
+                if config["name"] == device_name:
+                    self.logger.debug(f"Found camera config by name for {device_name}.")
+                    return config
+            self.logger.debug(f"Unable to find config entry for {device_name}.")
+
+        # If no match for device name, attempt to use IP address
+        ip_address = get_own_ip()
+        self.logger.debug(f"Querying for camera config with identifier: {ip_address}.")
+        for config in device_configs:
+            if config["name"] == ip_address:
+                return config
+
+        raise RuntimeError(f"Unable to find camera config entry for {ip_address}.")

@@ -1,4 +1,4 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-pocs:latest
+ARG image_url=gcr.io/panoptes-exp/panoptes-pocs:develop
 FROM ${image_url} AS pocs-base
 
 LABEL description="Huntsman - PANOPTES Observatory Control System"
@@ -17,13 +17,13 @@ ARG pip_extras="[testing]"
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 
-ENV PANDIR $pan_dir
-ENV PANLOG "$pan_dir/logs"
-ENV PANUSER $panuser
-ENV POCS $pocs_dir
+ENV PANDIR=$pan_dir
+ENV PANLOG="${huntsman_dir}/logs"
+ENV PANUSER=$panuser
+ENV POCS=$pocs_dir
 
-ENV HUNTSMAN_DIR "${huntsman_dir}"
-ENV HUNTSMAN_POCS "${huntsman_dir}/huntsman-pocs"
+ENV HUNTSMAN_DIR="${huntsman_dir}"
+ENV HUNTSMAN_POCS="${huntsman_dir}/huntsman-pocs"
 
 # Install system dependencies.
 USER root

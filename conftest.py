@@ -4,12 +4,15 @@ import shutil
 import stat
 import tempfile
 from contextlib import suppress
-
 import pytest
-from huntsman.pocs.utils.logger import logger
-from huntsman.pocs.utils.pyro.service import pyro_service
+
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
+from panoptes.utils.config.client import set_config, get_config
+
+from huntsman.pocs.utils.logger import logger
+# from huntsman.pocs.utils.pyro.service import pyro_service
+
 
 _all_databases = ['file', 'memory']
 
@@ -159,18 +162,6 @@ def base_dir():
     return os.getenv('HUNTSMAN_POCS', '/var/huntsman/huntsman-pocs')
 
 
-@pytest.fixture(scope='module')
-def images_dir_control(tmpdir_factory):
-    directory = tmpdir_factory.mktemp('images')
-    return str(directory)
-
-
-@pytest.fixture(scope='module')
-def images_dir_device(tmpdir_factory):
-    directory = tmpdir_factory.mktemp('images_local')
-    return str(directory)
-
-
 @pytest.fixture(scope="session")
 def db_name():
     return 'huntsman_testing'
@@ -190,10 +181,11 @@ def temp_file(tmp_path):
     f.unlink(missing_ok=True)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def images_dir(tmpdir_factory):
-    directory = tmpdir_factory.mktemp('images')
-    return str(directory)
+    directory = str(tmpdir_factory.mktemp('images'))
+    set_config("directories.images", directory)
+    return directory
 
 
 @pytest.fixture(scope='function', params=_all_databases)
@@ -211,63 +203,6 @@ def db(db_type, db_name):
     return PanDB(db_type=db_type, db_name=db_name, connect=True)
 
 
-@pytest.fixture(scope='function')
-def memory_db(db_name):
-    PanDB.permanently_erase_database('memory', db_name, really='Yes', dangerous='Totally')
-    return PanDB(db_type='memory', db_name=db_name)
-
-
-@pytest.fixture(scope='session')
-def data_dir():
-    return os.path.expandvars('${POCS}/tests/data')
-
-
-@pytest.fixture(scope='function')
-def unsolved_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'unsolved.fits')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def solved_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'solved.fits.fz')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def tiny_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'tiny.fits')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def noheader_fits_file(data_dir):
-    orig_file = os.path.join(data_dir, 'noheader.fits')
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        copy_file = shutil.copy2(orig_file, tmpdirname)
-        yield copy_file
-
-
-@pytest.fixture(scope='function')
-def cr2_file(data_dir):
-    cr2_path = os.path.join(data_dir, 'canon.cr2')
-
-    if not os.path.exists(cr2_path):
-        pytest.skip("No CR2 file found, skipping test.")
-
-    return cr2_path
-
-
 @pytest.fixture()
 def caplog(_caplog):
     class PropagatedHandler(logging.Handler):
@@ -278,6 +213,11 @@ def caplog(_caplog):
     yield _caplog
     with suppress(ValueError):
         logger.remove(handler_id)
+
+
+@pytest.fixture(scope="module")
+def config_with_simulated_stuff():
+    return get_config()
 
 
 @pytest.fixture(scope='session')
@@ -292,9 +232,10 @@ def pyro_namserver_port():
 
 @pytest.fixture(scope='module')
 def camera_service_name():
-    return 'TestCam00'
+    return 'dslr.00'
 
 
+"""
 # Start up a pyro camera service that we can test against.
 # TODO This isn't working at all.
 @pytest.fixture(scope='module', autouse=False)
@@ -316,3 +257,4 @@ def pyro_camera_service(camera_service_name):
         logger.error(f'TestPyro {camera_service_name} shutdown unexpectedly {e!r}')
     finally:
         logger.info(f'TestPyro {camera_service_name} shut down.')
+"""
