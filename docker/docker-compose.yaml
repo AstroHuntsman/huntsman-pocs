@@ -13,7 +13,6 @@ services:
     restart: on-failure
     volumes:
       - huntsman_dir:/var/huntsman
-    # command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
     command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
   pyro-name-server:
     image: huntsmanarray/huntsman-pocs:develop
