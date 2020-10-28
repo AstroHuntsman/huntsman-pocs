@@ -141,15 +141,13 @@ class CameraService(object):
         Returns:
             dict: The camera config dictionary.
         """
-        device_configs = self.config.get("cameras")["devices"]
+        device_config = self.config.get(f"cameras.devices.{device_name}")
 
-        # Try and use the device name to select the device config
-        if device_name is not None:
-            for config in device_configs:
-                if config["name"] == device_name:
-                    self.logger.debug(f"Found camera config by name for {device_name}.")
-                    return config
-            self.logger.debug(f"Unable to find config entry for {device_name}.")
+        if device_config is not None:
+            self.logger.debug(f"Found camera config by name for {device_name}.")
+            return device_config
+            
+        self.logger.debug(f"Unable to find config entry for {device_name}.")
 
         # If no match for device name, attempt to use IP address
         ip_address = get_own_ip()
