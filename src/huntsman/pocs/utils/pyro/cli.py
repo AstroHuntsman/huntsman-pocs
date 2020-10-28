@@ -51,7 +51,6 @@ def nameserver(context, auto_clean=0):
 
 
 @click.command('service')
-@click.argument('service-name')
 @click.option('--service-name', default=None,
               help='The name of the service to register with the nameserver.'
                    'If the default `None`, then the device hostname will be used.')
@@ -59,6 +58,8 @@ def nameserver(context, auto_clean=0):
               help='The class to register with Pyro. '
                    'This should be the fully qualified namespace for the class, '
                    'e.g. huntsman.pocs.camera.pyro.CameraService.')
+
+
 @click.pass_context
 def service(context, service_name, service_class=None):
     """Starts a pyro service.
@@ -71,7 +72,7 @@ def service(context, service_name, service_class=None):
 
     service_name = service_name or socket.gethostname()
 
-    logger.info(f'Starting pyro service {service_name=} for {service_class=}')
+    logger.info(f'Starting pyro service_name={service_name} for service_class={service_class}')
 
     try:
         logger.info(f'Creating Pyro service {service_name}')

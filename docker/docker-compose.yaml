@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   pocs-config-server:
-    image: huntsman-pocs:develop
+    image: huntsmanarray/huntsman-pocs:develop
     init: true
     tty: true
     container_name: pocs-config-server
@@ -13,9 +13,9 @@ services:
     restart: on-failure
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "panoptes-config-server run /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+    command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/tests/testing.yaml" ]
   pyro-name-server:
-    image: huntsman-pocs:develop
+    image: huntsmanarray/huntsman-pocs:develop
     init: true
     tty: true
     container_name: pyro-name-server
@@ -29,13 +29,12 @@ services:
       HUNTSMAN_POCS: /var/huntsman
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
-      NS_HOST: 0.0.0.0
-      NS_PORT: 6564
+      PANOPTES_CONFIG_PORT: 6563
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
   pyro-http:
-    image: huntsman-pocs:develop
+    image: huntsmanarray/huntsman-pocs:develop
     init: true
     tty: true
     container_name: pyro-http
@@ -49,21 +48,20 @@ services:
       HUNTSMAN_POCS: /var/huntsman
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
-      NS_HOST: 0.0.0.0
-      NS_PORT: 6564
+      PANOPTES_CONFIG_PORT: 6563
     volumes:
       - huntsman_dir:/var/huntsman
-    command: [ "/var/panoptes/POCS/bin/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -e '.*'" ]
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -e '.*'" ]
 volumes:
   pandir:
     driver: local
     driver_opts:
       type: none
-      device: /var/panoptes
+      device: ${PANDIR}
       o: bind
   huntsman_dir:
     driver: local
     driver_opts:
       type: none
-      device: /var/huntsman
+      device: ${PANDIR}
       o: bind
