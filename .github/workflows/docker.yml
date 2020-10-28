@@ -1,34 +1,16 @@
-name: Build and push Huntsman docker images
-
+name: Docker CI
 on:
   push:
     branches:
       - develop
-
 jobs:
   buildx:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
-        with:
-          version: latest
-      - name: Docker login
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push control huntsman-pocs image.
-        working-directory: ./docker/
-        run: |
-          docker buildx build \
-            --platform linux/arm64 \
-            --tag huntsmanarray/huntsman-pocs:develop \
-            --output "type=image,push=true" .
-      - name: Build and push huntsman-pocs-camera image.
-        working-directory: ./docker/camera
-        run: |
-          docker buildx build \
-            --platform linux/arm64 \
-            --tag huntsmanarray/huntsman-pocs-camera:develop \
-            --output "type=image,push=true" .
+      - name: Build and push huntsman-pocs:develop
+      run: |
+        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+        docker-compose -f docker/docker-compose.yaml build
+        docker-compose -f docker/docker-compose.yaml push
