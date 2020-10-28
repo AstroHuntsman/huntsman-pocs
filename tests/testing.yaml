@@ -61,13 +61,6 @@ mount:
     baudrate: 9600
   non_sidereal_available: True
 
-filterwheel:
-  flat_field_order:
-    - one
-    - deux
-    - drei
-    - quattro
-
 pointing:
   exptime: 30
   max_iterations: 3
@@ -81,14 +74,22 @@ focusing:
     frequency_unit: hour
     timeout: 600
 
+flat_fields:
+  alt: 70  # degrees
+  az: 120  # degrees
+  filter_order:
+    - one
+    - deux
+    - drei
+    - quattro
+  max_num_exposures: 1
+  max_attempts: 1
+  max_exptime: 10
+
 pocs:
   INITIALIZED: false
   CONNECTED: false
   INTERRUPTED: false
-
-flat_field:
-  take_evening_flats: False
-  take_morning_flats: False
 
 pyro:
   nameserver:
