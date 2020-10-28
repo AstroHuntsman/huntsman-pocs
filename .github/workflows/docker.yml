@@ -4,13 +4,27 @@ on:
     branches:
       - develop
 jobs:
-  buildx:
+  build_develop:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-      - name: Build and push huntsman-pocs:develop
-      run: |
-        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-        docker-compose -f docker/docker-compose.yaml build
-        docker-compose -f docker/docker-compose.yaml push
+      - name: Checkout huntsman-pocs
+        uses: actions/checkout@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: crazy-max/ghaction-docker-buildx@v1
+        with:
+          version: latest
+      - name: Build and push huntsman-pocs:develop image
+        run: |
+          docker buildx build \
+            -f docker/Dockerfile \
+            --platform linux/arm64 \
+            --tag huntsmanarray/huntsman-pocs:develop \
+            --output "type=image,push=true" .
+      - name: Build and push huntsman-pocs-camera image.
+        run: |
+          docker buildx build \
+            -f docker/camera/Dockerfile \
+            --platform linux/arm64 \
+            --tag huntsmanarray/huntsman-pocs-camera:develop \
+            --output "type=image,push=true" .
