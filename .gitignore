@@ -1,87 +1,57 @@
-# PANOPTES specific files
-conf_files/*_local.yaml
-conf_files/*_local_*.yaml
-conf_files/*.bk
-conf_files_test/huntsman_archive/*.yaml
-*.patch
-docker/*_local.docker
-config_local.yaml
-.pytest_cache
-Running Huntsman.ipynb
-
-# Development support
-sftp-config.json
-
-# emacs backups
+# Temporary and binary files
 *~
-\#*\#
-
-# TeX products
-*.aux
-*.log
-*.pdf
-*.toc
-
-# Compiled files
-*.py[co]
-*.a
-*.o
 *.so
-__pycache__
+*.cfg
+!setup.cfg
+*.orig
+*.pot
+**/*.py[cod]
+**/*.log
+**/__pycache__/
+.cache/*
+.*.swp
+*/.ipynb_checkpoints/*
+.DS_Store
+.vscode
 
-# Ignore .c files by default to avoid including generated code. If you want to
-# add a non-generated .c extension, use `git add -f filename.c`.
-*.c
+# Project files
+.ropeproject
+.project
+.pydevproject
+.settings
+.idea
+tags
 
-# Other generated files
-_build
-*/cython_version.py
-htmlcov
+# Package files
+*.egg
+*.eggs/
+.installed.cfg
+*.egg-info
+
+# Unittest and coverage
+htmlcov/*
 .coverage
+.tox
+junit.xml
+coverage.xml
 .coverage.*
+.pytest_cache/
+
+# Build and docs folder/files
+build/*
+dist/*
+sdist/*
+docs/api/*
+docs/_rst/*
+docs/_build/*
+docker/*/build*
+cover/*
 MANIFEST
 
-# Sphinx
-docs/api
-docs/_build
+# Per-project virtualenvs
+.venv*/
+**/.ipynb_checkpoints/**
 
-# Eclipse editor project files
-.project
-.pydevproject
-.settings
-
-# Pycharm editor project files
-.idea
-
-# Packages/installer info
-*.egg
-*.eggs
-*.cache
-*.egg-info
-dist
-build
-eggs
-parts
-var
-sdist
-develop-eggs
-.installed.cfg
-distribute-*.tar.gz
-
-# Other
-.*.swp
-
-# Mac OSX
-.DS_Store
-
-# Eclipse project files
-.settings
-.project
-.pydevproject
-
-# Ignore IPython notebook (Jupyter) checkpoints.
-.ipynb_checkpoints
-notebooks/*
-
-# Ignore link to weather_plots in web/static/
-weather_plots
+.env
+logs/*
+conf_files/*_local*

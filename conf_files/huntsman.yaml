@@ -16,7 +16,7 @@ location:
     - [[45, 355], [45, 5]]  # telstra tower rough coordinates
   timezone: Australia/Sydney
   twilight_horizon: 0  # Degrees
-
+  
 db:
   name: huntsman
   type: file
@@ -38,11 +38,8 @@ directories:
 cameras:
     auto_detect: False
     devices:
-    -
-        model: simulator_sdk
-    -
-        model: simulator_sdk
-
+      - model: simulator_sdk
+      - model: simulator_sdk
 dome:
     template_dir: resources/bisque
     driver: bisque
@@ -88,3 +85,9 @@ focusing:
     frequency: 2
     frequency_unit: hour
     timeout: 600
+
+pyro:
+    nameserver:
+      host: localhost
+        port: 0
+    devices: []

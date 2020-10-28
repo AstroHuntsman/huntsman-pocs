@@ -1,10 +1,10 @@
-# based upon @jamessynge's astrohave.py code in POCS
+# based upon @jamessynge's astrohaven.py code in POCS
 
 import threading
 import time
 
-from pocs.dome.abstract_serial_dome import AbstractSerialDome
-from pocs.utils import CountdownTimer
+from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
+from panoptes.utils import CountdownTimer
 
 
 class Protocol:
@@ -196,9 +196,9 @@ class HuntsmanDome(AbstractSerialDome):
     def __del__(self):
         self.close()
 
-###############################################################################
-# Private Methods
-###############################################################################
+    ###############################################################################
+    # Private Methods
+    ###############################################################################
 
     def _write_musca(self, cmd, log_message=None):
         """Write command to serial bluetooth device musca."""

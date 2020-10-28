@@ -1,0 +1,58 @@
+name: Test Python
+
+on: [ push, pull_request ]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ 3.8 ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+  test:
+    needs: lint
+    env:
+      HUNTSMAN_POCS: ${{ github.workspace }}/huntsman-pocs
+      PANLOG: ${{ github.workspace }}/logs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ 3.7 ]
+    steps:
+      - name: Make coverage directory
+        run: mkdir -p ${{ env.PANLOG }}/huntsman-coverage && chmod -R 777 ${{ env.PANLOG }}
+      - name: Checkout huntsman-pocs
+        uses: actions/checkout@v2
+        with:
+          path: huntsman-pocs
+      - name: Build huntsman-pocs docker image
+        working-directory: ${{ env.HUNTSMAN_POCS }}/docker/testing
+        run: docker-compose build
+      - name: Test with pytest in huntsman-pocs container
+        working-directory: ${{ env.HUNTSMAN_POCS }}
+        run: docker-compose -f docker/testing/docker-compose.yml run --rm python_tests
+      - name: Upload coverage report to codecov.io
+        uses: codecov/codecov-action@v1
+        if: success()
+        with:
+          name: codecov-upload
+          file: ${{ env.PANLOG }}/huntsman-coverage/coverage.xml
+          fail_ci_if_error: true
+      - name: Create log file artifact
+        uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: log-files
+          path: ${{ env.PANLOG }}/huntsman-testing.log

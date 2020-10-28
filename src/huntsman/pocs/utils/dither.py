@@ -16,7 +16,6 @@ dice9 = ((0, 0),
          (-1, 0),
          (-1, 1))
 
-
 # Pattern for dice 5 grid (sequence of (RA offset, dec offset) pairs)
 dice5 = ((0, 0),
          (1, 1),
@@ -97,10 +96,11 @@ def get_dither_positions(base_position, n_positions, pattern=None, pattern_offse
         ax.coords[1].set_axislabel('declination')
         ax.coords[1].set_major_formatter('dd:mm')
         ax.grid()
-        plt.title('base position: {},\nnumber of positions: {}\npattern offset: {},\nrandom offset: {}'.format(base_position.to_string('hmsdms'),
-                                                                                                               n_positions,
-                                                                                                               pattern_offset,
-                                                                                                               random_offset))
+        plt.title('base position: {},\nnumber of positions: {}\npattern offset: {},\nrandom offset: {}'.format(
+            base_position.to_string('hmsdms'),
+            n_positions,
+            pattern_offset,
+            random_offset))
         plt.gcf().set_size_inches(8, 8.5)
         plt.savefig(plot)
 
