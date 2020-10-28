@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 from collections import defaultdict
 from contextlib import suppress
@@ -8,14 +7,17 @@ from functools import partial
 from astropy import stats
 from astropy import units as u
 from astropy.io import fits
-from huntsman.pocs.guide.bisque import Guide
-from huntsman.pocs.scheduler.dark_observation import DarkObservation
-from huntsman.pocs.scheduler.observation import DitheredFlatObservation
-from panoptes.pocs.observatory import Observatory
-from panoptes.pocs.scheduler import constraint
+
 from panoptes.utils import error, altaz_to_radec, listify
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, flatten_time, wait_for_events
+
+from panoptes.pocs.observatory import Observatory
+from panoptes.pocs.scheduler import constraint
+
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.dark_observation import DarkObservation
+from huntsman.pocs.scheduler.observation import DitheredFlatObservation
 
 
 class HuntsmanObservatory(Observatory):
@@ -185,9 +187,9 @@ class HuntsmanObservatory(Observatory):
             camera_names (list, optional): List of camera names to take flats with.
                 Default to `None`, which uses all cameras.
             alt (float, optional): Altitude for flats in degrees. Default `None` will use the
-                `flat_field.twilight.alt` config value.
+                `flat_fields.alt` config value.
             az (float, optional): Azimuth for flats in degrees. Default `None` will use the
-                `flat_field.twilight.az` config value.
+                `flat_fields.az` config value.
             bias (int, optional): Default bias in ADU counts for the cameras. Default 32.
             target_scaling (float, optional): Required to be between [0,1] so
                 target_adu is proportionally between 0 and digital saturation level.
@@ -198,8 +200,8 @@ class HuntsmanObservatory(Observatory):
                 take per filter. Default 10.
             max_attempts (int, optional): Number of attempts per camera-filter pair to get good
                 flat-field exposures before aborting. Default 20.
-            safety_func (callable|None): Boolean function that returns True only if safe to continue.
-                The default `None` will call `self.is_dark(horizon='flat')`.
+            safety_func (callable|None): Boolean function that returns True only if safe to
+                continue. The default `None` will call `self.is_dark(horizon='flat')`.
         """
         if safety_func is None:
             safety_func = partial(self.is_dark, horizon='flat')
@@ -208,13 +210,19 @@ class HuntsmanObservatory(Observatory):
         flat_field_config = self.get_config('flat_fields', default=dict())
         flat_field_config.update(kwargs)
 
+        # Specify flat field coordinates
+        if (alt is None) or (az is None):
+            self.logger.debug(f'Using flat-field alt/az from config.')
+            alt = flat_field_config['alt']
+            az = flat_field_config['az']
+
         if camera_names is None:
             cameras_all = self.cameras
         else:
             cameras_all = {c: self.cameras[c] for c in camera_names}
 
         # Obtain the filter order
-        filter_order = self.get_config('filterwheel.flat_field_order')
+        filter_order = flat_field_config['filter_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
@@ -291,7 +299,7 @@ class HuntsmanObservatory(Observatory):
 
         image_dir = self.get_config('directories.images')
 
-        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times: {exptimes}")
+        self.logger.debug(f"Taking {n_darks} dark exposures with exposure times: {exptimes}")
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -479,19 +487,11 @@ class HuntsmanObservatory(Observatory):
 
         self.autoguider = guider
 
-    def _create_flat_field_observation(self, alt=None, az=None, *args, **kwargs):
-
-        # Specify coordinates for flat field
-        if alt is None and az is None:
-            flat_field_config = self.get_config('flat_fields', default=dict())
-            alt = flat_field_config['alt']
-            az = flat_field_config['az']
-            self.logger.debug(f'Using flat-field alt/az from config.')
-        flat_coords = altaz_to_radec(alt=alt,
-                                     az=az,
-                                     location=self.earth_location,
+    def _create_flat_field_observation(self, alt, az, *args, **kwargs):
+        """Create the flat-field `Observation` object."""
+        flat_coords = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                      obstime=current_time())
-        self.logger.debug(f'Making flat-field observation for alt={alt:.03f} az={az:.03f}.')
+        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03f}, {az:.03f}.')
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
         # Create the Observation object
