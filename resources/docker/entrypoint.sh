@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -eu
 
 # Pass arguments
-exec gosu huntsman /usr/bin/env zsh -ic "$@"
+exec gosu ${PANUSER} /usr/bin/env zsh -ic "$@"
