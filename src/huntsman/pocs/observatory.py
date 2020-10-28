@@ -1,5 +1,4 @@
 import os
-import sys
 import time
 from collections import defaultdict
 from contextlib import suppress
@@ -8,14 +7,17 @@ from functools import partial
 from astropy import stats
 from astropy import units as u
 from astropy.io import fits
-from huntsman.pocs.guide.bisque import Guide
-from huntsman.pocs.scheduler.dark_observation import DarkObservation
-from huntsman.pocs.scheduler.observation import DitheredFlatObservation
-from panoptes.pocs.observatory import Observatory
-from panoptes.pocs.scheduler import constraint
+
 from panoptes.utils import error, altaz_to_radec, listify
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, flatten_time, wait_for_events
+
+from panoptes.pocs.observatory import Observatory
+from panoptes.pocs.scheduler import constraint
+
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.dark_observation import DarkObservation
+from huntsman.pocs.scheduler.observation import DitheredFlatObservation
 
 
 class HuntsmanObservatory(Observatory):
@@ -487,8 +489,8 @@ class HuntsmanObservatory(Observatory):
 
     def _create_flat_field_observation(self, alt, az, *args, **kwargs):
         """Create the flat-field `Observation` object."""
-        flat_coords = utils.altaz_to_radec(alt=alt, az=az, location=self.earth_location,
-                                           obstime=utils.current_time())
+        flat_coords = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+                                     obstime=current_time())
         self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03f}, {az:.03f}.')
         self.logger.debug(f'Flat field coordinates: {flat_coords}')
 
