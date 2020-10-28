@@ -156,4 +156,4 @@ class CameraService(object):
             if config["name"] == ip_address:
                 return config
 
-        raise RuntimeError(f"Unable to find camera config entry for {ip_address}.")
+        raise RuntimeError(f"Unable to find camera config entry for {device_name}.")
