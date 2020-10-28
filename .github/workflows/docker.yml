@@ -1,12 +1,10 @@
 name: Docker CI
 on:
-  push
-  #push:
-  #  branches:
-  #    - develop
-  #push:
+  push:
+    branches:
+      - develop
 jobs:
-  build_develop:
+  buildx:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout huntsman-pocs
