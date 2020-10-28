@@ -1,8 +1,9 @@
 name: Docker CI
 on:
-  push:
-    branches:
-      - develop
+  - pull_request
+#  push:
+#    branches:
+#      - develop
 jobs:
   build_develop:
     runs-on: ubuntu-latest
