@@ -243,7 +243,6 @@ class Camera(AbstractCamera):
         self.logger.debug(f'Starting autofocus on {self}.')
 
         # Remote method call to start the exposure
-        # self._proxy.autofocus(*args, **kwargs)
         self._proxy.autofocus(*args, **kwargs, blocking=blocking)
 
         # In general it's very complicated to work out how long an autofocus should take
