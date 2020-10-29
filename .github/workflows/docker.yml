@@ -21,13 +21,13 @@ jobs:
         run: |
           docker buildx build \
             -f docker/Dockerfile \
-            --platform linux/arm64 \
+            --platform linux/arm64,linux/amd64 \
             --tag huntsmanarray/huntsman-pocs:develop \
             --output "type=image,push=true" .
       - name: Build and push huntsman-pocs-camera image.
         run: |
           docker buildx build \
             -f docker/camera/Dockerfile \
-            --platform linux/arm64 \
+            --platform linux/arm64,linux/amd64 \
             --tag huntsmanarray/huntsman-pocs-camera:develop \
             --output "type=image,push=true" .
