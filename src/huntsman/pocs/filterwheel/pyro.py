@@ -1,5 +1,6 @@
-from panoptes.pocs.filterwheel import AbstractFilterWheel
+from Pyro5.api import Proxy
 
+from panoptes.pocs.filterwheel import AbstractFilterWheel
 from huntsman.pocs.utils.pyro.event import RemoteEvent
 
 
@@ -17,9 +18,9 @@ class FilterWheel(AbstractFilterWheel):
         super().__init__(name=name, model=model, camera=camera, **kwargs)
         self.connect()
 
-    ##################################################################################################
+    ################################################################################################
     # Properties
-    ##################################################################################################
+    ################################################################################################
 
     @property
     def is_connected(self):
@@ -50,16 +51,20 @@ class FilterWheel(AbstractFilterWheel):
     def is_unidirectional(self):
         return self._proxy.get("is_unidirectional", "filterwheel")
 
-    ##################################################################################################
+    @property
+    def _proxy(self):
+        return Proxy(self._uri)
+
+    ################################################################################################
     # Methods
-    ##################################################################################################
+    ################################################################################################
 
     def connect(self):
         # Pyro4 proxy to remote huntsman.camera.pyro.CameraService instance.
-        self._proxy = self.camera._proxy
+        self._uri = self.camera._uri
         # Replace _move_event created by base class constructor with
         # an interface to the remote one.
-        self._move_event = RemoteEvent(self._proxy, event_type="filterwheel")
+        self._move_event = RemoteEvent(self._uri, event_type="filterwheel")
         # Fetch and locally cache properties that won't change.
         self._name = self._proxy.get("name", "filterwheel")
         self._model = self._proxy.get("model", "filterwheel")
@@ -67,9 +72,9 @@ class FilterWheel(AbstractFilterWheel):
 
         self.logger.debug(f"{self} connected.")
 
-    ##################################################################################################
+    ################################################################################################
     # Private methods
-    ##################################################################################################
+    ################################################################################################
 
     def _move_to(self, position):
         self._proxy.filterwheel_move_to(position)

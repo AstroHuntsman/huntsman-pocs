@@ -711,7 +711,6 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug(f'Slewing to flat-field coords: {observation.field}.')
         self.mount.set_target_coordinates(observation.field)
         self.mount.slew_to_target()
-        self.status()  # Seems to help with reading coords
 
         # Loop over cameras...
         camera_events = {}
