@@ -260,7 +260,7 @@ class ExposureSequence():
         observation = self._make_observation(alt, az, exposure_time=exptime)
         headers = self.observatory.get_standard_headers(observation=observation)
         # These don't get written...
-        headers.update = {"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"}
+        headers.update({"ALT-MNT": f"{alt:.3f}", "AZ-MNT": f"{az:.3f}"})
 
         # Take observations
         self._take_blocking_observation(observation, headers=headers)
