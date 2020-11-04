@@ -50,6 +50,17 @@ cameras:
         autofocus_seconds: 0.1
         autofocus_size: 500
         autofocus_keep_files: False
+      filterwheel:
+        model: panoptes.pocs.filterwheel.simulator.FilterWheel
+        filter_names:
+          - one
+          - deux
+          - drei
+          - quattro
+          - blank
+        move_time: 0.1
+        timeout: 0.5
+        dark_position: blank
 
 mount:
   brand: ioptron
@@ -85,6 +96,7 @@ flat_fields:
   max_num_exposures: 1
   max_attempts: 1
   max_exptime: 10
+  timeout: 30
 
 pocs:
   INITIALIZED: false

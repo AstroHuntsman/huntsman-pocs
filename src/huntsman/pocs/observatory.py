@@ -694,7 +694,7 @@ class HuntsmanObservatory(Observatory):
         return round(exptime.to_value(u.second)) * u.second
 
     def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False,
-                               flat_field_timeout=120, **kwargs):
+                               timeout=120, **kwargs):
         """
         Slew to flat field, take exposures and wait for them to complete.
         Returns a list of camera events for each camera.
@@ -711,7 +711,6 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug(f'Slewing to flat-field coords: {observation.field}.')
         self.mount.set_target_coordinates(observation.field)
         self.mount.slew_to_target()
-        self.status()  # Seems to help with reading coords
 
         # Loop over cameras...
         camera_events = {}
@@ -730,10 +729,10 @@ class HuntsmanObservatory(Observatory):
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
-        timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
-        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout,
-                               sleep_delay=1):
+        exposure_timeout = max(exptimes.values()).to_value(u.second) + timeout
+        self.logger.debug(f"Waiting for flat-fields with timeout of {exposure_timeout}.")
+        if not wait_for_events([c["event"] for c in camera_events.values()],
+                               timeout=exposure_timeout, sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding

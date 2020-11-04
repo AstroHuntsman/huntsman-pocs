@@ -30,11 +30,6 @@ class Camera(AbstractCamera):
         # The proxy used for communication with the remote instance.
         self._uri = uri
         self.logger.debug(f'Connecting to {port} at {self._uri}')
-        try:
-            self._proxy = Proxy(self._uri)
-        except error.PyroProxyError as err:
-            logger.error(f"Couldn't get proxy to camera on port={port}: {err!r}")
-            return
 
         super().__init__(name=name, port=port, model=model, logger=self.logger, *args, **kwargs)
 
@@ -46,6 +41,9 @@ class Camera(AbstractCamera):
         self.connect()
 
     # Properties
+    @property
+    def _proxy(self):
+        return Proxy(self._uri)
 
     @property
     def egain(self):
