@@ -107,8 +107,8 @@ class CameraService(object):
     def has_filterwheel(self):
         return self._camera.filterwheel is not None
 
-    def filterwheel_move_to(self, position):
-        self._camera.filterwheel.move_to(position)
+    def filterwheel_move_to(self, new_position, **kwargs):
+        self._camera.filterwheel.move_to(new_position, **kwargs)
 
     # Event access
 
