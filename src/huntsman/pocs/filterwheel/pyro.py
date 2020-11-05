@@ -72,9 +72,12 @@ class FilterWheel(AbstractFilterWheel):
 
         self.logger.debug(f"{self} connected.")
 
+    def move_to(self, new_position, **kwargs):
+        self._proxy.filterwheel_move_to(new_position=new_position, **kwargs)
+
     ################################################################################################
-    # Private methods
+    # Private Methods
     ################################################################################################
 
-    def _move_to(self, position):
-        self._proxy.filterwheel_move_to(position)
+    def _move_to(self, *args, **kwargs):
+        raise NotImplementedError
