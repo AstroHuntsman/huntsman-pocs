@@ -156,7 +156,6 @@ def test_exposure(camera, tmpdir):
     # A one second normal exposure
     camera.take_exposure(seconds=1, filename=fits_path)
     assert camera.is_exposing
-    assert camera._proxy.get("is_exposing")
     assert not camera.is_ready
     # By default take_exposure is non-blocking, need to give it some time to complete.
     time.sleep(5)
@@ -335,7 +334,6 @@ def test_observation_nofilter(camera, images_dir):
         os.remove(_)
 
 
-@pytest.mark.skip("Need to update pyro camera code.")
 def test_autofocus_coarse(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
@@ -347,7 +345,6 @@ def test_autofocus_coarse(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-@pytest.mark.skip("Need to update camera code.")
 def test_autofocus_fine(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
@@ -359,7 +356,6 @@ def test_autofocus_fine(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-@pytest.mark.skip("Need to update camera code.")
 def test_autofocus_fine_blocking(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
@@ -371,7 +367,6 @@ def test_autofocus_fine_blocking(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-@pytest.mark.skip("Need to update camera code.")
 def test_autofocus_with_plots(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
@@ -383,7 +378,6 @@ def test_autofocus_with_plots(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-@pytest.mark.skip("Need to update camera code.")
 def test_autofocus_coarse_with_plots(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
@@ -395,7 +389,6 @@ def test_autofocus_coarse_with_plots(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-@pytest.mark.skip("Need to update camera code.")
 def test_autofocus_keep_files(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
