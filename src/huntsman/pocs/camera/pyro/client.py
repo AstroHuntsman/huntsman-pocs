@@ -179,7 +179,7 @@ class Camera(AbstractCamera):
                 the exposure, if True will block (on the client-side) until it completes.
 
         Returns:
-            threading.Event: Event that will be set when exposure is complete.
+            threading.Thread: The readout thread, which joins once readout has finished.
         """
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
@@ -196,7 +196,7 @@ class Camera(AbstractCamera):
 
         return readout_thread
 
-    def autofocus(self, blocking=False, timeout=300, *args, **kwargs):
+    def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
         """
         Focuses the camera using the specified merit function. Optionally performs
         a coarse focus to find the approximate position of infinity focus, which
@@ -242,10 +242,13 @@ class Camera(AbstractCamera):
             self.logger.error(msg)
             raise AttributeError(msg)
 
-        self.logger.debug(f'Starting autofocus on {self}.')
+        if timeout is None:
+            coarse_str = "coarse" if coarse else "fine"
+            timeout = self.config.get(f"focusing.{coarse_str}.timeout", default=600)
 
         # Remote method call to start the exposure
-        self._proxy.autofocus(blocking=False, *args, **kwargs)
+        self.logger.debug(f'Starting autofocus on {self} with timeout: {timeout}.')
+        self._proxy.autofocus(blocking=False, coarse=coarse, *args, **kwargs)
         if blocking:
             self._proxy.event_wait("focuser", timeout=timeout)
 
