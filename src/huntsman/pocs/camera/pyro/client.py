@@ -244,7 +244,7 @@ class Camera(AbstractCamera):
 
         if timeout is None:
             coarse_str = "coarse" if coarse else "fine"
-            timeout = self.config.get(f"focusing.{coarse_str}.timeout", default=600)
+            timeout = self.get_config(f"focusing.{coarse_str}.timeout", default=600)
 
         # Remote method call to start the exposure
         self.logger.debug(f'Starting autofocus on {self} with timeout: {timeout}.')
