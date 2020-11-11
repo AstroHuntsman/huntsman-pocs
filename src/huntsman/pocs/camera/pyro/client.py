@@ -1,6 +1,11 @@
+from threading import Thread
 from contextlib import suppress
 from astropy import units as u
 from Pyro5.api import Proxy
+
+from panoptes.utils import error
+from panoptes.utils import CountdownTimer
+from panoptes.utils import get_quantity_value
 
 from panoptes.pocs.camera import AbstractCamera
 
@@ -157,7 +162,8 @@ class Camera(AbstractCamera):
         if self._proxy.has_filterwheel:
             self.filterwheel = PyroFilterWheel(camera=self)
 
-    def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, *args, **kwargs):
+    def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, blocking=False,
+                      *args, **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
 
         Args:
@@ -170,16 +176,25 @@ class Camera(AbstractCamera):
                 value 'Dark Frame' instead of 'Light Frame'. Set dark to None to disable the
                 `IMAGETYP` keyword entirely.
             blocking (bool, optional): If False (default) returns immediately after starting
-                the exposure, if True will block until it completes.
+                the exposure, if True will block (on the client-side) until it completes.
 
         Returns:
             threading.Event: Event that will be set when exposure is complete.
         """
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
+
         # Remote method call to start the exposure
         self._proxy.take_exposure(seconds=seconds, filename=filename, dark=dark, *args, **kwargs)
-        return self._exposure_event
+
+        # Start the readout thread
+        timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
+        readout_thread = Thread(target=self._wait_for_readout, args=(timeout,))
+        readout_thread.start()
+        if blocking:
+            readout_thread.join()
+
+        return readout_thread
 
     def autofocus(self, blocking=False, timeout=300, *args, **kwargs):
         """
@@ -212,7 +227,8 @@ class Camera(AbstractCamera):
                 a fine focus. Default False.
             make_plots (bool, optional: Whether to write focus plots to images folder, default
                 False.
-            blocking (bool, optional): Whether to block until autofocus complete, default False.
+            blocking (bool, optional): Whether to block (on the client-side) until autofocus
+                complete, default False.
             timeout (float, optional): The client-side autofocus timeout. Default 5 min.
 
         Returns:
@@ -236,6 +252,19 @@ class Camera(AbstractCamera):
         return self._focus_event
 
     # Private Methods
+    def _wait_for_readout(self, timeout, sleep_time=0.1):
+        """ Wait for readout to finish on the camera service.
+        Args:
+            timeout (float): The readout timeout in seconds.
+        """
+        proxy = self._proxy
+        timer = CountdownTimer(timeout)
+        while not timer.expired():
+            if not proxy.is_reading_out:
+                return
+            timer.sleep(sleep_time)
+        raise error.PaneError(f"Timeout of {timeout} reached while waiting for readout to finish"
+                              f" on camera client {self}.")
 
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""

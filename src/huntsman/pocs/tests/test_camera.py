@@ -28,11 +28,11 @@ def patterns(camera, images_dir):
 
     patterns = {'base': os.path.join(images_dir, 'focus', camera.uid),
                 'final': os.path.join(images_dir, 'focus', camera.uid, '*',
-                                      ('*_final.' + camera.file_extension)),
+                                      ('*-final.' + camera.file_extension)),
                 'fine_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
-                                          'fine_focus.png'),
+                                          'fine-focus.png'),
                 'coarse_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
-                                            'coarse_focus.png')}
+                                            'coarse-focus.png')}
     return patterns
 
 

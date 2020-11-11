@@ -1,5 +1,5 @@
 import os
-from threading import Event
+from threading import Event, Thread
 from contextlib import suppress
 import Pyro5.server
 
@@ -44,7 +44,7 @@ class CameraService(object):
         self._camera = module.Camera(logger=self.logger, **self.camera_config)
 
         # Set up events for our exposure.
-        self._exposure_event = Event()
+        self._readout_thread = Thread()
         self._focus_event = Event()
 
     # Properties - rather than labouriously wrapping every camera property individually expose
@@ -66,6 +66,10 @@ class CameraService(object):
     def is_connected(self):
         return self._camera.is_connected
 
+    @property
+    def is_reading_out(self):
+        return self._readout_thread.is_alive()
+
     # Methods
 
     def get_uid(self):
@@ -78,7 +82,9 @@ class CameraService(object):
     def take_exposure(self, *args, **kwargs):
         """
         """
-        self._exposure_event = self._camera.take_exposure(*args, **kwargs)
+        with suppress(KeyError):
+            kwargs.pop("blocking")
+        self._readout_thread = self._camera.take_exposure(*args, **kwargs)
 
     def autofocus(self, *args, **kwargs):
         """ Start the autofocus non-blocking so that camera server can still respond to
