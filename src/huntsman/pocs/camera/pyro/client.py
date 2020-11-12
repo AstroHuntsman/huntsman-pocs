@@ -229,7 +229,7 @@ class Camera(AbstractCamera):
                 False.
             blocking (bool, optional): Whether to block (on the client-side) until autofocus
                 complete, default False.
-            timeout (float, optional): The client-side autofocus timeout. Default 5 min.
+            timeout (float, optional): The client-side autofocus timeout. The default value of `None` will lookup the `focusing.<focus_type>.timeout` value in the config server. If not provided, a default fallback of 600 seconds is used.
 
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
