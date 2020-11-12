@@ -266,7 +266,7 @@ class Camera(AbstractCamera):
             if not proxy.is_reading_out:
                 return
             timer.sleep(sleep_time)
-        raise error.PaneError(f"Timeout of {timeout} reached while waiting for readout to finish"
+        raise error.PanError(f"Timeout of {timeout} reached while waiting for readout to finish"
                               f" on camera client {self}.")
 
     def _start_exposure(self, **kwargs):
