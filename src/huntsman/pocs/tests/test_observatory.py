@@ -92,4 +92,4 @@ def test_take_flat_fields(pocs):
     assert pocs.observatory.is_dark(horizon='flat') is True
     pocs.initialize()
     pocs.get_ready()
-    pocs.observatory.take_flat_fields(alt=60, az=90, max_num_exposures=1, tolerance=0.5)
+    pocs.observatory.take_flat_fields(alt=60, az=90, required_exposures=1, tolerance=0.5)
