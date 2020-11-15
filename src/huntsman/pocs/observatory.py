@@ -691,7 +691,7 @@ class HuntsmanObservatory(Observatory):
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor
-        return round(exptime.to_value(u.second)) * u.second
+        return exptime.to_value(u.second) * u.second
 
     def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False,
                                timeout=120, **kwargs):
