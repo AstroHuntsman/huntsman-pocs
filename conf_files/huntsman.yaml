@@ -16,7 +16,7 @@ location:
     - [[45, 355], [45, 5]]  # telstra tower rough coordinates
   timezone: Australia/Sydney
   twilight_horizon: 0  # Degrees
-  
+
 db:
   name: huntsman
   type: file
@@ -65,9 +65,10 @@ flat_fields:
     - deux
     - drei
     - quattro
-  max_num_exposures: 5
-  max_attempts: 10
-  max_exptime: 120
+  required_exposures: 5  # Per filter per camera
+  max_attempts: 10  # Per filter per camera
+  max_exptime: 60
+  min_exptime: 0.0001
 
 pointing:
     exptime: 30
