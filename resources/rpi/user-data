@@ -31,13 +31,14 @@ ssh_pwauth: yes
 
 # New groups to create.
 groups:
+  - huntsman
   - panoptes
   - docker
 
 users:
   - name: huntsman
     gecos: Huntsman User
-    primary_group: panoptes
+    primary_group: huntsman
     groups: users, admin, dialout, plugdev, docker, i2c, input, gpio, panoptes
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     lock_passwd: false
