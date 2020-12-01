@@ -35,4 +35,7 @@ def on_enter(event_data):
     if pocs.next_state != 'parking':
         pocs.say("Making sure cameras are ready before leaving ready state.")
         pocs.observatory.prepare_cameras()
+        pocs.say("I'm opening the dome.")
+        # This currently opens the shutter only!
+        pocs.observatory.dome.open_dome()
         pocs.say("Ok, I'm all set up and ready to go!")
