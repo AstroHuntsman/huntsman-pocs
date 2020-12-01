@@ -84,7 +84,7 @@ runcmd:
   # Get the install file.
   - mkdir -p /var/huntsman/scripts
   - chown -R huntsman:huntsman /var/huntsman
-  - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/docker/camera/docker-compose.yml -O /var/huntsman/docker-compose.yml
+  - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/docker/camera/docker-compose.yaml -O /var/huntsman/docker-compose.yaml
   - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/install-camera-pi.sh -O /var/huntsman/scripts/install-camera-pi.sh
   - bash /var/huntsman/scripts/install-camera-pi.sh
 
