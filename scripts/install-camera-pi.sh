@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# This script is run from root.
+# This script should be run as root.
 set -eu
 
 PANUSER=${PANUSER:-huntsman}
@@ -7,10 +7,6 @@ PANDIR=${PANDIR:-/var/huntsman}
 HOME=${HOME:-/home/${PANUSER}}
 LOGFILE="${PANDIR}/install-camera-pi.log"
 ENV_FILE="${PANDIR}/env"
-
-ARCH="$(uname -m)"
-CONDA_URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-${ARCH}.sh"
-
 
 function command_exists() {
   # https://gist.github.com/gubatron/1eb077a1c5fcf510e8e5
@@ -60,37 +56,14 @@ function system_deps() {
  apt-get --yes install \
    wget curl \
    git openssh-server \
-   ack \
    git \
    jq httpie \
-   byobu \
-   htop \
-   speedometer \
-   zsh | tee -a "${LOGFILE}" 2>&1
+   byobu | tee -a "${LOGFILE}" 2>&1
  # Add an SSH key if one doesn't exist.
  if [[ ! -f "${HOME}/.ssh/id_rsa" ]]; then
    echo "Adding ssh key"
    ssh-keygen -t rsa -N "" -f "${HOME}/.ssh/id_rsa"
  fi
-
- # Install ZSH
- echo "Installing ZSH and friends (use --no-zsh to disable)"
- /bin/sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" "" "--unattended"
-
- # ZSH auto-suggestion plugin.
- git clone --single-branch https://github.com/zsh-users/zsh-autosuggestions \
-   ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
-
- chsh --shell /bin/zsh "${PANUSER}"
- sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="candy"/g' /home/${PANUSER}/.zshrc
- sed -i 's/# DISABLE_UPDATE_PROMPT="true"/DISABLE_UPDATE_PROMPT="true"/g' /home/${PANUSER}/.zshrc
- sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions dotenv)/g' /home/${PANUSER}/.zshrc
-
- # Anaconda via mini-forge.
- mkdir -p "${PANDIR}/scripts"
- wget -q "${CONDA_URL}" -O "${PANDIR}/scripts/install-miniforge.sh"
- /bin/sh "${PANDIR}/scripts/install-miniforge.sh" -b -f -p "${PANDIR}/conda"
- "${PANDIR}/conda/bin/conda" init zsh bash
 
  # Append some statements to .zshrc
  cat <<EOF >>/home/${PANUSER}/.zshrc
@@ -113,7 +86,6 @@ function get_docker() {
 }
 
 function pull_docker_images() {
- docker pull "gcr.io/panoptes-exp/panoptes-utils:develop"
  docker pull "huntsmanarray/huntsman-pocs-camera:develop"
 }
 
