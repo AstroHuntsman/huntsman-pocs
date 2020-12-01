@@ -104,9 +104,9 @@ EOF
 
 function get_docker() {
  if ! command_exists docker; then
-   /bin/bash -c "$(wget -qO- https://get.docker.com)"
+   sudo /bin/bash -c "$(wget -qO- https://get.docker.com)"
+   sudo apt install --yes docker-compose
  fi
- sudo apt install --yes docker.io docker-compose ctop
 
  echo "Adding ${PANUSER} to docker group"
  sudo usermod -aG docker "${PANUSER}" | sudo tee -a "${LOGFILE}" 2>&1
