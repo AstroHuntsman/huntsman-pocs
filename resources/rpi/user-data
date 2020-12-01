@@ -1,17 +1,21 @@
 #cloud-config
 # https://cloudinit.readthedocs.io/
 
+#####################################################################
+# Change instance-specific options here
+#####################################################################
+
 hostname: huntsmanpiXXX
+
+#####################################################################
+# You shouldn't need to change anything below.
+#####################################################################
 
 # If you have set up ssh on github you can pull down your
 # key automatically so that you can log into the unit without
 # a password.
 ssh_import_id:
   - gh:AstroHuntsman
-
-#####################################################################
-# You shouldn't need to change anything below.
-#####################################################################
 
 ntp:
   enabled: true
@@ -40,7 +44,7 @@ users:
     groups: users, admin, dialout, plugdev, docker, i2c, input, gpio, panoptes
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     lock_passwd: false
-    shell: /bin/zsh
+    shell: /bin/bash
 
 ## Update apt database and upgrade packages on first boot
 package_update: true
@@ -62,7 +66,7 @@ packages:
   - speedometer
   - vim-nox
   - watchdog
-  - zsh
+  - sshfs
 
 write_files:
   # Allow huntsman user to mount via sshfs.
@@ -80,7 +84,7 @@ runcmd:
   # Get the install file.
   - mkdir -p /var/huntsman/scripts
   - chown -R huntsman:huntsman /var/huntsman
-  - wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/docker/camera/docker-compose.yml -O /var/huntsman/docker-compose.yml
+  - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/docker/camera/docker-compose.yml -O /var/huntsman/docker-compose.yml
   - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/install-camera-pi.sh -O /var/huntsman/scripts/install-camera-pi.sh
   - bash /var/huntsman/scripts/install-camera-pi.sh
 

@@ -37,18 +37,7 @@ export POCS=${PANDIR}/POCS
 export PANLOG=${PANDIR}/logs
 #### End install-pocs script ####
 EOF
-   # Source the files in the shell.
-   SHELLS=(".bashrc" ".zshrc")
-   for SHELL_RC in "${SHELLS[@]}"; do
-     SHELL_RC_PATH="$HOME/${SHELL_RC}"
-     if test -f "${SHELL_RC_PATH}"; then
-       # Check if we have already added the file.
-       if ! grep -qm 1 ". ${PANDIR}/env" "${SHELL_RC_PATH}"; then
-         echo ". ${PANDIR}/env" >>"${SHELL_RC_PATH}"
-       fi
-     fi
-   done
- fi
+echo ". ${ENV_FILE}" >> "${HOME}/.bashrc"
 }
 
 function system_deps() {
@@ -65,8 +54,8 @@ function system_deps() {
    ssh-keygen -t rsa -N "" -f "${HOME}/.ssh/id_rsa"
  fi
 
- # Append some statements to .zshrc
- cat <<EOF >>/home/${PANUSER}/.zshrc
+ # Append some statements to .bashrc
+ cat <<EOF >>/home/${PANUSER}/.bashrc
 export LANG="en_US.UTF-8"
 
 # POCS
