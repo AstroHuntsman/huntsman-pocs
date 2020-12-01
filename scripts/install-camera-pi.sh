@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
+# This script is run from root.
 set -eu
 
 PANUSER=${PANUSER:-huntsman}
 PANDIR=${PANDIR:-/var/huntsman}
+HOME=${HOME:-/home/${PANUSER}}
 LOGFILE="${PANDIR}/install-camera-pi.log"
 ENV_FILE="${PANDIR}/env"
 
@@ -18,12 +20,12 @@ function command_exists() {
 }
 
 function make_directories() {
- sudo mkdir -p "${PANDIR}"
- sudo mkdir -p "${PANDIR}/logs"
- sudo mkdir -p "${PANDIR}/images"
- sudo mkdir -p "${PANDIR}/config_files"
- sudo mkdir -p "${PANDIR}/.key"
- sudo chown -R "${PANUSER}":"${PANUSER}" "${PANDIR}"
+ mkdir -p "${PANDIR}"
+ mkdir -p "${PANDIR}/logs"
+ mkdir -p "${PANDIR}/images"
+ mkdir -p "${PANDIR}/config_files"
+ mkdir -p "${PANDIR}/.key"
+ chown -R "${PANUSER}":"${PANUSER}" "${PANDIR}"
 }
 
 function setup_env_vars() {
@@ -37,10 +39,8 @@ export POCS=${PANDIR}/POCS
 export PANLOG=${PANDIR}/logs
 #### End install-pocs script ####
 EOF
-
    # Source the files in the shell.
    SHELLS=(".bashrc" ".zshrc")
-
    for SHELL_RC in "${SHELLS[@]}"; do
      SHELL_RC_PATH="$HOME/${SHELL_RC}"
      if test -f "${SHELL_RC_PATH}"; then
@@ -54,9 +54,8 @@ EOF
 }
 
 function system_deps() {
-
- sudo apt-get update | sudo tee -a "${LOGFILE}" 2>&1
- sudo apt-get --yes install \
+ apt-get update | tee -a "${LOGFILE}" 2>&1
+ apt-get --yes install \
    wget curl \
    git openssh-server \
    ack \
@@ -65,8 +64,7 @@ function system_deps() {
    byobu \
    htop \
    speedometer \
-   zsh | sudo tee -a "${LOGFILE}" 2>&1
-
+   zsh | tee -a "${LOGFILE}" 2>&1
  # Add an SSH key if one doesn't exist.
  if [[ ! -f "${HOME}/.ssh/id_rsa" ]]; then
    echo "Adding ssh key"
@@ -81,10 +79,10 @@ function system_deps() {
  git clone --single-branch https://github.com/zsh-users/zsh-autosuggestions \
    ~/.oh-my-zsh/custom/plugins/zsh-autosuggestions
 
- sudo chsh --shell /bin/zsh "${PANUSER}"
+ chsh --shell /bin/zsh "${PANUSER}"
  sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="candy"/g' /home/${PANUSER}/.zshrc
  sed -i 's/# DISABLE_UPDATE_PROMPT="true"/DISABLE_UPDATE_PROMPT="true"/g' /home/${PANUSER}/.zshrc
- sed -i 's/plugins=(git)/plugins=(git sudo zsh-autosuggestions dotenv)/g' /home/${PANUSER}/.zshrc
+ sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions dotenv)/g' /home/${PANUSER}/.zshrc
 
  # Anaconda via mini-forge.
  mkdir -p "${PANDIR}/scripts"
@@ -104,17 +102,17 @@ EOF
 
 function get_docker() {
  if ! command_exists docker; then
-   sudo /bin/bash -c "$(wget -qO- https://get.docker.com)"
-   sudo apt install --yes docker-compose
+   /bin/bash -c "$(wget -qO- https://get.docker.com)"
+   apt install --yes docker-compose
  fi
 
  echo "Adding ${PANUSER} to docker group"
- sudo usermod -aG docker "${PANUSER}" | sudo tee -a "${LOGFILE}" 2>&1
+ usermod -aG docker "${PANUSER}" | tee -a "${LOGFILE}" 2>&1
 }
 
 function pull_docker_images() {
- sudo docker pull "huntsmanarray/huntsman-pocs-camera:develop"
- sudo docker pull "gcr.io/panoptes-exp/panoptes-utils:develop"
+ docker pull "gcr.io/panoptes-exp/panoptes-utils:develop"
+ docker pull "huntsmanarray/huntsman-pocs-camera:develop"
 }
 
 function do_install() {
@@ -143,7 +141,7 @@ function do_install() {
 
  echo "Rebooting in 10s."
  sleep 10
- sudo reboot
+ reboot
 }
 
 do_install
