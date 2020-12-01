@@ -20,12 +20,14 @@ function command_exists() {
 }
 
 function make_directories() {
+ mkdir -p "${HOME}/.ssh"
  mkdir -p "${PANDIR}"
  mkdir -p "${PANDIR}/logs"
  mkdir -p "${PANDIR}/images"
  mkdir -p "${PANDIR}/config_files"
  mkdir -p "${PANDIR}/.key"
  chown -R "${PANUSER}":"${PANUSER}" "${PANDIR}"
+ chown -R "${PANUSER}":"${PANUSER}" "${HOME}"
 }
 
 function setup_env_vars() {
