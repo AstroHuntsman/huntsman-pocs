@@ -37,7 +37,8 @@ export POCS=${PANDIR}/POCS
 export PANLOG=${PANDIR}/logs
 #### End install-pocs script ####
 EOF
-echo ". ${ENV_FILE}" >> "${HOME}/.bashrc"
+  fi
+  echo ". ${ENV_FILE}" >> "${HOME}/.bashrc"
 }
 
 function system_deps() {
