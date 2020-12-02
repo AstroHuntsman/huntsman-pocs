@@ -1,4 +1,10 @@
 #!/bin/bash
+# This script is run from the camera pi. It will start a new camera service if there is not
+# already one running. This involves:
+# - (re)mounting the SSHFS images directory
+# - Downloading the latest docker-compose file from github
+# - Updating the relevant docker images
+# - Starting the docker camera service
 set -eu
 
 REMOTE_HOST=${HUNTSMAN_REMOTE_HOST:-${PANOPTES_CONFIG_HOST}}
