@@ -68,7 +68,7 @@ EOF
 function enable_auto_login() {
   # Set up autologin without password for huntsman user
   sed -i '/^ExecStart=$/d' /lib/systemd/system/getty@.service
-  sed -i "s/ExecStart=.*/ExecStart=\nExecStart=-sbin\/agetty -a huntsman %I \$TERM/g" /lib/systemd/system/getty@.service
+  sed -i "s/ExecStart=.*/ExecStart=\nExecStart=-\/sbin\/agetty -a huntsman %I \$TERM/g" /lib/systemd/system/getty@.service
   sed -i "s/Type=idle/Type=simple/g" /lib/systemd/system/getty@.service
 }
 
@@ -104,7 +104,7 @@ function do_install() {
  echo "Installing system dependencies"
  system_deps
 
- echo "Setting up auto login"
+ echo "Setting up auto-login"
  enable_auto_login
 
  echo "Installing docker and docker-compose"
