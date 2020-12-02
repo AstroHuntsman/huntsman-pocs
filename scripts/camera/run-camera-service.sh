@@ -13,7 +13,9 @@ echo "############### Huntsman Camera Service ###############"
 echo "Control computer hostname: ${REMOTE_HOST}"
 
 # Mount the SSHFS images directory
-echo "Mounting images directory: ${REMOTE_IMAGES_DIR}:${LOCAL_IMAGES_DIR}"
+echo "Mounting remote images directory ${REMOTE_IMAGES_DIR} to ${LOCAL_IMAGES_DIR}"
+mkdir -p ${LOCAL_IMAGES_DIR}
+sudo umount ${LOCAL_IMAGES_DIR} || true
 sshfs -o allow_other ${PANUSER}@${REMOTE_HOST}:${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
 
 # Get the docker-compose file
