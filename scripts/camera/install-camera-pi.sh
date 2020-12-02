@@ -67,9 +67,15 @@ EOF
 
 function enable_auto_login() {
   # Set up autologin without password for huntsman user
+  # This is a bit of a hack but it appears to be the standard method of doing this
   sed -i '/^ExecStart=$/d' /lib/systemd/system/getty@.service
   sed -i "s/ExecStart=.*/ExecStart=\nExecStart=-\/sbin\/agetty -a huntsman --noclear %I \$TERM/g" /lib/systemd/system/getty@.service
   sed -i "s/Type=idle/Type=simple/g" /lib/systemd/system/getty@.service
+
+  # We also need to disable password change on first login
+  # The easiest way of doing this is just to change the password here
+  # The password expiry status can be checked by doing $chage -l ${PAUSER}
+  usermod --password "${PANUSER}" "${PANUSER}"
 }
 
 function get_docker() {

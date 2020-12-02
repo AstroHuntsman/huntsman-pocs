@@ -8,6 +8,14 @@ LOCAL_IMAGES_DIR=${PANDIR}/images
 GITHUB_USER=${GITHUB_USER:-"AstroHuntsman"}
 GITHUB_BRANCH=${GITHUB_BRANCH:-"develop"}
 
+# First, check if the camera docker service is already running. If so, exit 0.
+if [ -z `docker-compose ps -q camera` ] || [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q camera)` ]; then
+  echo "No running docker camera service found. Starting a new one."
+else
+  echo "A docker camera service is already running."
+  exit 0
+fi
+
 clear
 echo "############### Huntsman Camera Service ###############"
 echo "Control computer hostname: ${REMOTE_HOST}"
