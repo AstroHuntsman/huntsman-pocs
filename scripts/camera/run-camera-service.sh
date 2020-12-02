@@ -14,7 +14,7 @@ echo "Control computer hostname: ${REMOTE_HOST}"
 
 # Mount the SSHFS images directory
 echo "Mounting images directory: ${REMOTE_IMAGES_DIR}:${LOCAL_IMAGES_DIR}"
-ssfs -o allow_other ${PANUSER}@${REMOTE_HOST}:${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
+sshfs -o allow_other ${PANUSER}@${REMOTE_HOST}:${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
 
 # Get the docker-compose file
 DC_FILE_URL=https://raw.githubusercontent.com/${GITHUB_USER}/huntsman-pocs/${GITHUB_BRANCH}/docker/camera/docker-compose.yaml
