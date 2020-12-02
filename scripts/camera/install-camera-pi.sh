@@ -68,7 +68,7 @@ EOF
 function enable_auto_login() {
   # Set up autologin without password for huntsman user
   sed -i '/^ExecStart=$/d' /lib/systemd/system/getty@.service
-  sed -i "s/ExecStart=.*/ExecStart=\nExecStart=-\/sbin\/agetty -a huntsman %I \$TERM/g" /lib/systemd/system/getty@.service
+  sed -i "s/ExecStart=.*/ExecStart=\nExecStart=-\/sbin\/agetty -a huntsman --noclear %I \$TERM/g" /lib/systemd/system/getty@.service
   sed -i "s/Type=idle/Type=simple/g" /lib/systemd/system/getty@.service
 }
 
