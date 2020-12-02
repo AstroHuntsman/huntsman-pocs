@@ -16,7 +16,7 @@ echo "Control computer hostname: ${REMOTE_HOST}"
 echo "Mounting remote images directory ${REMOTE_IMAGES_DIR} to ${LOCAL_IMAGES_DIR}"
 mkdir -p ${LOCAL_IMAGES_DIR}
 sudo umount ${LOCAL_IMAGES_DIR} || true
-sshfs -o allow_other ${PANUSER}@${REMOTE_HOST}:${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
+sshfs -o allow_other ${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
 
 # Get the docker-compose file
 DC_FILE_URL=https://raw.githubusercontent.com/${GITHUB_USER}/huntsman-pocs/${GITHUB_BRANCH}/docker/camera/docker-compose.yaml
@@ -29,7 +29,7 @@ echo "Downloading latest docker-compose file from ${DC_FILE_URL} to ${DC_FILE}"
 wget ${DC_FILE_URL} -O ${DC_FILE}
 
 # Start the docker service
-echo "Downloading latest docker image(s)"
+echo "Downloading latest docker image(s)..."
 docker-compose -f ${DC_FILE} pull
-echo "Starting the camera service"
+echo "Starting the camera docker service..."
 docker-compose -f ${DC_FILE} run camera
