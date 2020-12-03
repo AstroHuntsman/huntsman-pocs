@@ -1,0 +1,33 @@
+# Place "config.txt" changes (dtparam, dtoverlay, disable_overscan, etc.) in this file.
+# Some of these options are specific to Pi3s.
+
+dtoverlay=disable-bt
+dtoverlay=i2c-gpio
+
+dtparam=audio=off
+
+dtparam=i2c=on
+dtparam=spi=on
+dtparam=watchdog=on
+
+# Disable HDMI to save power
+# hdmi_blanking=2
+
+# Disable WiFi to save power
+dtoverlay=disable-wifi
+
+# Disable Bluetooth to save power
+dtoverlay=disable-bt
+
+# Disable ethernet port LEDs
+dtparam=eth_led0=14
+dtparam=eth_led1=14
+
+# Disable activity LED
+dtoverlay=act-led
+dtparam=act_led_trigger=none
+dtparam=act_led_activelow=off
+
+# Disable power LED
+dtparam=pwr_led_trigger=none
+dtparam=pwr_led_activelow=off

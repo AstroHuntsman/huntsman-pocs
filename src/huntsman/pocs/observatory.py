@@ -196,7 +196,7 @@ class HuntsmanObservatory(Observatory):
                 Default 0.17.
             tolerance (float, optional): The minimum precision on the average counts required to
                 keep the exposure, expressed as a fraction of the dynamic range. Default 0.1.
-            max_num_exposures (int, optional): Maximum number of good flat-fields to
+            required_exposures (int, optional): Maximum number of good flat-fields to
                 take per filter. Default 10.
             max_attempts (int, optional): Number of attempts per camera-filter pair to get good
                 flat-field exposures before aborting. Default 20.
@@ -517,7 +517,7 @@ class HuntsmanObservatory(Observatory):
 
     def _take_autoflats(self, cameras, observation, safety_func, tolerance=0.05,
                         target_scaling=0.17, bias=32, min_exptime=1 * u.second,
-                        max_exptime=60 * u.second, max_num_exposures=10, max_attempts=20,
+                        max_exptime=60 * u.second, required_exposures=10, max_attempts=20,
                         *args, **kwargs):
         """Take flat fields iteratively by automatically estimating exposure times.
 
@@ -601,10 +601,10 @@ class HuntsmanObservatory(Observatory):
                     n_good_exposures[cam_name] += 1
                 self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
                                   f'in {observation.filter_name} filter after {attempt_number + 1} '
-                                  f'attempts: {n_good_exposures[cam_name]} of {max_num_exposures}.')
+                                  f'attempts: {n_good_exposures[cam_name]} of {required_exposures}.')
 
                 # Check if we have enough good flats for this camera
-                if n_good_exposures[cam_name] >= max_num_exposures:
+                if n_good_exposures[cam_name] >= required_exposures:
                     self.logger.debug('Enough acceptable flat-field exposures acquired for '
                                       f'{cam_name} in {observation.filter_name} filter.')
                     finished[cam_name] = True
@@ -691,10 +691,10 @@ class HuntsmanObservatory(Observatory):
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor
-        return round(exptime.to_value(u.second)) * u.second
+        return exptime.to_value(u.second) * u.second
 
     def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False,
-                               flat_field_timeout=120, **kwargs):
+                               timeout=120, **kwargs):
         """
         Slew to flat field, take exposures and wait for them to complete.
         Returns a list of camera events for each camera.
@@ -711,7 +711,6 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug(f'Slewing to flat-field coords: {observation.field}.')
         self.mount.set_target_coordinates(observation.field)
         self.mount.slew_to_target()
-        self.status()  # Seems to help with reading coords
 
         # Loop over cameras...
         camera_events = {}
@@ -730,10 +729,10 @@ class HuntsmanObservatory(Observatory):
             camera_events[cam_name] = {'event': camera_event, 'filename': filename}
 
         # Block until done exposing on all cameras
-        timeout = max(exptimes.values()).to_value(u.second) + flat_field_timeout
-        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        if not wait_for_events([c["event"] for c in camera_events.values()], timeout=timeout,
-                               sleep_delay=1):
+        exposure_timeout = max(exptimes.values()).to_value(u.second) + timeout
+        self.logger.debug(f"Waiting for flat-fields with timeout of {exposure_timeout}.")
+        if not wait_for_events([c["event"] for c in camera_events.values()],
+                               timeout=exposure_timeout, sleep_delay=1):
             self.logger.error("Timeout while waiting for flat fields.")
 
         # Remove camera_events that timed out, removing them from the remaining flat-fielding

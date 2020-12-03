@@ -1,5 +1,6 @@
 import os
-from threading import Event
+from threading import Event, Thread
+from contextlib import suppress
 import Pyro5.server
 
 from panoptes.utils.config.client import get_config
@@ -7,9 +8,7 @@ from panoptes.utils.library import load_module
 
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.config import get_own_ip
-# This import is needed to set up the custom (de)serializers in the same scope
-# as the CameraServer and the Camera client's proxy.
-from huntsman.pocs.utils.pyro import serializers
+from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
 
 
 @Pyro5.server.expose
@@ -23,7 +22,7 @@ class CameraService(object):
     a thin-wrapper that can run on the device.
     """
     _event_locations = {"camera": ("_camera", "_is_exposing_event"),
-                        "focuser": ("_camera", "focuser", "_focus_event",),
+                        "focuser": ("_focus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
     def __init__(self, device_name=None):
@@ -45,8 +44,8 @@ class CameraService(object):
         self._camera = module.Camera(logger=self.logger, **self.camera_config)
 
         # Set up events for our exposure.
-        self._exposure_event = Event()
-        self._autofocus_event = Event()
+        self._readout_thread = Thread()
+        self._focus_event = Event()
 
     # Properties - rather than labouriously wrapping every camera property individually expose
     # them all with generic get and set methods.
@@ -67,6 +66,10 @@ class CameraService(object):
     def is_connected(self):
         return self._camera.is_connected
 
+    @property
+    def is_reading_out(self):
+        return self._readout_thread.is_alive()
+
     # Methods
 
     def get_uid(self):
@@ -76,17 +79,22 @@ class CameraService(object):
         """
         return self._camera.uid
 
-    def take_exposure(self, *args, blocking=False, **kwargs):
-        # Start the exposure non-blocking so that camera server can still respond to
-        # status requests.
-        # self._exposure_event = self._camera.take_exposure(blocking=False, *args, **kwargs)
-        self._exposure_event = self._camera.take_exposure(*args, **kwargs, blocking=blocking)
+    def take_exposure(self, *args, **kwargs):
+        """Proxy call to the camera client.
+        
+        This method will strip any `blocking` parameter that is passed so Pyro can handle the blocking appropriately.
+        """
+        with suppress(KeyError):
+            kwargs.pop("blocking")
+        self._readout_thread = self._camera.take_exposure(*args, **kwargs)
 
-    def autofocus(self, *args, blocking=False, **kwargs):
-        # Start the autofocus non-blocking so that camera server can still respond to
-        # status requests.
-        # self._autofocus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
-        self._autofocus_event = self._camera.autofocus(*args, **kwargs, blocking=blocking)
+    def autofocus(self, *args, **kwargs):
+        """ Start the autofocus non-blocking so that camera server can still respond to
+        status requests.
+        """
+        with suppress(KeyError):
+            kwargs.pop("blocking")
+        self._focus_event = self._camera.autofocus(blocking=False, *args, **kwargs)
 
     # Focuser methods - these are used by the remote focuser client, huntsman.focuser.pyro.Focuser
 
@@ -107,12 +115,18 @@ class CameraService(object):
     def has_filterwheel(self):
         return self._camera.filterwheel is not None
 
-    def filterwheel_move_to(self, position):
-        self._camera.filterwheel.move_to(position)
+    def filterwheel_move_to(self, new_position, **kwargs):
+        self._camera.filterwheel.move_to(new_position, **kwargs)
 
     # Event access
 
     def _get_event(self, event_type):
+        """ Retrieve an event by event_type from this class or one of its subcomponent.
+        Args:
+            event_type (str): The event type. Must be listed in `_event_locations`.
+        Returns:
+            threading.Event: The event.
+        """
         event_location = self._event_locations[event_type]
         obj = self
         for attr_name in event_location:

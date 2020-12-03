@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-
-set -e
-set -u
+set -eu
 
 BUILD_DIR="${1:-./ASIBuild}"
 
