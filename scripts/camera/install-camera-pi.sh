@@ -78,6 +78,17 @@ function enable_auto_login() {
   usermod --password "${PANUSER}" "${PANUSER}"
 }
 
+# This function is responsible for setting up the byobu session / windows
+# This is where we make the camera service run on login as ${PANUSER}
+function setup_byobu() {
+  echo "\n# Added by setup-byobu in install-camera-pi script" >> ${HOME}/.profile
+  echo "byobu new-session -d -s ${PANUSER} -n camera-service" >> ${HOME}/.profile
+  echo "byobu select-window -t camera-service" >> ${HOME}/.profile
+  echo "byobu send-keys 'bash ${PANDIR}/scripts/run-camera-service.sh'" >> ${HOME}/.profile
+  echo "byobu send-keys Enter" >> ${HOME}/.profile
+  echo "byobu attach-session -t ${PANUSER}" >> ${HOME}/.profile
+}
+
 function get_docker() {
  if ! command_exists docker; then
    /bin/bash -c "$(wget -qO- https://get.docker.com)"
@@ -112,6 +123,9 @@ function do_install() {
 
  echo "Setting up auto-login"
  enable_auto_login
+
+ echo "Setting up byobu"
+ setup_byobu()
 
  echo "Installing docker and docker-compose"
  get_docker
