@@ -36,6 +36,9 @@ def on_enter(event_data):
         pocs.say("Making sure cameras are ready before leaving ready state.")
         pocs.observatory.prepare_cameras()
         pocs.say("I'm opening the dome.")
-        # This currently opens the shutter only!
-        pocs.observatory.dome.open_dome()
+        try:
+            pocs.observatory.dome.open()
+        except AttributeError as err:
+            pocs.logger.warning('Excepting {err}')
+            pocs.logger.warning('Not oppening the dome! Observatory has no dome attribute!')
         pocs.say("Ok, I'm all set up and ready to go!")

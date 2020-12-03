@@ -8,7 +8,10 @@ def on_enter(event_data):
     pocs.next_state = 'parked'
 
     pocs.say("I'm closing the dome.")
-    # This currently closes the shutter only!
-    pocs.observatory.dome.close_dome()
+    try:
+        pocs.observatory.dome.close_dome()
+    except AttributeError as err:
+        pocs.logger.warning('Excepting {err}')
+        pocs.logger.warning('Not closing the dome! Observatory has no dome attribute!')
     pocs.say("I'm takin' it on home and then parking.")
     pocs.observatory.mount.home_and_park()
