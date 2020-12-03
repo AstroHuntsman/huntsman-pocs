@@ -125,7 +125,7 @@ function do_install() {
  enable_auto_login
 
  echo "Setting up byobu"
- setup_byobu()
+ setup_byobu
 
  echo "Installing docker and docker-compose"
  get_docker
