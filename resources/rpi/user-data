@@ -8,7 +8,7 @@
 hostname: huntsmanpiXXX
 
 #####################################################################
-# You shouldn't need to change anything below.
+# You shouldn't need to change anything below
 #####################################################################
 
 ntp:
@@ -73,7 +73,6 @@ write_files:
 runcmd:
   - mkdir -p /var/huntsman/scripts
   - chown -R huntsman:huntsman /var/huntsman
-  - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/run-camera-service.sh -O /var/huntsman/scripts/run-camera-service.sh
   - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/install-camera-pi.sh -O /var/huntsman/scripts/install-camera-pi.sh
   - bash /var/huntsman/scripts/install-camera-pi.sh
 

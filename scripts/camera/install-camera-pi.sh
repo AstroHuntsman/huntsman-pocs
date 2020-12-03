@@ -89,6 +89,13 @@ function setup_byobu() {
   echo "byobu attach-session -t ${PANUSER}" >> ${HOME}/.profile
 }
 
+# For some reason the ZWO camera/FW libraries and/or rules need to be installed outside of docker
+# Otherwise we seem to be experiencing CAMERA REMOVED errors
+function install_camera_libs() {
+  wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
+  bash ${PANDIR}/scripts/install-camera-libs.sh
+}
+
 function get_docker() {
  if ! command_exists docker; then
    /bin/bash -c "$(wget -qO- https://get.docker.com)"
@@ -118,20 +125,26 @@ function do_install() {
  echo "Setting up environment variables in ${ENV_FILE}"
  setup_env_vars
 
- echo "Installing system dependencies"
+ echo "Installing system dependencies..."
  system_deps
 
- echo "Setting up auto-login"
+ echo "Setting up auto-login..."
  enable_auto_login
 
- echo "Setting up byobu"
+ echo "Setting up byobu..."
  setup_byobu
 
- echo "Installing docker and docker-compose"
+ echo "Installing camera libs..."
+ install_camera_libs
+
+ echo "Installing docker and docker-compose..."
  get_docker
 
- echo "Pulling docker images"
+ echo "Pulling docker images..."
  pull_docker_images
+
+ echo "Downloading run-camera-service.sh script to ${PANDIR}/scripts"
+ wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/run-camera-service.sh -O ${PANDIR}/scripts/run-camera-service.sh
 
  echo "Rebooting in 10s."
  sleep 10
