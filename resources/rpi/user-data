@@ -11,12 +11,6 @@ hostname: huntsmanpiXXX
 # You shouldn't need to change anything below.
 #####################################################################
 
-# If you have set up ssh on github you can pull down your
-# key automatically so that you can log into the unit without
-# a password.
-ssh_import_id:
-  - gh:AstroHuntsman
-
 ntp:
   enabled: true
   servers:
@@ -77,11 +71,6 @@ write_files:
 
 ## Get and run the install script upon first boot.
 runcmd:
-  # Setup hardware watchdog
-  - echo 'watchdog-device = /dev/watchdog' >> /etc/watchdog.conf
-  - echo 'watchdog-timeout = 15' >> /etc/watchdog.conf
-  - echo 'max-load-1 = 24' >> /etc/watchdog.conf
-  # Get the install file.
   - mkdir -p /var/huntsman/scripts
   - chown -R huntsman:huntsman /var/huntsman
   - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/run-camera-service.sh -O /var/huntsman/scripts/run-camera-service.sh
