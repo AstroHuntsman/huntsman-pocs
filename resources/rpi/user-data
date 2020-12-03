@@ -73,6 +73,7 @@ write_files:
 runcmd:
   - mkdir -p /var/huntsman/scripts
   - chown -R huntsman:huntsman /var/huntsman
+  # - wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/install-camera-pi.sh -O /var/huntsman/scripts/install-camera-pi.sh
   - wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/install-camera-pi.sh -O /var/huntsman/scripts/install-camera-pi.sh
   - bash /var/huntsman/scripts/install-camera-pi.sh
 
