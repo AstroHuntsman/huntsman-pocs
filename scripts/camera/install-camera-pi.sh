@@ -81,7 +81,7 @@ function enable_auto_login() {
 # This function is responsible for setting up the byobu session / windows
 # This is where we make the camera service run on login as ${PANUSER}
 function setup_byobu() {
-  echo "\n# Added by setup-byobu in install-camera-pi script" >> ${HOME}/.profile
+  echo -e "\n# Added by setup-byobu in install-camera-pi script" >> ${HOME}/.profile
   echo "byobu new-session -d -s ${PANUSER} -n camera-service" >> ${HOME}/.profile
   echo "byobu select-window -t camera-service" >> ${HOME}/.profile
   echo "byobu send-keys 'bash ${PANDIR}/scripts/run-camera-service.sh'" >> ${HOME}/.profile
