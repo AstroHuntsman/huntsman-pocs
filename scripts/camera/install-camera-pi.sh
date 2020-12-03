@@ -92,8 +92,7 @@ function setup_byobu() {
 # For some reason the ZWO camera/FW libraries and/or rules need to be installed outside of docker
 # Otherwise we seem to be experiencing CAMERA REMOVED errors
 function install_camera_libs() {
-  # wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
-  wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
+  wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
   bash ${PANDIR}/scripts/install-camera-libs.sh
 }
 
