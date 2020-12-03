@@ -9,7 +9,7 @@ def on_enter(event_data):
 
     pocs.say("I'm closing the dome.")
     try:
-        pocs.observatory.dome.close_dome()
+        pocs.observatory.dome.close()
     except AttributeError as err:
         pocs.logger.warning('Excepting {err}')
         pocs.logger.warning('Not closing the dome! Observatory has no dome attribute!')

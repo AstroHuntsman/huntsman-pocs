@@ -42,12 +42,12 @@ def dome():
         'brand': 'Simulacrum',
         'driver': 'simulator',
     })
-
     return create_dome_simulator()
 
 
 @pytest.fixture(scope='function')
 def pocs(observatory, dome):
+    os.environ['POCSTIME'] = '2020-01-01 08:00:00'
     pocs = POCS(observatory, run_once=True)
     pocs.observatory.set_dome(dome)
     yield pocs
@@ -101,28 +101,24 @@ def test_parking_ready(pocs):
         assert pocs.state == state
 
 
-def test_ready_dome_status(pocs):
-    '''
-    Test if the dome is open after ready state.
-    '''
-    os.environ['POCSTIME'] = '2020-10-29 23:00:00'
-    pocs.initialize()
-    pocs.get_ready()
-    pocs.next_state == 'ready'
-    pocs.goto_next_state()
-    assert pocs.observatory.dome.is_open
-
-
 def test_parking_dome_status(pocs):
     '''
     Test if the dome is closed after parking state.
     '''
-    os.environ['POCSTIME'] = '2020-10-29 23:00:00'
     pocs.initialize()
     pocs.get_ready()
     pocs.next_state = 'parking'
     pocs.goto_next_state()
     assert not pocs.observatory.dome.is_open
+
+
+def test_ready_dome_status(pocs):
+    '''
+    Test if the dome is open after ready state.
+    '''
+    pocs.initialize()
+    pocs.get_ready()
+    assert pocs.observatory.dome.is_open
 
 
 def test_sleeping_stop(pocs):
