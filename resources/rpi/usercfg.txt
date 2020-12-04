@@ -1,7 +1,6 @@
 # Place "config.txt" changes (dtparam, dtoverlay, disable_overscan, etc.) in this file.
 # Some of these options are specific to Pi3s.
 
-dtoverlay=disable-bt
 dtoverlay=i2c-gpio
 
 dtparam=audio=off
