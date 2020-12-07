@@ -71,11 +71,6 @@ function enable_auto_login() {
   sed -i '/^ExecStart=$/d' /lib/systemd/system/getty@.service
   sed -i "s/ExecStart=.*/ExecStart=\nExecStart=-\/sbin\/agetty -a huntsman --noclear %I \$TERM/g" /lib/systemd/system/getty@.service
   sed -i "s/Type=idle/Type=simple/g" /lib/systemd/system/getty@.service
-
-  # We also need to disable password change on first login
-  # The easiest way of doing this is just to change the password here
-  # The password expiry status can be checked by doing $chage -l ${PAUSER}
-  usermod --password "${PANUSER}" "${PANUSER}"
 }
 
 # This function is responsible for setting up the byobu session / windows
