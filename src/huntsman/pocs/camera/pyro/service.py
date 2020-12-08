@@ -92,7 +92,7 @@ class CameraService(object):
         try:
             self._readout_thread = self._camera.take_exposure(*args, **kwargs)
             if kwargs.get("testing_error_reboot"):
-                raise PanError("Exposure failed on")
+                raise PanError(f"Exposure failed on {self._camera}")
         except PanError as err:
             if "Exposure failed on" in err.msg:
                 self.logger.debug(f"Rebooting computer hosting camera {self._camera}")
