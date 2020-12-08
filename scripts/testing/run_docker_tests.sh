@@ -29,7 +29,7 @@ huntsman-pyro --verbose --host "${PYRO_NS_HOST}" --port "${PYRO_NS_PORT}" namese
 # Start a pyro camera service
 # TODO: Move inside conftest
 echo "Creating testing Pyro CameraService"
-huntsman-pyro --verbose service --service-name dslr.00 --service-class huntsman.pocs.camera.pyro.service.CameraService &
+huntsman-pyro --verbose --host 0.0.0.0 service --service-name dslr.00 --service-class huntsman.pocs.camera.pyro.service.CameraService &
 
 # Run the tests
 echo "Starting testing"
