@@ -101,24 +101,18 @@ def test_parking_ready(pocs):
         assert pocs.state == state
 
 
-def test_parking_dome_status(pocs):
+def test_dome_status(pocs):
     '''
-    Test if the dome is closed after parking state.
+    Test if the dome is open/close after ready/parking state is executed.
     '''
     pocs.initialize()
+    pocs.observatory.dome.close()
     pocs.get_ready()
+    assert pocs.state == 'ready'
+    assert pocs.observatory.dome.is_open
     pocs.next_state = 'parking'
     pocs.goto_next_state()
     assert not pocs.observatory.dome.is_open
-
-
-def test_ready_dome_status(pocs):
-    '''
-    Test if the dome is open after ready state.
-    '''
-    pocs.initialize()
-    pocs.get_ready()
-    assert pocs.observatory.dome.is_open
 
 
 def test_sleeping_stop(pocs):

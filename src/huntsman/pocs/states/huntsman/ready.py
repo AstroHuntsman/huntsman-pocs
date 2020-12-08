@@ -35,10 +35,10 @@ def on_enter(event_data):
     if pocs.next_state != 'parking':
         pocs.say("Making sure cameras are ready before leaving ready state.")
         pocs.observatory.prepare_cameras()
-        pocs.say("I'm opening the dome.")
+        if pocs.observatory.has_dome:
+            pocs.say("I'm opening the dome.")
         try:
             pocs.observatory.dome.open()
-        except AttributeError as err:
-            pocs.logger.warning('Excepting {err}')
-            pocs.logger.warning('Not oppening the dome! Observatory has no dome attribute!')
+        except AttributeError:
+            pocs.logger.warning('Not opening the dome! Observatory has no dome attribute!')
         pocs.say("Ok, I'm all set up and ready to go!")
