@@ -92,12 +92,12 @@ class CameraService(object):
         try:
             self._readout_thread = self._camera.take_exposure(*args, **kwargs)
         except PanError as err:
-            if "Exposure failed on" in err:
+            if "Exposure failed on" in err.msg:
                 self.logger.debug(f"Rebooting computer hosting camera {self._camera}")
                 subprocess.run(["sudo", "reboot"])
             else:
                 # raise all other errors still
-                raise PanError(err)
+                raise err
 
     def autofocus(self, *args, **kwargs):
         """ Start the autofocus non-blocking so that camera server can still respond to
