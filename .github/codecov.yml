@@ -2,6 +2,7 @@ ignore:
   - "src/huntsman/pocs/dome/musca.py"
   - "src/huntsman/pocs/guide/bisque.py"
   - "src/huntsman/pocs/tests/*"
+  - "/var/panoptes/*"
 
 fixes:
   - "huntsman-pocs/::"
