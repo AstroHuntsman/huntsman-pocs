@@ -8,7 +8,7 @@ LABEL maintainers="developers@huntsman.space"
 LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
 
 # ZWO camera & EFW libraries
-COPY ./scripts/install-camera-libs.sh /tmp/install-camera-libs.sh
+COPY ./scripts/camera/install-camera-libs.sh /tmp/install-camera-libs.sh
 RUN /tmp/install-camera-libs.sh && \
     # Cleanup.
     apt-get autoremove --purge --yes && \
