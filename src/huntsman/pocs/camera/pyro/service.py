@@ -91,10 +91,16 @@ class CameraService(object):
             kwargs.pop("blocking")
         try:
             self._readout_thread = self._camera.take_exposure(*args, **kwargs)
+            if kwargs.get("testing_error_reboot"):
+                raise PanError("Exposure failed on")
         except PanError as err:
             if "Exposure failed on" in err.msg:
                 self.logger.debug(f"Rebooting computer hosting camera {self._camera}")
-                subprocess.run(["sudo", "reboot"])
+                if not kwargs.get("testing_error_reboot"):
+                    subprocess_args = ["sudo", "reboot", "now"]
+                else:
+                    subprocess_args = ["sudo", "touch", "/tmp/rebooted"]
+                subprocess.run(subprocess_args)
             else:
                 # raise all other errors still
                 raise err

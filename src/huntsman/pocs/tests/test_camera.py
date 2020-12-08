@@ -8,6 +8,7 @@ import os
 import shutil
 import time
 import pytest
+import subprocess
 
 import astropy.units as u
 from astropy.io import fits
@@ -298,6 +299,26 @@ def test_exposure_timeout(camera, tmpdir, caplog):
     assert exposure_event.is_set()
     # The camera didn't actually fail, so should wait for it to really finish.
     time.sleep(5)
+
+
+def test_camera_error_reboot(camera, tmpdir):
+    """
+    Tests case where ZWO fails exposure, which triggers a reboot.
+    """
+    fits_path = str(tmpdir.join('test_exposure.fits'))
+    if camera.is_cooled_camera and camera.cooling_enabled is False:
+        camera.cooling_enabled = True
+        time.sleep(5)  # Give camera time to cool
+    assert camera.is_ready
+    assert not camera.is_exposing
+    assert not camera._proxy.get("is_exposing")
+    assert not os.path.exists(fits_path)
+    assert not os.path.exists("/tmp/rebooted")
+    # A one second normal exposure
+    camera.take_exposure(seconds=1, filename=fits_path, testing_error_reboot=True)
+    assert os.path.exists("/tmp/rebooted")
+    subprocess.run(["sudo", "rm", "/tmp/rebooted"])
+    time.sleep(5)  # Give camera time to finish exposure
 
 
 def test_observation(camera, images_dir):
