@@ -4,8 +4,11 @@ set -eu
 BUILD_DIR="${1:-./ASIBuild}"
 
 # Current lib versions.
-CAM_LIB_VERSION=1.15.0617
-EFW_LIB_VERSION=1.5.0615
+# CAM_LIB_VERSION=1.15.0617
+# EFW_LIB_VERSION=1.5.0615
+
+CAM_LIB_VERSION=1.16
+EFW_LIB_VERSION=1.16
 
 # Get the arch -> x86_64 == x86
 ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
