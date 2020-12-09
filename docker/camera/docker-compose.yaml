@@ -15,4 +15,4 @@ services:
       - "${PANDIR}/images:/var/huntsman/images"
       - "${PANDIR}/logs:/var/huntsman/logs"
       - "/var/huntsman/huntsman-pocs:/var/huntsman/huntsman-pocs"
-      - "/var/huntsman/pocs:/var/huntsman/pocs"
+      - "/var/panoptes/pocs:/var/huntsman/pocs"

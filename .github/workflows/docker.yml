@@ -2,7 +2,7 @@ name: Docker CI
 on:
   push:
     branches:
-      - fix_camera_service
+      - not_a_branch
 jobs:
   buildx:
     runs-on: ubuntu-latest
