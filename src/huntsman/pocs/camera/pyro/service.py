@@ -91,13 +91,17 @@ class CameraService(object):
             kwargs.pop("blocking")
         try:
             self._readout_thread = self._camera.take_exposure(*args, **kwargs)
+            # simulate camera error for testing
             if kwargs.get("testing_error_reboot"):
                 raise PanError(f"Exposure failed on {self._camera}")
         except PanError as err:
             if "Exposure failed on" in err.msg:
-                self.logger.debug(f"Rebooting computer hosting camera {self._camera}")
                 if not kwargs.get("testing_error_reboot"):
-                    subprocess_args = ["sudo", "reboot", "now"]
+                    if self.config['pyro']['reboot_on_failure']:
+                        self.logger.debug(f"Rebooting computer hosting camera {self._camera}")
+                        subprocess_args = ["sudo", "reboot", "now"]
+                    else:
+                        raise err
                 else:
                     subprocess_args = ["sudo", "touch", "/tmp/rebooted"]
                 subprocess.run(subprocess_args)
