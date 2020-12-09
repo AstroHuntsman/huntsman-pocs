@@ -2,7 +2,7 @@ name: Docker CI
 on:
   push:
     branches:
-      - develop
+      - fix_camera_service
 jobs:
   buildx:
     runs-on: ubuntu-latest
@@ -22,12 +22,12 @@ jobs:
           docker buildx build \
             -f docker/Dockerfile \
             --platform linux/arm64,linux/amd64 \
-            --tag huntsmanarray/huntsman-pocs:develop \
+            --tag huntsmanarray/huntsman-pocs:fix \
             --output "type=image,push=true" .
       - name: Build and push huntsman-pocs-camera image.
         run: |
           docker buildx build \
             -f docker/camera/Dockerfile \
             --platform linux/arm64,linux/amd64 \
-            --tag huntsmanarray/huntsman-pocs-camera:develop \
+            --tag huntsmanarray/huntsman-pocs-camera:fix \
             --output "type=image,push=true" .

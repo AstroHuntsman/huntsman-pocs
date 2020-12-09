@@ -1,5 +1,5 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-pocs:develop
-FROM ${image_url} AS pocs-base
+ARG image_url=huntsmanarray/panoptes-pocs:fix
+FROM panoptes-pocs:fix AS pocs-base
 
 LABEL description="Huntsman - PANOPTES Observatory Control System"
 LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
@@ -62,6 +62,7 @@ WORKDIR ${HUNTSMAN_POCS}
 COPY --chown=1000:1000 . .
 RUN "${PANDIR}/conda/bin/pip" install -e ".${pip_extras}" && \
     # Cleanup
+    pip install ipython && \
     sudo apt-get autoremove --purge --yes && \
     sudo apt-get autoclean --yes && \
     sudo apt-get --yes clean && \

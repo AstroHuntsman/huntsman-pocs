@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   camera:
-    image: huntsmanarray/huntsman-pocs-camera:develop
+    image: huntsmanarray/huntsman-pocs-camera:fix
     privileged: true
     network_mode: host
     stdin_open: true
