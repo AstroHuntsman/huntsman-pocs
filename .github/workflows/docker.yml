@@ -7,6 +7,8 @@ jobs:
   buildx:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout pocs
+        uses: actions/checkout@v2 ???
       - name: Checkout huntsman-pocs
         uses: actions/checkout@v2
       - name: Docker login
@@ -17,7 +19,14 @@ jobs:
         with:
           buildx-version: latest
           qemu-version: latest
-      - name: Build and push huntsman-pocs:develop image
+      - name: Build and push panoptes-pocs:fix image
+        run: |
+          docker buildx build \
+            -f docker/Dockerfile \
+            --platform linux/arm64,linux/amd64 \
+            --tag huntsmanarray/huntsman-pocs:fix \
+            --output "type=image,push=true" .
+      - name: Build and push huntsman-pocs:fix image
         run: |
           docker buildx build \
             -f docker/Dockerfile \
