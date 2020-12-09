@@ -8,7 +8,7 @@ BUILD_DIR="${1:-./ASIBuild}"
 # EFW_LIB_VERSION=1.5.0615
 
 CAM_LIB_VERSION=1.16
-EFW_LIB_VERSION=1.16
+EFW_LIB_VERSION=1.5.0615
 
 # Get the arch -> x86_64 == x86
 ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
@@ -41,9 +41,9 @@ function install_zwo() {
 
   # ZWO filterwheel
   mkdir -p "${BUILD_DIR}/zwo-filterwheel" && cd "${BUILD_DIR}/zwo-filterwheel"
-  INSTALL_FILE=ASI_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
+  INSTALL_FILE=EFW_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
   wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
-  tar xvjf "${INSTALL_FILE}" && cd ASI_linux_mac_SDK_V${CAM_LIB_VERSION}/lib
+  tar xvjf "${INSTALL_FILE}" && cd EFW_linux_mac_SDK_V${CAM_LIB_VERSION}/lib
   # Move the library file.
   cp "${ARCH}/libEFWFilter.so" /usr/local/lib/
   chmod a+rx /usr/local/lib/libEFWFilter.so
