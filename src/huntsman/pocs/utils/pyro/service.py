@@ -1,4 +1,3 @@
-from functools import partial
 from multiprocessing import Process
 
 import Pyro5.errors
@@ -6,9 +5,11 @@ from Pyro5.api import Daemon as PyroDaemon
 
 from panoptes.utils.config.client import set_config
 from panoptes.utils.library import load_module
+
 from huntsman.pocs.utils.config import get_config
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
+from huntsman.pocs.utils.config import get_own_ip
 
 
 def pyro_service(service_class=None,
@@ -39,7 +40,9 @@ def pyro_service(service_class=None,
             but still return the completed process.
     """
     # Specify address
-    host = host or get_config(f'pyro.{service_name}.ip', default='0.0.0.0')
+    host = host or get_config(f'pyro.{service_name}.ip', default=None)
+    if host is None:
+        host = get_own_ip(verbose=True)
     # If port is not in config set to 0 so that Pyro will choose a random one.
     port = int(port or get_config(f'pyro.{service_name}.port', default=0))
     # Specify metadata to be stored on NS
