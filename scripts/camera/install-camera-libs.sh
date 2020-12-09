@@ -43,7 +43,7 @@ function install_zwo() {
   mkdir -p "${BUILD_DIR}/zwo-filterwheel" && cd "${BUILD_DIR}/zwo-filterwheel"
   INSTALL_FILE=EFW_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
   wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
-  tar xvjf "${INSTALL_FILE}" && cd EFW_linux_mac_SDK_V${EFW_LIB_VERSION}/lib
+  tar xvjf "${INSTALL_FILE}" && cd lib
   # Move the library file.
   cp "${ARCH}/libEFWFilter.so" /usr/local/lib/
   chmod a+rx /usr/local/lib/libEFWFilter.so
