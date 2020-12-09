@@ -11,10 +11,9 @@ CAM_LIB_VERSION=1.16
 EFW_LIB_VERSION=1.5.0615
 
 # Get the arch -> x86_64 == x86
-# ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
+ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
 # Change aarch64 to armv8
-# ARCH="${ARCH/aarch64/armv8}"
-ARCH="armv7"
+ARCH="${ARCH/aarch64/armv8}"
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root"
