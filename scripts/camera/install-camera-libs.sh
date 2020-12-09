@@ -41,7 +41,7 @@ function install_zwo() {
 
   # ZWO filterwheel
   mkdir -p "${BUILD_DIR}/zwo-filterwheel" && cd "${BUILD_DIR}/zwo-filterwheel"
-  INSTALL_FILE=EFW_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
+  INSTALL_FILE=ASI_linux_mac_SDK_V${EFW_LIB_VERSION}.tar.bz2
   wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
   tar xvjf "${INSTALL_FILE}" && cd ASI_linux_mac_SDK_V${CAM_LIB_VERSION}/lib
   # Move the library file.
