@@ -92,4 +92,4 @@ pyro:
       host: localhost
         port: 0
     devices: []
-    reboot_on_failure: 0
+    reboot_on_failure: True
