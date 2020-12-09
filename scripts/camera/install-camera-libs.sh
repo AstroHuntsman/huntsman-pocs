@@ -33,8 +33,8 @@ function install_zwo() {
   mkdir -p "${BUILD_DIR}/zwo" && cd "${BUILD_DIR}/zwo"
   INSTALL_FILE=ASI_linux_mac_SDK_V${CAM_LIB_VERSION}.tar.bz2
   wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
-  # tar xvjf "${INSTALL_FILE}" && cd ASI_linux_mac_SDK_V${CAM_LIB_VERSION}/lib
-  tar xvjf "${INSTALL_FILE}" && cd lib
+  tar xvjf "${INSTALL_FILE}" && cd ASI_linux_mac_SDK_V${CAM_LIB_VERSION}/lib
+  # tar xvjf "${INSTALL_FILE}" && cd lib
   # Move the library file.
   cp "${ARCH}/libASICamera2.so" /usr/local/lib/
   chmod a+rx /usr/local/lib/libASICamera2.so
