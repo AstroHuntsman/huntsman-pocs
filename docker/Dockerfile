@@ -61,6 +61,7 @@ WORKDIR ${HUNTSMAN_POCS}
 # Can't seem to get around the hard-coding user and group here.
 COPY --chown=1000:1000 . .
 RUN "${PANDIR}/conda/bin/pip" install -e ".${pip_extras}" && \
+    "${PANDIR}/conda/bin/pip" install ipython && \
     # Cleanup
     sudo apt-get autoremove --purge --yes && \
     sudo apt-get autoclean --yes && \
