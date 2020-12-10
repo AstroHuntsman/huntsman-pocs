@@ -321,8 +321,9 @@ class HuntsmanObservatory(Observatory):
             n_darks = listify(n_darks) * len(exptimes)
 
         if set_from_config:
-            exptimes = self.config["calibration"]["darks"]["exposure_time"]
-            n_darks = self.config["calibration"]["darks"]["n_darks"]
+            dark_config = self.get_config('calibration', default=dict())
+            exptimes = dark_config["darks"]["exposure_time"]
+            n_darks = dark_config["darks"]["n_darks"]
 
         self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
 
