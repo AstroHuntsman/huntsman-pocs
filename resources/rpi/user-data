@@ -20,8 +20,9 @@ ntp:
     - time4.google.com
 
 chpasswd:
-  list:
-    - huntsman:huntsman
+  list: |
+     huntsman:huntsman
+  expire: False
 
 ssh_pwauth: yes
 
