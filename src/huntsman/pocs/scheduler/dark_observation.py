@@ -1,3 +1,4 @@
+import os
 from astropy import units as u
 from contextlib import suppress
 
@@ -7,6 +8,7 @@ from panoptes.utils import listify
 
 
 class DarkObservation(Observation):
+
     """ A Dark-field observation
 
     Dark observations will consist of multiple exposure. As the mount will be
@@ -35,6 +37,9 @@ class DarkObservation(Observation):
         self._field = listify(self.field)
 
         self.extra_config = kwargs
+
+        # Specify directory root for file storage
+        self._directory = os.path.join(self._image_dir, 'darks')
 
     @property
     def exptime(self):

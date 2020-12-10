@@ -268,18 +268,19 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Finished flat-fielding.')
 
     def take_dark_fields(self,
-                         exptimes,
+                         exptimes=[],
                          sleep=10,
                          camera_names=None,
                          n_darks=10,
                          imtype='dark',
+                         set_from_config=False,
                          *args, **kwargs
                          ):
         """Take n_darks for each exposure time specified,
            for each camera.
 
         Args:
-            exptimes (list): List of exposure times for darks
+            exptimes (list, optional): List of exposure times for darks
             sleep (float, optional): Time in seconds to sleep between dark sequences.
             camera_names (list, optional): List of cameras to use for darks
             n_darks (int or list, optional): if int, the same number of darks will be taken
@@ -287,6 +288,7 @@ class HuntsmanObservatory(Observatory):
                 element is the number of darks we want for the corresponding exptime, e.g.:
                 take_dark_fields(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
                 will take 30x1s, 10x60s, and 20x15s darks
+            set_from_config (bool, optional): flag to set exptimes and n_darks directly from config file.
             imtype (str, optional): type of image
         """
 
@@ -297,9 +299,17 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug(f'Using cameras {cameras_list}')
 
-        image_dir = self.get_config('directories.images')
+        filterwheel_events = dict()
 
-        self.logger.debug(f"Taking {n_darks} dark exposures with exposure times: {exptimes}")
+        self.logger.debug(f'Moving all camera filterwheels to blank filter')
+
+        # Move all the camera filterwheels to the blank position.
+        for camera in cameras_list.values():
+            if camera.filterwheel.current_filter != "blank":
+                filterwheel_event = camera.filterwheel.move_to("blank")
+                filterwheel_events[camera] = filterwheel_event
+        self.logger.debug('Waiting for all the filterwheels to be on blank filter...')
+        wait_for_events(list(filterwheel_events.values()))
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -310,6 +320,12 @@ class HuntsmanObservatory(Observatory):
         if not isinstance(n_darks, list):
             n_darks = listify(n_darks) * len(exptimes)
 
+        if set_from_config:
+            exptimes = self.config["calibration"]["darks"]["exposure_time"]
+            n_darks = self.config["calibration"]["darks"]["n_darks"]
+
+        self.logger.debug(f"Going to take {n_darks} dark-fields for each of these exposure times {exptimes}")
+
         # Loop over cameras.
         for exptime, num_darks in zip(exptimes, n_darks):
 
@@ -318,6 +334,7 @@ class HuntsmanObservatory(Observatory):
             with suppress(AttributeError):
                 exptime = exptime.to_value(u.second)
 
+            # Create dark observation
             dark_obs = self._create_dark_observation(exptime)
 
             # Loop over exposure times for each camera.
@@ -329,14 +346,14 @@ class HuntsmanObservatory(Observatory):
 
                 # Take a given number of exposures for each exposure time.
                 for camera in cameras_list.values():
-                    # Create dark observation
+
+                    # Set header
                     fits_headers = self.get_standard_headers(observation=dark_obs)
                     # Common start time for cameras
                     fits_headers['start_time'] = flatten_time(start_time)
 
                     # Create filename
-                    path = os.path.join(image_dir,
-                                        'darks',
+                    path = os.path.join(dark_obs.directory,
                                         camera.uid,
                                         dark_obs.seq_time)
 
