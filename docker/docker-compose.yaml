@@ -66,11 +66,11 @@ services:
     volumes:
       - panlog:/var/huntsman/logs
 
-  pocs-control:
+  huntsman-control:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
-    container_name: pocs-control
-    hostname: pocs-control
+    container_name: huntsman-control
+    hostname: huntsman-control
     privileged: true
     network_mode: host
     restart: on-failure
