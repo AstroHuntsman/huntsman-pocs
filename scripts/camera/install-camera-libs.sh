@@ -4,8 +4,8 @@ set -eu
 BUILD_DIR="${1:-./ASIBuild}"
 
 # Current lib versions.
-CAM_LIB_VERSION=1.15.0617
-EFW_LIB_VERSION=1.5.0615
+CAM_LIB_VERSION=1.16
+EFW_LIB_VERSION=1.5.0615  # This has a bug when rotating forwards >one full rotation
 
 # Get the arch -> x86_64 == x86
 ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
@@ -30,7 +30,7 @@ function install_zwo() {
   mkdir -p "${BUILD_DIR}/zwo" && cd "${BUILD_DIR}/zwo"
   INSTALL_FILE=ASI_linux_mac_SDK_V${CAM_LIB_VERSION}.tar.bz2
   wget "https://astronomy-imaging-camera.com/software/${INSTALL_FILE}"
-  tar xvjf "${INSTALL_FILE}" && cd lib
+  tar xvjf "${INSTALL_FILE}" && cd ASI_linux_mac_SDK_V${CAM_LIB_VERSION}/lib
   # Move the library file.
   cp "${ARCH}/libASICamera2.so" /usr/local/lib/
   chmod a+rx /usr/local/lib/libASICamera2.so

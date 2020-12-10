@@ -77,14 +77,10 @@ def service(context, service_name, service_class=None):
     try:
         logger.info(f'Creating Pyro service {service_name}')
 
-        service_proc = pyro_service(service_class=service_class,
-                                    service_name=service_name,
-                                    host=host,
-                                    port=port,
-                                    auto_start=False)
-        logger.info(f'Starting Pyro service process {service_name} from cli')
-        service_proc.start()
-        service_proc.join()
+        # Start the request loop
+        pyro_service(service_class=service_class, service_name=service_name, host=host,
+                     port=port)
+
     except (KeyboardInterrupt, StopIteration):
         logger.info(f'Pyro service {service_name} interrupted, shutting down.')
     except Exception as e:  # noqa

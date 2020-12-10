@@ -61,7 +61,6 @@ export LANG="en_US.UTF-8"
 
 # POCS
 export PANDIR=/var/huntsman
-unsetopt share_history
 EOF
 }
 
@@ -77,11 +76,11 @@ function enable_auto_login() {
 # This is where we make the camera service run on login as ${PANUSER}
 function setup_byobu() {
   echo -e "\n# Added by setup-byobu in install-camera-pi script" >> ${HOME}/.profile
-  echo "byobu new-session -d -s ${PANUSER} -n camera-service" >> ${HOME}/.profile
-  echo "byobu select-window -t camera-service" >> ${HOME}/.profile
-  echo "byobu send-keys 'bash ${PANDIR}/scripts/run-camera-service.sh'" >> ${HOME}/.profile
-  echo "byobu send-keys Enter" >> ${HOME}/.profile
-  echo "byobu attach-session -t ${PANUSER}" >> ${HOME}/.profile
+  echo "if byobu new-session -d -s ${PANUSER} -n camera-service; then" >> ${HOME}/.profile
+  echo "    byobu select-window -t camera-service" >> ${HOME}/.profile
+  echo "    byobu send-keys 'bash ${PANDIR}/scripts/run-camera-service.sh'" >> ${HOME}/.profile
+  echo "    byobu send-keys Enter" >> ${HOME}/.profile
+  echo "fi" >> ${HOME}/.profile
 }
 
 # For some reason the ZWO camera/FW libraries and/or rules need to be installed outside of docker
