@@ -4,9 +4,9 @@ volumes:
   panlog:
     driver: local
     driver_opts:
-    type: none
-    device: ${PANDIR}/logs
-    o: bind
+      type: none
+      device: ${PANDIR}/logs
+      o: bind
 
 services:
 
