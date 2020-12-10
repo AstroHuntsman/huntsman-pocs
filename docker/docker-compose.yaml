@@ -62,7 +62,7 @@ services:
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -e '.*'" ]
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -p 8081 -e '.*'" ]
     volumes:
       - panlog:/var/huntsman/logs
 
