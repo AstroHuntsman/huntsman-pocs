@@ -125,7 +125,8 @@ def create_distributed_cameras(camera_config, metadata=None):
     primary_id = camera_config.get('primary', '')
     for cam_name, cam_uri in camera_uris.items():
         logger.debug(f'Creating camera: {cam_name}')
-        cam = Camera(port=cam_name, uri=cam_uri, **camera_config)
+        
+        cam = Camera(port=cam_name, uri=cam_uri)
 
         if primary_id == cam.uid or primary_id == cam.name:
             cam.is_primary = True
