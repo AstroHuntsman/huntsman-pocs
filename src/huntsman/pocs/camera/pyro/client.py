@@ -50,8 +50,6 @@ class Camera(AbstractCamera):
         self._uri = uri
         self.logger.debug(f'Connecting to {port} at {self._uri}')
 
-        # super().__init__(name=name, port=port, model=model, logger=self.logger, *args, **kwargs)
-
         # Hardware that may be attached in connect method.
         self.focuser = None
         self.filterwheel = None
