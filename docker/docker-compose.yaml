@@ -78,6 +78,6 @@ services:
       HUNTSMAN_POCS: /var/huntsman
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
-    command: ipython
+    command: /bin/bash
     volumes:
       - panlog:/var/huntsman/logs
