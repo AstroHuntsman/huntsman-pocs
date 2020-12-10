@@ -9,7 +9,6 @@ volumes:
       o: bind
 
 services:
-
   pocs-config-server:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
@@ -26,7 +25,6 @@ services:
       - "${PANOPTES_CONFIG_FILE}:/var/huntsman/huntsman-pocs/conf_files/huntsman.yaml"
       - panlog:/var/huntsman/logs
     command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
-
   pyro-name-server:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
@@ -45,7 +43,6 @@ services:
     command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
     volumes:
       - panlog:/var/huntsman/logs
-
   pyro-http:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
@@ -64,19 +61,3 @@ services:
     volumes:
       - panlog:/var/huntsman/logs
     command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6564 -- pyro5-httpgateway -p 8081 -e '.*'" ]
-
-  huntsman-control:
-    image: huntsmanarray/huntsman-pocs:develop
-    tty: true
-    container_name: huntsman-control
-    hostname: huntsman-control
-    privileged: true
-    network_mode: host
-    restart: on-failure
-    environment:
-      HUNTSMAN_POCS: /var/huntsman
-      PANDIR: /var/panoptes
-      POCS: /var/panoptes/POCS
-    volumes:
-      - panlog:/var/huntsman/logs
-    command: /bin/bash

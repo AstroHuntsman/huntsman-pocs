@@ -45,6 +45,7 @@ class Camera(AbstractCamera):
         self.port = port
         self.is_primary = primary
         self._timeout = get_quantity_value(kwargs.get('timeout', 10), unit=u.second)
+        self.subcomponents = dict()  # Required for "stringifying" the camera
 
         # The proxy used for communication with the remote instance.
         self._uri = uri
