@@ -5,8 +5,7 @@ BUILD_DIR="${1:-./ASIBuild}"
 
 # Current lib versions.
 CAM_LIB_VERSION=1.16
-# EFW_LIB_VERSION=1.5.0615  # This has a bug when rotating forwards >one full rotation
-EFW_LIB_VERSION=0.4.1022
+EFW_LIB_VERSION=1.5.0615  # This has a bug when rotating forwards >one full rotation
 
 # Get the arch -> x86_64 == x86
 ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
