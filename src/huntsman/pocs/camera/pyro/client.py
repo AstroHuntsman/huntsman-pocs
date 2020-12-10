@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 from contextlib import suppress
 from astropy import units as u
@@ -23,13 +24,33 @@ class Camera(AbstractCamera):
     running POCS, namely via an `Observatory` object.
     """
 
-    def __init__(self, uri, name='Pyro Camera', model='pyro', port=None, *args, **kwargs):
+    def __init__(self, uri, name='Pyro Camera', model='pyro', port=None, primary=False,
+                 config_host=None, config_port=None, *args, **kwargs):
+        """
+        Args:
+            uri (str): The URI of the Pyro proxy camera.
+            primary (bool): If this camera is the primary camera for the system, default False.
+            model (str): The model of camera, such as 'gphoto2', 'sbig', etc. Default 'simulator'.
+            name (str): Name of the camera, default 'Generic Camera'.
+            port (str): The port the camera is connected to, typically a usb device, default None.
+            config_host (str): The hostname of the config server.
+            config_port (int): The port of the config server.
+        """
         self.logger = logger
+
+        # We need to replicate init functionality of AbstractCamera without overriding the
+        # existing config of the camera proxy.
+        self._config_host = config_host or os.getenv('PANOPTES_CONFIG_HOST', 'localhost')
+        self._config_port = config_port or os.getenv('PANOPTES_CONFIG_PORT', 6563)
+        self.port = port
+        self.is_primary = primary
+        self._timeout = get_quantity_value(kwargs.get('timeout', 10), unit=u.second)
+
         # The proxy used for communication with the remote instance.
         self._uri = uri
         self.logger.debug(f'Connecting to {port} at {self._uri}')
 
-        super().__init__(name=name, port=port, model=model, logger=self.logger, *args, **kwargs)
+        # super().__init__(name=name, port=port, model=model, logger=self.logger, *args, **kwargs)
 
         # Hardware that may be attached in connect method.
         self.focuser = None
