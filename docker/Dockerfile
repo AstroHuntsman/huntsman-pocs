@@ -1,5 +1,5 @@
-ARG image_url=huntsmanarray/panoptes-pocs:fix
-FROM panoptes-pocs:fix AS pocs-base
+ARG image_url=gcr.io/panoptes-exp/panoptes-pocs:develop
+FROM ${image_url} AS pocs-base
 
 LABEL description="Huntsman - PANOPTES Observatory Control System"
 LABEL repo="github.com/AstroHuntsman/huntsman-pocs"

@@ -81,12 +81,11 @@ class CameraService(object):
 
     def take_exposure(self, *args, **kwargs):
         """Proxy call to the camera client.
-
+        
         This method will strip any `blocking` parameter that is passed so Pyro can handle the blocking appropriately.
         """
         with suppress(KeyError):
             kwargs.pop("blocking")
-        self.logger.debug("~~~ Taking exposure on camera service")
         self._readout_thread = self._camera.take_exposure(*args, **kwargs)
 
     def autofocus(self, *args, **kwargs):

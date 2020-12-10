@@ -1,5 +1,7 @@
-ARG image_url=huntsmanarray/huntsman-pocs:fix
+ARG image_url=huntsmanarray/huntsman-pocs:develop
 FROM ${image_url} AS huntsman-base
+
+ARG arch="armv7"
 
 LABEL description="Image for a remote device running a pyro camera service."
 LABEL maintainers="developers@huntsman.space"

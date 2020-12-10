@@ -54,9 +54,6 @@ def pyro_service(service_class=None,
     service_name = service_name or get_config('name', 'Generic Pyro Server')
     service_instance = load_module(service_class)(device_name=service_name)
 
-    # TODO figure out if we really want multiplex.
-    # Pyro5.config.SERVERTYPE = "multiplex"
-
     # Locate the NS
     # NOTE: Moving this block outside start_service can lead to broken pipe errors
     try:
