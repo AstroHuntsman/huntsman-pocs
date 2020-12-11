@@ -7,6 +7,8 @@ from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.mount import create_mount_simulator
+from panoptes.utils.config.client import set_config
+from panoptes.pocs.dome import create_dome_simulator
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
@@ -35,8 +37,19 @@ def observatory(mount, cameras, images_dir):
 
 
 @pytest.fixture(scope='function')
-def pocs(observatory):
+def dome():
+    set_config('dome', {
+        'brand': 'Simulacrum',
+        'driver': 'simulator',
+    })
+    return create_dome_simulator()
+
+
+@pytest.fixture(scope='function')
+def pocs(observatory, dome):
+    os.environ['POCSTIME'] = '2020-01-01 08:00:00'
     pocs = POCS(observatory, run_once=True)
+    pocs.observatory.set_dome(dome)
     yield pocs
     pocs.power_down()
 
@@ -86,6 +99,20 @@ def test_parking_ready(pocs):
         assert pocs.next_state == state
         pocs.goto_next_state()
         assert pocs.state == state
+
+
+def test_dome_status(pocs):
+    '''
+    Test if the dome is open/close after ready/parking state is executed.
+    '''
+    pocs.initialize()
+    pocs.observatory.dome.close()
+    pocs.get_ready()
+    assert pocs.state == 'ready'
+    assert pocs.observatory.dome.is_open
+    pocs.next_state = 'parking'
+    pocs.goto_next_state()
+    assert not pocs.observatory.dome.is_open
 
 
 def test_sleeping_stop(pocs):
