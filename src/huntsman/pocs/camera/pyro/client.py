@@ -292,6 +292,7 @@ class Camera(AbstractCamera):
                 try:
                     # The best way of checking the file is written appears to be to get its data
                     fits.getdata(filename)
+                    self.logger.debug(f"Finished waiting for file {filename}.")
                     return
                 except (TypeError, FileNotFoundError):
                     pass
