@@ -292,12 +292,12 @@ class Camera(AbstractCamera):
                 try:
                     # The best way of checking the file is written appears to be to get its data
                     fits.getdata(filename)
-                    break
+                    return
                 except (TypeError, FileNotFoundError):
                     pass
             timer.sleep(sleep_time)
-        raise error.PanError(f"Timeout of {timeout} reached while waiting for readout to finish"
-                             f" on camera client {self}.")
+        raise error.PanError(f"Timeout of {timeout} reached while waiting for file {filename} to"
+                             f" exist on camera client {self}.")
 
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""
