@@ -1,6 +1,9 @@
 import os
+import time
 from threading import Thread
 from contextlib import suppress
+
+from astropy.io import fits
 from astropy import units as u
 from Pyro5.api import Proxy
 
@@ -183,7 +186,7 @@ class Camera(AbstractCamera):
             self.filterwheel = PyroFilterWheel(camera=self)
 
     def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, blocking=False,
-                      *args, **kwargs):
+                      sleep_interval=0.5, max_write_time=10, *args, **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
 
         Args:
@@ -209,7 +212,9 @@ class Camera(AbstractCamera):
 
         # Start the readout thread
         timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
-        readout_thread = Thread(target=self._wait_for_readout, args=(timeout,))
+        timeout += max_write_time
+        readout_thread = Thread(target=self._wait_for_file, args=(filename, timeout))
+
         readout_thread.start()
         if blocking:
             readout_thread.join()
@@ -275,19 +280,24 @@ class Camera(AbstractCamera):
         return self._focus_event
 
     # Private Methods
-    def _wait_for_readout(self, timeout, sleep_time=0.1):
-        """ Wait for readout to finish on the camera service.
+    def _wait_for_file(self, filename, timeout, sleep_time=0.1):
+        """ Wait for the file to be written.
         Args:
-            timeout (float): The readout timeout in seconds.
+            timeout (float): The timeout in seconds.
         """
         proxy = self._proxy
         timer = CountdownTimer(timeout)
         while not timer.expired():
             if not proxy.is_reading_out:
-                return
+                try:
+                    # The best way of checking the file is written appears to be to get its data
+                    fits.getdata(filename)
+                    break
+                except (TypeError, FileNotFoundError):
+                    pass
             timer.sleep(sleep_time)
         raise error.PanError(f"Timeout of {timeout} reached while waiting for readout to finish"
-                              f" on camera client {self}.")
+                             f" on camera client {self}.")
 
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""
