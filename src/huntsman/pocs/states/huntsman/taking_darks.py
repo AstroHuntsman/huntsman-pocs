@@ -7,7 +7,7 @@ def on_enter(event_data):
 
         pocs.say("It's time to take darks!")
 
-        pocs.status()
+        pocs.status
 
         # Wait until mount is parked
         pocs.say("Everything set up for dark fields")
@@ -18,9 +18,10 @@ def on_enter(event_data):
             if exptime not in exptimes_list:
                 exptimes_list.append(exptime)
 
-            if len(exptimes_list) > 0:
-                pocs.say("I'm starting with dark-field exposures")
-                pocs.observatory.take_dark_fields(exptimes_list)
+        if len(exptimes_list) > 0:
+            pocs.say("I'm starting with dark-field exposures")
+            pocs.observatory.take_dark_fields(exptimes_list)
+
     except Exception as e:
         pocs.logger.warning("Problem encountered while taking darks: {}".format(e))
 
