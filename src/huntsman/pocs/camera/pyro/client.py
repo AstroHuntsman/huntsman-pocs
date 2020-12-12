@@ -58,6 +58,8 @@ class Camera(AbstractCamera):
         self.focuser = None
         self.filterwheel = None
 
+        self._wait_for_file_thread = None  # Used by self.process_exposure
+
         # Connect to camera
         self.connect()
 
@@ -219,6 +221,8 @@ class Camera(AbstractCamera):
         if blocking:
             readout_thread.join()
 
+        self._wait_for_file_thread = readout_thread  # Used by self.process_exposure
+
         return readout_thread
 
     def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
@@ -278,6 +282,12 @@ class Camera(AbstractCamera):
             self._proxy.event_wait("focuser", timeout=timeout)
 
         return self._focus_event
+
+    def process_exposure(self, *args, **kwargs):
+        """ Small wrapper around `Camera.process_exposure` that makes sure the image is actually
+        written before starting processing. """
+        self._wait_for_file_thread.join()
+        return super().process_exposure(*args, **kwargs)
 
     # Private Methods
     def _wait_for_file(self, filename, timeout, sleep_time=0.1):
