@@ -9,7 +9,6 @@ def on_enter(event_data):
 
         # Start the mount slewing
         pocs.observatory.slew_to_target()
-        pocs.status()  # Send status update
 
         pocs.say("I'm at the target")
         pocs.next_state = 'focusing'
