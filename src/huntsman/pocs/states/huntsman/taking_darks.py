@@ -23,7 +23,7 @@ def on_enter(event_data):
             pocs.observatory.take_dark_fields(exptimes_list)
 
         else:
-            pocs.say("No exposure times provided. Going to housekeeping.")
+            pocs.say("No exposure times were provided. Going to housekeeping.")
 
     except Exception as e:
         pocs.logger.warning("Problem encountered while taking darks: {}".format(e))
