@@ -7,8 +7,6 @@ def on_enter(event_data):
 
         pocs.say("It's time to take darks!")
 
-        pocs.status
-
         # Wait until mount is parked
         pocs.say("Everything set up for dark fields")
 
