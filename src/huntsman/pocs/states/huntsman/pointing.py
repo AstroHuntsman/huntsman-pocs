@@ -32,7 +32,6 @@ def on_enter(event_data):
         wait_time = 0.
         while not camera_event.is_set():
             pocs.logger.debug('Waiting for pointing image: {} seconds'.format(wait_time))
-            pocs.status()
 
             sleep(wait_interval)
             wait_time += wait_interval
