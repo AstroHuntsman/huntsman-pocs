@@ -16,7 +16,6 @@ def pyro_service(service_class=None,
                  service_name=None,
                  host=None,
                  port=None,
-                 auto_start=True,
                  metadata=None):
     """Creates and runs a Pyro Service.
 
@@ -30,7 +29,6 @@ def pyro_service(service_class=None,
         attempt to use service_name to query the config server for the device config.
     host (str): The host or ip of the device running the service.
     port (str or int): The port to attach the device to, default 0/None for auto-select.
-    auto_start (bool): If the pyro service process should automatically be started.
     metadata (list of str): Metadata to be stored on the NS. If `None`, will create metadata
         based on service class using the config server.
 
@@ -56,58 +54,36 @@ def pyro_service(service_class=None,
     service_name = service_name or get_config('name', 'Generic Pyro Server')
     service_instance = load_module(service_class)(device_name=service_name)
 
-    # TODO figure out if we really want multiplex.
-    Pyro5.config.SERVERTYPE = "multiplex"
+    # Locate the NS
+    # NOTE: Moving this block outside start_service can lead to broken pipe errors
+    try:
+        nameserver = get_running_nameserver()
+    except Exception as e:
+        logger.warning(f"Pyro nameserver not running, can't create server. "
+                       f"See 'huntsman-pyro nameserver' for details. {e!r}")
+        return
 
-    def start_service():
-        # Locate the NS
-        # NOTE: Moving this block outside start_service can lead to broken pipe errors
+    logger.info(f'Starting service_name={service_name} on host={host}:{port}')
+    with PyroDaemon(host=host, port=port) as daemon:
+        logger.info(f'Creating pyro daemon service for service_class={service_class}')
+        uri = daemon.register(service_instance)
+        logger.info(f'Registered {service_class} pyro daemon with uri={uri}'
+                    f' and metadata={metadata}.')
+
+        # Register service with the nameserver.
+        nameserver.register(service_name, uri, safe=True, metadata=metadata)
+        logger.info(f'Registered {service_class} with nameserver as {service_name}')
+
         try:
-            nameserver = get_running_nameserver()
-        except Exception as e:
-            logger.warning(f"Pyro nameserver not running, can't create server. "
-                           f"See 'huntsman-pyro nameserver' for details. {e!r}")
-            return
+            logger.info(f'Pyro service {service_name} started. Ctrl-C/Cmd-C to quit...')
+            daemon.requestLoop()
+        except KeyboardInterrupt:
+            logger.info(f'Pyro service {service_name} requested shutdown by user.')
+        except Exception as e:  # noqa
+            logger.info(f'{service_name} died unexpectedly: {e!r}')
+        finally:
+            logger.info(f'Shutting down {service_name} pyro server...')
+            nameserver.remove(name=service_name)
+            logger.info(f'Unregistered {service_name} from pyro nameserver')
 
-        logger.info(f'Starting service_name={service_name} on host={host}:{port}')
-        with PyroDaemon(host=host, port=port) as daemon:
-            logger.info(f'Creating pyro daemon service for service_class={service_class}')
-            uri = daemon.register(service_instance)
-            logger.info(f'Registered {service_class} pyro daemon with uri={uri}'
-                        f' and metadata={metadata}.')
-
-            # Register service with the nameserver.
-            nameserver.register(service_name, uri, safe=True, metadata=metadata)
-            logger.info(f'Registered {service_class} with nameserver as {service_name}')
-
-            # assert False
-            # Save uri in the generic POCS config.
-            # TODO do better checks if config-server is running rather than just a warning.
-            try:
-                set_config(f'pyro.devices.{service_name}.uri', uri)
-            except Exception as e:
-                logger.warning(f"Can't save {service_name} uri in config-server: {e!r}")
-
-            try:
-                logger.info(f'Pyro service {service_name} started. Ctrl-C/Cmd-C to quit...')
-                daemon.requestLoop()
-            except KeyboardInterrupt:
-                logger.info(f'Pyro service {service_name} requested shutdown by user.')
-            except Exception as e:  # noqa
-                logger.info(f'{service_name} died unexpectedly: {e!r}')
-            finally:
-                logger.info(f'Shutting down {service_name} pyro server...')
-                nameserver.remove(name=service_name)
-                logger.info(f'Unregistered {service_name} from pyro nameserver')
-
-    # Set up pyro service process.
-    logger.info(f'Setting up Pyro service_name={service_name}.')
-    service_process = Process(target=start_service)
-
-    if auto_start:
-        logger.info(f"Auto-starting new pyro service_name={service_name}")
-        service_process.start()
-        logger.success("Pyro nameserver started, blocking until finished...(Ctrl-c/Cmd-c to exit)")
-        service_process.join()
-
-    return service_process
+    return
