@@ -1,6 +1,6 @@
 name: Python Tests
 
-on: [ pull_request ]
+on: [ push, pull_request ]
 jobs:
   lint:
     runs-on: ubuntu-latest

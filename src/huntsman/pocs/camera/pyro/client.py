@@ -190,9 +190,8 @@ class Camera(AbstractCamera):
     def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, blocking=False,
                       sleep_interval=0.5, max_write_time=10, *args, **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
-
         Args:
-            seconds (u.second, optional): Length of exposure.
+            seconds (astropy.Quantity, optional): Length of exposure.
             filename (str, optional): Image is saved to this filename.
             dark (bool, optional): Exposure is a dark frame, default False. On cameras that support
                 taking dark frames internally (by not opening a mechanical shutter) this will be
@@ -200,9 +199,11 @@ class Camera(AbstractCamera):
                 case setting dark to True will cause the `IMAGETYP` FITS header keyword to have
                 value 'Dark Frame' instead of 'Light Frame'. Set dark to None to disable the
                 `IMAGETYP` keyword entirely.
+            max_write_time (astropy.Quantity, optional): The maximum allowable delay between the
+                file being written on the camaera host and it being fully written on the local
+                filesystem. Default 10s.
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block (on the client-side) until it completes.
-
         Returns:
             threading.Thread: The readout thread, which joins once readout has finished.
         """
@@ -214,7 +215,7 @@ class Camera(AbstractCamera):
 
         # Start the readout thread
         timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
-        timeout += max_write_time
+        timeout += get_quantity_value(max_write_time, u.second)
         readout_thread = Thread(target=self._wait_for_file, args=(filename, timeout))
 
         readout_thread.start()

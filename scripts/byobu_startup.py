@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -8,21 +9,39 @@ import time
 from huntsman.pocs.utils import load_config
 
 WINDOWS = ["main-control",
-           "huntsman-pocs-servers"
-           "dome-shutter"
-           "weather",
-           "camera-services"
+           "shutter-and-weather",
+           "camera-servers",
            "camera-logs",
-           "dome-control"]
+           "dome-control",
+           "data-management"]
+
+POCS_STARTUP = ["from pocs.mount import create_mount_from_config",
+                "from pocs.scheduler import create_scheduler_from_config",
+                "from huntsman.pocs.camera import create_cameras_from_config",
+                "from huntsman.pocs.observatory import HuntsmanObservatory",
+                "from pocs.core import POCS",
+                "from huntsman.pocs.utils import load_config",
+                "config = load_config",
+                "cameras = create_cameras_from_config",
+                "mount = create_mount_from_config(config)",
+                "mount.initialize()",
+                "scheduler = create_scheduler_from_config(config)",
+                "observatory = HuntsmanObservatory(cameras=cameras, "
+                "mount=mount, scheduler=scheduler, with_autoguider=True,"
+                " take_flats=True",
+                "pocs = POCS(observatory, simulator=['power','weather']",
+                # Uncomment the following lines for automatic running
+                "#pocs.initialize()",
+                "#pocs.run()"]
 
 DOME_SHUTTER_STARTUP = ["from huntsman.pocs.dome.musca import HuntsmanDome",
                         "from huntsman.pocs.utils import load_config",
                         "config = load_config()",
                         "dome = HuntsmanDome(config=config)",
-                        "dome.status()"]
+                        "dome.status()",
+                        "#dome.open()"]
 
-WEATHER_STARTUP = ["cd ${PANDIR}/my-aag-weather",
-                   "docker-compose down"
+WEATHER_STARTUP = ["cd $PANDIR/my-aag-weather",
                    "docker-compose up"]
 
 
@@ -156,7 +175,7 @@ def create_12_pane_window(window_name, session_name="1-Huntsman-Control"):
     call_byobu(f"select-layout tiled")
 
 
-def setup_session(session_name="huntsman-control", windows=None):
+def setup_session(session_name="1-Huntsman-Control", windows=None):
     """Create a new byobu session and populate desired windows.
 
     Parameters
@@ -165,6 +184,7 @@ def setup_session(session_name="huntsman-control", windows=None):
         Name of the byobu session containing the desired window.
     windows : list of str
         List of byobu window names.
+
     """
     windows = windows or list()
     call_byobu(f"new-session -d -s '{session_name}'")
@@ -184,9 +204,10 @@ def setup_main_control_window(cmd_prefix='#'):
     ----------
     cmd_prefix : str
         The prefix to prepend to any shell commands (ie to comment them out).
+
     """
     # setup the main-control window
-    select_window("main_control")
+    select_window(WINDOWS[0])
     # Select default pane. Probably an unnecessary line of code
     call_byobu(f"select-pane -t 0")
     # split window hoirzontaly
@@ -229,6 +250,7 @@ def setup_shutter_weather_window(cmd_prefix='#'):
     ----------
     cmd_prefix : str
         The prefix to prepend to any shell commands (ie to comment them out).
+
     """
     select_window(WINDOWS[1])
     # split window horizontally
@@ -266,6 +288,7 @@ def setup_camera_server_window(config, cmd_prefix='#'):
         Configuration dictionary containing device info.
     cmd_prefix : str
         The prefix to prepend to any shell commands (ie to comment them out).
+
     """
     select_window(WINDOWS[2])
     # create a 4x3 pane layout to accomodate all 10 cameras
@@ -292,6 +315,7 @@ def setup_camera_logs_window(config, cmd_prefix='#'):
         Configuration dictionary containing device info.
     cmd_prefix : str
         The prefix to prepend to any shell commands (ie to comment them out).
+
     """
     select_window(WINDOWS[3])
     # create a 4x3 pane layout to accomodate all 10 cameras
@@ -314,14 +338,30 @@ def setup_dome_controller_log_window(cmd_prefix='#'):
     ----------
     cmd_prefix : str
         The prefix to prepend to any shell commands (ie to comment them out).
+
     """
     select_window(WINDOWS[4], pane=0)
     # ssh into domepi and display the server log
     cmd1 = cmd_prefix + "ssh huntsman@192.168.80.110"
-    cmd2 = cmd_prefix + "grc tail -F -n 1000 ~/huntsman-dome/domehunter/"\
+    cmd2 = cmd_prefix + \
+        "grc tail -F -n 1000 ~/huntsman-dome/domehunter/"\
         "logs/server_log_yyyy_mm_dd.log"
     send_command_to_pane(cmd1, 0)
     send_command_to_pane(cmd2, 0)
+    return
+
+
+def setup_data_management_window(cmd_prefix='#'):
+    """Function that automates the setup of the data management window
+
+    Parameters
+    ----------
+    cmd_prefix : str
+        The prefix to prepend to any shell commands (ie to comment them out).
+
+    """
+    select_window(WINDOWS[5], pane=0)
+    call_byobu(f"split-window -h")
     return
 
 
@@ -343,8 +383,10 @@ if __name__ == "__main__":
     if not bool(config):
         sys.exit("Loaded config is empty, exiting.")
 
+    session_name = "1-Huntsman-Control"
+
     print("Setting up session windows")
-    setup_session()
+    setup_session(session_name="1-Huntsman-Control", windows=WINDOWS)
 
     print("Setting up window (1/6) [main control]")
     setup_main_control_window(cmd_prefix=args.no_action)

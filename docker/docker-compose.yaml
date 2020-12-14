@@ -16,7 +16,7 @@ volumes:
 
 services:
   pocs-config-server:
-    image: huntsmanarray/huntsman-pocs:commissioning
+    image: huntsmanarray/huntsman-pocs:develop
     tty: true
     container_name: pocs-config-server
     hostname: pocs-config-server
@@ -33,7 +33,7 @@ services:
       - images:/var/huntsman/images
     command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
   pyro-name-server:
-    image: huntsmanarray/huntsman-pocs:commissioning
+    image: huntsmanarray/huntsman-pocs:develop
     tty: true
     container_name: pyro-name-server
     hostname: pyro-name-server
@@ -52,7 +52,7 @@ services:
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
   pyro-http:
-    image: huntsmanarray/huntsman-pocs:commissioning
+    image: huntsmanarray/huntsman-pocs:develop
     tty: true
     container_name: pyro-http
     hostname: pyro-http
