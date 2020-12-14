@@ -8,7 +8,7 @@ def on_enter(event_data):
         pocs.say("It's time to take darks!")
 
         # Wait until mount is parked
-        pocs.say("Everything set up for dark fields")
+        pocs.say("Everything set up for darks")
 
         exptimes_list = list()
         for target in pocs.observatory.scheduler.fields_list:
@@ -16,14 +16,12 @@ def on_enter(event_data):
             if exptime not in exptimes_list:
                 exptimes_list.append(exptime)
 
-        if len(exptimes_list) > 0:
-            pocs.say("I'm starting with dark-field exposures")
-            pocs.observatory.take_dark_fields(exptimes_list)
-
-        else:
-            pocs.say("No exposure times were provided. Going to housekeeping state.")
+        pocs.say("I'm starting with dark exposures")
+        pocs.observatory.take_dark_images(exptimes_list)
 
     except Exception as e:
         pocs.logger.warning("Problem encountered while taking darks: {}".format(e))
 
-    pocs.next_state = 'housekeeping'
+    finally:
+        pocs.say("Going to housekeeping state.")
+        pocs.next_state = 'housekeeping'
