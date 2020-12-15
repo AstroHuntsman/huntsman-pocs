@@ -8,7 +8,7 @@ def on_enter(event_data):
         pocs.say("I'm slewing over to the coordinates to track the target.")
 
         # Start the mount slewing
-        pocs.observatory.slew_to_target()
+        pocs.observatory.mount.slew_to_target()
 
         pocs.say("I'm at the target")
         pocs.next_state = 'focusing'
