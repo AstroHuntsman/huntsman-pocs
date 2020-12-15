@@ -268,8 +268,7 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Finished flat-fielding.')
 
     def take_dark_images(self,
-                         exptimes=[],
-                         sleep=10,
+                         exptimes=None,
                          camera_names=None,
                          n_darks=10,
                          imtype='dark',
