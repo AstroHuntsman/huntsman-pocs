@@ -12,8 +12,8 @@ class DarkObservation(Observation):
     """ A Dark observation
 
     Dark observations will consist of multiple exposure. As the mount will be
-    parked when using this class, the fields will be centred at the parked
-    position.
+    parked when using this class, the fits image header RA, Dec will be centred
+    at the parked position.
 
     Note:
         For now the new observation must be created like a normal `Observation`,
