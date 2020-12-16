@@ -187,8 +187,8 @@ class Camera(AbstractCamera):
         if self._proxy.has_filterwheel:
             self.filterwheel = PyroFilterWheel(camera=self)
 
-    def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, blocking=False,
-                      sleep_interval=0.5, max_write_time=10, *args, **kwargs):
+    def take_exposure(self, seconds=1.0*u.second, filename=None, dark=False, blocking=False,
+                      sleep_interval=0.1*u.second, max_write_time=10, *args, **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
         Args:
             seconds (astropy.Quantity, optional): Length of exposure.
@@ -202,6 +202,8 @@ class Camera(AbstractCamera):
             max_write_time (astropy.Quantity, optional): The maximum allowable delay between the
                 file being written on the camaera host and it being fully written on the local
                 filesystem. Default 10s.
+            sleep_interval (astropy.Quantity, optional): The time to sleep between checks for
+                the file existing.
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block (on the client-side) until it completes.
         Returns:
@@ -216,7 +218,8 @@ class Camera(AbstractCamera):
         # Start the readout thread
         timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
         timeout += get_quantity_value(max_write_time, u.second)
-        readout_thread = Thread(target=self._wait_for_file, args=(filename, timeout))
+        readout_thread = Thread(target=self._wait_for_file, args=(filename, timeout),
+                                kwargs=dict(sleep_interval=sleep_interval))
 
         readout_thread.start()
         if blocking:
@@ -291,7 +294,7 @@ class Camera(AbstractCamera):
         return super().process_exposure(*args, **kwargs)
 
     # Private Methods
-    def _wait_for_file(self, filename, timeout, sleep_time=0.1):
+    def _wait_for_file(self, filename, timeout, sleep_interval=0.1):
         """ Wait for the file to be written.
         Args:
             timeout (float): The timeout in seconds.
@@ -300,14 +303,13 @@ class Camera(AbstractCamera):
         timer = CountdownTimer(timeout)
         while not timer.expired():
             if not proxy.is_reading_out:
-                try:
+                with suppress(TypeError, FileNotFoundError):
                     # The best way of checking the file is written appears to be to get its data
+                    # TODO: Check if there is a better way of doing this
                     fits.getdata(filename)
                     self.logger.debug(f"Finished waiting for file {filename}.")
                     return
-                except (TypeError, FileNotFoundError):
-                    pass
-            timer.sleep(sleep_time)
+            timer.sleep(sleep_interval)
         raise error.PanError(f"Timeout of {timeout} reached while waiting for file {filename} to"
                              f" exist on camera client {self}.")
 
