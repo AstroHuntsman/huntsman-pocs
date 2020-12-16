@@ -310,7 +310,7 @@ class Camera(AbstractCamera):
                     fits.getdata(filename)
                     self.logger.debug(f"Finished waiting for file {filename}.")
                     return
-            timer.sleep(sleep_interval)sada
+            timer.sleep(sleep_interval)
         raise error.PanError(f"Timeout of {timeout} reached while waiting for file {filename} to"
                              f" exist on camera client {self}.")
 
