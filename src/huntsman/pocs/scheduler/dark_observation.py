@@ -1,3 +1,4 @@
+import os
 from astropy import units as u
 from contextlib import suppress
 
@@ -7,11 +8,12 @@ from panoptes.utils import listify
 
 
 class DarkObservation(Observation):
-    """ A Dark-field observation
+
+    """ A Dark observation
 
     Dark observations will consist of multiple exposure. As the mount will be
-    parked when using this class, the fields will be centred at the parked
-    position.
+    parked when using this class, the fits image header RA, Dec will be centred
+    at the parked position.
 
     Note:
         For now the new observation must be created like a normal `Observation`,
@@ -27,14 +29,17 @@ class DarkObservation(Observation):
                 `~astropy.coordinates.SkyCoord`.
         """
         # Create the observation
-        dark_field = Field('Dark-Field', position)
-        super().__init__(field=dark_field, *args, **kwargs)
+        dark_image = Field('Dark', position)
+        super().__init__(field=dark_image, *args, **kwargs)
 
         # Set initial list to original values
         self._exptime = listify(self.exptime)
         self._field = listify(self.field)
 
         self.extra_config = kwargs
+
+        # Specify directory root for file storage
+        self._directory = os.path.join(self._image_dir, 'darks')
 
     @property
     def exptime(self):
