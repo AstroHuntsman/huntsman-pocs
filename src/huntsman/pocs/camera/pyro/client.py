@@ -299,6 +299,7 @@ class Camera(AbstractCamera):
         Args:
             timeout (float): The timeout in seconds.
         """
+        sleep_interval = get_quantity_value(sleep_interval, u.second)
         proxy = self._proxy
         timer = CountdownTimer(timeout)
         while not timer.expired():
