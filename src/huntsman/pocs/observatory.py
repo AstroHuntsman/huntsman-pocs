@@ -128,25 +128,6 @@ class HuntsmanObservatory(Observatory):
         # Add most recent exposure to list
         self.current_observation.exposure_list[image_id] = file_path
 
-    def slew_to_target(self):
-        """ Slew to target and turn on guiding.
-
-        This is convenience method to slew to the target and turn on the guiding
-        given a large separation.
-
-        """
-        separation_limit = 0.5 * u.degree
-
-        # Slew to target
-        self.mount.slew_to_target()
-
-        self.status()  # Send status update and update `is_tracking`
-
-        # WARNING: Some kind of timeout needed
-        while not self.mount.is_tracking and self.mount.distance_from_target() >= separation_limit:
-            self.logger.debug("Slewing to target")
-            time.sleep(1)
-
     def analyze_recent(self):
         """Analyze the most recent exposure.
 

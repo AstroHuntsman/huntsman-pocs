@@ -14,6 +14,7 @@ LOCAL_IMAGES_DIR=${PANDIR}/images
 DC_FILE_URL=https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/docker/camera/docker-compose.yaml
 
 # First, check if the camera docker service is already running. If so, exit 0.
+cd ${PANDIR}
 if [ -z `docker-compose ps -q camera` ] || [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q camera)` ]; then
   echo "No running docker camera service found. Starting a new one."
 else
