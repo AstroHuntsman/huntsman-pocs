@@ -33,7 +33,7 @@ build_develop() {
   echo "Building local ${HUNTS_POCS_IMAGE_URL} from ${POCS_IMAGE_URL} in ${HUNTSMAN_POCS}."
   docker build \
     --build-arg "image_url=${POCS_IMAGE_URL}" \
-    -t "huntsman-pocs:${TAG}" \
+    -t "huntsmanarray/huntsman-pocs:${TAG}" \
     -f "${HUNTSMAN_POCS}/docker/Dockerfile" \
     "${HUNTSMAN_POCS}"
 
@@ -44,7 +44,7 @@ build_develop() {
 build_camera() {
   echo "Building local huntsman-pocs-camera:${TAG} from ${HUNTS_POCS_IMAGE_URL} in ${HUNTSMAN_POCS}"
   docker build \
-    -t "huntsman-pocs-camera:${TAG}" \
+    -t "huntsmanarray/huntsman-pocs-camera:${TAG}" \
     --build-arg "image_url=${HUNTS_POCS_IMAGE_URL}" \
     -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" \
     "${HUNTSMAN_POCS}"
