@@ -57,7 +57,7 @@ def pocs(observatory, dome):
 # ==============================================================================
 
 
-def test_entering_darks_state(pocs):
+def test_ready_park_darks(pocs):
     '''
     Test if parked state transitions to taking_darks given the required
     conditions, namely that it is dark and cannot observe (i.e. bad weather).
@@ -79,10 +79,12 @@ def test_entering_darks_state(pocs):
     assert not pocs.is_weather_safe()
 
     pocs.next_state = 'parking'
-    for state in ['parking', 'parked', 'taking_darks']:
+    for state in ['parking', 'parked']:
         assert pocs.next_state == state
         pocs.goto_next_state()
         assert pocs.state == state
+
+    assert pocs.next_state == "taking_darks"
 
 
 def test_parking_ready(pocs):
@@ -113,24 +115,6 @@ def test_dome_status(pocs):
     pocs.next_state = 'parking'
     pocs.goto_next_state()
     assert not pocs.observatory.dome.is_open
-
-
-def test_sleeping_stop(pocs):
-    '''
-    Test if ready transitions to sleeping and then stops if still dark.
-    '''
-    os.environ['POCSTIME'] = '2020-10-29 13:00:00'
-    pocs.initialize()
-    pocs.get_ready()
-    pocs._obs_run_retries = -1
-    assert (not pocs.should_retry)
-    # Make sure its dark
-    assert pocs.is_dark(horizon='observe')
-    # Get into the sleeping state
-    pocs.next_state = 'parking'
-    for state in ['parking', 'parked', 'taking_darks', 'housekeeping', 'sleeping']:
-        assert pocs.next_state == state
-        pocs.goto_next_state()
 
 
 def test_ready_scheduling_1(pocs):
