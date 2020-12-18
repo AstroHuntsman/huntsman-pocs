@@ -72,24 +72,25 @@ class HuntsmanDome(AbstractSerialDome):
 
     @property
     def is_open(self):
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         return v == Protocol.OPEN
 
     @property
     def is_closed(self):
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         return v == Protocol.CLOSED
 
     @property
     def door_open(self):
-        v = self.status()[Protocol.DOOR]
+        v = self.status[Protocol.DOOR]
         return v == Protocol.DOOR_OPEN
 
     @property
     def door_closed(self):
-        v = self.status()[Protocol.DOOR]
+        v = self.status[Protocol.DOOR]
         return v == Protocol.DOOR_CLOSED
 
+    @property
     def status(self):
         """A dictionary containing all status info for dome.
 
@@ -112,7 +113,7 @@ class HuntsmanDome(AbstractSerialDome):
         if self.is_open:
             return True
 
-        v = self.status()[Protocol.BATTERY]
+        v = self.status[Protocol.BATTERY]
         if v < self.MIN_OPERATING_VOLTAGE:
             self.logger.error(
                 'Dome shutter battery voltage too low to open: {!r}', v)
@@ -121,7 +122,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         if v == Protocol.OPEN:
             # refresh the threading close event
             self._close_event.clear()
@@ -182,7 +183,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter')
         time.sleep(HuntsmanDome.MOVE_TIMEOUT)
 
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         if v == Protocol.CLOSED:
             return True
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
@@ -219,7 +220,7 @@ class HuntsmanDome(AbstractSerialDome):
         """Return a text string describing dome shutter's current status."""
         if not self.is_connected:
             return 'Not connected to the shutter'
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         if v == Protocol.CLOSED:
             return 'Shutter closed'
         if v == Protocol.OPENING:
