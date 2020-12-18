@@ -17,7 +17,6 @@ def on_enter(event_data):
         wait_time = 0.
         while not all([event.is_set() for event in camera_events.values()]):
             pocs.logger.debug(f'Waiting for images: {wait_time} seconds.')
-
             sleep(WAIT_INTERVAL)
             wait_time += WAIT_INTERVAL
 
@@ -27,5 +26,5 @@ def on_enter(event_data):
         pocs.logger.error(f"Error encountered during exposures: {e}")
     else:
         # Perform some observe cleanup
-        pocs.logger.debug("Finished with observing, setting next state to 'analyzing'.")
+        pocs.logger.info("Finished observing, setting next state to 'analyzing'.")
         pocs.next_state = 'analyzing'
