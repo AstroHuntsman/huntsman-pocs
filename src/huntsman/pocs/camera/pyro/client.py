@@ -262,7 +262,9 @@ class Camera(AbstractCamera):
                 False.
             blocking (bool, optional): Whether to block (on the client-side) until autofocus
                 complete, default False.
-            timeout (float, optional): The client-side autofocus timeout. The default value of `None` will lookup the `focusing.<focus_type>.timeout` value in the config server. If not provided, a default fallback of 600 seconds is used.
+            timeout (float, optional): The client-side autofocus timeout. The default value of
+                `None` will lookup the `focusing.<focus_type>.timeout` value in the config server.
+                 If not provided, a default fallback of 600 seconds is used.
 
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
@@ -295,7 +297,8 @@ class Camera(AbstractCamera):
 
     # Private Methods
     def _wait_for_file(self, filename, timeout, sleep_interval=0.1):
-        """ Wait for the file to be written.
+        """ Wait for the file to be written. Useful when files are written from camera to host
+        over network with SSHFS.
         Args:
             timeout (float): The timeout in seconds.
         """
@@ -310,7 +313,7 @@ class Camera(AbstractCamera):
                     fits.getdata(filename)
                     self.logger.debug(f"Finished waiting for file {filename}.")
                     return
-            timer.sleep(sleep_interval)
+            time.sleep(sleep_interval)
         raise error.PanError(f"Timeout of {timeout} reached while waiting for file {filename} to"
                              f" exist on camera client {self}.")
 
