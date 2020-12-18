@@ -114,20 +114,6 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
 
-    def finish_observing(self):
-        """Performs various cleanup functions for observe.
-
-        Add the latest observation to the exposure list.
-        """
-
-        # Lookup the current observation
-        image_info = self.db.get_current('observations')
-        image_id = image_info['data']['image_id']
-        file_path = image_info['data']['file_path']
-
-        # Add most recent exposure to list
-        self.current_observation.exposure_list[image_id] = file_path
-
     def analyze_recent(self):
         """Analyze the most recent exposure.
 
