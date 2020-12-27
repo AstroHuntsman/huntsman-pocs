@@ -138,6 +138,10 @@ class HuntsmanObservatory(Observatory):
         """
         Override autofocus_cameras to update the last focus time.
         """
+
+        # Move all the filterwheels to the luminance position.
+        self._move_all_filterwheels_to('luminance')
+
         result = super().autofocus_cameras(*args, **kwargs)
 
         # Update last focus time
@@ -234,14 +238,8 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def take_dark_images(self,
-                         exptimes=None,
-                         camera_names=None,
-                         n_darks=10,
-                         imtype='dark',
-                         set_from_config=False,
-                         *args, **kwargs
-                         ):
+    def take_dark_images(self, exptimes=None, camera_names=None, n_darks=10, imtype='dark',
+                         set_from_config=False, *args, **kwargs):
         """Take n_darks for each exposure time specified,
            for each camera.
 
@@ -268,17 +266,8 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug(f'Using cameras {cameras_list}')
 
-        filterwheel_events = dict()
-
-        self.logger.debug(f'Moving all camera filterwheels to blank filter')
-
-        # Move all the camera filterwheels to the blank position.
-        for camera in cameras_list.values():
-            if camera.filterwheel.current_filter != 'blank':
-                filterwheel_event = camera.filterwheel.move_to_dark_position()
-                filterwheel_events[camera] = filterwheel_event
-        self.logger.debug('Waiting for all the filterwheels to move to the dark position')
-        wait_for_events(list(filterwheel_events.values()))
+        # Move all the filterwheels to the blank position.
+        self._move_all_filterwheels_to('blank')
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -747,3 +736,29 @@ class HuntsmanObservatory(Observatory):
             else:
                 self.logger.debug('Aborting flat-field dark observations as no longer safe.')
                 return
+
+    def _move_all_filterwheels_to(self, filter_name, camera_names=None):
+        """Move all the filterwheels to a given filter
+
+        Args:
+            filter_name (str): name of the filter where filterwheels will be moved to.
+            camera_names (list, optional): List of camera names to be used.
+                Default to `None`, which uses all cameras.
+        """
+
+        if camera_names is None:
+            cameras_list = self.cameras
+        else:
+            cameras_list = {c: self.cameras[c] for c in camera_names}
+
+        filterwheel_events = dict()
+
+        self.logger.debug(f'Moving all camera filterwheels to the {filter_name} filter')
+
+        # Move all the camera filterwheels to filter_name.
+        for camera in cameras_list.values():
+            if camera.filterwheel.current_filter != filter_name:
+                filterwheel_event = camera.filterwheel.move_to(filter_name)
+                filterwheel_events[camera] = filterwheel_event
+        self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter')
+        wait_for_events(list(filterwheel_events.values()))
