@@ -70,6 +70,10 @@ flat_fields:
   max_exptime: 60
   min_exptime: 0.0001
 
+darks:
+  exposure_times: [10, 30, 60, 300]
+  n_darks: 5
+
 pointing:
     exptime: 30
     max_iterations: 3
@@ -86,6 +90,7 @@ focusing:
     frequency: 2
     frequency_unit: hour
     timeout: 600
+    filter_name: luminance
 
 pyro:
     nameserver:

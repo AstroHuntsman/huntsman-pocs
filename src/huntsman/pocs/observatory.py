@@ -53,9 +53,9 @@ class HuntsmanObservatory(Observatory):
 
         # Attributes for focusing
         self.last_focus_time = None
-        coarse_focus_config = self.get_config('focusing.coarse')
-        self._focus_frequency = coarse_focus_config['frequency'] \
-            * u.Unit(coarse_focus_config['frequency_unit'])
+        self.coarse_focus_config = self.get_config('focusing.coarse')
+        self._focus_frequency = self.coarse_focus_config['frequency'] \
+            * u.Unit(self.coarse_focus_config['frequency_unit'])
 
         if self.has_autoguider:
             self.logger.info("Setting up autoguider")
@@ -140,7 +140,7 @@ class HuntsmanObservatory(Observatory):
         """
 
         # Move all the filterwheels to the luminance position.
-        self._move_all_filterwheels_to('luminance')
+        self._move_all_filterwheels_to(self.coarse_focus_config['filter_name'])
 
         result = super().autofocus_cameras(*args, **kwargs)
 
@@ -275,13 +275,13 @@ class HuntsmanObservatory(Observatory):
 
         exptimes = listify(exptimes)
 
-        if not isinstance(n_darks, list):
-            n_darks = listify(n_darks) * len(exptimes)
-
         if set_from_config:
-            dark_config = self.get_config('calibs.dark', default=dict())
+            dark_config = self.get_config('darks', default=dict())
             exptimes = dark_config['exposure_time']
             n_darks = dark_config['n_darks']
+
+        if not isinstance(n_darks, list):
+            n_darks = listify(n_darks) * len(exptimes)
 
         # Loop over cameras.
         if len(exptimes) == 0:
