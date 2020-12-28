@@ -71,7 +71,7 @@ flat_fields:
   min_exptime: 0.0001
 
 darks:
-  exposure_times: [10, 30, 60, 300]
+  exposure_time: [10, 30, 60, 300]
   n_darks: 5
 
 pointing:
