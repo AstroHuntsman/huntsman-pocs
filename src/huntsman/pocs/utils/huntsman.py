@@ -10,7 +10,7 @@ from huntsman.pocs.dome.musca import HuntsmanDome
 
 
 def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, scheduler=None,
-                                dome=None, **kwargs):
+                                dome=None, config=None, **kwargs):
     """ Convenience function to create the observatory instance in one line.
     Args:
         with_dome (bool, optional): If True, add a dome to the observatory. Default False (safe).
@@ -23,22 +23,25 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
     Returns:
         `huntsman.pocs.observatory.HuntsmanObservatory`: The observatory instance.
     """
+    if config is None:
+        config = get_config()
+
     if cameras is None:
-        cameras = create_cameras_from_config()
+        cameras = create_cameras_from_config(config=config)
 
     if mount is None:
-        mount = create_mount_from_config()
+        mount = create_mount_from_config()   # TODO: Parse config
     mount.initialize()
 
     if scheduler is not None:
-        scheduler = create_scheduler_from_config()
+        scheduler = create_scheduler_from_config()  # TODO: Parse config
 
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
-                                      dome=dome, **kwargs)
+                                      dome=dome, config=config, **kwargs)
 
     if with_dome:
         if dome is None:
-            dome = HuntsmanDome(config=get_config("dome"))  # TODO: Streamline
+            dome = HuntsmanDome(config.get("dome", None))  # TODO: Streamline
         observatory.set_dome(dome)
 
     return observatory
