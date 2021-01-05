@@ -38,7 +38,7 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
 
     if with_dome:
         if dome is None:
-            dome = HuntsmanDome(config=get_config("dome"))
+            dome = HuntsmanDome(config=get_config("dome"))  # TODO: Streamline
         observatory.set_dome(dome)
 
     return observatory
