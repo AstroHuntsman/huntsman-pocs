@@ -76,6 +76,7 @@ class FilterWheel(AbstractFilterWheel):
 
         # Implement workaround for EFW library problem where cannot move to next-lowest position
         # The workaround is to move to a different position before going to that position
+        # TODO: Remove this code when EFW library gets fixed!
         n_filters = len(self._filter_names)
         new_pos_int = self._parse_position(new_position)
         diff = new_pos_int - self.position
