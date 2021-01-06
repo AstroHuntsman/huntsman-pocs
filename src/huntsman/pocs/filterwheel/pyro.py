@@ -73,6 +73,20 @@ class FilterWheel(AbstractFilterWheel):
         self.logger.debug(f"{self} connected.")
 
     def move_to(self, new_position, **kwargs):
+
+        # Implement workaround for EFW library problem where cannot move to next-lowest position
+        # The workaround is to move to a different position before going to that position
+        n_filters = len(self._filter_names)
+        new_pos_int = self._parse_position(new_position)
+        diff = new_pos_int - self.position
+        if diff in (1, 1-n_filters):  # Problem only when this is True
+            for temp_pos in range(1, n_filters+1):  # Find a temporary position to move to first
+                if temp_pos not in (self.position, new_position):
+                    break
+            # Move to the temporary position
+            self._proxy.filterwheel_move_to(new_position=temp_pos, **kwargs)
+
+        # Move to the requested position
         self._proxy.filterwheel_move_to(new_position=new_position, **kwargs)
         return self._move_event
 
