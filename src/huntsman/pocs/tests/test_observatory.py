@@ -2,6 +2,7 @@ import os
 import pytest
 
 from panoptes.utils import error
+from panoptes.utils.time import wait_for_events
 
 from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
@@ -93,3 +94,15 @@ def test_take_flat_fields(pocs):
     pocs.initialize()
     pocs.get_ready()
     pocs.observatory.take_flat_fields(alt=60, az=90, required_exposures=1, tolerance=0.5)
+
+
+def test_autofocus_cameras(observatory):
+    """
+    """
+    observatory.last_focus_time = None
+    assert observatory.coarse_focus_required
+    events = observatory.autofocus_cameras()
+    wait_for_events(list(events.values()), timeout=60)
+    fname = observatory.coarse_focus_config['filter_name']
+    assert all([c.filterwheel.current_filter == fname for c in observatory.cameras.values()])
+    assert not observatory.coarse_focus_required
