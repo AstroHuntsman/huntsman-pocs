@@ -25,7 +25,7 @@ class HuntsmanObservatory(Observatory):
     def __init__(self,
                  with_autoguider=True,
                  hdr_mode=False,
-                 take_flats=False,
+                 take_flats=True,
                  *args, **kwargs
                  ):
         """Huntsman POCS Observatory
