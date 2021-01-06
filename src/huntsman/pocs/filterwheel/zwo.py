@@ -38,7 +38,7 @@ class FilterWheel(ZWOFilterWheel):
         # Blocking function to move to the new position via the temp position
         if temp_position is not None:
             self._driver_move_to(temp_position, event=self._temp_event)
-        self._driver_move_to(temp_position, event=self._temp_event)
+        self._driver_move_to(position, event=self._temp_event)
         self._move_event.set()  # This lets the main code know the move is finished
 
     def _driver_move_to(self, position, event):
