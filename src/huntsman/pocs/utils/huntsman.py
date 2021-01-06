@@ -6,7 +6,7 @@ from panoptes.pocs.core import POCS
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory
-from huntsman.pocs.dome.musca import HuntsmanDome
+from huntsman.pocs.dome import create_dome_from_config
 
 
 def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, scheduler=None,
@@ -36,14 +36,15 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
     if scheduler is None:
         scheduler = create_scheduler_from_config()  # TODO: Parse config
 
-    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
-                                      dome=dome, config=config, **kwargs)
-
     if with_dome:
         if dome is None:
-            dome = HuntsmanDome(config.get("dome", None))  # TODO: Streamline
-        observatory.set_dome(dome)
+            dome = create_dome_from_config(config=config)
+    else:
+        dome = None
 
+    # Create and return the observatory
+    observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
+                                      dome=dome, config=config, **kwargs)
     return observatory
 
 
