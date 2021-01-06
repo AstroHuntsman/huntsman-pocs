@@ -84,6 +84,7 @@ focusing:
     frequency: 2
     frequency_unit: hour
     timeout: 600
+    filter_name: one
 
 flat_fields:
   alt: 70  # degrees
