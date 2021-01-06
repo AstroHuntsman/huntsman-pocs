@@ -8,6 +8,7 @@ from panoptes.pocs.core import POCS
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
+from panoptes.pocs.mount import create_mount_simulator
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
@@ -84,5 +85,6 @@ def pocs(config_with_simulated_stuff, observatory):
 
 
 def test_create_huntsman_pocs():
-    pocs = create_huntsman_pocs()
+    mount = create_mount_simulator()
+    pocs = create_huntsman_pocs(mount=mount)
     assert pocs.is_initialized

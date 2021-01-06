@@ -33,7 +33,7 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
         mount = create_mount_from_config()   # TODO: Parse config
     mount.initialize()
 
-    if scheduler is not None:
+    if scheduler is None:
         scheduler = create_scheduler_from_config()  # TODO: Parse config
 
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
