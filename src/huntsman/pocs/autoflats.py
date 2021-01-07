@@ -3,7 +3,7 @@ from contextlib import suppress
 from collections import abc, defaultdict
 
 import numpy as np
-from scipy.stats import sigma_clipped_stats
+from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from astropy.io import fits
 
