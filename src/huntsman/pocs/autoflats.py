@@ -15,7 +15,8 @@ from huntsman.pocs.utils.logger import logger as LOGGER
 class AutoFlatFieldSequence():
 
     def __init__(self, cameras, observation, initial_exposure_times=1*u.second,
-                 timeout=10*u.second, logger=None, safety_func=None):
+                 timeout=10*u.second, logger=None, safety_func=None, min_exptime=0.0001*u.second,
+                 max_exptime=60*u.second, max_attempts=10):
         """
         """
         if logger is None:
@@ -23,7 +24,10 @@ class AutoFlatFieldSequence():
         self.logger = logger
 
         self._seqidx = 0
+        self._max_attempts = int(max_attempts)
         self._observation = observation
+        self._min_exptime = get_quantity_value(min_exptime, u.second) * u.second
+        self._max_exptime = get_quantity_value(max_exptime, u.second) * u.second
         self._timeout = get_quantity_value(timeout, u.second)
         self._safety_func = safety_func
 
@@ -49,7 +53,7 @@ class AutoFlatFieldSequence():
         if (self._count_good_exposures() >= self._required_exposures).all():
             return True
         # Check if we have reached the maximum number of exposures
-        return self._seqidx >= self._seqidx
+        return self._seqidx >= self._max_attempts
 
     def take_next_exposures(self, headers=None):
         """ Take the next exposures in the sequence.
@@ -144,7 +148,18 @@ class AutoFlatFieldSequence():
         else:
             exptime = exptime * sky_factor
 
-        return exptime.to_value(u.second) * u.second
+        # Make sure the exptime is within limits
+        exptime = exptime.to_value(u.second) * u.second
+        if exptime >= self._max_exptime:
+            self.logger.warning(f"Required exptime for {camera_name} is greater than the allowable"
+                                " maximum.")
+            exptime = self._max_exptime
+        if exptime <= self._min_exptime:
+            self.logger.warning(f"Required exptime for {camera_name} is less than the allowable"
+                                " minimum.")
+            exptime = self._min_exptime
+
+        return exptime
 
     def _get_average_counts(self, filename_dict):
         """ Calculate the average counts for each camera.

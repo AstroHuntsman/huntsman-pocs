@@ -194,7 +194,6 @@ class HuntsmanObservatory(Observatory):
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
-        exptimes_dark = defaultdict(set)
         for filter_name in filter_order:
 
             if not safety_func():
@@ -220,12 +219,8 @@ class HuntsmanObservatory(Observatory):
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
-            exptimes = self._take_autoflats(filter_cameras, obs, safety_func=safety_func,
-                                            **flat_field_config)
-
-            # Log the new exposure times we need to take darks with
-            for cam_name in filter_cameras.keys():
-                exptimes_dark[cam_name].update(exptimes[cam_name])
+            autoflat_config = flat_field_config.get("autoflats", {})
+            self._take_autoflats(filter_cameras, obs, safety_func=safety_func, **autoflat_config)
 
         self.logger.info('Finished flat-fielding.')
 
