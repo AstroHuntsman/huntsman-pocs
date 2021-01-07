@@ -88,6 +88,10 @@ class AutoFlatFieldSequence():
         if self._seqidx >= self._max_attempts:
             self.logger.warning("Finishing auto-flats because max exposures has been reached.")
             return True
+        # Check that some of the previous exposures are valid
+        if not self._validate_previous_exposures():
+            self.logger.warning("Finishing auto-flats because all exposures are invalid.")
+            return True
         return False
 
     def take_next_exposures(self, headers=None):
@@ -388,3 +392,37 @@ class AutoFlatFieldSequence():
             self.logger.debug(f"Current acceptable flat field exposures for {cam_name}: ",
                               f"{number[cam_name]}/{self._required_exposures}.")
         return number
+
+    def _validate_previous_exposures(self):
+        """ Check if the previous exposures were either all too faint at the max exposure time, or
+        all too bright at the minimum exposure time.
+        Returns:
+            bool: True if valid, False if not.
+        """
+        if self._seqidx == 0:
+            return True
+
+        # Check if all are too faint at the max exposure time, or if all are too bright at the min
+        all_to_bright = True
+        all_to_faint = True
+        for cam_name, exptimes in self._exptimes.items():
+
+            target_counts = self._target_counts[cam_name]
+            counts_tolerance = self._counts_tolerance[cam_name]
+            exptime = exptimes[-1]
+            counts = self._average_counts[cam_name][-1]
+
+            # Check exposure is too bright at min exposure time
+            if exptime == self._min_exptime:
+                all_to_bright &= counts > target_counts + counts_tolerance
+
+            # Check if exposure is too faint at max exposure time
+            if exptime == self._max_exptime:
+                all_to_faint &= counts < target_counts - counts_tolerance
+
+        if all_to_bright:
+            self.logger.warning("All previous exposures were too bright at the minimum exptime.")
+        if all_to_faint:
+            self.logger.warning("All previous exposures were too faint at the maximum exptime.")
+
+        return not (all_to_bright or all_to_faint)
