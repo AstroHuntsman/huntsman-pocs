@@ -1,5 +1,6 @@
 import os
 from collections import abc, defaultdict
+
 from scipy.stats import sigma_clipped_stats
 from astropy import units as u
 from astropy.io import fits
@@ -21,7 +22,7 @@ class AutoFlatFieldSequence():
         self._initial_exposure_times = self._parse_initial_exposure_times(initial_exposure_times)
 
         # Setup containers for sequence data
-        self._biases = None
+        self._biases = dict()
         self._exptimes = defaultdict(list)
         self._times = defaultdict(list)
         self._average_counts = defaultdict(list)
@@ -36,7 +37,7 @@ class AutoFlatFieldSequence():
         # Check if we have reached the maximum number of exposures
         return self._seqidx >= self._seqidx
 
-    def take_exposures(self, headers=None):
+    def take_next_exposures(self, headers=None):
         """ Take the next exposures in the sequence.
         Args:
             headers (list of dict, optional): Additional FITS headers to be written.
@@ -145,14 +146,27 @@ class AutoFlatFieldSequence():
 
         return average_counts
 
-    def _get_exposure_filename(self, camera, dark=False):
+    def _take_biases(self, seconds=0):
+        """ Take a bias exposure for each camera. Should only be run once per sequence.
+        Args:
+            seconds (optional, float): The exposure time in seconds, default 0.
         """
-        """
-        imtype = "dark" if dark else "flat"
-        path = os.path.join(self.observation.directory, camera.uid, self.observation.seq_time)
-        filename = os.path.join(
-            path, f'{imtype}_{self.observation.current_exp_num:02d}.{camera.file_extension}')
-        return filename
+        events = []
+        filenames = {}
+
+        # Take the bias exposures
+        for cam_name, camera in self.cameras.items():
+            filename = self._get_bias_filename(cam_name)
+            event = camera.take_exposure(filename=filename, seconds=seconds, dark=True)
+            events.append(event)
+            filenames[cam_name] = filename
+
+        # Wait for exposures to complete
+        wait_for_events(events, timeout=seconds+self._timeout, sleep_delay=1)
+
+        # Read the biases
+        for cam_name, filename in filenames.items():
+            self._biases[cam_name] = fits.getdata(filename)
 
     def _take_observation(self, exptimes, headers=None, dark=False, timeout=None, **kwargs):
         """
@@ -179,6 +193,22 @@ class AutoFlatFieldSequence():
 
         # Block until exposures are complete
         self._wait_for_exposures(events, exptimes)
+
+    def _get_exposure_filename(self, camera, dark=False):
+        """
+        """
+        imtype = "dark" if dark else "flat"
+        path = os.path.join(self.observation.directory, camera.uid, self.observation.seq_time)
+        filename = os.path.join(
+            path, f'{imtype}_{self.observation.current_exp_num:02d}.{camera.file_extension}')
+        return filename
+
+    def _get_bias_filename(self, camera):
+        """
+        """
+        path = os.path.join(self.observation.directory, camera.uid, self.observation.seq_time)
+        filename = os.path.join(path, f'bias.{camera.file_extension}')
+        return filename
 
     def _wait_for_exposures(self, events, exptimes):
         """ Block until exposures have completed.
