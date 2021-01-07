@@ -14,12 +14,34 @@ from huntsman.pocs.utils.logger import logger as LOGGER
 
 
 class AutoFlatFieldSequence():
+    """ Class to facilitate flat fields with automatic exposure time updates.
+    """
 
     def __init__(self, cameras, observation, initial_exposure_times=1*u.second,
-                 timeout=10*u.second, logger=None, safety_func=None, min_exptime=0.0001*u.second,
-                 max_exptime=60*u.second, max_attempts=10, required_exposures=5,
-                 target_scaling=0.16, scaling_tolerance=0.05, biases=None):
+                 timeout=10*u.second, min_exptime=0.0001*u.second, max_exptime=60*u.second,
+                 max_attempts=10, required_exposures=5, target_scaling=0.16, scaling_tolerance=0.05,
+                 logger=None, safety_func=None, biases=None):
         """
+        Args:
+            cameras (abc.Mapping): The camera name : Camera dictionary.
+            observation (Observation): An observation object, e.g. a DitheredFlatObservation.
+            initial_exposure_times (optional): The exposure times, can be a single value (or
+                quantity) or an abc.Mapping with camera names as keys.
+            timeout (Quantity, optional): The timeout to be used for exposures in addition to the
+                exposure time.
+            min_exptime (Quantity, optional): The min exposure time.
+            max_exptime (Quantity, optional): The max exposure time.
+            max_attempts (int, optional): The maximum num exposures before terminating the sequence.
+            required_exposures (int, optional): The required number of good exposures in each
+                camera.
+            target_scaling (float, optional): The fractional well-fullness to aim for.
+            scaling_tolerance (float, optional): The tolerance on target_scaling to count as a
+                good flat field exposure.
+            biases (optional, optional): Biases to use for the exposure time calculations. If not
+                provided, a new set of biases will be acquired.
+            safety_func (callable, optional): A callable function that returns the safety status
+                as a bool.
+            logger (logger, optional): The logger.
         """
         if logger is None:
             logger = LOGGER
@@ -362,7 +384,7 @@ class AutoFlatFieldSequence():
 
             n_good = abs(counts - target) < self._counts_tolerance[cam_name]
             number[cam_name] = n_good.sum()
-            
+
             self.logger.debug(f"Current acceptable flat field exposures for {cam_name}: ",
                               f"{number[cam_name]}/{self._required_exposures}.")
         return number
