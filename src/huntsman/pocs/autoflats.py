@@ -1,23 +1,31 @@
 import os
+from contextlib import suppress
 from collections import abc, defaultdict
 
+import numpy as np
 from scipy.stats import sigma_clipped_stats
 from astropy import units as u
 from astropy.io import fits
 
 from panoptes.utils.time import current_time, wait_for_events
 from panoptes.utils import get_quantity_value
+from huntsman.pocs.utils.logger import logger as LOGGER
 
 
 class AutoFlatFieldSequence():
 
     def __init__(self, cameras, observation, initial_exposure_times=1*u.second,
-                 timeout=10*u.second):
+                 timeout=10*u.second, logger=None, safety_func=None):
         """
         """
+        if logger is None:
+            logger = LOGGER
+        self.logger = logger
+
         self._seqidx = 0
         self._observation = observation
         self._timeout = get_quantity_value(timeout, u.second)
+        self._safety_func = safety_func
 
         self._initial_exposure_times = self._parse_initial_exposure_times(initial_exposure_times)
 
@@ -26,11 +34,17 @@ class AutoFlatFieldSequence():
         self._exptimes = defaultdict(list)
         self._times = defaultdict(list)
         self._average_counts = defaultdict(list)
+        self._target_counts = dict()
+        self._counts_tolerance = dict()
+
+        self._calculate_target_counts()
 
     @property
     def is_finished(self):
         """ Return True if the exposure sequence is finished, else False.
         """
+        if not self._is_safe:
+            return True
         # Check if the required number of good exposures have been acquired
         if (self._count_good_exposures() >= self._required_exposures).all():
             return True
@@ -42,6 +56,9 @@ class AutoFlatFieldSequence():
         Args:
             headers (list of dict, optional): Additional FITS headers to be written.
         """
+        if not self._is_safe:
+            return
+
         if self._seqidx == 0:
             self._take_biases()
 
@@ -49,13 +66,33 @@ class AutoFlatFieldSequence():
         exptimes = self._get_next_exptimes()
 
         time_now = current_time()
-        filenames = self._take_observation(exptimes)
+        filenames = self._take_observation(exptimes, headers=headers)
 
         # Calculate average counts
         counts = self._get_average_counts(filenames)
 
         # Check which exposures were good and log exposure times
         self._update(counts, exptimes, time_now)
+
+        # Take darks if we are finished
+        if self.is_finished:
+            self._take_darks(headers=headers)  # Implicit safety checking
+
+    def _calculate_target_counts(self):
+        """ Get the target counts and tolerance for each camera.
+        """
+        for cam_name, camera in self.cameras.items():
+            try:
+                bit_depth = camera.bit_depth.to_value(u.bit)
+            except NotImplementedError:
+                self.logger.debug(f'No bit_depth property for {cam_name}. Using 16.')
+                bit_depth = 16
+
+            self._target_counts[cam_name] = int(self._target_scaling * 2 ** bit_depth)
+            self._counts_tolerance[cam_name] = int(self._tolerance * 2 ** bit_depth)
+
+            self.logger.debug(f'Target counts for {cam_name}: '
+                              f'{self.target_counts[cam_name]}±{self.counts_tolerance[cam_name]}.')
 
     def _update(self, average_counts, exptimes, time_now):
         """ Update the sequence data with the previous iteration.
@@ -168,13 +205,38 @@ class AutoFlatFieldSequence():
         for cam_name, filename in filenames.items():
             self._biases[cam_name] = fits.getdata(filename)
 
-    def _take_observation(self, exptimes, headers=None, dark=False, timeout=None, **kwargs):
+    def _take_darks(self, **kwargs):
+        """ Take the dark frames for each camera for each exposure time. This is potentially a
+        long-running function, so we need to check safety frequently.
+        Args:
+            exptimes: dict of camera_name: list of exposure times.
+        """
+        exptimes = self._exptimes.copy()  # Don't modify original exptimes
+        # Exposure time lists may not be the same length for each camera
+        while True:
+            next_exptimes = {}
+            for cam_name in exptimes.keys():
+                with suppress(KeyError):
+                    next_exptimes[cam_name] = exptimes[cam_name].pop()
+
+            # Break if we have finished all the cameras
+            if not next_exptimes:
+                break
+
+            if self._is_safe():
+                self._take_observation(next_exptimes, dark=True, **kwargs)
+            else:
+                self.logger.debug("Aborting flat-field darks because safety check failed.")
+                return
+
+    def _take_observation(self, exptimes, headers=None, dark=False, **kwargs):
         """
         Slew to flat field, take exposures and wait for them to complete.
         Returns a list of camera events for each camera.
         Args:
-            exptimes: dict of camera_name: list of exposure times.
-            observation: Flat field Observation object.
+            exptimes (dict): Pairs of camera_name: list of exposure times.
+            headers (dict): FITS headers to be written to file.
+            dark (bool, optional): True if exposure is a dark exposure. Default False.
         """
         events = []
         filenames = {}
@@ -194,8 +256,23 @@ class AutoFlatFieldSequence():
         # Block until exposures are complete
         self._wait_for_exposures(events, exptimes)
 
-    def _get_exposure_filename(self, camera, dark=False):
+    def _wait_for_exposures(self, events, exptimes):
+        """ Block until exposures have completed.
+        Args:
+            events: (list of threading.Event): The observation events.
+            exptimes (dict): Dict of cam_name: exptime pairs.
         """
+        timeout = max(exptimes.values()).to_value(u.second) + self._timeout
+
+        # Block until done exposing on all cameras
+        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
+        wait_for_events(events, timeout=timeout, sleep_delay=1)
+
+    def _get_exposure_filename(self, camera, dark=False):
+        """ Get the exposure filename for a camera.
+        Args:
+            camera (Camera): A camera instance.
+            dark (bool, optional): If True, is a dark exposure. Default False.
         """
         imtype = "dark" if dark else "flat"
         path = os.path.join(self.observation.directory, camera.uid, self.observation.seq_time)
@@ -204,20 +281,13 @@ class AutoFlatFieldSequence():
         return filename
 
     def _get_bias_filename(self, camera):
-        """
+        """ Get the bias filename for a camera.
+        Args:
+            camera (Camera): A camera instance.
         """
         path = os.path.join(self.observation.directory, camera.uid, self.observation.seq_time)
         filename = os.path.join(path, f'bias.{camera.file_extension}')
         return filename
-
-    def _wait_for_exposures(self, events, exptimes):
-        """ Block until exposures have completed.
-        """
-        timeout = max(exptimes.values()).to_value(u.second) + self._timeout
-
-        # Block until done exposing on all cameras
-        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        wait_for_events(events, timeout=timeout, sleep_delay=1)
 
     def _parse_initial_exposure_times(self, initial_exposure_times):
         """ Flexible parser to allow for dicts or a single value.
@@ -230,3 +300,23 @@ class AutoFlatFieldSequence():
         else:
             v = get_quantity_value(initial_exposure_times, u.second) * u.second
             return {c: v for c in camera_names}
+
+    def _is_safe(self):
+        """ Return True if safe to continue, else False.
+        """
+        if self._safety_func is None:
+            return True
+        return self._safety_func()
+
+    def _count_good_exposures(self):
+        """ Count the number of good exposures for each camera.
+        Returns:
+            dict: cam_name: number pairs.
+        """
+        number = {}
+        for cam_name in self.cameras.keys():
+            counts = np.array(self.average_counts[cam_name].values())
+            target = self._target_counts[cam_name]
+            n_good = abs(counts - target) < self._counts_tolerance[cam_name]
+            number[cam_name] = n_good.sum()
+        return number

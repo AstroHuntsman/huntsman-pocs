@@ -3,10 +3,7 @@ import time
 from collections import defaultdict
 from contextlib import suppress
 from functools import partial
-
-from astropy import stats
 from astropy import units as u
-from astropy.io import fits
 
 from panoptes.utils import error, altaz_to_radec, listify, get_quantity_value
 from panoptes.utils.library import load_module
@@ -18,6 +15,7 @@ from panoptes.pocs.scheduler import constraint
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.scheduler.observation import DitheredFlatObservation
+from huntsman.pocs.autoflats import AutoFlatFieldSequence
 
 
 class HuntsmanObservatory(Observatory):
@@ -228,12 +226,6 @@ class HuntsmanObservatory(Observatory):
             # Log the new exposure times we need to take darks with
             for cam_name in filter_cameras.keys():
                 exptimes_dark[cam_name].update(exptimes[cam_name])
-
-        # Take darks for each exposure time we used
-        self.logger.info('Taking flat field dark frames.')
-        obs = self._create_flat_field_observation(alt=alt, az=az)
-        for exptime in exptimes_dark:
-            self._take_flat_field_darks(exptimes_dark, obs, safety_func, **flat_field_config)
 
         self.logger.info('Finished flat-fielding.')
 
@@ -486,255 +478,22 @@ class HuntsmanObservatory(Observatory):
 
         return dark_obs
 
-    def _take_autoflats(self, cameras, observation, safety_func, tolerance=0.05,
-                        target_scaling=0.17, bias=32, min_exptime=1 * u.second,
-                        max_exptime=60 * u.second, required_exposures=10, max_attempts=20,
-                        *args, **kwargs):
-        """Take flat fields iteratively by automatically estimating exposure times.
-
-        Args:
-            cameras (dict): Dict of camera name: Camera pairs.
-            filter_names (dict): Dict of filter name for each camera.
-            safety_func (func): Boolean function that returns True only if safe to continue.
+    def _take_autoflats(self, cameras, observation, **kwargs):
         """
-        # Get the target counts and tolerance for each camera
-        target_counts = {}
-        counts_tolerance = {}
-        for cam_name, cam in cameras.items():
-            try:
-                bit_depth = cam.bit_depth.to_value(u.bit)
-            except NotImplementedError:
-                self.logger.debug(f'No bit_depth property for {cam_name}. Using 16.')
-                bit_depth = 16
-            target_counts[cam_name] = target_scaling * 2 ** bit_depth
-            counts_tolerance[cam_name] = tolerance * 2 ** bit_depth
-            self.logger.debug(f'Target counts for {cam_name}: '
-                              f'{target_counts[cam_name]}±{counts_tolerance[cam_name]}.')
-
-        # Setup containers with initial values
-        exptimes = {cam_name: [1. * u.second] for cam_name in cameras.keys()}
-        finished = {cam_name: False for cam_name in cameras.keys()}
-        n_good_exposures = {cam_name: 0 for cam_name in cameras.keys()}
-
-        # Loop until conditions are met to finish flat-fielding
-        for attempt_number in range(max_attempts):
-
-            if all(finished.values()):
-                self.logger.info(f'All cameras have finished flat-fielding in'
-                                 f' {observation.filter_name} filter.')
-                break
-
-            if not safety_func():
-                self.logger.info('Stopping flat-fielding as no longer safe.')
-                break
-
-            # Get the FITS headers with a common start time
-            start_time = current_time()
-            fits_headers = self.get_standard_headers(observation=observation)
-            fits_headers['start_time'] = flatten_time(start_time)
-
-            # Take the flat field observations (blocking)
-            current_exptimes = {c: exptimes[c][-1] for c in cameras.keys() if not finished[c]}
-            # Only cameras with successful exposures are kept in camera_events
-            camera_events = self._take_flat_observation(current_exptimes, observation,
-                                                        fits_headers=fits_headers, **kwargs)
-
-            # Check whether each camera has finished
-            all_too_bright = True
-            all_too_faint = True
-            for cam_name, meta in camera_events.items():
-                current_exptime = current_exptimes[cam_name]
-
-                # Calculate mean counts of last image
-                mean_counts = self._autoflat_mean_counts(meta['filename'], bias)
-                self.logger.debug(f'Mean flat-field counts for {cam_name} following'
-                                  f' {current_exptime} exposure: {mean_counts:.0f}.'
-                                  f' Target counts: {target_counts[cam_name]:.0f}.')
-
-                # Check if the current exposure is good enough to keep
-                max_counts = target_counts[cam_name] + counts_tolerance[cam_name]
-                min_counts = target_counts[cam_name] - counts_tolerance[cam_name]
-                self.logger.debug(f'Valid flat-field counts range for {cam_name}: '
-                                  f'{min_counts:.0f}, {max_counts:.0f}.')
-
-                is_too_bright = mean_counts > max_counts
-                is_too_faint = mean_counts < min_counts
-                all_too_bright &= is_too_bright
-                all_too_faint &= is_too_faint
-                if is_too_bright:
-                    self.logger.debug(f'Counts too high for flat-field'
-                                      f' image on {cam_name}: {mean_counts:.0f}>{max_counts:.0f}.')
-                elif is_too_faint:
-                    self.logger.debug(f'Counts too low for flat-field'
-                                      f' image on {cam_name}: {mean_counts:.0f}<{min_counts:.0f}.')
-                    # TODO Mark low counts somehow.
-                else:
-                    n_good_exposures[cam_name] += 1
-                self.logger.debug(f'Current acceptable flat-field exposures for {cam_name} '
-                                  f'in {observation.filter_name} filter after {attempt_number + 1} '
-                                  f'attempts: {n_good_exposures[cam_name]} of {required_exposures}.')
-
-                # Check if we have enough good flats for this camera
-                if n_good_exposures[cam_name] >= required_exposures:
-                    self.logger.debug('Enough acceptable flat-field exposures acquired for '
-                                      f'{cam_name} in {observation.filter_name} filter.')
-                    finished[cam_name] = True
-                    continue
-
-                # Calculate next exposure time
-                elapsed_time = (current_time() - start_time).sec
-                next_exptime = self._autoflat_next_exptime(
-                    current_exptime, elapsed_time, target_counts[cam_name], mean_counts)
-                self.logger.debug('Suggested flat-field exposure time for '
-                                  f'{cam_name}: {next_exptime}.')
-
-                # Check the next exposure time is within limits
-                if next_exptime >= max_exptime:
-                    self.logger.debug(f'Suggested flat-field exposure time for {cam_name}'
-                                      f' is too long: {next_exptime}.')
-                    if not self.past_midnight:
-                        finished[cam_name] = True  # It's getting darker, so finish
-                        self.logger.debug('Premature termination of flat-field exposures for '
-                                          f'{cam_name} in {observation.filter_name}.')
-                        continue
-                    next_exptime = max_exptime
-                elif next_exptime < min_exptime:
-                    self.logger.debug(f'Suggested flat-field exposure time for {cam_name}'
-                                      f' is too short: {next_exptime}.')
-                    if self.past_midnight:
-                        finished[cam_name] = True  # It's getting lighter, so finish
-                        self.logger.debug('Premature termination of flat-field exposures for '
-                                          f'{cam_name} in {observation.filter_name}.')
-                        continue
-                    next_exptime = min_exptime
-
-                # Update the next exposure time
-                exptimes[cam_name].append(next_exptime)
-
-            # Check if all the exposures in this loop are too bright
-            if self.past_midnight:
-                if all_too_faint:
-                    self.logger.debug('All flat-field exposures are too faint. '
-                                      'Waiting 30 seconds...')
-                    time.sleep(30)
-            else:
-                if all_too_bright:
-                    self.logger.debug('All flat-field exposures are too bright. '
-                                      'Waiting 30 seconds...')
-                    time.sleep(30)
-
-            if attempt_number == max_attempts - 1:
-                self.logger.debug('Max attempts have been reached for flat-fielding '
-                                  f'in {observation.filter_name} filter. Aborting.')
-
-        # Return the exposure times
-        return exptimes
-
-    def _autoflat_mean_counts(self, filename, bias, min_counts=1):
-        """ Read the data and calculate a clipped-mean count rate.
-
-        Args:
-            filename (str): The filename containing the data.
-            bias (float): The bias level to subtract from the image.
-            min_counts (float): The minimum count rate returned by this funtion.
         """
-        try:
-            data = fits.getdata(filename)
-        except FileNotFoundError:
-            data = fits.getdata(filename + '.fz')
-        data = data.astype('int32')
+        seq = AutoFlatFieldSequence(cameras=cameras, observation=observation, **kwargs)
+        while not seq.is_finished:
 
-        # Calculate average counts per pixel
-        mean_counts, _, _ = stats.sigma_clipped_stats(data - bias)
-        if mean_counts < min_counts:
-            self.logger.warning('Truncating mean flat-field counts to minimum value: '
-                                f'{mean_counts}<{min_counts}.')
-            mean_counts = min_counts
+            # Slew to field
+            self.logger.debug(f'Slewing to flat-field coords: {observation.field}.')
+            self.mount.set_target_coordinates(observation.field)
+            self.mount.slew_to_target()
 
-        return mean_counts
+            # Get standard fits headers
+            headers = self.get_standard_headers(observation=observation)
 
-    def _autoflat_next_exptime(self, previous_exptime, elapsed_time, target_counts, mean_counts):
-        """Calculate the next exposure time for the flat fields, accounting
-        for changes in sky brightness."""
-        exptime = previous_exptime * (target_counts / mean_counts)
-        sky_factor = 2.0 ** (elapsed_time / 180.0)
-        if self.past_midnight:
-            exptime = exptime / sky_factor
-        else:
-            exptime = exptime * sky_factor
-        return exptime.to_value(u.second) * u.second
-
-    def _take_flat_observation(self, exptimes, observation, fits_headers=None, dark=False,
-                               timeout=120, **kwargs):
-        """
-        Slew to flat field, take exposures and wait for them to complete.
-        Returns a list of camera events for each camera.
-
-        args:
-            exptimes: dict of camera_name: list of exposure times.
-            observation: Flat field Observation object.
-        """
-        imtype = 'dark' if dark else 'flat'
-        if fits_headers is None:
-            fits_headers = self.get_standard_headers(observation=observation)
-
-        # Slew to field
-        self.logger.debug(f'Slewing to flat-field coords: {observation.field}.')
-        self.mount.set_target_coordinates(observation.field)
-        self.mount.slew_to_target()
-
-        # Loop over cameras...
-        camera_events = {}
-        for cam_name, exptime in exptimes.items():
-            cam = self.cameras[cam_name]
-
-            # Create filename
-            path = os.path.join(observation.directory, cam.uid, observation.seq_time)
-            filename = os.path.join(
-                path, f'{imtype}_{observation.current_exp_num:02d}.{cam.file_extension}')
-
-            # Take exposure and get event
-            exptime = exptime.to_value(u.second)
-            camera_event = cam.take_observation(observation, fits_headers, filename=filename,
-                                                exptime=exptime, dark=dark)
-            camera_events[cam_name] = {'event': camera_event, 'filename': filename}
-
-        # Block until done exposing on all cameras
-        exposure_timeout = max(exptimes.values()).to_value(u.second) + timeout
-        self.logger.debug(f"Waiting for flat-fields with timeout of {exposure_timeout}.")
-        if not wait_for_events([c["event"] for c in camera_events.values()],
-                               timeout=exposure_timeout, sleep_delay=1):
-            self.logger.error("Timeout while waiting for flat fields.")
-
-        # Remove camera_events that timed out, removing them from the remaining flat-fielding
-        camera_events = {cam_name: value for cam_name, value in camera_events.items(
-        ) if value["event"].is_set()}
-        return camera_events
-
-    def _take_flat_field_darks(self, exptimes, observation, safety_func, **kwargs):
-        """Take the dark flat fields for each camera.
-
-        args:
-            exptimes: dict of camera_name: list of exposure times.
-            observation: Flat field Observation object.
-        """
-        # Exposure time lists may not be the same length for each camera
-        while True:
-            next_exptimes = {}
-            for cam_name in exptimes.keys():
-                with suppress(KeyError):
-                    next_exptimes[cam_name] = exptimes[cam_name].pop()
-
-            # Break if we have finished all the cameras
-            if not next_exptimes:
-                break
-
-            # Take the exposures, break out if safety fails
-            if safety_func():
-                self._take_flat_observation(next_exptimes, observation, dark=True, **kwargs)
-            else:
-                self.logger.debug('Aborting flat-field dark observations as no longer safe.')
-                return
+            # Take the exposures in the sequence
+            seq.take_next_exposures(headers=headers)
 
     def _move_all_filterwheels_to(self, filter_name, camera_names=None):
         """Move all the filterwheels to a given filter
