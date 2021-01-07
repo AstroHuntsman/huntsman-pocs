@@ -753,9 +753,8 @@ class HuntsmanObservatory(Observatory):
         # Move all the camera filterwheels to filter_name
         filterwheel_events = dict()
         for camera in cameras_list.values():
-            if camera.filterwheel.current_filter != filter_name:
-                filterwheel_event = camera.filterwheel.move_to(filter_name)
-                filterwheel_events[camera] = filterwheel_event
+            filterwheel_event = camera.filterwheel.move_to(filter_name)
+            filterwheel_events[camera] = filterwheel_event
 
         # Wait for move to complete
         self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter.')
