@@ -1,6 +1,6 @@
 import os
 import time
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
 from astropy.io import fits
@@ -58,7 +58,8 @@ class Camera(AbstractCamera):
         self.focuser = None
         self.filterwheel = None
 
-        self._wait_for_file_thread = None  # Used by self.process_exposure
+        self._exposure_future = None  # Used by self.process_exposure
+        self._exposure_executor = ThreadPoolExecutor(max_workers=1)
 
         # Connect to camera
         self.connect()
@@ -188,7 +189,8 @@ class Camera(AbstractCamera):
             self.filterwheel = PyroFilterWheel(camera=self)
 
     def take_exposure(self, seconds=1.0*u.second, filename=None, dark=False, blocking=False,
-                      sleep_interval=0.1*u.second, max_write_time=10, *args, **kwargs):
+                      sleep_interval=0.1*u.second, max_write_time=10, *args, timeout=None,
+                      **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
         Args:
             seconds (astropy.Quantity, optional): Length of exposure.
@@ -206,6 +208,7 @@ class Camera(AbstractCamera):
                 the file existing.
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block (on the client-side) until it completes.
+            timeout (float, optional): If provided, override the default timeout with this value.
         Returns:
             threading.Thread: The readout thread, which joins once readout has finished.
         """
@@ -216,18 +219,18 @@ class Camera(AbstractCamera):
         self._proxy.take_exposure(seconds=seconds, filename=filename, dark=dark, *args, **kwargs)
 
         # Start the readout thread
-        timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
-        timeout += get_quantity_value(max_write_time, u.second)
-        readout_thread = Thread(target=self._wait_for_file, args=(filename, timeout),
-                                kwargs=dict(sleep_interval=sleep_interval))
+        if timeout is None:
+            timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
+            timeout += get_quantity_value(max_write_time, u.second)
+        else:
+            timeout = get_quantity_value(timeout, u.second)
 
-        readout_thread.start()
+        self._exposure_future = self._exposure_executor.submit(self._wait_for_file, filename,
+                                                               timeout)
         if blocking:
-            readout_thread.join()
+            self._exposure_future.result()
 
-        self._wait_for_file_thread = readout_thread  # Used by self.process_exposure
-
-        return readout_thread
+        return self._exposure_future
 
     def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
         """
@@ -292,7 +295,7 @@ class Camera(AbstractCamera):
     def process_exposure(self, *args, **kwargs):
         """ Small wrapper around `Camera.process_exposure` that makes sure the image is actually
         written before starting processing. """
-        self._wait_for_file_thread.join()
+        self._exposure_future.result()
         return super().process_exposure(*args, **kwargs)
 
     # Private Methods
@@ -314,8 +317,8 @@ class Camera(AbstractCamera):
                     self.logger.debug(f"Finished waiting for file {filename}.")
                     return
             time.sleep(sleep_interval)
-        raise error.PanError(f"Timeout of {timeout} reached while waiting for file {filename} to"
-                             f" exist on camera client {self}.")
+        raise error.Timeout(f"Timeout of {timeout} reached while waiting for file {filename} to"
+                            f" exist on camera client {self}.")
 
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""

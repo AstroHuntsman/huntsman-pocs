@@ -25,7 +25,7 @@ class HuntsmanObservatory(Observatory):
     def __init__(self,
                  with_autoguider=True,
                  hdr_mode=False,
-                 take_flats=False,
+                 take_flats=True,
                  *args, **kwargs
                  ):
         """Huntsman POCS Observatory
@@ -145,8 +145,7 @@ class HuntsmanObservatory(Observatory):
         result = super().autofocus_cameras(*args, **kwargs)
 
         # Update last focus time
-        if not kwargs.get("coarse", False):
-            self.last_focus_time = current_time()
+        self.last_focus_time = current_time()
 
         return result
 
@@ -739,26 +738,26 @@ class HuntsmanObservatory(Observatory):
 
     def _move_all_filterwheels_to(self, filter_name, camera_names=None):
         """Move all the filterwheels to a given filter
-
         Args:
             filter_name (str): name of the filter where filterwheels will be moved to.
             camera_names (list, optional): List of camera names to be used.
                 Default to `None`, which uses all cameras.
         """
+        self.logger.debug(f'Moving all camera filterwheels to the {filter_name} filter.')
 
         if camera_names is None:
             cameras_list = self.cameras
         else:
             cameras_list = {c: self.cameras[c] for c in camera_names}
 
+        # Move all the camera filterwheels to filter_name
         filterwheel_events = dict()
-
-        self.logger.debug(f'Moving all camera filterwheels to the {filter_name} filter')
-
-        # Move all the camera filterwheels to filter_name.
         for camera in cameras_list.values():
             if camera.filterwheel.current_filter != filter_name:
                 filterwheel_event = camera.filterwheel.move_to(filter_name)
                 filterwheel_events[camera] = filterwheel_event
-        self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter')
+
+        # Wait for move to complete
+        self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter.')
         wait_for_events(list(filterwheel_events.values()))
+        self.logger.debug(f'Finished waiting for filterwheels.')

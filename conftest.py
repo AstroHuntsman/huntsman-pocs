@@ -1,8 +1,6 @@
 import logging
 import os
-import shutil
 import stat
-import tempfile
 from contextlib import suppress
 import pytest
 
@@ -169,7 +167,7 @@ def db_name():
 
 @pytest.fixture(scope='session')
 def config_path(base_dir):
-    return os.path.expandvars(f'{base_dir}/tests/testing.yaml')
+    return os.path.expandvars(f'{base_dir}/conf_files/testing.yaml')
 
 
 @pytest.fixture

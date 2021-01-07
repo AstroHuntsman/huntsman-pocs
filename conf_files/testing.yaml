@@ -84,6 +84,7 @@ focusing:
     frequency: 2
     frequency_unit: hour
     timeout: 600
+    filter_name: one
 
 flat_fields:
   alt: 70  # degrees
@@ -93,10 +94,10 @@ flat_fields:
     - deux
     - drei
     - quattro
-  max_num_exposures: 1
-  max_attempts: 1
-  max_exptime: 10
-  timeout: 30
+  required_exposures: 1  # Per filter per camera
+  max_attempts: 1  # Per filter per camera
+  max_exptime: 1 s
+  min_exptime: 0.0001 s
 
 pocs:
   INITIALIZED: false
