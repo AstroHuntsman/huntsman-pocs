@@ -16,7 +16,7 @@ class FilterWheel(ZWOFilterWheel):
     def _move_to(self, position):
 
         new_pos = self._parse_position(position)
-        diff = new_pos - self.position
+        diff = self.position - new_pos
 
         temp_pos = None
         # Check if we need to go via an intermediate position
@@ -36,6 +36,7 @@ class FilterWheel(ZWOFilterWheel):
 
     def _move_to_async(self, position, temp_position=None):
         # Blocking function to move to the new position via the temp position
+        self._temp_event.clear()
         if temp_position is not None:
             self._driver_move_to(temp_position, event=self._temp_event)
         self._driver_move_to(position, event=self._temp_event)
