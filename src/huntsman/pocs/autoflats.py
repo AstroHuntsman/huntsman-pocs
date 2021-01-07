@@ -359,9 +359,10 @@ class AutoFlatFieldSequence():
         for cam_name in self.cameras.keys():
             counts = np.array(self._average_counts[cam_name])
             target = self._target_counts[cam_name]
-            self.logger.debug(f"{counts} {target}")
+
             n_good = abs(counts - target) < self._counts_tolerance[cam_name]
             number[cam_name] = n_good.sum()
+            
             self.logger.debug(f"Current acceptable flat field exposures for {cam_name}: ",
                               f"{number[cam_name]}/{self._required_exposures}.")
         return number
