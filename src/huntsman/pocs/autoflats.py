@@ -94,10 +94,11 @@ class AutoFlatFieldSequence():
             return True
         return False
 
-    def take_next_exposures(self, headers=None):
+    def take_next_exposures(self, past_midnight, headers=None):
         """ Take the next exposures in the sequence.
         Args:
             headers (list of dict, optional): Additional FITS headers to be written.
+            past_midnight (bool): True if past midnight (sky is getting brighter), False if not.
         """
         self.logger.info(f"Taking auto-flat sequence {self._seqidx + 1}/"
                          f"{self._required_exposures}.")
@@ -108,7 +109,7 @@ class AutoFlatFieldSequence():
             self._take_biases()
 
         # Take exposures with the next exposure times
-        exptimes = self._get_next_exptimes()
+        exptimes = self._get_next_exptimes(past_midnight)
 
         time_now = current_time()
         filenames = self._take_observation(exptimes, headers=headers)
@@ -154,7 +155,7 @@ class AutoFlatFieldSequence():
         # Increment the sequence index
         self._seqidx += 1
 
-    def _get_next_exptimes(self):
+    def _get_next_exptimes(self, past_midnight):
         """ Calculate the next exposure times for all the cameras.
         Returns:
             dict: The cam_name: exptime pairs.
@@ -164,15 +165,16 @@ class AutoFlatFieldSequence():
         elapsed_time = current_time() - self._times[-1]
         next_exptimes = {}
         for cam_name in self.cameras.keys():
-            next_exptimes[cam_name] = self._get_next_exptime(cam_name, elapsed_time)
+            next_exptimes[cam_name] = self._get_next_exptime(cam_name, elapsed_time, past_midnight)
         return next_exptimes
 
-    def _get_next_exptime(self, camera_name, elapsed_time):
+    def _get_next_exptime(self, camera_name, elapsed_time, past_midnight):
         """Calculate the next exposure time for the flat fields, accounting for changes in sky
         brightness.
         Args:
             camera_name (str): The name of the camera.
             elapsed_time (astropy.Quantity): The time between the previous exposure and now.
+            past_midnight (bool): True if past midnight (sky is getting brighter), False if not.
         Returns:
             astropy.Quantity: The next exposure time.
         """
@@ -184,7 +186,7 @@ class AutoFlatFieldSequence():
         # Calculate next exptime
         exptime = previous_exptime * (target_counts / average_counts)
         sky_factor = 2.0 ** (elapsed_time / 180.0)
-        if self.past_midnight:
+        if past_midnight:
             exptime = exptime / sky_factor
         else:
             exptime = exptime * sky_factor

@@ -489,7 +489,7 @@ class HuntsmanObservatory(Observatory):
             headers = self.get_standard_headers(observation=observation)
 
             # Take the exposures in the sequence
-            seq.take_next_exposures(headers=headers)
+            seq.take_next_exposures(past_midnight=self.past_midnight, headers=headers)
 
     def _move_all_filterwheels_to(self, filter_name, camera_names=None):
         """Move all the filterwheels to a given filter
