@@ -25,7 +25,7 @@ class FilterWheel(ZWOFilterWheel):
             for temp_pos in range(1, self._n_positions + 1):  # Find a temporary position
                 if temp_pos not in (self.position, new_pos):
                     break
-            self.logger.debug(f"Moving to {new_pos} position via intermediate {temp_pos} position.")
+            self.logger.debug(f"Moving to position {new_pos} via position {temp_pos}.")
 
         # Move to the requested position
         thread = Thread(target=self._move_to_async, args=(position, temp_pos))
