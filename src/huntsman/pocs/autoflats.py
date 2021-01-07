@@ -16,20 +16,26 @@ class AutoFlatFieldSequence():
 
     def __init__(self, cameras, observation, initial_exposure_times=1*u.second,
                  timeout=10*u.second, logger=None, safety_func=None, min_exptime=0.0001*u.second,
-                 max_exptime=60*u.second, max_attempts=10):
+                 max_exptime=60*u.second, max_attempts=10, required_exposures=5,
+                 target_scaling=0.16, scaling_tolerance=0.05):
         """
         """
         if logger is None:
             logger = LOGGER
         self.logger = logger
 
+        self.cameras = cameras
+        self.observation = observation
+        self._safety_func = safety_func
+        self._timeout = get_quantity_value(timeout, u.second)
+
         self._seqidx = 0
         self._max_attempts = int(max_attempts)
-        self._observation = observation
+        self._target_scaling = float(target_scaling)
+        self._scaling_tolerance = float(scaling_tolerance)
+        self._required_exposures = int(required_exposures)
         self._min_exptime = get_quantity_value(min_exptime, u.second) * u.second
         self._max_exptime = get_quantity_value(max_exptime, u.second) * u.second
-        self._timeout = get_quantity_value(timeout, u.second)
-        self._safety_func = safety_func
 
         self._initial_exposure_times = self._parse_initial_exposure_times(initial_exposure_times)
 
@@ -48,18 +54,27 @@ class AutoFlatFieldSequence():
         """ Return True if the exposure sequence is finished, else False.
         """
         if not self._is_safe:
+            self.logger.warning("Finishing auto-flats because safety check has failed.")
             return True
         # Check if the required number of good exposures have been acquired
-        if (self._count_good_exposures() >= self._required_exposures).all():
+        n_good = np.array(list(self._count_good_exposures().values()))
+        if (n_good >= self._required_exposures).all():
+            self.logger.info("Finishing auto-flats because required exposures have been acquired.")
             return True
         # Check if we have reached the maximum number of exposures
-        return self._seqidx >= self._max_attempts
+        if self._seqidx >= self._max_attempts:
+            self.logger.warning("Finishing auto-flats because max exposures has been reached.")
+            return True
+        return False
 
     def take_next_exposures(self, headers=None):
         """ Take the next exposures in the sequence.
         Args:
             headers (list of dict, optional): Additional FITS headers to be written.
         """
+        self.logger.info(f"Taking auto-flat sequence {self._seqidx + 1}/"
+                         f"{self._required_exposures}.")
+
         if not self._is_safe:
             return
 
@@ -93,10 +108,10 @@ class AutoFlatFieldSequence():
                 bit_depth = 16
 
             self._target_counts[cam_name] = int(self._target_scaling * 2 ** bit_depth)
-            self._counts_tolerance[cam_name] = int(self._tolerance * 2 ** bit_depth)
+            self._counts_tolerance[cam_name] = int(self._scaling_tolerance * 2 ** bit_depth)
 
-            self.logger.debug(f'Target counts for {cam_name}: '
-                              f'{self.target_counts[cam_name]}±{self.counts_tolerance[cam_name]}.')
+            self.logger.debug(f"Target counts for {cam_name}: {self._target_counts[cam_name]}"
+                              f"±{self._counts_tolerance[cam_name]}.")
 
     def _update(self, average_counts, exptimes, time_now):
         """ Update the sequence data with the previous iteration.
@@ -171,6 +186,7 @@ class AutoFlatFieldSequence():
         counts = []
         for cam_name, filename in filename_dict.items():
             counts[cam_name] = self._get_average_count(cam_name, filename)
+            self.logger.debug(f"Average counts for {cam_name}: {counts[cam_name]:.1f}")
         return counts
 
     def _get_average_count(self, cam_name, filename, min_counts=1):
@@ -203,12 +219,13 @@ class AutoFlatFieldSequence():
         Args:
             seconds (optional, float): The exposure time in seconds, default 0.
         """
+        self.logger.info("Taking biases for auto-flat fielding.")
         events = []
         filenames = {}
 
         # Take the bias exposures
         for cam_name, camera in self.cameras.items():
-            filename = self._get_bias_filename(cam_name)
+            filename = self._get_bias_filename(camera)
             event = camera.take_exposure(filename=filename, seconds=seconds, dark=True)
             events.append(event)
             filenames[cam_name] = filename
@@ -226,6 +243,8 @@ class AutoFlatFieldSequence():
         Args:
             exptimes: dict of camera_name: list of exposure times.
         """
+        self.logger.info("Taking darks for auto-flat fielding.")
+
         exptimes = self._exptimes.copy()  # Don't modify original exptimes
         # Exposure time lists may not be the same length for each camera
         while True:
@@ -320,8 +339,12 @@ class AutoFlatFieldSequence():
         """ Return True if safe to continue, else False.
         """
         if self._safety_func is None:
+            self.logger.warning(f"Tried to check safety but {self} has no safety function.")
             return True
-        return self._safety_func()
+        is_safe = self._safety_func()
+        if not is_safe:
+            self.logger.warning(f"Safety check failed on {self}.")
+        return is_safe
 
     def _count_good_exposures(self):
         """ Count the number of good exposures for each camera.
@@ -330,8 +353,10 @@ class AutoFlatFieldSequence():
         """
         number = {}
         for cam_name in self.cameras.keys():
-            counts = np.array(self.average_counts[cam_name].values())
+            counts = np.array(self._average_counts[cam_name])
             target = self._target_counts[cam_name]
             n_good = abs(counts - target) < self._counts_tolerance[cam_name]
             number[cam_name] = n_good.sum()
+            self.logger.debug(f"Current acceptable flat field exposures for {cam_name}: ",
+                              f"{number[cam_name]}/{self._required_exposures}.")
         return number
