@@ -1,6 +1,7 @@
 import os
 from contextlib import suppress
 from collections import abc, defaultdict
+from concurrent.futures import wait as wait_for_futures
 
 import numpy as np
 from astropy.stats import sigma_clipped_stats
@@ -17,7 +18,7 @@ class AutoFlatFieldSequence():
     def __init__(self, cameras, observation, initial_exposure_times=1*u.second,
                  timeout=10*u.second, logger=None, safety_func=None, min_exptime=0.0001*u.second,
                  max_exptime=60*u.second, max_attempts=10, required_exposures=5,
-                 target_scaling=0.16, scaling_tolerance=0.05):
+                 target_scaling=0.16, scaling_tolerance=0.05, biases=None):
         """
         """
         if logger is None:
@@ -40,7 +41,7 @@ class AutoFlatFieldSequence():
         self._initial_exposure_times = self._parse_initial_exposure_times(initial_exposure_times)
 
         # Setup containers for sequence data
-        self._biases = dict()
+        self._biases = biases
         self._exptimes = defaultdict(list)
         self._times = defaultdict(list)
         self._average_counts = defaultdict(list)
@@ -74,11 +75,10 @@ class AutoFlatFieldSequence():
         """
         self.logger.info(f"Taking auto-flat sequence {self._seqidx + 1}/"
                          f"{self._required_exposures}.")
-
         if not self._is_safe:
             return
 
-        if self._seqidx == 0:
+        if self._biases is None:
             self._take_biases()
 
         # Take exposures with the next exposure times
@@ -121,9 +121,9 @@ class AutoFlatFieldSequence():
             time_now (datetime.datetime): The time that the exposures were started.
         """
         for cam_name in self.cameras.keys():
-            self._exptimes[cam_name].append(exptimes)
             self._times[cam_name].append(time_now)
-            self._average_counts[cam_name].append(average_counts)
+            self._exptimes[cam_name].append(exptimes[cam_name])
+            self._average_counts[cam_name].append(average_counts[cam_name])
 
         # Increment the sequence index
         self._seqidx += 1
@@ -183,7 +183,7 @@ class AutoFlatFieldSequence():
         Returns:
             dict: cam_name: average_counts pairs.
         """
-        counts = []
+        counts = {}
         for cam_name, filename in filename_dict.items():
             counts[cam_name] = self._get_average_count(cam_name, filename)
             self.logger.debug(f"Average counts for {cam_name}: {counts[cam_name]:.1f}")
@@ -220,20 +220,21 @@ class AutoFlatFieldSequence():
             seconds (optional, float): The exposure time in seconds, default 0.
         """
         self.logger.info("Taking biases for auto-flat fielding.")
-        events = []
+        futures = []
         filenames = {}
 
         # Take the bias exposures
         for cam_name, camera in self.cameras.items():
             filename = self._get_bias_filename(camera)
-            event = camera.take_exposure(filename=filename, seconds=seconds, dark=True)
-            events.append(event)
+            future = camera.take_exposure(filename=filename, seconds=seconds, dark=True)
+            futures.append(future)
             filenames[cam_name] = filename
 
         # Wait for exposures to complete
-        wait_for_events(events, timeout=seconds+self._timeout, sleep_delay=1)
+        wait_for_futures(futures)
 
         # Read the biases
+        self._biases = {}
         for cam_name, filename in filenames.items():
             self._biases[cam_name] = fits.getdata(filename)
 
@@ -250,7 +251,7 @@ class AutoFlatFieldSequence():
         while True:
             next_exptimes = {}
             for cam_name in exptimes.keys():
-                with suppress(KeyError):
+                with suppress(KeyError, IndexError):
                     next_exptimes[cam_name] = exptimes[cam_name].pop()
 
             # Break if we have finished all the cameras
@@ -271,6 +272,8 @@ class AutoFlatFieldSequence():
             exptimes (dict): Pairs of camera_name: list of exposure times.
             headers (dict): FITS headers to be written to file.
             dark (bool, optional): True if exposure is a dark exposure. Default False.
+        Returns:
+            dict: Dictionary of camera name : filename pairs.
         """
         events = []
         filenames = {}
@@ -278,17 +281,18 @@ class AutoFlatFieldSequence():
             cam = self.cameras[cam_name]
 
             # Create filename
-            filename = self._get_exposure_filename(cam)
+            filename = self._get_exposure_filename(cam, dark=dark)
 
             # Take exposure and get event
             exptime = exptime.to_value(u.second)
-            camera_event = cam.take_observation(self.observation, headers=headers,
-                                                filename=filename, exptime=exptime, dark=dark)
-            events.apppend(camera_event)
+            event = cam.take_observation(self.observation, headers=headers, filename=filename,
+                                         exptime=exptime, dark=dark)
+            events.append(event)
             filenames[cam_name] = filename
 
         # Block until exposures are complete
         self._wait_for_exposures(events, exptimes)
+        return filenames
 
     def _wait_for_exposures(self, events, exptimes):
         """ Block until exposures have completed.
@@ -299,8 +303,8 @@ class AutoFlatFieldSequence():
         timeout = max(exptimes.values()).to_value(u.second) + self._timeout
 
         # Block until done exposing on all cameras
-        self.logger.debug(f"Waiting for flat-fields with timeout of {timeout}.")
-        wait_for_events(events, timeout=timeout, sleep_delay=1)
+        self.logger.debug(f"Waiting for flat-field exposures with timeout of {timeout}.")
+        wait_for_events(events)
 
     def _get_exposure_filename(self, camera, dark=False):
         """ Get the exposure filename for a camera.
@@ -355,6 +359,7 @@ class AutoFlatFieldSequence():
         for cam_name in self.cameras.keys():
             counts = np.array(self._average_counts[cam_name])
             target = self._target_counts[cam_name]
+            self.logger.debug(f"{counts} {target}")
             n_good = abs(counts - target) < self._counts_tolerance[cam_name]
             number[cam_name] = n_good.sum()
             self.logger.debug(f"Current acceptable flat field exposures for {cam_name}: ",

@@ -476,7 +476,8 @@ class HuntsmanObservatory(Observatory):
     def _take_autoflats(self, cameras, observation, **kwargs):
         """
         """
-        seq = AutoFlatFieldSequence(cameras=cameras, observation=observation, **kwargs)
+        seq = AutoFlatFieldSequence(cameras=cameras, observation=observation, logger=self.logger,
+                                    **kwargs)
         while not seq.is_finished:
 
             # Slew to field
