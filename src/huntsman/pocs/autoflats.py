@@ -65,8 +65,8 @@ class AutoFlatFieldSequence():
         # Setup containers for sequence data
         self._biases = biases
         self._exptimes = defaultdict(list)
-        self._times = defaultdict(list)
         self._average_counts = defaultdict(list)
+        self._times = list()
         self._target_counts = dict()
         self._counts_tolerance = dict()
 
@@ -148,7 +148,7 @@ class AutoFlatFieldSequence():
             time_now (datetime.datetime): The time that the exposures were started.
         """
         for cam_name in self.cameras.keys():
-            self._times[cam_name].append(time_now)
+            self._times.append(time_now)
             self._exptimes[cam_name].append(exptimes[cam_name])
             self._average_counts[cam_name].append(average_counts[cam_name])
 
@@ -162,7 +162,7 @@ class AutoFlatFieldSequence():
         """
         if self._seqidx == 0:
             return self._initial_exposure_times
-        elapsed_time = current_time() - self._times[-1]
+        elapsed_time = (current_time() - self._times[-1]).sec
         next_exptimes = {}
         for cam_name in self.cameras.keys():
             next_exptimes[cam_name] = self._get_next_exptime(cam_name, elapsed_time, past_midnight)
@@ -181,7 +181,7 @@ class AutoFlatFieldSequence():
         # Get data for specific camera
         previous_exptime = self._exptimes[camera_name][-1]
         target_counts = self._target_counts[camera_name]
-        average_counts = self._previous_counts[camera_name][-1]
+        average_counts = self._average_counts[camera_name][-1]
 
         # Calculate next exptime
         exptime = previous_exptime * (target_counts / average_counts)
@@ -217,13 +217,14 @@ class AutoFlatFieldSequence():
             self.logger.debug(f"Average counts for {cam_name}: {counts[cam_name]:.1f}")
         return counts
 
-    def _get_average_count(self, cam_name, filename, min_counts=1):
+    def _get_average_count(self, cam_name, filename, min_counts=1, dtype="float32"):
         """ Read the data and calculate a clipped-mean count rate.
         Args:
             filename (str): The filename containing the data.
             bias (float): The bias level to subtract from the image.
             min_counts (float): The minimum count rate returned by this function. Can cause
                 problems if less than or equal to 0, so 1 (default) is a safe choice.
+            dtype (str): The data type for the exposure data, default float32.
         Returns:
             float: The average counts.
         """
@@ -231,21 +232,22 @@ class AutoFlatFieldSequence():
             data = fits.getdata(filename)
         except FileNotFoundError:
             data = fits.getdata(filename + '.fz')
-        data = data.astype('int32')
+        data = data.astype(dtype)
 
         # Calculate average counts per pixel
         average_counts, _, _ = sigma_clipped_stats(data - self._biases[cam_name])
         if average_counts < min_counts:
-            self.logger.warning('Truncating mean flat-field counts to minimum value: '
+            self.logger.warning('Clipping mean flat-field counts at minimum value: '
                                 f'{average_counts}<{min_counts}.')
             average_counts = min_counts
 
         return average_counts
 
-    def _take_biases(self, seconds=0):
+    def _take_biases(self, seconds=0, dtype="float32"):
         """ Take a bias exposure for each camera. Should only be run once per sequence.
         Args:
             seconds (optional, float): The exposure time in seconds, default 0.
+            dtype (str): The data type for the exposure data, default float32.
         """
         self.logger.info("Taking biases for auto-flat fielding.")
         futures = []
@@ -264,7 +266,7 @@ class AutoFlatFieldSequence():
         # Read the biases
         self._biases = {}
         for cam_name, filename in filenames.items():
-            self._biases[cam_name] = fits.getdata(filename)
+            self._biases[cam_name] = fits.getdata(filename).astype(dtype)
 
     def _take_darks(self, **kwargs):
         """ Take the dark frames for each camera for each exposure time. This is potentially a
@@ -401,7 +403,7 @@ class AutoFlatFieldSequence():
         Returns:
             bool: True if valid, False if not.
         """
-        if self._seqidx == 0:
+        if self._seqidx <= 1:
             return True
 
         # Check if all are too faint at the max exposure time, or if all are too bright at the min
