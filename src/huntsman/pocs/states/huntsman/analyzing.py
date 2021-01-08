@@ -14,6 +14,7 @@ def on_enter(event_data):
 
     if pocs.get_config('actions.FORCE_RESCHEDULE'):
         pocs.say("Forcing a move to the scheduler")
+        pocs.next_state = 'scheduling'
 
     # Check for minimum number of exposures
     if observation.current_exp_num >= observation.min_nexp:
