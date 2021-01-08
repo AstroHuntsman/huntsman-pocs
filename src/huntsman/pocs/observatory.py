@@ -56,6 +56,7 @@ class HuntsmanObservatory(Observatory):
         self.coarse_focus_config = self.get_config('focusing.coarse')
         self._focus_frequency = self.coarse_focus_config['frequency'] \
             * u.Unit(self.coarse_focus_config['frequency_unit'])
+        self._coarse_focus_filter = self.coarse_focus_config['filter_name']
 
         if self.has_autoguider:
             self.logger.info("Setting up autoguider")
@@ -140,7 +141,7 @@ class HuntsmanObservatory(Observatory):
         """
 
         # Move all the filterwheels to the luminance position.
-        self._move_all_filterwheels_to(self.coarse_focus_config['filter_name'])
+        self._move_all_filterwheels_to(self._coarse_focus_filter)
 
         result = super().autofocus_cameras(*args, **kwargs)
 
