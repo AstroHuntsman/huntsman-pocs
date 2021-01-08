@@ -7,6 +7,7 @@ import numpy as np
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from astropy.io import fits
+from astropy.nddata import Cutout2D
 
 from panoptes.utils.time import current_time, wait_for_events
 from panoptes.utils import get_quantity_value
@@ -20,7 +21,7 @@ class AutoFlatFieldSequence():
     def __init__(self, cameras, observation, initial_exposure_times=1*u.second,
                  timeout=10*u.second, min_exptime=0.0001*u.second, max_exptime=60*u.second,
                  max_attempts=10, required_exposures=5, target_scaling=0.16, scaling_tolerance=0.05,
-                 logger=None, safety_func=None, biases=None):
+                 logger=None, safety_func=None, biases=None, cutout_size=300):
         """
         Args:
             cameras (abc.Mapping): The camera name : Camera dictionary.
@@ -42,6 +43,8 @@ class AutoFlatFieldSequence():
             safety_func (callable, optional): A callable function that returns the safety status
                 as a bool.
             logger (logger, optional): The logger.
+            cutout_size (int, optional): The cutout size in pixels. Useful for reducing memory
+                usage and the impact of vignetting. Default 300.
         """
         if logger is None:
             logger = LOGGER
@@ -51,6 +54,7 @@ class AutoFlatFieldSequence():
         self.observation = observation
         self._safety_func = safety_func
         self._timeout = get_quantity_value(timeout, u.second)
+        self._cutout_size = int(cutout_size)
 
         self._seqidx = 0
         self._max_attempts = int(max_attempts)
@@ -217,22 +221,20 @@ class AutoFlatFieldSequence():
             self.logger.debug(f"Average counts for {cam_name}: {counts[cam_name]:.1f}")
         return counts
 
-    def _get_average_count(self, cam_name, filename, min_counts=1, dtype="float32"):
+    def _get_average_count(self, cam_name, filename, min_counts=1):
         """ Read the data and calculate a clipped-mean count rate.
         Args:
             filename (str): The filename containing the data.
             bias (float): The bias level to subtract from the image.
             min_counts (float): The minimum count rate returned by this function. Can cause
                 problems if less than or equal to 0, so 1 (default) is a safe choice.
-            dtype (str): The data type for the exposure data, default float32.
         Returns:
             float: The average counts.
         """
         try:
-            data = fits.getdata(filename)
+            data = self._load_fits_data(filename)
         except FileNotFoundError:
-            data = fits.getdata(filename + '.fz')
-        data = data.astype(dtype)
+            data = self._load_fits_data(filename + ".fz")
 
         # Calculate average counts per pixel
         average_counts, _, _ = sigma_clipped_stats(data - self._biases[cam_name])
@@ -243,7 +245,7 @@ class AutoFlatFieldSequence():
 
         return average_counts
 
-    def _take_biases(self, seconds=0, dtype="float32"):
+    def _take_biases(self, seconds=0):
         """ Take a bias exposure for each camera. Should only be run once per sequence.
         Args:
             seconds (optional, float): The exposure time in seconds, default 0.
@@ -266,7 +268,7 @@ class AutoFlatFieldSequence():
         # Read the biases
         self._biases = {}
         for cam_name, filename in filenames.items():
-            self._biases[cam_name] = fits.getdata(filename).astype(dtype)
+            self._biases[cam_name] = self._load_fits_data(filename)
 
     def _take_darks(self, **kwargs):
         """ Take the dark frames for each camera for each exposure time. This is potentially a
@@ -430,3 +432,17 @@ class AutoFlatFieldSequence():
             self.logger.warning("All previous exposures were too faint at the maximum exptime.")
 
         return not (all_to_bright or all_to_faint)
+
+    def _load_fits_data(self, filename, dtype="float32"):
+        """ Load FITS data, using a cutout if necessary.
+        Args:
+            filename (str): The FITS filename.
+            dtype (str or Type): The data type for the returned array.
+        Returns:
+            np.array: The exposure data.
+        """
+        data = fits.getdata(filename)
+        if self._cutout_size is not None:
+            x, y = data.shape[1]/2, data.shape[0]/2
+            data = Cutout2D(data, (x, y), size=self._cutout_size)
+        return data.astype(dtype)
