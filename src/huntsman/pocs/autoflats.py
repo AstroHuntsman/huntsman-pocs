@@ -444,5 +444,5 @@ class AutoFlatFieldSequence():
         data = fits.getdata(filename)
         if self._cutout_size is not None:
             x, y = data.shape[1]/2, data.shape[0]/2
-            data = Cutout2D(data, (x, y), size=self._cutout_size)
+            data = Cutout2D(data, (x, y), size=self._cutout_size).data
         return data.astype(dtype)
