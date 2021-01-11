@@ -234,14 +234,14 @@ class HuntsmanDome(AbstractSerialDome):
         if log_message is not None:
             self.logger.info(log_message)
         self.serial.ser.write('{}\n'.format(cmd).encode())
-        time.sleep(HuntsmanDome.self._command_delay)
+        time.sleep(self._command_delay)
 
     def _read_musca(self, log_message=None):
         """Read serial bluetooth device musca."""
         if log_message is not None:
             self.logger.info(log_message)
         lines = self.serial.ser.readlines()
-        time.sleep(HuntsmanDome.self._command_delay)
+        time.sleep(self._command_delay)
         return lines
 
     def _get_shutter_status_string(self):
