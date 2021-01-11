@@ -61,11 +61,11 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=0.5, max_status_attempts=3, *args, **kwargs):
+    def __init__(self, command_delay=1, max_status_attempts=3, *args, **kwargs):
         """
         Args:
             command_delay (float, optional): Wait this long in seconds before allowing next command
-                due to slow musica CPU. Default 0.5.
+                due to slow musica CPU. Default 1s.
             max_status_attempts (int, optional): If status fails, retry this many times before
                 raising a PanError.
         """
