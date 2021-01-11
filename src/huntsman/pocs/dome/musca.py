@@ -281,7 +281,7 @@ class HuntsmanDome(AbstractSerialDome):
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             shutter_status_dict[k] = v
-        time.sleep(HuntsmanDome.self._command_delay)
+        time.sleep(self._command_delay)
         return shutter_status_dict
 
 
