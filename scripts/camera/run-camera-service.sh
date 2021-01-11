@@ -41,6 +41,10 @@ fi
 echo "Downloading latest docker-compose file from ${DC_FILE_URL} to ${DC_FILE}"
 wget ${DC_FILE_URL} -O ${DC_FILE}
 
+# Prune docker
+echo "Pruning docker system..."
+docker system prune -f
+
 # Start the docker service
 echo "Downloading latest docker image(s)..."
 docker-compose -f ${DC_FILE} pull
