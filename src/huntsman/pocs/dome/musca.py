@@ -117,7 +117,7 @@ class HuntsmanDome(AbstractSerialDome):
 
                 # Attempt to get the status, break out
                 status = self._get_shutter_status_dict()
-                if all([getattr(Protocol, v) in status.keys() for v in Protocol.VALID_DEVICE]):
+                if all([v in status.keys() for v in Protocol.VALID_DEVICE]):
                     self._status = status
                     break
 
