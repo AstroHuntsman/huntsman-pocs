@@ -270,7 +270,7 @@ def test_exposure_moving(camera, tmpdir):
 
 
 @pytest.mark.skip("Get working after camera refactor")
-def test_exposure_timeout(camera, tmpdir, caplog):
+def test_service_exposure_timeout(camera, tmpdir, caplog):
     """
     Tests response to an exposure timeout
     """
@@ -298,6 +298,14 @@ def test_exposure_timeout(camera, tmpdir, caplog):
     assert exposure_event.is_set()
     # The camera didn't actually fail, so should wait for it to really finish.
     time.sleep(5)
+
+
+def test_client_exposure_timeout(camera, tmpdir):
+    fits_path = str(tmpdir.join('test_client_exposure_timeout.fits'))
+    with pytest.raises(error.Timeout):
+        camera.take_exposure(seconds=1, filename=fits_path, timeout=0.1, blocking=True)
+    time.sleep(1.5)  # Let the exposure actually finish
+    assert camera.is_ready
 
 
 def test_observation(camera, images_dir):

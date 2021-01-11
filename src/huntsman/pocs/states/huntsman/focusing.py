@@ -1,6 +1,6 @@
 from time import sleep
 
-wait_interval = 15.
+WAIT_INTERVAL = 15
 
 
 def on_enter(event_data):
@@ -19,11 +19,11 @@ def on_enter(event_data):
         wait_time = 0.
         while not all([event.is_set() for event in camera_events.values()]):
             pocs.logger.debug('Waiting for images: {} seconds'.format(wait_time))
-            pocs.status()
 
-            sleep(wait_interval)
-            wait_time += wait_interval
+            sleep(WAIT_INTERVAL)
+            wait_time += WAIT_INTERVAL
 
+        pocs.logger.info("Finished fine focusing, setting next state to 'observing'.")
         pocs.next_state = 'observing'
 
     except Exception as e:

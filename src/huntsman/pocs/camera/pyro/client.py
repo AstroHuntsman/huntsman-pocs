@@ -1,6 +1,9 @@
 import os
-from threading import Thread
+import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
+
+from astropy.io import fits
 from astropy import units as u
 from Pyro5.api import Proxy
 
@@ -54,6 +57,9 @@ class Camera(AbstractCamera):
         # Hardware that may be attached in connect method.
         self.focuser = None
         self.filterwheel = None
+
+        self._exposure_future = None  # Used by self.process_exposure
+        self._exposure_executor = ThreadPoolExecutor(max_workers=1)
 
         # Connect to camera
         self.connect()
@@ -182,12 +188,12 @@ class Camera(AbstractCamera):
         if self._proxy.has_filterwheel:
             self.filterwheel = PyroFilterWheel(camera=self)
 
-    def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, blocking=False,
-                      *args, **kwargs):
+    def take_exposure(self, seconds=1.0*u.second, filename=None, dark=False, blocking=False,
+                      sleep_interval=0.1*u.second, max_write_time=10, *args, timeout=None,
+                      **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
-
         Args:
-            seconds (u.second, optional): Length of exposure.
+            seconds (astropy.Quantity, optional): Length of exposure.
             filename (str, optional): Image is saved to this filename.
             dark (bool, optional): Exposure is a dark frame, default False. On cameras that support
                 taking dark frames internally (by not opening a mechanical shutter) this will be
@@ -195,9 +201,14 @@ class Camera(AbstractCamera):
                 case setting dark to True will cause the `IMAGETYP` FITS header keyword to have
                 value 'Dark Frame' instead of 'Light Frame'. Set dark to None to disable the
                 `IMAGETYP` keyword entirely.
+            max_write_time (astropy.Quantity, optional): The maximum allowable delay between the
+                file being written on the camaera host and it being fully written on the local
+                filesystem. Default 10s.
+            sleep_interval (astropy.Quantity, optional): The time to sleep between checks for
+                the file existing.
             blocking (bool, optional): If False (default) returns immediately after starting
                 the exposure, if True will block (on the client-side) until it completes.
-
+            timeout (float, optional): If provided, override the default timeout with this value.
         Returns:
             threading.Thread: The readout thread, which joins once readout has finished.
         """
@@ -208,13 +219,18 @@ class Camera(AbstractCamera):
         self._proxy.take_exposure(seconds=seconds, filename=filename, dark=dark, *args, **kwargs)
 
         # Start the readout thread
-        timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
-        readout_thread = Thread(target=self._wait_for_readout, args=(timeout,))
-        readout_thread.start()
-        if blocking:
-            readout_thread.join()
+        if timeout is None:
+            timeout = get_quantity_value(seconds, u.second) + self.readout_time + self._timeout
+            timeout += get_quantity_value(max_write_time, u.second)
+        else:
+            timeout = get_quantity_value(timeout, u.second)
 
-        return readout_thread
+        self._exposure_future = self._exposure_executor.submit(self._wait_for_file, filename,
+                                                               timeout)
+        if blocking:
+            self._exposure_future.result()
+
+        return self._exposure_future
 
     def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
         """
@@ -249,7 +265,9 @@ class Camera(AbstractCamera):
                 False.
             blocking (bool, optional): Whether to block (on the client-side) until autofocus
                 complete, default False.
-            timeout (float, optional): The client-side autofocus timeout. The default value of `None` will lookup the `focusing.<focus_type>.timeout` value in the config server. If not provided, a default fallback of 600 seconds is used.
+            timeout (float, optional): The client-side autofocus timeout. The default value of
+                `None` will lookup the `focusing.<focus_type>.timeout` value in the config server.
+                 If not provided, a default fallback of 600 seconds is used.
 
         Returns:
             threading.Event: Event that will be set when autofocusing is complete
@@ -274,20 +292,33 @@ class Camera(AbstractCamera):
 
         return self._focus_event
 
+    def process_exposure(self, *args, **kwargs):
+        """ Small wrapper around `Camera.process_exposure` that makes sure the image is actually
+        written before starting processing. """
+        self._exposure_future.result()
+        return super().process_exposure(*args, **kwargs)
+
     # Private Methods
-    def _wait_for_readout(self, timeout, sleep_time=0.1):
-        """ Wait for readout to finish on the camera service.
+    def _wait_for_file(self, filename, timeout, sleep_interval=0.1):
+        """ Wait for the file to be written. Useful when files are written from camera to host
+        over network with SSHFS.
         Args:
-            timeout (float): The readout timeout in seconds.
+            timeout (float): The timeout in seconds.
         """
+        sleep_interval = get_quantity_value(sleep_interval, u.second)
         proxy = self._proxy
         timer = CountdownTimer(timeout)
         while not timer.expired():
             if not proxy.is_reading_out:
-                return
-            timer.sleep(sleep_time)
-        raise error.PanError(f"Timeout of {timeout} reached while waiting for readout to finish"
-                              f" on camera client {self}.")
+                with suppress(TypeError, FileNotFoundError):
+                    # The best way of checking the file is written appears to be to get its data
+                    # TODO: Check if there is a better way of doing this
+                    fits.getdata(filename)
+                    self.logger.debug(f"Finished waiting for file {filename}.")
+                    return
+            time.sleep(sleep_interval)
+        raise error.Timeout(f"Timeout of {timeout} reached while waiting for file {filename} to"
+                            f" exist on camera client {self}.")
 
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""

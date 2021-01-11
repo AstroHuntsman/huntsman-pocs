@@ -38,7 +38,7 @@ DOME_SHUTTER_STARTUP = ["from huntsman.pocs.dome.musca import HuntsmanDome",
                         "from huntsman.pocs.utils import load_config",
                         "config = load_config()",
                         "dome = HuntsmanDome(config=config)",
-                        "dome.status()",
+                        "dome.status",
                         "#dome.open()"]
 
 WEATHER_STARTUP = ["cd $PANDIR/my-aag-weather",

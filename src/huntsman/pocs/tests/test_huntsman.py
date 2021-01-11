@@ -1,21 +1,18 @@
 import os
-import threading
-import time
-
 import pytest
-from astropy import units as u
-from huntsman.pocs.camera.pyro.client import Camera as PyroCamera
-from huntsman.pocs.camera.utils import create_cameras_from_config
-from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
-from panoptes.pocs import hardware
-from panoptes.pocs.base import PanBase
+
+from panoptes.pocs.utils.location import create_location_from_config
+from panoptes.utils import CountdownTimer
+
 from panoptes.pocs.core import POCS
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
-from panoptes.pocs.utils.location import create_location_from_config
-from panoptes.utils import CountdownTimer
-from panoptes.utils import error
+from panoptes.pocs.mount import create_mount_simulator
+
+from huntsman.pocs.camera.utils import create_cameras_from_config
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
+from huntsman.pocs.utils.huntsman import create_huntsman_pocs
 
 
 def wait_for_running(sub, max_duration=90):
@@ -85,3 +82,9 @@ def pocs(config_with_simulated_stuff, observatory):
     yield pocs
 
     pocs.power_down()
+
+
+def test_create_huntsman_pocs():
+    mount = create_mount_simulator()
+    pocs = create_huntsman_pocs(mount=mount)
+    assert pocs.is_initialized

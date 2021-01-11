@@ -15,8 +15,7 @@ def on_enter(event_data):
         pocs.logger.debug("Setting dithering coords: {}".format(current_observation.field))
 
         if pocs.observatory.mount.set_target_coordinates(current_observation.field):
-            pocs.observatory.slew_to_target()
-            pocs.status()
+            pocs.observatory.mount.slew_to_target()
 
             # Wait until mount is_tracking, then transition to track state
             pocs.say("I'm moving to new dither position")

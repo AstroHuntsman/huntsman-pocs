@@ -25,7 +25,7 @@ class HuntsmanObservatory(Observatory):
     def __init__(self,
                  with_autoguider=True,
                  hdr_mode=False,
-                 take_flats=False,
+                 take_flats=True,
                  *args, **kwargs
                  ):
         """Huntsman POCS Observatory
@@ -53,9 +53,10 @@ class HuntsmanObservatory(Observatory):
 
         # Attributes for focusing
         self.last_focus_time = None
-        coarse_focus_config = self.get_config('focusing.coarse')
-        self._focus_frequency = coarse_focus_config['frequency'] \
-            * u.Unit(coarse_focus_config['frequency_unit'])
+        self.coarse_focus_config = self.get_config('focusing.coarse')
+        self._focus_frequency = self.coarse_focus_config['frequency'] \
+            * u.Unit(self.coarse_focus_config['frequency_unit'])
+        self._coarse_focus_filter = self.coarse_focus_config['filter_name']
 
         if self.has_autoguider:
             self.logger.info("Setting up autoguider")
@@ -114,39 +115,6 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
 
-    def finish_observing(self):
-        """Performs various cleanup functions for observe.
-
-        Add the latest observation to the exposure list.
-        """
-
-        # Lookup the current observation
-        image_info = self.db.get_current('observations')
-        image_id = image_info['data']['image_id']
-        file_path = image_info['data']['file_path']
-
-        # Add most recent exposure to list
-        self.current_observation.exposure_list[image_id] = file_path
-
-    def slew_to_target(self):
-        """ Slew to target and turn on guiding.
-
-        This is convenience method to slew to the target and turn on the guiding
-        given a large separation.
-
-        """
-        separation_limit = 0.5 * u.degree
-
-        # Slew to target
-        self.mount.slew_to_target()
-
-        self.status()  # Send status update and update `is_tracking`
-
-        # WARNING: Some kind of timeout needed
-        while not self.mount.is_tracking and self.mount.distance_from_target() >= separation_limit:
-            self.logger.debug("Slewing to target")
-            time.sleep(1)
-
     def analyze_recent(self):
         """Analyze the most recent exposure.
 
@@ -163,7 +131,8 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug(f'Pointing image set to {self.current_observation.pointing_image}')
 
         # Now call the main analyze
-        super().analyze_recent()
+        if self.get_config('observations.analyze_recent_offset', default=True):
+            super().analyze_recent()
 
         return self.current_offset_info
 
@@ -171,11 +140,14 @@ class HuntsmanObservatory(Observatory):
         """
         Override autofocus_cameras to update the last focus time.
         """
+
+        # Move all the filterwheels to the luminance position.
+        self._move_all_filterwheels_to(self._coarse_focus_filter)
+
         result = super().autofocus_cameras(*args, **kwargs)
 
         # Update last focus time
-        if not kwargs.get("coarse", False):
-            self.last_focus_time = current_time()
+        self.last_focus_time = current_time()
 
         return result
 
@@ -267,14 +239,8 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def take_dark_images(self,
-                         exptimes=None,
-                         camera_names=None,
-                         n_darks=10,
-                         imtype='dark',
-                         set_from_config=False,
-                         *args, **kwargs
-                         ):
+    def take_dark_images(self, exptimes=None, camera_names=None, n_darks=10, imtype='dark',
+                         set_from_config=False, *args, **kwargs):
         """Take n_darks for each exposure time specified,
            for each camera.
 
@@ -301,17 +267,8 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.debug(f'Using cameras {cameras_list}')
 
-        filterwheel_events = dict()
-
-        self.logger.debug(f'Moving all camera filterwheels to blank filter')
-
-        # Move all the camera filterwheels to the blank position.
-        for camera in cameras_list.values():
-            if camera.filterwheel.current_filter != 'blank':
-                filterwheel_event = camera.filterwheel.move_to_dark_position()
-                filterwheel_events[camera] = filterwheel_event
-        self.logger.debug('Waiting for all the filterwheels to move to the dark position')
-        wait_for_events(list(filterwheel_events.values()))
+        # Move all the filterwheels to the blank position.
+        self._move_all_filterwheels_to('blank')
 
         # List to check that the final number of darks is equal to the number
         # of cameras times the number of exptimes times n_darks.
@@ -319,13 +276,13 @@ class HuntsmanObservatory(Observatory):
 
         exptimes = listify(exptimes)
 
-        if not isinstance(n_darks, list):
-            n_darks = listify(n_darks) * len(exptimes)
-
         if set_from_config:
-            dark_config = self.get_config('calibs.dark', default=dict())
+            dark_config = self.get_config('darks', default=dict())
             exptimes = dark_config['exposure_time']
             n_darks = dark_config['n_darks']
+
+        if not isinstance(n_darks, list):
+            n_darks = listify(n_darks) * len(exptimes)
 
         # Loop over cameras.
         if len(exptimes) == 0:
@@ -780,3 +737,27 @@ class HuntsmanObservatory(Observatory):
             else:
                 self.logger.debug('Aborting flat-field dark observations as no longer safe.')
                 return
+
+    def _move_all_filterwheels_to(self, filter_name, camera_names=None):
+        """Move all the filterwheels to a given filter
+        Args:
+            filter_name (str): name of the filter where filterwheels will be moved to.
+            camera_names (list, optional): List of camera names to be used.
+                Default to `None`, which uses all cameras.
+        """
+        self.logger.debug(f'Moving all camera filterwheels to the {filter_name} filter.')
+
+        if camera_names is None:
+            cameras_list = self.cameras
+        else:
+            cameras_list = {c: self.cameras[c] for c in camera_names}
+
+        # Move all the camera filterwheels to filter_name
+        filterwheel_events = dict()
+        for camera in cameras_list.values():
+            filterwheel_events[camera] = camera.filterwheel.move_to(filter_name)
+
+        # Wait for move to complete
+        self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter.')
+        wait_for_events(list(filterwheel_events.values()))
+        self.logger.debug(f'Finished waiting for filterwheels.')

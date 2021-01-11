@@ -74,6 +74,7 @@ class FilterWheel(AbstractFilterWheel):
 
     def move_to(self, new_position, **kwargs):
         self._proxy.filterwheel_move_to(new_position=new_position, **kwargs)
+        return self._move_event
 
     ################################################################################################
     # Private Methods
