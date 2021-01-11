@@ -1,5 +1,7 @@
 from astropy.coordinates import SkyCoord
 
+from panoptes.utils.config.client import get_config
+
 
 def on_enter(event_data):
     """
@@ -51,7 +53,11 @@ def on_enter(event_data):
             pocs.say("I'm slewing over to the coordinates to track the target.")
 
             # Start the mount slewing
-            coords = SkyCoord(300, -60, unit="deg")
+            coarse_focus_config = get_config('focusing.coarse')
+            ra = coarse_focus_config['dummy_ra']
+            dec = coarse_focus_config['dummy_dec']
+
+            coords = SkyCoord(ra, dec, unit="deg")
             pocs.observatory.mount.slew_to_coordinates(coords)
 
             pocs.say("I'm at the coordinates for coarse focusing")
