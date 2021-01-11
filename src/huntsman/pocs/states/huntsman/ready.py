@@ -42,3 +42,12 @@ def on_enter(event_data):
         except AttributeError:
             pocs.logger.warning('Not opening the dome! Observatory has no dome attribute!')
         pocs.say("Ok, I'm all set up and ready to go!")
+
+        if pocs.next_state == 'coarse_focusing':
+            # Wait until mount is_tracking, then transition to track state
+            pocs.say("I'm slewing over to the coordinates to track the target.")
+
+            # Start the mount slewing
+            pocs.observatory.mount.slew_to_target()
+
+            pocs.say("I'm at the target")
