@@ -54,4 +54,4 @@ def on_enter(event_data):
             coords = SkyCoord("17h45m40.04s -29d00m28.1s")
             pocs.observatory.mount.slew_to_coordinates(coords)
 
-            pocs.say("I'm at the target")
+            pocs.say("I'm at the coordinates for coarse focusing")
