@@ -51,7 +51,7 @@ def on_enter(event_data):
             pocs.say("I'm slewing over to the coordinates to track the target.")
 
             # Start the mount slewing
-            coords = SkyCoord("17h45m40.04s -29d00m28.1s")
+            coords = SkyCoord("20h45m40.04s -59d00m28.1s")
             pocs.observatory.mount.slew_to_coordinates(coords)
 
             pocs.say("I'm at the coordinates for coarse focusing")
