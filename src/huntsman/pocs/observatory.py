@@ -131,7 +131,8 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug(f'Pointing image set to {self.current_observation.pointing_image}')
 
         # Now call the main analyze
-        super().analyze_recent()
+        if self.get_config('observations.analyze_recent_offset', default=True):
+            super().analyze_recent()
 
         return self.current_offset_info
 
