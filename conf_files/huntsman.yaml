@@ -97,3 +97,12 @@ pyro:
       host: localhost
         port: 0
     devices: []
+
+observations:
+  make_timelapse: False
+  compress_fits: False
+  record_observations: True
+  make_pretty_images: False
+  keep_jpgs: False
+  analyze_recent_offset: False
+
