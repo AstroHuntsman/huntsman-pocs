@@ -1,4 +1,4 @@
-from astropy import units as u
+from astropy.coordinates import SkyCoord
 
 
 def on_enter(event_data):
@@ -51,7 +51,7 @@ def on_enter(event_data):
             pocs.say("I'm slewing over to the coordinates to track the target.")
 
             # Start the mount slewing
-            coords = (300 * u.degree, -60 * u.degree)
+            coords = SkyCoord(300, -60, unit="deg")
             pocs.observatory.mount.slew_to_coordinates(coords)
 
             pocs.say("I'm at the coordinates for coarse focusing")
