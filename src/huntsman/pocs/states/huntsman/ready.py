@@ -1,3 +1,6 @@
+from astropy.coordinates import SkyCoord
+
+
 def on_enter(event_data):
     """
     Once in the `ready` state our unit has been initialized successfully. We now
@@ -48,6 +51,7 @@ def on_enter(event_data):
             pocs.say("I'm slewing over to the coordinates to track the target.")
 
             # Start the mount slewing
-            pocs.observatory.mount.slew_to_target()
+            coords = SkyCoord("17h45m40.04s -29d00m28.1s")
+            pocs.observatory.mount.slew_to_coordinates(coords)
 
             pocs.say("I'm at the target")
