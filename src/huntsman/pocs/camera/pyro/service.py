@@ -4,7 +4,7 @@ from threading import Event, Thread
 from contextlib import suppress
 import Pyro5.server
 
-from panoptes.utils.config.client import get_config, server_is_running
+from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
 
 from huntsman.pocs.utils.logger import logger
@@ -31,10 +31,7 @@ class CameraService(object):
         # Fetch the config once during object creation
         # TODO determine if we want to make all config calls dynamic.
 
-        self.logger.info("Getting camera config from config server.")
-        while not server_is_running():
-            self.logger.debug("Waiting for config server to start up.")
-            time.sleep(1)
+        self.logger.debug("Getting camera config from config server.")
         self.config = get_config()
 
         self.host = self.config.get('host')
