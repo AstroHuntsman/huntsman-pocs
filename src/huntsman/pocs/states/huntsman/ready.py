@@ -1,6 +1,8 @@
-from astropy.coordinates import SkyCoord
-
+from panoptes.utils import altaz_to_radec
+from panoptes.utils.time import current_time
 from panoptes.utils.config.client import get_config
+
+from panoptes.pocs.utils.location import create_location_from_config
 
 
 def on_enter(event_data):
@@ -49,15 +51,23 @@ def on_enter(event_data):
         pocs.say("Ok, I'm all set up and ready to go!")
 
         if pocs.next_state == 'coarse_focusing':
-            # Wait until mount is_tracking, then transition to track state
-            pocs.say("I'm slewing over to the coordinates to track the target.")
+            # Setup information about location
+            pocs.say('Setting up location')
+            site_details = create_location_from_config()
+            earth_location = site_details['earth_location']
 
-            # Start the mount slewing
+            # Set up the coordinates for coarse focus.
             coarse_focus_config = get_config('focusing.coarse')
-            ra = coarse_focus_config['dummy_ra']
-            dec = coarse_focus_config['dummy_dec']
+            alt = coarse_focus_config['alt']
+            az = coarse_focus_config['az']
 
-            coords = SkyCoord(ra, dec, unit="deg")
-            pocs.observatory.mount.slew_to_coordinates(coords)
+            coarse_focus_coords = altaz_to_radec(alt=alt, az=az, location=earth_location,
+                                                 obstime=current_time())
 
-            pocs.say("I'm at the coordinates for coarse focusing")
+            pocs.say(f'Coarse focus coordinates: {coarse_focus_coords}')
+
+            # Slew to coordinates for coarse focusing.
+            pocs.say("I'm slewing over to the coordinates for coarse focus.")
+            pocs.observatory.mount.slew_to_coordinates(coarse_focus_coords)
+
+            pocs.say("I'm at the coordinates for coarse focus.")
