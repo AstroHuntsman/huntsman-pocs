@@ -25,6 +25,7 @@ def on_enter(event_data):
     coarse_focus_alt = coarse_focus_config['alt']
     coarse_focus_az = coarse_focus_config['az']
 
+    # Convert altaz coordinates to radec.
     coarse_focus_coords = altaz_to_radec(alt=coarse_focus_alt, az=coarse_focus_az,
                                          location=earth_location, obstime=current_time())
 
