@@ -1,10 +1,13 @@
 # based upon @jamessynge's astrohaven.py code in POCS
-
 import threading
 import time
 
-from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
+import astropy.units as u
+
 from panoptes.utils import CountdownTimer
+from panoptes.utils import error
+from panoptes.utils import get_quantity_value
+from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 
 
 class Protocol:
@@ -53,22 +56,29 @@ class HuntsmanDome(AbstractSerialDome):
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
     NUM_CLOSE_FEEDBACKS = 2  # Number of target_feedback bytes needed.
 
-    # s, Wait this long before allowing next command due to slow musica CPU
-    SHUTTER_CMD_DELAY = 0.5
     # s, A status_update is requested every minute to monitor connectivity.
     STATUS_UPDATE_FREQUENCY = 60.
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, command_delay=1, max_status_attempts=3, *args, **kwargs):
+        """
+        Args:
+            command_delay (float, optional): Wait this long in seconds before allowing next command
+                due to slow musica CPU. Default 1s.
+            max_status_attempts (int, optional): If status fails, retry this many times before
+                raising a PanError.
+        """
         super().__init__(*args, **kwargs)
 
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT
 
         self._status = dict()
         self._status_delay = 5  # seconds
-        self._status_timer = CountdownTimer(self._status_delay)
+        self._status_timer = None
         self._close_event = threading.Event()
+        self._command_delay = get_quantity_value(command_delay, u.second)
+        self._max_status_attempts = int(max_status_attempts)
 
     @property
     def is_open(self):
@@ -97,8 +107,26 @@ class HuntsmanDome(AbstractSerialDome):
         TODO: Add other info (e.g. dome moving)
         TODO: Auto-update this every ~60s
         """
-        if self._status_timer.expired():
-            self._status = self._get_shutter_status_dict()
+        if self._status_timer is None:
+            update_status = True
+        else:
+            update_status = self._status_timer.expired()
+
+        if update_status:
+            for i in range(1, self._max_status_attempts + 1):
+
+                # Attempt to get the status, break out
+                status = self._get_shutter_status_dict()
+                if all([v in status.keys() for v in Protocol.VALID_DEVICE]):
+                    self._status = status
+                    break
+
+                # Raise error if max attempts reached
+                if i == self._max_status_attempts:
+                    raise error.PanError("Unable to retrieve dome status.")
+
+                self.logger.debug(f"Retrying dome status: {i} of {self._max_status_attempts}.")
+
             self._status_timer = CountdownTimer(self._status_delay)
         return self._status
 
@@ -206,14 +234,14 @@ class HuntsmanDome(AbstractSerialDome):
         if log_message is not None:
             self.logger.info(log_message)
         self.serial.ser.write('{}\n'.format(cmd).encode())
-        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+        time.sleep(self._command_delay)
 
     def _read_musca(self, log_message=None):
         """Read serial bluetooth device musca."""
         if log_message is not None:
             self.logger.info(log_message)
         lines = self.serial.ser.readlines()
-        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+        time.sleep(self._command_delay)
         return lines
 
     def _get_shutter_status_string(self):
@@ -253,7 +281,7 @@ class HuntsmanDome(AbstractSerialDome):
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             shutter_status_dict[k] = v
-        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+        time.sleep(self._command_delay)
         return shutter_status_dict
 
 
