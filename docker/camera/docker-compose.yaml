@@ -10,6 +10,12 @@ services:
       PANDIR: /var/huntsman
       PANOPTES_CONFIG_HOST:
       PANOPTES_CONFIG_PORT:
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 320M
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:
       - "${PANDIR}/images:/var/huntsman/images"
