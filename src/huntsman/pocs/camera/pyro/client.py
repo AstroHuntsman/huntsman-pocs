@@ -47,7 +47,6 @@ class Camera(AbstractCamera):
         self._config_port = config_port or os.getenv('PANOPTES_CONFIG_PORT', 6563)
         self.port = port
         self.is_primary = primary
-        self._timeout = get_quantity_value(kwargs.get('timeout', 10), unit=u.second)
         self.subcomponents = dict()  # Required for "stringifying" the camera
 
         # The proxy used for communication with the remote instance.
@@ -174,6 +173,7 @@ class Camera(AbstractCamera):
         self._file_extension = self._proxy.get("file_extension")
         self._is_cooled_camera = self._proxy.get("is_cooled_camera")
         self._filter_type = self._proxy.get("filter_type")
+        self._timeout = self._proxy.get("_timeout")
 
         # Set up proxies for remote camera's events required by base class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
