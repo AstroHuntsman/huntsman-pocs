@@ -12,7 +12,7 @@ def on_enter(event_data):
     pocs = event_data.model
     pocs.next_state = 'parking'
 
-    # Setup information about location
+    # Setup information about earth location.
     pocs.say('Setting up location')
     site_details = create_location_from_config()
     earth_location = site_details['earth_location']
