@@ -138,8 +138,7 @@ function do_install() {
  pull_docker_images
 
  echo "Downloading run-camera-service.sh script to ${PANDIR}/scripts"
- # wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/run-camera-service.sh -O ${PANDIR}/scripts/run-camera-service.sh
- wget https://raw.githubusercontent.com/danjampro/huntsman-pocs/huntsman-cloud-init/scripts/camera/run-camera-service.sh -O ${PANDIR}/scripts/run-camera-service.sh
+ wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/run-camera-service.sh -O ${PANDIR}/scripts/run-camera-service.sh
 
  echo "Rebooting in 10s."
  sleep 10
