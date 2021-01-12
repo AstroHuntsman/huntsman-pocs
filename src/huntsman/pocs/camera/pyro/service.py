@@ -33,7 +33,7 @@ class CameraService(object):
 
         self.logger.info("Getting camera config from config server.")
         while not server_is_running():
-            self.logger.debug("Waiting for config server.")
+            self.logger.debug("Waiting for config server to start up.")
             time.sleep(1)
         self.config = get_config()
 
