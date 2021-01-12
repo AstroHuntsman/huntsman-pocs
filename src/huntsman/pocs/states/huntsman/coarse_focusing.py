@@ -19,6 +19,8 @@ def on_enter(event_data):
 
     # Set up the coarse focus config.
     coarse_focus_config = pocs.get_config('focusing.coarse')
+
+    # Get timeout, alt, and az from config dict.
     coarse_focus_timeout = coarse_focus_config['timeout']
     coarse_focus_alt = coarse_focus_config['alt']
     coarse_focus_az = coarse_focus_config['az']
