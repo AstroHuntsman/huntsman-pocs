@@ -13,7 +13,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 960M
         reservations:
           memory: 320M
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
