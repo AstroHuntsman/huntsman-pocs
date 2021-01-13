@@ -1,12 +1,9 @@
-from multiprocessing import Process
-
-import Pyro5.errors
+import time
 from Pyro5.api import Daemon as PyroDaemon
 
-from panoptes.utils.config.client import set_config
 from panoptes.utils.library import load_module
+from panoptes.utils.config.client import get_config, server_is_running
 
-from huntsman.pocs.utils.config import get_config
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.utils.config import get_own_ip
@@ -37,6 +34,10 @@ def pyro_service(service_class=None,
             service was started via `autostart=True`, the function will block until terminated,
             but still return the completed process.
     """
+    while not server_is_running():
+        logger.debug("Waiting for config server to start up before starting pyro service.")
+        time.sleep(5)
+
     # Specify address
     host = host or get_config(f'pyro.{service_name}.ip', default=None)
     if host is None:
