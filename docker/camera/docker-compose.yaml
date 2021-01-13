@@ -1,4 +1,4 @@
-version: '3.7'
+version: '2.4'
 services:
   camera:
     image: huntsmanarray/huntsman-pocs-camera:develop
@@ -10,12 +10,10 @@ services:
       PANDIR: /var/huntsman
       PANOPTES_CONFIG_HOST:
       PANOPTES_CONFIG_PORT:
-    deploy:
-      resources:
-        limits:
-          memory: 960M
-        reservations:
-          memory: 320M
+    mem_limit: 704M
+    memswap_limit: 1G
+    mem_swappiness: 1
+    mem_reservation: 320M
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:
       - "${PANDIR}/images:/var/huntsman/images"
