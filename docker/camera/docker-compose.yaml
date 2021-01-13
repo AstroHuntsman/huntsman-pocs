@@ -13,10 +13,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 704M
-          memory-swap: 1G
+          memory: 960M
+          memory-swap: 1280M
         reservations:
-          memory: 320M
+          memory: 512M
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:
       - "${PANDIR}/images:/var/huntsman/images"
