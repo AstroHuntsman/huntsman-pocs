@@ -64,14 +64,14 @@ export PANDIR=/var/huntsman
 EOF
 }
 
-# Make a swap file and set swappiness to 0
+# Make a swap file and set swappiness to 1
 # https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-20-04
 function setup_swap() {
   fallocate -l 320M /swapfile
   chmod 600 /swapfile
   mkswap /swapfile
   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-  echo 'vm.swappiness=0' >> /etc/sysctl.conf
+  echo 'vm.swappiness=1' >> /etc/sysctl.conf
 }
 
 function enable_auto_login() {
