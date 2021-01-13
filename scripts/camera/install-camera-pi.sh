@@ -67,7 +67,7 @@ EOF
 # Make a swap file and set swappiness to 0
 # https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-20-04
 function setup_swap() {
-  fallocate -l 300M /swapfile
+  fallocate -l 320M /swapfile
   chmod 600 /swapfile
   mkswap /swapfile
   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
