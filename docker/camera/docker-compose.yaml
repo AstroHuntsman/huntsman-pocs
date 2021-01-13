@@ -12,7 +12,6 @@ services:
       PANOPTES_CONFIG_PORT:
     deploy:
       resources:
-        memory-swappiness: 1
         limits:
           memory: 704M
           memory-swap: 1G
