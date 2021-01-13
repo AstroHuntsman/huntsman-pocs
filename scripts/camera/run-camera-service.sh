@@ -49,4 +49,4 @@ docker system prune -f
 echo "Downloading latest docker image(s)..."
 docker-compose -f ${DC_FILE} pull
 echo "Starting the camera docker service..."
-docker-compose -f ${DC_FILE} run camera
+docker-compose -f ${DC_FILE} --compatibility run camera
