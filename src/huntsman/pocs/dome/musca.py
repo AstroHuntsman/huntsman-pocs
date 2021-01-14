@@ -240,7 +240,7 @@ class HuntsmanDome(AbstractSerialDome):
         """Read serial bluetooth device musca."""
         if log_message is not None:
             self.logger.info(log_message)
-        lines = self.serial.read()
+        lines = self.serial.ser.readlines()
         time.sleep(self._command_delay)
         return lines
 
