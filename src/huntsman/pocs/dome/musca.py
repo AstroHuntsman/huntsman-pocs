@@ -277,7 +277,7 @@ class HuntsmanDome(AbstractSerialDome):
         shutter_status_list = self._read_musca()
         shutter_status_dict = {}
         for shutter_status_item in shutter_status_list:
-            k, v = shutter_status_item.strip().split(':')
+            k, v = shutter_status_item.strip().decode().split(':')
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             shutter_status_dict[k] = v
