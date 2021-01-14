@@ -96,8 +96,12 @@ function setup_byobu() {
 # For some reason the ZWO camera/FW libraries and/or rules need to be installed outside of docker
 # Otherwise we seem to be experiencing CAMERA REMOVED errors
 function install_camera_libs() {
+  # Download install file
   wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
+  # Install the libs and rules
   bash ${PANDIR}/scripts/install-camera-libs.sh
+  # We also need to change the default usbfs_memory_mb from 200M to 60M
+  sed -i 's/200/60/g' /etc/udev/rules.d/asi.rules
 }
 
 function get_docker() {
