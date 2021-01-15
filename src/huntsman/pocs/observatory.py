@@ -150,7 +150,12 @@ class HuntsmanObservatory(Observatory):
         if coarse:
             filter_name = self._coarse_focus_filter
         else:
-            filter_name = self.current_observation.filter_name
+            try:
+                filter_name = self.current_observation.filter_name
+            except AttributeError:
+                filter_name = self._coarse_focus_filter
+                self.logger.warning("Unable to retrieve filter name from current observation."
+                                    f" Defaulting to coarse focus filter ({filter_name}).")
 
         # Move all the filterwheels to the luminance position.
         self._move_all_filterwheels_to(filter_name)
