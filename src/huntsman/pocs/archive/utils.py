@@ -1,7 +1,7 @@
 import os
 
 
-def remove_empty_directories(rootdir, logger=None):
+def remove_empty_directories(rootdir):
     """ Remove all empty directories inside rootdir, without deleting rootdir itself.
     Args:
         rootdir: The root directory to search for empty directories.
