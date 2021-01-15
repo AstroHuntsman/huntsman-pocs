@@ -75,7 +75,6 @@ class HuntsmanDome(AbstractSerialDome):
 
         self._status = dict()
         self._status_delay = 5  # seconds
-        self._status_lines = 6
         self._status_timer = None
         self._close_event = threading.Event()
         self._command_delay = get_quantity_value(command_delay, u.second)
@@ -269,7 +268,8 @@ class HuntsmanDome(AbstractSerialDome):
         """
         self._write_musca(Protocol.GET_STATUS)
         shutter_status_dict = {}
-        for i in range(self._status_lines):
+        num_lines = len(Protocol.VALID_DEVICE)
+        for i in range(num_lines + 1):
             k, v = self.serial.read().strip().split(':')
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
