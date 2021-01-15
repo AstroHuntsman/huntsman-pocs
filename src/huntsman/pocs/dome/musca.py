@@ -237,16 +237,6 @@ class HuntsmanDome(AbstractSerialDome):
         self.serial.write(f'{cmd}\n')
         time.sleep(self._command_delay)
 
-    def _read_musca(self, log_message=None):
-        """Read serial bluetooth device musca."""
-        if log_message is not None:
-            self.logger.info(log_message)
-        lines = []
-        for i in range(self._status_lines):
-            lines.append(self.serial.read())
-        time.sleep(self._command_delay)
-        return lines
-
     def _get_shutter_status_string(self):
         """Return a text string describing dome shutter's current status."""
         if not self.is_connected:
@@ -277,10 +267,9 @@ class HuntsmanDome(AbstractSerialDome):
         b'Solar_A:\t 0.439232\r\n']
         """
         self._write_musca(Protocol.GET_STATUS)
-        shutter_status_list = self._read_musca()
         shutter_status_dict = {}
-        for shutter_status_item in shutter_status_list:
-            k, v = shutter_status_item.strip().split(':')
+        for i in range(self._status_lines):
+            k, v = self.serial.read().strip().split(':')
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             shutter_status_dict[k] = v
