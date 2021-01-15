@@ -75,6 +75,7 @@ class HuntsmanDome(AbstractSerialDome):
 
         self._status = dict()
         self._status_delay = 5  # seconds
+        self._status_lines = 6
         self._status_timer = None
         self._close_event = threading.Event()
         self._command_delay = get_quantity_value(command_delay, u.second)
@@ -240,7 +241,9 @@ class HuntsmanDome(AbstractSerialDome):
         """Read serial bluetooth device musca."""
         if log_message is not None:
             self.logger.info(log_message)
-        lines = self.serial.ser.readlines()
+        lines = []
+        for i in range(self._status_lines):
+            lines.append(self.serial.read())
         time.sleep(self._command_delay)
         return lines
 
