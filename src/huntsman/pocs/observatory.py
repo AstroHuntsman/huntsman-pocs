@@ -138,8 +138,7 @@ class HuntsmanObservatory(Observatory):
         return self.current_offset_info
 
     def autofocus_cameras(self, coarse=False, *args, **kwargs):
-        """
-        Override autofocus_cameras to update the last focus time.
+        """ Override autofocus_cameras to update the last focus time and move filterwheels.
         Args:
             coarse (bool, optional): Perform coarse focus? Default False.
             *args, **kwargs: Parsed to `pocs.observatory.Observatory.autofocus_cameras`.
