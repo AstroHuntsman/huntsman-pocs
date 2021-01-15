@@ -260,11 +260,12 @@ class HuntsmanDome(AbstractSerialDome):
         """ Return dictionary of musca status.
 
         Example output line:
-        # # [b'Status:\r\n', b'Shutter:Closed\r\n', b'Door:Closed\r\n',
-        b'Battery:\t 13.0671\r\n',
-        b'Solar_A:\t 0.400871\r\n', b'Switch:EM243A\r\n',
-        b'Battery:\t 13.101\r\n',
-        b'Solar_A:\t 0.439232\r\n']
+        # [b'Status:\r\n',
+           b'Shutter:Closed\r\n',
+           b'Door:Closed\r\n',
+           b'Battery:\t 13.0671\r\n',
+           b'Solar_A:\t 0.400871\r\n',
+           b'Switch:EM243A\r\n',
         """
         self._write_musca(Protocol.GET_STATUS)
         shutter_status_dict = {}
