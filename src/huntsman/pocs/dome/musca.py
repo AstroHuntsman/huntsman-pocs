@@ -265,7 +265,7 @@ class HuntsmanDome(AbstractSerialDome):
            b'Door:Closed\r\n',
            b'Battery:\t 13.0671\r\n',
            b'Solar_A:\t 0.400871\r\n',
-           b'Switch:EM243A\r\n',
+           b'Switch:EM243A\r\n']
         """
         self._write_musca(Protocol.GET_STATUS)
         shutter_status_dict = {}
