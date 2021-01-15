@@ -269,7 +269,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._write_musca(Protocol.GET_STATUS)
         shutter_status_dict = {}
         num_lines = len(Protocol.VALID_DEVICE)
-        for i in range(num_lines + 1):
+        for i in range(num_lines + 1):  # Add one for the beginning 'Status' key
             k, v = self.serial.read().strip().split(':')
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
