@@ -271,6 +271,8 @@ class HuntsmanDome(AbstractSerialDome):
         num_lines = len(Protocol.VALID_DEVICE)
         for i in range(num_lines + 1):  # Add one for the beginning 'Status' key
             k, v = self.serial.read().strip().split(':')
+            if k == 'Status':
+                continue
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             shutter_status_dict[k] = v
