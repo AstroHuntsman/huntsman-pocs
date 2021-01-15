@@ -19,6 +19,12 @@ volumes:
       type: none
       device: ${PANDIR}/huntsman-config/conf_files/pocs
       o: bind
+  archive:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PANDIR}/archive
+      o: bind
 
 services:
   pocs-config-server:
@@ -59,3 +65,23 @@ services:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
+
+  huntsman-file-archiver:
+    image: huntsmanarray/huntsman-pocs:develop
+    tty: true
+    container_name: huntsman-file-archiver
+    hostname: huntsman-file-archiver
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      PANOPTES_CONFIG_PORT: 6563
+    command: [ "/var/panoptes/conda/bin/python /var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
+    volumes:
+      - config:/var/huntsman/huntsman-pocs/conf_files
+      - panlog:/var/huntsman/logs
+      - images:/var/huntsman/images
+      - archive:/var/huntsman/archive
