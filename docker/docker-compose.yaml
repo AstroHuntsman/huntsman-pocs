@@ -19,6 +19,12 @@ volumes:
       type: none
       device: ${PANDIR}/huntsman-config/conf_files/pocs
       o: bind
+  archive:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PANDIR}/archive
+      o: bind
 
 services:
   pocs-config-server:
@@ -78,3 +84,4 @@ services:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
+      - archive:/var/huntsman/archive
