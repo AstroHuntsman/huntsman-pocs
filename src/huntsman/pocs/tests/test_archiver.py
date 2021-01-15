@@ -1,7 +1,7 @@
 import os
 import time
 import pytest
-from huntsman.pocs.archive import Archiver
+from huntsman.pocs.archive.archiver import Archiver
 
 N_IMAGES = 5
 
