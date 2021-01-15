@@ -93,7 +93,7 @@ class Archiver(PanBase):
     def stop(self, blocking=True):
         """ Stop archiving.
         Args:
-            blocking (bool, optional): If Trye (default), blocks until all threads have joined.
+            blocking (bool, optional): If True (default), blocks until all threads have joined.
         """
         self.logger.info("Stopping archiving.")
         self._stop = True
