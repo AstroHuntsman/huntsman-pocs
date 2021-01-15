@@ -140,6 +140,11 @@ class HuntsmanObservatory(Observatory):
     def autofocus_cameras(self, coarse=False, *args, **kwargs):
         """
         Override autofocus_cameras to update the last focus time.
+        Args:
+            coarse (bool, optional): Perform coarse focus? Default False.
+            *args, **kwargs: Parsed to `pocs.observatory.Observatory.autofocus_cameras`.
+        Returns:
+            threading.Event: The autofocus event.
         """
         # Move to appropriate filter
         # TODO: Do this on a per-camera basis to allow for different filters simultaneously
