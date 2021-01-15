@@ -1,4 +1,5 @@
 import os
+from contextlib import suppress
 
 
 def remove_empty_directories(rootdir):
@@ -29,6 +30,7 @@ def _remove_empty_directories(path):
     # If all of the subdirs were not empty, we need to delete this path
     # The empty subdirs will already have been deleted by the recursive call
     if all_empty:
-        os.rmdir(path)
+        with suppress(OSError):
+            os.rmdir(path)
 
     return all_empty
