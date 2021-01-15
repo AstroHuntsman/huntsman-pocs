@@ -73,7 +73,7 @@ services:
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "/var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
+    command: [ "/var/panoptes/conda/bin/python /var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
     volumes:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
