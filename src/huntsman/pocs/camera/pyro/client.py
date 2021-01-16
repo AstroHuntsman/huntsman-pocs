@@ -8,9 +8,8 @@ from astropy import units as u
 from Pyro5.api import Proxy
 
 from panoptes.utils import error
-from panoptes.utils import CountdownTimer
-from panoptes.utils import get_quantity_value
-
+from panoptes.utils.time import CountdownTimer
+from panoptes.utils.utils import get_quantity_value
 from panoptes.pocs.camera import AbstractCamera
 
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel

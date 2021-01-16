@@ -1,6 +1,6 @@
 from panoptes.utils.time import wait_for_events, current_time
 
-from panoptes.utils import altaz_to_radec
+from panoptes.utils.utils import altaz_to_radec
 from panoptes.pocs.utils.location import create_location_from_config
 
 

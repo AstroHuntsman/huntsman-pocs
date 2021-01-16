@@ -2,7 +2,7 @@ import os
 import pytest
 
 from panoptes.pocs.utils.location import create_location_from_config
-from panoptes.utils import CountdownTimer
+from panoptes.utils.time import CountdownTimer
 
 from panoptes.pocs.core import POCS
 from panoptes.pocs.dome import create_dome_from_config

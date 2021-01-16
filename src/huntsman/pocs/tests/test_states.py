@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from panoptes.utils import current_time
+from panoptes.utils.time import current_time
 
 from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
