@@ -51,7 +51,6 @@ class HuntsmanDome(AbstractSerialDome):
 
     """
     LISTEN_TIMEOUT = 3  # Max number of seconds to wait for a response.
-    MOVE_TIMEOUT = 45  # Max number of seconds to run the door motors.
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
     NUM_CLOSE_FEEDBACKS = 2  # Number of target_feedback bytes needed.
 
@@ -60,13 +59,14 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=1, max_status_attempts=10, *args, **kwargs):
+    def __init__(self, command_delay=1, max_status_attempts=10, move_timeout=60, *args, **kwargs):
         """
         Args:
             command_delay (float, optional): Wait this long in seconds before allowing next command
                 due to slow musica CPU. Default 10s.
             max_status_attempts (int, optional): If status fails, retry this many times before
                 raising a PanError. Default: 10.
+            move_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 60s.
         """
         super().__init__(*args, **kwargs)
 
@@ -75,6 +75,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._status = dict()
         self._close_event = threading.Event()
         self._command_delay = get_quantity_value(command_delay, u.second)
+        self._move_timeout = get_quantity_value(move_timeout, u.second)
         self._max_status_attempts = int(max_status_attempts)
 
         self._command_lock = Lock()  # Use a lock to make class thread-safe
@@ -133,7 +134,7 @@ class HuntsmanDome(AbstractSerialDome):
             return False
 
         self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
-        time.sleep(HuntsmanDome.MOVE_TIMEOUT)
+        time.sleep(self._move_timeout)
 
         v = self.status[Protocol.SHUTTER]
         if v == Protocol.OPEN:
@@ -176,8 +177,8 @@ class HuntsmanDome(AbstractSerialDome):
             return True
 
         self._close_event.set()
-        self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter')
-        time.sleep(HuntsmanDome.MOVE_TIMEOUT)
+        self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter.')
+        time.sleep(self._move_timeout)
 
         v = self.status[Protocol.SHUTTER]
         if v == Protocol.CLOSED:
