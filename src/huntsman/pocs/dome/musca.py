@@ -133,7 +133,7 @@ class HuntsmanDome(AbstractSerialDome):
                 'Dome shutter battery voltage too low to open: {!r}', v)
             return False
 
-        self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
+        self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter.')
         time.sleep(self._move_timeout)
 
         v = self.status[Protocol.SHUTTER]
