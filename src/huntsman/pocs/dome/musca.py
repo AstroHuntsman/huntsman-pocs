@@ -5,8 +5,7 @@ from threading import Lock
 
 from astropy import units as u
 
-from panoptes.utils import error
-from panoptes.utils import get_quantity_value
+from panoptes.utils import error, get_quantity_value
 from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 
 
@@ -148,31 +147,22 @@ class HuntsmanDome(AbstractSerialDome):
         self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
         return False
 
-    def keep_dome_open(self):
-        """Periodically tell musca to reset watchdog timer
-
+    def keep_dome_open(self, sleep=120):
+        """Periodically tell musca to reset watchdog timer.
+        Args:
+            sleep (float): Sleep this long in seconds between dome status updates. Default 2 min.
         """
-        last_time = time.monotonic()
-        # maximum shutter open time in seconds
-        max_open_seconds = 15 * 60 * 60  # 15 hours in seconds
-        for i in range(max_open_seconds):
+        while True:
+            self.logger.debug(f"Dome status: {self.status}.")
 
-            # check to see if a dome closure has occured
+            # Check to see if a dome closure has occured
             if self._close_event.is_set():
                 self.logger.info(
                     'Keep dome open thread has detected a dome closure, ending thread.')
-                # if dome has closed, don't try to 'keep dome open'
                 return
 
-            now = time.monotonic()
-            if now - last_time > 290:
-                self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
-                last_time = now
-                self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
-
-            time.sleep(1)
-        self.logger.warning(
-            'Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
+            self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
+            time.sleep(sleep)
 
     def close(self):
         """Close the shutter using musca.
@@ -246,7 +236,7 @@ class HuntsmanDome(AbstractSerialDome):
             max_reads = 10 * len(Protocol.VALID_DEVICE)
 
         self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
-        
+
         status = {}
         for i in range(max_reads):
             k, v = self.serial.read().strip().split(':')
