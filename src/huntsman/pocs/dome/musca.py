@@ -120,15 +120,15 @@ class HuntsmanDome(AbstractSerialDome):
     def status(self):
         """A dictionary containing all status info for dome. """
         with self._command_lock:  # Make status call thread-safe
-            for i in range(1, self._max_status_attempts + 1):
+            for i in range(self._max_status_attempts):
                 try:
                     status = self._get_status_dict()
-                    status["dome_thread_running"] = self._dome_thread.is_alive()
+                    status["status_thread_running"] = self._dome_thread.is_alive()
                     status["keep_shutter_open"] = self._keep_open
                     return status
                 except Exception as err:
-                    self.logger.warning(f"Retrying dome status: {i+1} of"
-                                        f" {self._max_status_attempts}: {err}")
+                    self.logger.warning(f"Dome status check {i+1} of {self._max_status_attempts}"
+                                        f" failed with exception: {err!r}")
 
             raise error.PanError("Unable to get dome status: max attempts reached.")
 
@@ -140,7 +140,6 @@ class HuntsmanDome(AbstractSerialDome):
         Boolean
             True if Opened, False if it did not Open.
         """
-        self._keep_open = True
         if self.is_open:
             return True
 
@@ -155,6 +154,7 @@ class HuntsmanDome(AbstractSerialDome):
         if not self.is_open:
             raise error.PanError("Attempted to open the dome shutter but got wrong status:"
                                  f" {self.status[Protocol.SHUTTER]}")
+        self._keep_open = True
 
     def close(self):
         """Close the shutter using musca.
