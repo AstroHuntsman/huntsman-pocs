@@ -58,7 +58,7 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=1, max_status_attempts=10, move_timeout=60, sleep=120,
+    def __init__(self, command_delay=1, max_status_attempts=10, move_timeout=80, sleep=120,
                  *args, **kwargs):
         """
         Args:
@@ -122,8 +122,8 @@ class HuntsmanDome(AbstractSerialDome):
             for i in range(1, self._max_status_attempts + 1):
                 try:
                     status = self._get_status_dict()
-                    status["dome_thread"] = self._dome_thread.is_alive()
-                    status["keep_open"] = self._keep_open
+                    status["dome_thread_running"] = self._dome_thread.is_alive()
+                    status["keep_shutter_open"] = self._keep_open
                     return status
                 except Exception as err:
                     self.logger.warning(f"Retrying dome status: {i+1} of"
