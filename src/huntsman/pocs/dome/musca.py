@@ -5,6 +5,7 @@ from threading import Lock
 from astropy import units as u
 
 from panoptes.utils import error, get_quantity_value
+from panoptes.utils.time import CountdownTimer
 from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 
 
@@ -58,15 +59,15 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=1, max_status_attempts=10, move_timeout=80, sleep=120,
+    def __init__(self, command_delay=1, max_status_attempts=10, shutter_timeout=100, sleep=120,
                  *args, **kwargs):
         """
         Args:
             command_delay (float, optional): Wait this long in seconds before allowing next command
-                due to slow musica CPU. Default 10s.
+                due to slow musca CPU. Default 1s.
             max_status_attempts (int, optional): If status fails, retry this many times before
                 raising a PanError. Default: 10.
-            move_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 60s.
+            shutter_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 80s.
             sleep (u.Quantity, optional): Time to sleep between dome loop iterations.
                 Default is 2 min.
         """
@@ -76,7 +77,7 @@ class HuntsmanDome(AbstractSerialDome):
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT
 
         self._command_delay = get_quantity_value(command_delay, u.second)
-        self._move_timeout = get_quantity_value(move_timeout, u.second)
+        self._shutter_timeout = get_quantity_value(shutter_timeout, u.second)
         self._max_status_attempts = int(max_status_attempts)
         self._sleep = get_quantity_value(sleep, u.second)
 
@@ -149,7 +150,7 @@ class HuntsmanDome(AbstractSerialDome):
         self.logger.info("Opening dome shutter.")
         with self._command_lock:
             self._write_musca(Protocol.OPEN_DOME)
-        time.sleep(self._move_timeout)
+        self._wait_for_true(self.is_open)
 
         if not self.is_open:
             raise error.PanError("Attempted to open the dome shutter but got wrong status:"
@@ -167,7 +168,7 @@ class HuntsmanDome(AbstractSerialDome):
         self.logger.info("Closing dome shutter.")
         with self._command_lock:
             self._write_musca(Protocol.CLOSE_DOME)
-        time.sleep(self._move_timeout)
+        self._wait_for_true(self.is_closed)
 
         if not self.is_closed:
             raise error.PanError("Attempted to close the dome shutter but got wrong status:"
@@ -255,7 +256,10 @@ class HuntsmanDome(AbstractSerialDome):
 
         status = {}
         for i in range(max_reads):
-            k, v = self.serial.read().strip().split(':')
+            try:
+                k, v = self.serial.read().strip().split(':')
+            except ValueError:  # not enough values to unpack
+                continue
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             if k != 'Status':
@@ -266,6 +270,15 @@ class HuntsmanDome(AbstractSerialDome):
                 raise error.PanError("Max reads reached while attempting to get dome status.")
 
         return status
+
+    def _wait_for_true(self, prop, sleep=1):
+        """ Wait for a property to evaluate to True. """
+        timer = CountdownTimer(self._shutter_timeout)
+        while not timer.expired():
+            if bool(prop) is True:  # Maybe not necessary
+                return
+            time.sleep(sleep)
+        raise error.Timeout("Timeout while waiting for dome shutter.")
 
 
 # Expose as Dome so that we can generically load by module name, without
