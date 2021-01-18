@@ -3,9 +3,8 @@ import threading
 import time
 from threading import Lock
 
-import astropy.units as u
+from astropy import units as u
 
-from panoptes.utils import CountdownTimer
 from panoptes.utils import error
 from panoptes.utils import get_quantity_value
 from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
@@ -62,7 +61,7 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=10, max_status_attempts=10, *args, **kwargs):
+    def __init__(self, command_delay=1, max_status_attempts=10, *args, **kwargs):
         """
         Args:
             command_delay (float, optional): Wait this long in seconds before allowing next command
@@ -75,8 +74,6 @@ class HuntsmanDome(AbstractSerialDome):
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT
 
         self._status = dict()
-        self._status_delay = 5  # seconds
-        self._status_timer = None
         self._close_event = threading.Event()
         self._command_delay = get_quantity_value(command_delay, u.second)
         self._max_status_attempts = int(max_status_attempts)
@@ -110,28 +107,14 @@ class HuntsmanDome(AbstractSerialDome):
         TODO: Add other info (e.g. dome moving)
         TODO: Auto-update this every ~60s
         """
-        if self._status_timer is None:
-            update_status = True
-        else:
-            update_status = self._status_timer.expired()
-
-        if update_status:
+        with self._command_lock:  # Make status call thread-safe
             for i in range(1, self._max_status_attempts + 1):
-
-                # Attempt to get the status, break out
-                status = self._get_shutter_status_dict()
-                if all([v in status.keys() for v in Protocol.VALID_DEVICE]):
-                    self._status = status
-                    break
-
-                # Raise error if max attempts reached
-                if i == self._max_status_attempts:
-                    raise error.PanError("Unable to retrieve dome status.")
-
-                self.logger.debug(f"Retrying dome status: {i} of {self._max_status_attempts}.")
-
-            self._status_timer = CountdownTimer(self._status_delay)
-        return self._status
+                try:
+                    return self._get_status_dict()
+                except Exception:
+                    self.logger.warning(f"Retrying dome status: {i+1} of"
+                                        f" {self._max_status_attempts}.")
+            raise error.PanError("Unable to get dome status: max attempts reached.")
 
     def open(self):
         """Open the shutter using musca.
@@ -173,24 +156,16 @@ class HuntsmanDome(AbstractSerialDome):
         # maximum shutter open time in seconds
         max_open_seconds = 15 * 60 * 60  # 15 hours in seconds
         for i in range(max_open_seconds):
+
             # check to see if a dome closure has occured
             if self._close_event.is_set():
                 self.logger.info(
                     'Keep dome open thread has detected a dome closure, ending thread.')
                 # if dome has closed, don't try to 'keep dome open'
                 return
+
             now = time.monotonic()
             if now - last_time > 290:
-
-                status = self._get_shutter_status_dict()  # Sometimes empty dict
-                try:
-                    self.logger.info((f'Status Update: Shutter is '
-                                      f'{status[Protocol.SHUTTER]}, '
-                                      f'Door is {status[Protocol.DOOR]}, '
-                                      f'Battery voltage is {status[Protocol.BATTERY]}'))
-                except KeyError:
-                    self.logger.debug("Failed to get shutter status.")
-
                 self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
                 last_time = now
                 self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
@@ -222,7 +197,7 @@ class HuntsmanDome(AbstractSerialDome):
 
     def __str__(self):
         if self.is_connected:
-            return self._get_shutter_status_string()
+            return self._get_status_string()
         return 'Disconnected'
 
     def __del__(self):
@@ -234,13 +209,12 @@ class HuntsmanDome(AbstractSerialDome):
 
     def _write_musca(self, cmd, log_message=None):
         """Wait for the command lock then write command to serial bluetooth device musca."""
-        with self._command_lock:
-            if log_message is not None:
-                self.logger.info(log_message)
-            self.serial.write(f'{cmd}\n')
-            time.sleep(self._command_delay)
+        if log_message is not None:
+            self.logger.info(log_message)
+        self.serial.write(f'{cmd}\n')
+        time.sleep(self._command_delay)
 
-    def _get_shutter_status_string(self):
+    def _get_status_string(self):
         """Return a text string describing dome shutter's current status."""
         if not self.is_connected:
             return 'Not connected to the shutter'
@@ -259,27 +233,33 @@ class HuntsmanDome(AbstractSerialDome):
             return 'Shutter in ILLEGAL state?'
         return 'Unexpected response from Huntsman Shutter Controller: %r' % v
 
-    def _get_shutter_status_dict(self):
+    def _get_status_dict(self, max_reads=None):
         """ Return dictionary of musca status.
-
-        Example output line:
-        # [b'Status:\r\n',
-           b'Shutter:Closed\r\n',
-           b'Door:Closed\r\n',
-           b'Battery:\t 13.0671\r\n',
-           b'Solar_A:\t 0.400871\r\n',
-           b'Switch:EM243A\r\n']
+        Args:
+            max_reads (int, optional): Maximum number of lines to read in order to get the status.
+                This is useful because musca seems to send the status of the same component
+                several times consecutively. If None (default, use 10*the number of expected lines).
+        Returns:
+            dict: The dome status.
         """
+        if max_reads is None:
+            max_reads = 10 * len(Protocol.VALID_DEVICE)
+
         self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
-        shutter_status_dict = {}
-        num_lines = len(Protocol.VALID_DEVICE)
-        for i in range(num_lines + 1):  # Add one for the beginning 'Status' key
+        
+        status = {}
+        for i in range(max_reads):
             k, v = self.serial.read().strip().split(':')
             if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
                 v = float(v)
             if k != 'Status':
-                shutter_status_dict[k] = v
-        return shutter_status_dict
+                status[k] = v
+            if all([v in status.keys() for v in Protocol.VALID_DEVICE]):
+                break
+            elif i == max_reads - 1:
+                raise error.PanError("Max reads reached while attempting to get dome status.")
+
+        return status
 
 
 # Expose as Dome so that we can generically load by module name, without
