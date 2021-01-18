@@ -17,6 +17,8 @@ class Focuser(BirgerFocuser):
         """ Try command, attempt to reconnect on error and send command again. """
         try:
             super()._send_command(*args, **kwargs)
-        except error.PanError:
+        except error.PanError as err:
+            self.logger.warning(f"Focuser command failed with exception: {err!r}. Retrying after"
+                                " reconnect.")
             self.reconnect()
             super()._send_command(*args, **kwargs)
