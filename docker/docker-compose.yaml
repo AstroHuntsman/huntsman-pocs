@@ -74,6 +74,8 @@ services:
     privileged: true
     network_mode: host
     restart: on-failure
+    depends_on:
+      - "pocs-config-server"
     environment:
       HUNTSMAN_POCS: /var/huntsman
       PANDIR: /var/panoptes

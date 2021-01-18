@@ -1,6 +1,7 @@
 # based upon @jamessynge's astrohaven.py code in POCS
 import threading
 import time
+from threading import Lock
 
 import astropy.units as u
 
@@ -63,13 +64,13 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=1, max_status_attempts=3, *args, **kwargs):
+    def __init__(self, command_delay=10, max_status_attempts=10, *args, **kwargs):
         """
         Args:
             command_delay (float, optional): Wait this long in seconds before allowing next command
-                due to slow musica CPU. Default 1s.
+                due to slow musica CPU. Default 10s.
             max_status_attempts (int, optional): If status fails, retry this many times before
-                raising a PanError.
+                raising a PanError. Default: 10.
         """
         super().__init__(*args, **kwargs)
 
@@ -81,6 +82,8 @@ class HuntsmanDome(AbstractSerialDome):
         self._close_event = threading.Event()
         self._command_delay = get_quantity_value(command_delay, u.second)
         self._max_status_attempts = int(max_status_attempts)
+
+        self._command_lock = Lock()  # Use a lock to make class thread-safe
 
     @property
     def is_open(self):
@@ -232,11 +235,12 @@ class HuntsmanDome(AbstractSerialDome):
     ###############################################################################
 
     def _write_musca(self, cmd, log_message=None):
-        """Write command to serial bluetooth device musca."""
-        if log_message is not None:
-            self.logger.info(log_message)
-        self.serial.write(f'{cmd}\n')
-        time.sleep(self._command_delay)
+        """Wait for the command lock then write command to serial bluetooth device musca."""
+        with self._command_lock:
+            if log_message is not None:
+                self.logger.info(log_message)
+            self.serial.write(f'{cmd}\n')
+            time.sleep(self._command_delay)
 
     def _get_shutter_status_string(self):
         """Return a text string describing dome shutter's current status."""
@@ -268,7 +272,7 @@ class HuntsmanDome(AbstractSerialDome):
            b'Solar_A:\t 0.400871\r\n',
            b'Switch:EM243A\r\n']
         """
-        self._write_musca(Protocol.GET_STATUS)
+        self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
         shutter_status_dict = {}
         num_lines = len(Protocol.VALID_DEVICE)
         for i in range(num_lines + 1):  # Add one for the beginning 'Status' key
@@ -277,7 +281,6 @@ class HuntsmanDome(AbstractSerialDome):
                 v = float(v)
             if k != 'Status':
                 shutter_status_dict[k] = v
-        time.sleep(self._command_delay)
         return shutter_status_dict
 
 
