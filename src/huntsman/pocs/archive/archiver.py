@@ -72,6 +72,10 @@ class Archiver(PanBase):
         atexit.register(self.stop)  # This gets called when python is quit
 
     @property
+    def is_running(self):
+        return self.status["is_running"]
+
+    @property
     def status(self):
         """ Return a status dictionary.
         Returns:
