@@ -69,7 +69,6 @@ class HuntsmanDome(AbstractSerialDome):
                 due to slow musica CPU. Default 10s.
             max_status_attempts (int, optional): If status fails, retry this many times before
                 raising a PanError. Default: 10.
-            status_retry_delay:
         """
         super().__init__(*args, **kwargs)
 
