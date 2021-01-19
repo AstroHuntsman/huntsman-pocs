@@ -43,7 +43,7 @@ services:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
-    command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+    command: [ "panoptes-config-server --verbose run --no-save-local --no-load-local --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
 
   pyro-name-server:
     image: huntsmanarray/huntsman-pocs:develop
@@ -81,7 +81,7 @@ services:
       PANDIR: /var/panoptes
       POCS: /var/panoptes/POCS
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "/var/panoptes/conda/bin/python /var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- /var/panoptes/conda/bin/python /var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
     volumes:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
