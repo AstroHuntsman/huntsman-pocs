@@ -3,6 +3,7 @@ import os
 import time
 import queue
 import atexit
+import shutil
 from contextlib import suppress
 from threading import Thread
 from astropy import units as u
@@ -47,6 +48,7 @@ class Archiver(PanBase):
         if archive_directory is None:
             archive_directory = self.get_config("directories.archive")
         self.archive_directory = str(archive_directory)
+        self.logger.debug(f"Archive directory: {self.archive_directory}")
 
         if delay_interval is None:
             delay_interval = self.get_config("archiver.delay_interval")
@@ -70,15 +72,19 @@ class Archiver(PanBase):
         atexit.register(self.stop)  # This gets called when python is quit
 
     @property
+    def is_running(self):
+        return self.status["is_running"]
+
+    @property
     def status(self):
         """ Return a status dictionary.
         Returns:
             dict: The status dictionary.
         """
         status = {"is_running": all([t.is_alive() for t in self._threads]),
-                  "status thread": self._status_thread.is_alive(),
-                  "watch thread": self._watch_thread.is_alive(),
-                  "archive thread": self._status_thread.is_alive(),
+                  "status_thread": self._status_thread.is_alive(),
+                  "watch_thread": self._watch_thread.is_alive(),
+                  "archive_thread": self._status_thread.is_alive(),
                   "queued": self._archive_queue.qsize(),
                   "archived": self._n_archived}
         return status
@@ -191,4 +197,4 @@ class Archiver(PanBase):
         os.makedirs(os.path.dirname(archive_filename), exist_ok=True)
         # Move the file to the archive directory
         self.logger.debug(f"Moving {filename} to {archive_filename}.")
-        os.rename(filename, archive_filename)
+        shutil.move(filename, archive_filename)
