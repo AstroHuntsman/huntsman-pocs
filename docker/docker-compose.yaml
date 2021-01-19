@@ -93,6 +93,7 @@ services:
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
       - json_store:/var/huntsman/json_store
+      - archive:/var/huntsman/archive
 
   huntsman-file-archiver:
     image: huntsmanarray/huntsman-pocs:develop
