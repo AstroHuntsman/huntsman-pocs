@@ -19,6 +19,12 @@ volumes:
       type: none
       device: ${PANDIR}/huntsman-config/conf_files/pocs
       o: bind
+  json_store:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PANDIR}/json_store
+      o: bind
   archive:
     driver: local
     driver_opts:
@@ -65,6 +71,28 @@ services:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
+
+  pocs-control:
+    image: huntsmanarray/huntsman-pocs:develop
+    tty: true
+    container_name: pocs-control
+    hostname: pocs-control
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pyro-name-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      PANOPTES_CONFIG_PORT: 6563
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- tail -f /dev/null" ]
+    volumes:
+      - config:/var/huntsman/huntsman-pocs/conf_files
+      - panlog:/var/huntsman/logs
+      - images:/var/huntsman/images
+      - json_store:/var/huntsman/json_store
 
   huntsman-file-archiver:
     image: huntsmanarray/huntsman-pocs:develop
