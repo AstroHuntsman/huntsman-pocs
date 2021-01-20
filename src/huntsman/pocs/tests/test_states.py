@@ -57,6 +57,22 @@ def pocs(observatory, dome):
 # ==============================================================================
 
 
+def test_starting_sleeping(pocs):
+    '''
+    Test if the parking state transitions back into ready.
+    '''
+    pocs.initialize()
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
+    assert pocs.is_dark(horizon='observe')
+    pocs.startup()
+    assert pocs.state == "starting"
+    os.environ['POCSTIME'] = '2020-04-29 23:00:00'
+    assert not pocs.is_dark(horizon='flat')
+    pocs.get_ready()
+    assert pocs.state == "parking"  # State machine goes to park
+
+
 def test_ready_park_darks(pocs):
     '''
     Test if parked state transitions to taking_darks given the required
