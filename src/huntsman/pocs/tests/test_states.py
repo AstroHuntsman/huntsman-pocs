@@ -57,16 +57,36 @@ def pocs(observatory, dome):
 # ==============================================================================
 
 
+def test_starting_sleeping(pocs):
+    '''
+    Test if the parking state transitions back into ready.
+    '''
+    pocs.initialize()
+    os.environ['POCSTIME'] = '2016-08-13 13:00:00'
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
+    assert pocs.is_dark(horizon='observe')
+    pocs.startup()
+    assert pocs.state == "starting"
+    os.environ['POCSTIME'] = '2020-04-29 23:00:00'
+    assert not pocs.is_dark(horizon='flat')
+    pocs.get_ready()
+    assert pocs.state == "parking"  # State machine goes to park
+
+
 def test_ready_park_darks(pocs):
     '''
     Test if parked state transitions to taking_darks given the required
     conditions, namely that it is dark and cannot observe (i.e. bad weather).
     '''
+    pocs.set_config('simulator', ['camera', 'mount', 'night', 'power'])
     pocs.initialize()
     assert pocs.is_initialized is True
-    pocs.get_ready()
 
-    pocs.set_config('simulator', ['camera', 'mount', 'night'])
+    assert pocs.state == "sleeping"
+    # Insert a dummy weather record so we can transition to initialising
+    pocs.db.insert_current('weather', {'safe': True})
+    pocs.startup()
+    pocs.get_ready()
 
     # Insert a dummy night
     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
@@ -74,7 +94,7 @@ def test_ready_park_darks(pocs):
     assert (pocs.is_dark(horizon='observe'))
 
     # Insert a dummy weather record
-    pocs.db.insert_current('weather', {'safe': False})
+    pocs.db.insert_current('weather', {'safe': False})  # Oh no!
     # Make sure the weather is *not* safe to observe.
     assert not pocs.is_weather_safe()
 
@@ -87,28 +107,14 @@ def test_ready_park_darks(pocs):
     assert pocs.next_state == "taking_darks"
 
 
-def test_parking_ready(pocs):
-    '''
-    Test if the parking state transitions back into ready.
-    '''
-    pocs.initialize()
-    pocs.get_ready()
-    pocs.set_config('simulator', ['camera', 'mount'])
-    os.environ['POCSTIME'] = '2020-04-29 23:00:00'
-    assert not pocs.is_dark(horizon='observe')
-    pocs.next_state = 'parking'
-    for state in ['parking', 'parked', 'housekeeping', 'sleeping', 'ready']:
-        assert pocs.next_state == state
-        pocs.goto_next_state()
-        assert pocs.state == state
-
-
-def test_dome_status(pocs):
+def test_dome_operation(pocs):
     '''
     Test if the dome is open/close after ready/parking state is executed.
     '''
+    pocs.set_config('simulator', ['camera', 'mount', 'night', 'power', 'weather'])
     pocs.initialize()
-    pocs.observatory.dome.close()
+    pocs.observatory.close_dome()
+    pocs.startup()
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.observatory.dome.is_open
@@ -121,12 +127,14 @@ def test_ready_scheduling_1(pocs):
     '''
     Test if ready goes into observe if its dark enough.
     '''
+    pocs.set_config('simulator', ['camera', 'mount', 'power', 'weather'])
     os.environ['POCSTIME'] = '2020-10-29 13:00:00'
     pocs.initialize()
+    pocs.startup()
     pocs.observatory.last_focus_time = current_time()
+    assert not pocs.observatory.coarse_focus_required
     pocs.get_ready()
     assert pocs.state == 'ready'
-    assert not pocs.observatory.coarse_focus_required
     assert pocs.is_dark(horizon='observe')
     assert pocs.next_state == 'scheduling'
 
@@ -136,14 +144,15 @@ def test_ready_scheduling_2(pocs):
     Test if ready goes into scheduling in the evening if focus is not required
     and its not dark enough to start observing but its dark enough to focus.
     '''
+    pocs.set_config('simulator', ['camera', 'mount', 'power', 'weather'])
     os.environ['POCSTIME'] = '2020-04-29 08:40:00'
-    pocs.set_config('simulator', ['camera', 'mount'])
     pocs.initialize()
     pocs.observatory.last_focus_time = current_time()
     assert not pocs.observatory.past_midnight
     assert not pocs.observatory.coarse_focus_required
     assert not pocs.is_dark(horizon='observe')
     assert pocs.is_dark(horizon='focus')
+    pocs.startup()
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.next_state == 'scheduling'
@@ -157,7 +166,8 @@ def test_ready_coarse_focusing_scheduling(pocs):
     os.environ['POCSTIME'] = '2020-04-29 08:40:00'
     pocs.set_config('simulator', ['camera', 'mount', 'power', 'weather'])
     pocs.initialize()
-    pocs.get_ready()
+    pocs.next_state = "initialising"
+    pocs.goto_next_state()
     assert pocs.state == 'ready'
     assert pocs.is_dark(horizon='focus')
     assert pocs.observatory.coarse_focus_required
@@ -181,7 +191,9 @@ def test_evening_setup(pocs):
     assert pocs.is_dark(horizon='flat')
     # Run state machine from ready
     pocs.initialize()
-    pocs.get_ready()
+    for state in ["initialising", "ready"]:
+        pocs.next_state = state
+        pocs.goto_next_state()
     assert pocs.state == 'ready'
     assert pocs.next_state == 'twilight_flat_fielding'
     for state in ['twilight_flat_fielding', 'coarse_focusing', 'scheduling']:
@@ -202,9 +214,10 @@ def test_morning_parking(pocs):
     Test morning transition between ready, flat fielding and parking.
     '''
     os.environ['POCSTIME'] = '2020-04-29 19:30:00'
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
     pocs.initialize()
     pocs.observatory.last_focus_time = current_time()
-    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
+    pocs.startup()
     pocs.get_ready()
     assert pocs.state == 'ready'
     assert pocs.observatory.past_midnight
@@ -227,7 +240,9 @@ def test_morning_coarse_focusing_parking(pocs):
     '''
     os.environ['POCSTIME'] = '2020-04-29 19:30:00'
     pocs.initialize()
-    pocs.get_ready()
+    for state in ["initialising", "ready"]:
+        pocs.next_state = state
+        pocs.goto_next_state()
     pocs.set_config('simulator', ['camera', 'mount'])
     assert pocs.state == 'ready'
     assert pocs.observatory.past_midnight
