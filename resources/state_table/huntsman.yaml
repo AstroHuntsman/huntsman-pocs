@@ -13,8 +13,6 @@ states:
         tags: always_safe
     housekeeping:
         tags: always_safe
-    ready:
-        tags: always_safe
     scheduling:
         tags: always_safe
     twilight_flat_fielding:
@@ -23,6 +21,8 @@ states:
         horizon: focus
     focusing:
         horizon: focus
+    ready:
+    initialising:
     preparing:
     slewing:
     observing:
@@ -41,6 +41,7 @@ transitions:
             - observing
             - analyzing
             - dithering
+            - initialising
         dest: parking
         trigger: park
     -
@@ -70,9 +71,13 @@ transitions:
         conditions: mount_is_initialized
     -
         source: sleeping
+        dest: initialising
+        trigger: initialise
+        conditions: mount_is_initialized
+    -
+        source: initialising
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized
     -
         source: ready
         dest: twilight_flat_fielding
