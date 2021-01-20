@@ -1,11 +1,16 @@
+""" Once in the "ready" state, Huntsman has been initialized successfully and it is safe. The goal
+of the ready state is to decide which of the following states to enter next:
+- parking
+- coarse_focusing
+- scheduling
+- twilight_flat_fielding
+"""
+
+
 def on_enter(event_data):
     """
-    Once in the `ready` state our unit has been initialized successfully. We now
-    decide on the next state and ready the cameras if appropriate.
     """
     pocs = event_data.model
-    pocs.next_state = 'parking'
-    pocs.observatory.mount.unpark()
 
     # Check if we need to focus.
     if pocs.is_dark(horizon='focus') and pocs.observatory.coarse_focus_required:
@@ -23,22 +28,9 @@ def on_enter(event_data):
             else:
                 # Too bright for morning flats, go to parking
                 pocs.next_state = 'parking'
-
         else:
             if pocs.is_dark(horizon='focus'):
                 # Evening, don't need to focus but too dark for twilight flats
                 pocs.next_state = 'scheduling'
             else:
                 pocs.next_state = 'twilight_flat_fielding'
-
-    # Prepare the cameras if we are about to take some exposures
-    if pocs.next_state != 'parking':
-        pocs.say("Making sure cameras are ready before leaving ready state.")
-        pocs.observatory.prepare_cameras()
-        if pocs.observatory.has_dome:
-            pocs.say("I'm opening the dome.")
-        try:
-            pocs.observatory.dome.open()
-        except AttributeError:
-            pocs.logger.warning('Not opening the dome! Observatory has no dome attribute!')
-        pocs.say("Ok, I'm all set up and ready to go!")
