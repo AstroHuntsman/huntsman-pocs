@@ -18,6 +18,7 @@ from panoptes.pocs.scheduler import constraint
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.scheduler.observation import DitheredFlatObservation
+from huntsman.pocs.archive.utils import remove_empty_directories
 
 
 class HuntsmanObservatory(Observatory):
@@ -136,20 +137,47 @@ class HuntsmanObservatory(Observatory):
 
         return self.current_offset_info
 
-    def autofocus_cameras(self, *args, **kwargs):
+    def autofocus_cameras(self, coarse=False, *args, **kwargs):
+        """ Override autofocus_cameras to update the last focus time and move filterwheels.
+        Args:
+            coarse (bool, optional): Perform coarse focus? Default False.
+            *args, **kwargs: Parsed to `pocs.observatory.Observatory.autofocus_cameras`.
+        Returns:
+            threading.Event: The autofocus event.
         """
-        Override autofocus_cameras to update the last focus time.
-        """
+        # Move to appropriate filter
+        # TODO: Do this on a per-camera basis to allow for different filters simultaneously
+        if coarse:
+            filter_name = self._coarse_focus_filter
+        else:
+            try:
+                filter_name = self.current_observation.filter_name
+            except AttributeError:
+                filter_name = self._coarse_focus_filter
+                self.logger.warning("Unable to retrieve filter name from current observation."
+                                    f" Defaulting to coarse focus filter ({filter_name}).")
 
         # Move all the filterwheels to the luminance position.
-        self._move_all_filterwheels_to(self._coarse_focus_filter)
+        self._move_all_filterwheels_to(filter_name)
 
-        result = super().autofocus_cameras(*args, **kwargs)
+        result = super().autofocus_cameras(coarse=coarse, *args, **kwargs)
 
         # Update last focus time
         self.last_focus_time = current_time()
 
         return result
+
+    def cleanup_observations(self, *args, **kwargs):
+        """ Override method to remove empty directories. Called in housekeeping state."""
+        super().cleanup_observations(*args, **kwargs)
+
+        self.logger.info("Removing empty directories in images directory.")
+        images_dir = self.get_config("directories.images")
+        remove_empty_directories(images_dir)
+
+        self.logger.info("Removing empty directories in archive directory.")
+        archive_dir = self.get_config("directories.archive")
+        remove_empty_directories(archive_dir)
 
     def take_flat_fields(self, camera_names=None, alt=None, az=None, safety_func=None, **kwargs):
         """

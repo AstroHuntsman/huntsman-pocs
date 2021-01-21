@@ -115,3 +115,7 @@ pyro:
       - "huntsman"
       - "camera_service"
   devices: [ ]
+
+archiver:
+  sleep_interval: 1 s
+  delay_interval: 5 s

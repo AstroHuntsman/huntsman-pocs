@@ -19,6 +19,18 @@ volumes:
       type: none
       device: ${PANDIR}/huntsman-config/conf_files/pocs
       o: bind
+  json_store:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PANDIR}/json_store
+      o: bind
+  archive:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PANDIR}/archive
+      o: bind
 
 services:
   pocs-config-server:
@@ -37,7 +49,7 @@ services:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
-    command: [ "panoptes-config-server --verbose run --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+    command: [ "panoptes-config-server --verbose run --no-save-local --no-load-local --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
 
   pyro-name-server:
     image: huntsmanarray/huntsman-pocs:develop
@@ -59,3 +71,48 @@ services:
       - config:/var/huntsman/huntsman-pocs/conf_files
       - panlog:/var/huntsman/logs
       - images:/var/huntsman/images
+
+  pocs-control:
+    image: huntsmanarray/huntsman-pocs:develop
+    tty: true
+    container_name: pocs-control
+    hostname: pocs-control
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pyro-name-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      PANOPTES_CONFIG_PORT: 6563
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- tail -f /dev/null" ]
+    volumes:
+      - config:/var/huntsman/huntsman-pocs/conf_files
+      - panlog:/var/huntsman/logs
+      - images:/var/huntsman/images
+      - json_store:/var/huntsman/json_store
+      - archive:/var/huntsman/archive
+
+  huntsman-file-archiver:
+    image: huntsmanarray/huntsman-pocs:develop
+    tty: true
+    container_name: huntsman-file-archiver
+    hostname: huntsman-file-archiver
+    privileged: true
+    network_mode: host
+    restart: on-failure
+    depends_on:
+      - "pocs-config-server"
+    environment:
+      HUNTSMAN_POCS: /var/huntsman
+      PANDIR: /var/panoptes
+      POCS: /var/panoptes/POCS
+      PANOPTES_CONFIG_PORT: 6563
+    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- /var/panoptes/conda/bin/python /var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
+    volumes:
+      - config:/var/huntsman/huntsman-pocs/conf_files
+      - panlog:/var/huntsman/logs
+      - images:/var/huntsman/images
+      - archive:/var/huntsman/archive

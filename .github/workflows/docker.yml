@@ -16,7 +16,7 @@ jobs:
         uses: crazy-max/ghaction-docker-buildx@v3
         with:
           buildx-version: latest
-          qemu-version: latest
+          qemu-version: 5.1.0-2
       - name: Build and push huntsman-pocs:develop image
         run: |
           docker buildx build \

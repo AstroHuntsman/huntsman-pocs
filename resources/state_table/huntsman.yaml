@@ -2,32 +2,36 @@
 name: huntsman
 initial: sleeping
 location: huntsman.pocs.states
+
 states:
-    parking:
-        tags: always_safe
-    parked:
-        tags: always_safe
-    taking_darks:
-        tags: always_safe
-    sleeping:
-        tags: always_safe
-    housekeeping:
-        tags: always_safe
-    ready:
-        tags: always_safe
-    scheduling:
-        tags: always_safe
-    twilight_flat_fielding:
-        horizon: flat
-    coarse_focusing:
-        horizon: focus
-    focusing:
-        horizon: focus
-    preparing:
-    slewing:
-    observing:
-    analyzing:
-    dithering:
+  parking:
+    tags: always_safe
+  parked:
+    tags: always_safe
+  taking_darks:
+    tags: always_safe
+  sleeping:
+    tags: always_safe
+  housekeeping:
+    tags: always_safe
+  scheduling:
+    tags: always_safe
+  twilight_flat_fielding:
+    horizon: flat
+  coarse_focusing:
+    horizon: focus
+  focusing:
+    horizon: focus
+  starting:
+    horizon: flat
+  ready:
+    horizon: flat
+  preparing:
+  slewing:
+  observing:
+  analyzing:
+  dithering:
+
 transitions:
     -
         source:
@@ -41,6 +45,7 @@ transitions:
             - observing
             - analyzing
             - dithering
+            - starting
         dest: parking
         trigger: park
     -
@@ -70,9 +75,13 @@ transitions:
         conditions: mount_is_initialized
     -
         source: sleeping
+        dest: starting
+        trigger: startup
+        conditions: mount_is_initialized
+    -
+        source: starting
         dest: ready
         trigger: get_ready
-        conditions: mount_is_initialized
     -
         source: ready
         dest: twilight_flat_fielding
