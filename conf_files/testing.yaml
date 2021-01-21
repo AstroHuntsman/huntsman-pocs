@@ -98,7 +98,7 @@ flat_fields:
     - quattro
   autoflats:
     required_exposures: 2  # Per filter per camera
-    max_attempts: 2  # Per filter per camera
+    max_exposures: 2  # Per filter per camera
     max_exptime: 1 s
     min_exptime: 0.0001 s
 

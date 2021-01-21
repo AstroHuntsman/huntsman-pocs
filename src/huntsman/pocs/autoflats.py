@@ -1,9 +1,3 @@
-import os
-from contextlib import suppress
-from collections import abc, defaultdict
-from concurrent.futures import wait as wait_for_futures
-
-import numpy as np
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from astropy.io import fits
