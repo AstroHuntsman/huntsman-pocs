@@ -515,10 +515,11 @@ class HuntsmanObservatory(Observatory):
         wait_for_events(list(filterwheel_events.values()))
         self.logger.debug(f'Finished waiting for filterwheels.')
 
-    def _take_autoflats(self, observation, target_scaling=0.17, scaling_tolerance=0.05, timeout=60,
-                        bias=32, safety_func=None, **kwargs):
+    def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
+                        timeout=60, bias=32, safety_func=None, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
+            cameras (dict): Dict of camera name: Camera pairs.
             observation: The flat field observation. TODO: Integrate with FlatFieldSequence.
             target_scaling (float, optional): Required to be between [0, 1] so
                 target_adu is proportionally between 0 and digital saturation level.
