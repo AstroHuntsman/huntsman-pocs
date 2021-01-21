@@ -612,7 +612,7 @@ class HuntsmanObservatory(Observatory):
         counts_tolerance = int(scaling_tolerance * 2 ** bit_depth)
 
         self.logger.debug(f"Target counts for {cam_name}: {target_counts}"
-                          f" ± {counts_tolerance[cam_name]}")
+                          f" ± {counts_tolerance}")
         return target_counts, counts_tolerance
 
     def _wait_for_camera_events(self, events, duration, remove=False, sleep=1):
