@@ -569,18 +569,18 @@ class HuntsmanObservatory(Observatory):
                 camera = self.cameras[cam_name]
 
                 # Get exposure time, filename and current time
-                exptimes[cam_name] = self._get_next_exptime(past_midnight=self.past_midnight)
+                exptimes[cam_name] = seq.get_next_exptime(past_midnight=self.past_midnight)
                 filenames[cam_name] = observation.get_exposure_filename(camera)
                 start_times[cam_name] = current_time()
 
                 # Start the exposure and get event
                 # TODO: Replace with concurrent.futures
                 events[cam_name] = camera.take_observation(
-                    self.observation, headers=headers, filename=filenames[cam_name],
+                    observation, headers=headers, filename=filenames[cam_name],
                     exptime=exptimes[cam_name])
 
             # Wait for the exposures, dropping cameras that timeout
-            duration = get_quantity_value(max(exptimes), u.second) + timeout
+            duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
             self._wait_for_camera_events(events, duration, remove=True)
 
             # Update the flat field sequences with new data

@@ -89,10 +89,10 @@ class FlatFieldSequence():
         self._exptimes.append(exptime)
         self._n_exposures += 1
 
-        if self._validate_previous_exposure(average_counts):
+        if self._validate_exposure(average_counts):
             self._n_good_exposures += 1
 
-    def _get_next_exptime(self, past_midnight):
+    def get_next_exptime(self, past_midnight):
         """ Calculate next exptime for flat fields, accounting for changes in sky brightness.
         Args:
             past_midnight (bool): True if past midnight (sky is getting brighter), False if not.
@@ -157,7 +157,7 @@ class FlatFieldSequence():
         Returns:
             bool: True if valid, False if not.
         """
-        return abs(average_counts - self._target_counts) <= self.counts_tolerance
+        return abs(average_counts - self._target_counts) <= self._counts_tolerance
 
     def _load_fits_data(self, filename, dtype="float32"):
         """ Load FITS data, using a cutout if necessary.
