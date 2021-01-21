@@ -1,6 +1,5 @@
 import os
 import time
-from collections import defaultdict
 from contextlib import suppress
 from functools import partial
 from astropy import units as u
@@ -17,7 +16,7 @@ from huntsman.pocs.scheduler.dark_observation import DarkObservation
 from huntsman.pocs.scheduler.observation import DitheredFlatObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories
-from huntsman.pocs.autoflats import AutoFlatFieldSequence
+from huntsman.pocs.utils.flats import FlatFieldSequence
 
 
 class HuntsmanObservatory(Observatory):
@@ -531,12 +530,12 @@ class HuntsmanObservatory(Observatory):
     def _take_autoflats(self, observation, timeout=60, bias=32, safety_func=None, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
-            observation: The flat field observation. TODO: Integrate with AutoFlatFieldSequence.
+            observation: The flat field observation. TODO: Integrate with FlatFieldSequence.
             timeout (float): The timeout on top of the exposure time, default 60s.
             bias (int): The bias to subtract from the frames. TODO: Use a real bias image!
             safety_func (None or callable): If given, calls to this object return True if safe to
                 continue.
-            **kwargs: Parsed to AutoFlatFieldSequence.
+            **kwargs: Parsed to FlatFieldSequence.
         """
         cam_names = list(self.cameras.keys())
 
@@ -544,7 +543,7 @@ class HuntsmanObservatory(Observatory):
         sequences = {}
         for cam_name in cam_names:
             target_counts, counts_tolerance = self._autoflat_target_counts(cam_name)
-            sequences[cam_name] = AutoFlatFieldSequence(
+            sequences[cam_name] = FlatFieldSequence(
                 target_counts=target_counts, counts_tolerance=counts_tolerance, bias=bias,
                 **kwargs)
 
@@ -596,7 +595,7 @@ class HuntsmanObservatory(Observatory):
                                            time_start=start_times[cam_name])
                 # Log sequence status
                 status = sequences[cam_name].status
-                self.logger.debug(f"Flat field status for {cam_name}: {status}")
+                self.logger.info(f"Flat field status for {cam_name}: {status}")
 
     def _autoflat_target_counts(self, cam_name):
         """ Get the target counts and tolerance for each camera.
@@ -614,7 +613,7 @@ class HuntsmanObservatory(Observatory):
         counts_tolerance = int(self._scaling_tolerance * 2 ** bit_depth)
 
         self.logger.debug(f"Target counts for {cam_name}: {self._target_counts[cam_name]}"
-                          f"±{self._counts_tolerance[cam_name].0f}.")
+                          f"±{self._counts_tolerance[cam_name]}.")
         return target_counts, counts_tolerance
 
     def _wait_for_camera_events(self, events, duration, remove=False, sleep=1):
