@@ -47,7 +47,6 @@ def pocs(observatory):
 # ==============================================================================
 
 
-@pytest.mark.skip()
 def test_prepare_cameras_dropping(observatory):
     """Test that unready camera is dropped."""
     cameras = observatory.cameras
