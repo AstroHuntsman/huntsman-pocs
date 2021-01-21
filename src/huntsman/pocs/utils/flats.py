@@ -60,7 +60,7 @@ class FlatFieldSequence():
         is_finished = False
         if self._n_good_exposures >= self._required_exposures:
             is_finished = True
-        elif self._n_exposures >= self._max_attempts:
+        elif self._n_exposures >= self._max_exposures:
             is_finished = True
         status = {"good_exposures": self._n_good_exposures,
                   "total_exposures": self._n_exposures,
