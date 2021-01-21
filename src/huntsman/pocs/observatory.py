@@ -178,9 +178,7 @@ class HuntsmanObservatory(Observatory):
         remove_empty_directories(archive_dir)
 
     def take_flat_fields(self, camera_names=None, alt=None, az=None, safety_func=None, **kwargs):
-        """
-        Take flat fields for each camera in each filter, respecting filter order.
-
+        """ Take flat fields for each camera in each filter, respecting filter order.
         Args:
             camera_names (list, optional): List of camera names to take flats with.
                 Default to `None`, which uses all cameras.
@@ -188,16 +186,6 @@ class HuntsmanObservatory(Observatory):
                 `flat_fields.alt` config value.
             az (float, optional): Azimuth for flats in degrees. Default `None` will use the
                 `flat_fields.az` config value.
-            bias (int, optional): Default bias in ADU counts for the cameras. Default 32.
-            target_scaling (float, optional): Required to be between [0,1] so
-                target_adu is proportionally between 0 and digital saturation level.
-                Default 0.17.
-            tolerance (float, optional): The minimum precision on the average counts required to
-                keep the exposure, expressed as a fraction of the dynamic range. Default 0.1.
-            required_exposures (int, optional): Maximum number of good flat-fields to
-                take per filter. Default 10.
-            max_attempts (int, optional): Number of attempts per camera-filter pair to get good
-                flat-field exposures before aborting. Default 20.
             safety_func (callable|None): Boolean function that returns True only if safe to
                 continue. The default `None` will call `self.is_dark(horizon='flat')`.
         """
@@ -527,10 +515,17 @@ class HuntsmanObservatory(Observatory):
         wait_for_events(list(filterwheel_events.values()))
         self.logger.debug(f'Finished waiting for filterwheels.')
 
-    def _take_autoflats(self, observation, timeout=60, bias=32, safety_func=None, **kwargs):
+    def _take_autoflats(self, observation, target_scaling=0.17, scaling_tolerance=0.05, timeout=60,
+                        bias=32, safety_func=None, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
             observation: The flat field observation. TODO: Integrate with FlatFieldSequence.
+            target_scaling (float, optional): Required to be between [0, 1] so
+                target_adu is proportionally between 0 and digital saturation level.
+                Default: 0.17.
+            scaling_tolerance (float, optional): The minimum precision on the average counts
+                required to keep the exposure, expressed as a fraction of the dynamic range.
+                Default: 0.05.
             timeout (float): The timeout on top of the exposure time, default 60s.
             bias (int): The bias to subtract from the frames. TODO: Use a real bias image!
             safety_func (None or callable): If given, calls to this object return True if safe to
@@ -542,7 +537,8 @@ class HuntsmanObservatory(Observatory):
         # Create a flat field sequence for each camera
         sequences = {}
         for cam_name in cam_names:
-            target_counts, counts_tolerance = self._autoflat_target_counts(cam_name)
+            target_counts, counts_tolerance = self._autoflat_target_counts(
+                cam_name, target_scaling, scaling_tolerance)
             sequences[cam_name] = FlatFieldSequence(
                 target_counts=target_counts, counts_tolerance=counts_tolerance, bias=bias,
                 **kwargs)
@@ -597,10 +593,12 @@ class HuntsmanObservatory(Observatory):
                 status = sequences[cam_name].status
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
-    def _autoflat_target_counts(self, cam_name):
+    def _autoflat_target_counts(self, cam_name, target_scaling, scaling_tolerance):
         """ Get the target counts and tolerance for each camera.
         Args:
             cam_name (str): The camera name.
+            target_scaling (float):
+            scaling_tolerance (float):
         """
         camera = self.cameras[cam_name]
         try:
@@ -609,8 +607,8 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug(f'No bit_depth property for {cam_name}. Using 16.')
             bit_depth = 16
 
-        target_counts = int(self._target_scaling * 2 ** bit_depth)
-        counts_tolerance = int(self._scaling_tolerance * 2 ** bit_depth)
+        target_counts = int(target_scaling * 2 ** bit_depth)
+        counts_tolerance = int(scaling_tolerance * 2 ** bit_depth)
 
         self.logger.debug(f"Target counts for {cam_name}: {self._target_counts[cam_name]}"
                           f"±{self._counts_tolerance[cam_name]}.")
