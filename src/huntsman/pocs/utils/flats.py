@@ -37,6 +37,7 @@ class FlatFieldSequence():
         self.logger = logger
 
         self._n_exposures = 0
+        self._n_good_exposures = 0
         self._max_exposures = int(max_exposures)
         self._cutout_size = int(cutout_size)
         self._required_exposures = int(required_exposures)
