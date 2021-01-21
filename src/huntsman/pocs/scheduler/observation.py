@@ -118,3 +118,22 @@ class DitheredFlatObservation(DitheredObservation):
 
         # Specify directory root for file storage
         self._directory = os.path.join(self._image_dir, 'flats')
+
+    def get_exposure_filename(self, camera):
+        """ Get the exposure filename for a camera.
+        Args:
+            camera (Camera): A camera instance.
+        """
+        path = os.path.join(self.directory, camera.uid, self.seq_time)
+        filename = os.path.join(
+            path, f'flat_{self.current_exp_num:02d}.{camera.file_extension}')
+        return filename
+
+    def get_bias_filename(self, camera):
+        """ Get the bias filename for a camera.
+        Args:
+            camera (Camera): A camera instance.
+        """
+        path = os.path.join(self.directory, camera.uid, self.seq_time)
+        filename = os.path.join(path, f'bias.{camera.file_extension}')
+        return filename
