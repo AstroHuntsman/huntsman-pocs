@@ -79,7 +79,7 @@ class FlatFieldSequence():
     def update(self, filename, exptime, time_start):
         """ Update the sequence data with the previous iteration.
         Args:
-            average_counts (dict): The average counts.
+            filename (str) The file to read the counts from.
             exptime (dict): The exposure times.
             time_start (datetime.datetime): The time that the exposures were started.
         """
