@@ -168,8 +168,8 @@ class FlatFieldSequence():
         Returns:
             np.array: The exposure data clipped to _cutout_size and given in dtype.
         """
-        data = fits.getdata(filename)
+        data = fits_utils.getdata(filename).astype(dtype)
         if self._cutout_size is not None:
-            x, y = data.shape[1]/2, data.shape[0]/2
-            data = Cutout2D(data, (x, y), size=self._cutout_size).data
-        return data.astype(dtype)
+            data = crop_data(data, box_size=self._cutout_size)
+            
+        return data
