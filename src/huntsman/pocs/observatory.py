@@ -178,7 +178,7 @@ class HuntsmanObservatory(Observatory):
         archive_dir = self.get_config("directories.archive")
         remove_empty_directories(archive_dir)
 
-    def take_flat_observation(self, cameras=None, safety_func=None, **kwargs):
+    def take_flat_fields(self, cameras=None, safety_func=None, **kwargs):
         """ Take flat fields for each camera in each filter, respecting filter order.
         Args:
             camera_names (list, optional): List of camera names to take flats with.
@@ -211,7 +211,6 @@ class HuntsmanObservatory(Observatory):
 
         # Take flat fields in each filter
         for filter_name in filter_order:
-
             if not safety_func():
                 self.logger.info('Terminating flat-fielding because it is no longer safe.')
                 return
