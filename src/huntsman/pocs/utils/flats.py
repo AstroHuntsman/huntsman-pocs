@@ -138,10 +138,7 @@ class FlatFieldSequence():
         Returns:
             float: The average counts.
         """
-        try:
-            data = self._load_fits_data(filename)
-        except FileNotFoundError:
-            data = self._load_fits_data(filename + ".fz")
+        data = self._load_fits_data(filename)
 
         # Calculate average counts per pixel
         average_counts, _, _ = sigma_clipped_stats(data - self._bias)
