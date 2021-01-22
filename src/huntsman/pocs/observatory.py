@@ -580,6 +580,7 @@ class HuntsmanObservatory(Observatory):
                     exptime=exptimes[cam_name])
 
             # Wait for the exposures, dropping cameras that timeout
+            self.logger.info('Waiting for flat field exposures to complete.')
             duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
             self._wait_for_camera_events(events, duration, remove=True)
 
@@ -624,6 +625,7 @@ class HuntsmanObservatory(Observatory):
                 a TimeoutError instead.
             sleep (float): Sleep this long between event checks. Default 1s.
         """
+        self.logger.debug(f'Waiting for {len(events)} events with timeout of {duration}.')
         timer = CountdownTimer(duration)
         while not timer.expired():
             if all([e.is_set() for e in events.values()]):
@@ -632,7 +634,7 @@ class HuntsmanObservatory(Observatory):
         # Make sure events are set
         for cam_name, event in events.items():
             if not event.is_set():
-                if remove:
+                if remove_on_error:
                     self.logger.warning(f"Timeout while waiting for camera event on {cam_name}. "
                                         "Removing from observatory.")
                     self.observatory.remove_camera(cam_name)
