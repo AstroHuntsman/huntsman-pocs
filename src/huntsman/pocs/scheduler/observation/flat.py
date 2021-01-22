@@ -24,9 +24,9 @@ class DitheredFlatObservation(DitheredObservation):
         with suppress(AttributeError):
             position = position.to_string('hmsdms')  # noqa
 
-        field = Field('Flat Field', position)
+        field = Field('Flat', position)
 
-        field = Field('Flat Field', position)
+        field = Field('Flat', position)
         super().__init__(field=field, *args, **kwargs)
 
         # Listify the exposure time
@@ -44,13 +44,3 @@ class DitheredFlatObservation(DitheredObservation):
 
         # Specify directory root for file storage
         self._directory = os.path.join(self._image_dir, 'flats')
-
-    def get_exposure_filename(self, camera):
-        """ Get the exposure filename for a camera.
-        Args:
-            camera (Camera): A camera instance.
-        """
-        path = os.path.join(self.directory, camera.uid, self.seq_time)
-        filename = os.path.join(
-            path, f'flat_{self.current_exp_num:03d}.{camera.file_extension}')
-        return filename

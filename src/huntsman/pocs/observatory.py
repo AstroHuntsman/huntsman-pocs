@@ -194,7 +194,7 @@ class HuntsmanObservatory(Observatory):
             safety_func = partial(self.is_dark, horizon='flat')
 
         # Load the flat fielding config
-        flat_field_config = self.get_config('flat_fields', default=dict())
+        flat_field_config = self.get_config('calibs.flat', default=dict())
         flat_field_config.update(kwargs)
 
         # Specify flat field coordinates
