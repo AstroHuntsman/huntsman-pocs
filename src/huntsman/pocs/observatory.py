@@ -615,7 +615,7 @@ class HuntsmanObservatory(Observatory):
                           f" ± {counts_tolerance}")
         return target_counts, counts_tolerance
 
-    def _wait_for_camera_events(self, events, duration, remove=False, sleep=1):
+    def _wait_for_camera_events(self, events, duration, remove_on_error=False, sleep=1):
         """ Wait for camera events to be set.
         Args:
             events (dict of camera_name: threading.Event): The events to wait for.
