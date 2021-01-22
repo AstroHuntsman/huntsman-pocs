@@ -178,7 +178,7 @@ class HuntsmanObservatory(Observatory):
         archive_dir = self.get_config("directories.archive")
         remove_empty_directories(archive_dir)
 
-    def take_flat_fields(self, camera_names=None, alt=None, az=None, safety_func=None, **kwargs):
+    def take_flat_observation(self, cameras=None, safety_func=None, **kwargs):
         """ Take flat fields for each camera in each filter, respecting filter order.
         Args:
             camera_names (list, optional): List of camera names to take flats with.
@@ -190,29 +190,26 @@ class HuntsmanObservatory(Observatory):
             safety_func (callable|None): Boolean function that returns True only if safe to
                 continue. The default `None` will call `self.is_dark(horizon='flat')`.
         """
+        if cameras is None:
+            cameras = self.cameras
         if safety_func is None:
             safety_func = partial(self.is_dark, horizon='flat')
 
-        # Load the flat fielding config
-        flat_field_config = self.get_config('calibs.flat', default=dict())
-        flat_field_config.update(kwargs)
+        # Load the flat field config, allowing overrides from kwargs
+        flat_config = self.get_config('calibs.flat', default=dict()).update(kwargs)
 
         # Specify flat field coordinates
-        if (alt is None) or (az is None):
-            self.logger.debug(f'Using flat-field alt/az from config.')
-            alt = flat_field_config['alt']
-            az = flat_field_config['az']
+        # This must be done at the observatory level to convert alt/az to ra/dec
+        alt = flat_config['alt']
+        az = flat_config['az']
+        self.logger.debug(f'Flat field alt/az: {alt:.03f}, {az:.03f}.')
 
-        if camera_names is None:
-            cameras_all = self.cameras
-        else:
-            cameras_all = {c: self.cameras[c] for c in camera_names}
-
-        # Obtain the filter order
-        filter_order = flat_field_config['filter_order'].copy()
+        # Specify filter order
+        filter_order = flat_config['filter_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
+        # Take flat fields in each filter
         for filter_name in filter_order:
 
             if not safety_func():
@@ -220,26 +217,28 @@ class HuntsmanObservatory(Observatory):
                 return
 
             # Get a dict of cameras that have this filter
-            filter_cameras = {}
-            for cam_name, cam in cameras_all.items():
+            cameras_with_filter = {}
+            for cam_name, cam in cameras.items():
                 if cam.filterwheel is None:
                     if cam.filter_type == filter_name:
-                        filter_cameras[cam_name] = cam
+                        cameras_with_filter[cam_name] = cam
                 elif filter_name in cam.filterwheel.filter_names:
-                    filter_cameras[cam_name] = cam
+                    cameras_with_filter[cam_name] = cam
 
             # Go to next filter if there are no cameras with this one
-            if not filter_cameras:
-                self.logger.debug(f'No cameras found with {filter_name} filter.')
+            if not cameras_with_filter:
+                self.logger.warning(f'No cameras found with {filter_name} filter.')
                 continue
 
             # Create the Observation object
-            obs = self._create_flat_field_observation(alt=alt, az=az, filter_name=filter_name)
+            position = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+                                      obstime=current_time())
+            observation = DitheredFlatObservation(position=position)
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
-            autoflat_config = flat_field_config.get("autoflats", {})
-            self._take_autoflats(filter_cameras, obs, safety_func=safety_func, **autoflat_config)
+            autoflat_config = flat_config.get("autoflats", {})
+            self._take_autoflats(cameras_with_filter, observation, **autoflat_config)
 
         self.logger.info('Finished flat-fielding.')
 
@@ -406,32 +405,6 @@ class HuntsmanObservatory(Observatory):
         guider = Guide(**guider_config)
 
         self.autoguider = guider
-
-    def _create_flat_field_observation(self, alt, az, *args, **kwargs):
-        """Create the flat-field `Observation` object."""
-        flat_coords = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
-                                     obstime=current_time())
-        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03f}, {az:.03f}.')
-        self.logger.debug(f'Flat field coordinates: {flat_coords}')
-
-        # Create the Observation object
-        obs = DitheredFlatObservation(position=flat_coords, *args, **kwargs)
-        obs.seq_time = current_time(flatten=True)
-        self.logger.debug(f"Created flat-field observation: {obs}")
-
-        return obs
-
-    def _create_dark_observation(self, exptime, *args, **kwargs):
-
-        # Create the observation object
-        dark_position = self.mount.get_current_coordinates()
-        dark_obs = DarkObservation(dark_position, *args, **kwargs)
-        dark_obs.seq_time = current_time(flatten=True)
-
-        if isinstance(dark_obs, DarkObservation):
-            dark_obs.exptime = exptime
-
-        return dark_obs
 
     def _move_all_filterwheels_to(self, filter_name, camera_names=None):
         """Move all the filterwheels to a given filter
