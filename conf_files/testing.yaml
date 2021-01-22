@@ -1,0 +1,122 @@
+---
+name: HuntsmanSSO
+
+log_file: huntsman
+
+location:
+  name: Siding Spring Observatory
+  latitude: -31.16 deg
+  longitude: 149.13 deg
+  elevation: 1160.0 m
+  horizon: 30 deg # Degrees - Targets above this limit
+  flat_horizon: -6 deg # Degrees - Flats between this and focus_horizon
+  focus_horizon: -12 deg # Degrees - Focus between this and observe_horizon
+  observe_horizon: -18 deg # Degrees - Sun below this limit to observe
+  obstructions:
+    - [ [ 45, 355 ], [ 45, 5 ] ] # telstra tower rough coordinates
+  timezone: Australia/Sydney
+  twilight_horizon: 0 # Degrees
+
+db:
+  name: huntsman
+  type: file
+
+scheduler:
+  type: dispatch
+  fields_file: targets.yaml
+  check_file: True
+
+directories:
+  base: /var/huntsman
+  data: data
+  images: images
+  mounts: POCS/resources/mounts
+  resources: POCS/resources
+  targets: /var/huntsman/huntsman-pocs/conf_files
+  webcam: webcams
+
+cameras:
+  devices:
+    - model: panoptes.pocs.camera.simulator.dslr
+      name: dslr.00
+      port: /dev/fake/dslr.focuser.00
+      is_distributed: True
+      focuser:
+        model: panoptes.pocs.focuser.simulator.Focuser
+        focus_port: /dev/fake/focuser.00
+        initial_position: 20000
+        autofocus_range: [ 40, 80 ]
+        autofocus_step: [ 10, 20 ]
+        autofocus_seconds: 0.1
+        autofocus_size: 500
+        autofocus_keep_files: False
+      filterwheel:
+        model: panoptes.pocs.filterwheel.simulator.FilterWheel
+        filter_names:
+          - one
+          - deux
+          - drei
+          - quattro
+          - blank
+        move_time: 0.1
+        timeout: 0.5
+        dark_position: blank
+
+mount:
+  brand: ioptron
+  model: 30
+  driver: ioptron
+  serial:
+    port: /dev/ttyUSB0
+    timeout: 0.
+    baudrate: 9600
+  non_sidereal_available: True
+
+pointing:
+  exptime: 30
+  max_iterations: 3
+  threshold: 0.05
+
+state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
+
+focusing:
+  coarse:
+    frequency: 2
+    frequency_unit: hour
+    timeout: 600
+    filter_name: one
+    alt: 70  # degrees
+    az: 120  # degrees
+
+flat_fields:
+  alt: 70  # degrees
+  az: 120  # degrees
+  filter_order:
+    - one
+    - deux
+    - drei
+    - quattro
+  autoflats:
+    required_exposures: 2  # Per filter per camera
+    max_exposures: 2  # Per filter per camera
+    max_exptime: 1 s
+    min_exptime: 0.0001 s
+
+pocs:
+  INITIALIZED: false
+  CONNECTED: false
+  INTERRUPTED: false
+
+pyro:
+  nameserver:
+    host: localhost
+    port: 6564
+  CameraService:
+    metadata:
+      - "huntsman"
+      - "camera_service"
+  devices: [ ]
+
+archiver:
+  sleep_interval: 1 s
+  delay_interval: 5 s

@@ -30,7 +30,7 @@ echo "Control computer hostname: ${REMOTE_HOST}"
 echo "Mounting remote images directory ${REMOTE_IMAGES_DIR} to ${LOCAL_IMAGES_DIR}"
 mkdir -p ${LOCAL_IMAGES_DIR}
 sudo umount ${LOCAL_IMAGES_DIR} || true
-sshfs -o allow_other,ServerAliveInterval=20,ServerAliveCountMax=3,StrictHostKeyChecking=False ${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
+sshfs -o allow_other,reconnect,ServerAliveInterval=20,ServerAliveCountMax=3,StrictHostKeyChecking=False ${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
 
 # Get the docker-compose file
 DC_FILE="${PANDIR}/docker-compose.yaml"
