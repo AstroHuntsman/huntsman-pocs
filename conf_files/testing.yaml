@@ -93,15 +93,11 @@ calibs:
     number: 10
   dark:
     exposure_times:
-      - 10
-      - 20
-      - 40
-      - 80
-      - 160
-      - 320
+      - 1 s
+      - 2 s
   flat:
-    alt: 70  # degrees
-    az: 120  # degrees
+    alt: 70 deg
+    az: 120 deg
     filter_order:
       - one
       - deux

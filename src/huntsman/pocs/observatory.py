@@ -196,7 +196,8 @@ class HuntsmanObservatory(Observatory):
             safety_func = partial(self.is_dark, horizon='flat')
 
         # Load the flat field config, allowing overrides from kwargs
-        flat_config = self.get_config('calibs.flat', default=dict()).update(kwargs)
+        flat_config = self.get_config('calibs.flat', default=dict())
+        flat_config.update(kwargs)
 
         # Specify flat field coordinates
         # This must be done at the observatory level to convert alt/az to ra/dec
@@ -233,11 +234,13 @@ class HuntsmanObservatory(Observatory):
             position = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                       obstime=current_time())
             observation = DitheredFlatObservation(position=position)
+            observation.seq_time = current_time(flatten=True)
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
             autoflat_config = flat_config.get("autoflats", {})
-            self._take_autoflats(cameras_with_filter, observation, **autoflat_config)
+            self._take_autoflats(cameras_with_filter, observation, safety_func=safety_func,
+                                 **autoflat_config)
 
         self.logger.info('Finished flat-fielding.')
 
