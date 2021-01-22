@@ -126,7 +126,7 @@ class DitheredFlatObservation(DitheredObservation):
         """
         path = os.path.join(self.directory, camera.uid, self.seq_time)
         filename = os.path.join(
-            path, f'flat_{self.current_exp_num:02d}.{camera.file_extension}')
+            path, f'flat_{self.current_exp_num:03d}.{camera.file_extension}')
         return filename
 
     def get_bias_filename(self, camera):
