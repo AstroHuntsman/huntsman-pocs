@@ -165,7 +165,7 @@ class FlatFieldSequence():
             filename (str): The FITS filename.
             dtype (str or Type): The data type for the returned array.
         Returns:
-            np.array: The exposure data.
+            np.array: The exposure data clipped to _cutout_size and given in dtype.
         """
         data = fits.getdata(filename)
         if self._cutout_size is not None:
