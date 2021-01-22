@@ -585,7 +585,7 @@ class HuntsmanObservatory(Observatory):
 
             # Update the flat field sequences with new data
             for cam_name in list(sequences.keys()):
-                if cam_name not in self.cameras.keys():  # Camera removed
+                if cam_name not in self.cameras:  # Camera removed
                     del sequences[cam_name]
                     continue
                 sequences[cam_name].update(filenames[cam_name], exptime=exptimes[cam_name],
