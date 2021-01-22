@@ -1,6 +1,7 @@
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
-from astropy.io import fits
+from panoptes.utils.images import fits as fits_utils
+from panoptes.utils.images import crop_data
 from astropy.nddata import Cutout2D
 
 from panoptes.utils.time import current_time
