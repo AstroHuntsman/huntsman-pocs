@@ -588,7 +588,7 @@ class HuntsmanObservatory(Observatory):
                 if cam_name not in self.cameras:  # Camera removed
                     del sequences[cam_name]
                     continue
-                sequences[cam_name].update(filenames[cam_name], exptime=exptimes[cam_name],
+                sequences[cam_name].update(filename=filenames[cam_name], exptime=exptimes[cam_name],
                                            time_start=start_times[cam_name])
                 # Log sequence status
                 status = sequences[cam_name].status
