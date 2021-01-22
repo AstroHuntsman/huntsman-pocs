@@ -96,10 +96,11 @@ flat_fields:
     - deux
     - drei
     - quattro
-  required_exposures: 1  # Per filter per camera
-  max_attempts: 1  # Per filter per camera
-  max_exptime: 1 s
-  min_exptime: 0.0001 s
+  autoflats:
+    required_exposures: 2  # Per filter per camera
+    max_exposures: 2  # Per filter per camera
+    max_exptime: 1 s
+    min_exptime: 0.0001 s
 
 pocs:
   INITIALIZED: false
