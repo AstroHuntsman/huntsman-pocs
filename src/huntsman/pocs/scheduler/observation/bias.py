@@ -8,8 +8,6 @@ from panoptes.pocs.scheduler.observation import Observation
 
 
 class BiasObservation(Observation):
-    """
-    """
 
     def __init__(self, position, number=None):
         if number is None:
