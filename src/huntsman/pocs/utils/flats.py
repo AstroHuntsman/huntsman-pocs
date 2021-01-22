@@ -19,7 +19,7 @@ class FlatFieldSequence():
         """
         Args:
             target_counts (float): The target counts for each exposure.
-            counts_tolerance (float): The tolerance on target_counts in counts.
+            counts_tolerance (float): The tolerance on target_counts in counts for a
                 good flat field exposure.
             initial_exposure_time (u.Quantity, optional): The initial exposure time, default 1s.
             min_exptime (Quantity, optional): The min exposure time.
