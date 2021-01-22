@@ -1,19 +1,16 @@
-import os
-from astropy import units as u
 from contextlib import suppress
 
+from astropy import units as u
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
 from panoptes.utils import listify
 
 
-class DarkObservation(Observation):
+class DitheredObservation(Observation):
+    """ Observation that dithers to different points
 
-    """ A Dark observation
-
-    Dark observations will consist of multiple exposure. As the mount will be
-    parked when using this class, the fits image header RA, Dec will be centred
-    at the parked position.
+    Dithered observations will consist of both multiple exposure time as well as multiple
+    `Field` locations, which are used as a simple dithering mechanism
 
     Note:
         For now the new observation must be created like a normal `Observation`,
@@ -22,15 +19,8 @@ class DarkObservation(Observation):
         more conveniently be set with `add_field`
     """
 
-    def __init__(self, position, *args, **kwargs):
-        """
-        Args:
-            position (str): Center of field, can be anything accepted by
-                `~astropy.coordinates.SkyCoord`.
-        """
-        # Create the observation
-        dark_image = Field('Dark', position)
-        super().__init__(field=dark_image, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super(DitheredObservation, self).__init__(*args, **kwargs)
 
         # Set initial list to original values
         self._exptime = listify(self.exptime)
@@ -38,12 +28,8 @@ class DarkObservation(Observation):
 
         self.extra_config = kwargs
 
-        # Specify directory root for file storage
-        self._directory = os.path.join(self._image_dir, 'darks')
-
     @property
     def exptime(self):
-        """ Exposure time of the dark observation as a Quantity instance """
         exptime = self._exptime[self.exposure_index]
 
         if not isinstance(exptime, u.Quantity):
@@ -60,7 +46,6 @@ class DarkObservation(Observation):
 
     @property
     def field(self):
-        """ Field of dark observation """
         return self._field[self.exposure_index]
 
     @field.setter
@@ -72,11 +57,23 @@ class DarkObservation(Observation):
 
     @property
     def exposure_index(self):
-        exp_index = 0
+        _exp_index = 0
         with suppress(AttributeError):
-            exp_index = self.current_exp_num % len(self._exptime)
+            _exp_index = self.current_exp_num % len(self._exptime)
 
-        return exp_index
+        return _exp_index
+
+    def add_field(self, new_field, new_exptime):
+        """ Add a new field to observe along with exposure time
+
+        Args:
+            new_field (pocs.scheduler.field.Field): A `Field` object
+            new_exptime (float): Number of seconds to expose
+
+        """
+        self.logger.debug("Adding new field {} {}".format(new_field, new_exptime))
+        self._field.append(new_field)
+        self._exptime.append(new_exptime)
 
     def __str__(self):
-        return f"DarkObservation: {self._field}: {self._exptime}"
+        return "DitheredObservation: {}: {}".format(self._field, self._exptime)

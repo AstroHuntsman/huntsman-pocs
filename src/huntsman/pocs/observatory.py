@@ -12,8 +12,9 @@ from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
 
 from huntsman.pocs.guide.bisque import Guide
-from huntsman.pocs.scheduler.dark_observation import DarkObservation
-from huntsman.pocs.scheduler.observation import DitheredFlatObservation
+from huntsman.pocs.scheduler.observation.bias import BiasObservation
+from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.scheduler.observation.flat import DitheredFlatObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.utils.flats import FlatFieldSequence
@@ -242,112 +243,33 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def take_dark_images(self, exptimes=None, camera_names=None, n_darks=10, imtype='dark',
-                         set_from_config=False, *args, **kwargs):
-        """Take n_darks for each exposure time specified,
-           for each camera.
-
+    def take_bias_observation(self, cameras=None, **kwargs):
+        """ Take a bias observation block on each camera (blocking).
         Args:
-            exptimes (list, optional): List of exposure times for darks
-            camera_names (list, optional): List of cameras to use for darks
-            n_darks (int or list, optional): if int, the same number of darks will be taken
-                for each exptime. If list, the len has to be the same than len(exptimes), where each
-                element is the number of darks we want for the corresponding exptime, e.g.:
-                take_dark_images(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
-                will take 30x1s, 10x60s, and 20x15s darks
-            set_from_config (bool, optional): flag to set exptimes and n_darks directly
-                from config file.
-            imtype (str, optional): type of image
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                the cameras.
         """
+        if cameras is None:
+            cameras = self.cameras
+        # Create the observation
+        position = self.mount.get_current_coordinates()
+        observation = BiasObservation(position=position)
+        # Take the observation (blocking)
+        self._take_observation(observation, cameras=cameras, **kwargs)
 
-        if exptimes is None:
-            exptimes = list()
-
-        if camera_names is None:
-            cameras_list = self.cameras
-        else:
-            cameras_list = {c: self.cameras[c] for c in camera_names}
-
-        self.logger.debug(f'Using cameras {cameras_list}')
-
-        # Move all the filterwheels to the blank position.
-        self._move_all_filterwheels_to('blank')
-
-        # List to check that the final number of darks is equal to the number
-        # of cameras times the number of exptimes times n_darks.
-        darks_filenames = list()
-
-        exptimes = listify(exptimes)
-
-        if set_from_config:
-            dark_config = self.get_config('darks', default=dict())
-            exptimes = dark_config['exposure_time']
-            n_darks = dark_config['n_darks']
-
-        if not isinstance(n_darks, list):
-            n_darks = listify(n_darks) * len(exptimes)
-
-        # Loop over cameras.
-        if len(exptimes) == 0:
-            raise error.PanError('No exposure times were provided. No dark images were taken.')
-
-        self.logger.info(f'Going to take {n_darks} darks for these exposure times {exptimes}')
-        for exptime, num_darks in zip(exptimes, n_darks):
-
-            start_time = current_time()
-
-            with suppress(AttributeError):
-                exptime = get_quantity_value(exptime, u.second)
-
-            # Create dark observation
-            dark_obs = self._create_dark_observation(exptime)
-
-            # Loop over exposure times for each camera.
-            for num in range(num_darks):
-
-                self.logger.debug(f'Taking dark {num + 1} of {num_darks} with exptime={exptime} s.')
-
-                camera_events = dict()
-
-                # Take a given number of exposures for each exposure time.
-                for camera in cameras_list.values():
-
-                    # Set header
-                    fits_headers = self.get_standard_headers(observation=dark_obs)
-                    # Common start time for cameras
-                    fits_headers['start_time'] = flatten_time(start_time)
-
-                    # Create filename
-                    path = os.path.join(dark_obs.directory, camera.uid, dark_obs.seq_time)
-
-                    filename = os.path.join(path, f'{imtype}_{num:02d}.{camera.file_extension}')
-
-                    # Take picture and get event
-                    camera_event = camera.take_observation(
-                        dark_obs,
-                        fits_headers,
-                        filename=filename,
-                        exptime=exptime,
-                        dark=True,
-                        blocking=False
-                    )
-
-                    self.logger.debug(f'Camera {camera.uid} is exposing for {exptime}s')
-
-                    camera_events[camera] = {
-                        'event': camera_event,
-                        'filename': filename,
-                    }
-
-                    darks_filenames.append(filename)
-
-                    self.logger.debug(camera_events)
-
-                # Block until done exposing on all cameras
-                self.logger.debug('Waiting for dark images...')
-                wait_for_events(list(info['event'] for info in camera_events.values()))
-        self.logger.debug(darks_filenames)
-        return darks_filenames
+    def take_dark_observation(self, exptimes=None, cameras=None, **kwargs):
+        """ Take a dark observation block on each camera (blocking).
+        Args:
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                the cameras.
+        """
+        if cameras is None:
+            cameras = self.cameras
+        # Create the observation
+        position = self.mount.get_current_coordinates()
+        observation = DarkObservation(exptimes=exptimes, position=position)
+        # Take the observation (blocking)
+        self._take_observation(observation, cameras=cameras, **kwargs)
 
     def activate_camera_cooling(self):
         """
@@ -428,6 +350,26 @@ class HuntsmanObservatory(Observatory):
         # Raise a `PanError` if no cameras are ready.
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
+
+    def _take_observation_block(self, observation, cameras, timeout=60):
+        """ Take an observation block (blocking).
+        Args:
+            observation (Observation): The observation object.
+            cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
+            timeout (float, optional): The timeout in seconds. Default 60s.
+        """
+        observation.seq_time = current_time(flatten=True)  # Normally handled by the scheduler
+        headers = self.get_standard_headers(observation=observation)
+        # Take the observation block
+        while not observation.set_is_finished:
+            headers['start_time'] = current_time(flatten=True)  # Normally handled elsewhere?
+            # Start the exposures and get events
+            # TODO: Replace with concurrent.futures
+            events = {}
+            for cam_name, camera in cameras.items():
+                events[cam_name] = camera.take_observation(observation, headers=headers)
+            # Wait for the exposures (blocking)
+            self._wait_for_camera_events(events, duration=timeout, remove_on_error=True)
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
