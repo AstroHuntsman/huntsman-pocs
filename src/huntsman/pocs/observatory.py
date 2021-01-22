@@ -582,7 +582,7 @@ class HuntsmanObservatory(Observatory):
             # Wait for the exposures, dropping cameras that timeout
             self.logger.info('Waiting for flat field exposures to complete.')
             duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
-            self._wait_for_camera_events(events, duration, remove=True)
+            self._wait_for_camera_events(events, duration, remove_on_error=True)
 
             # Update the flat field sequences with new data
             for cam_name in list(sequences.keys()):

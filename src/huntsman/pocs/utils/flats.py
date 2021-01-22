@@ -2,7 +2,6 @@ from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.images import crop_data
-from astropy.nddata import Cutout2D
 
 from panoptes.utils.time import current_time
 from panoptes.utils import get_quantity_value
@@ -168,5 +167,4 @@ class FlatFieldSequence():
         data = fits_utils.getdata(filename).astype(dtype)
         if self._cutout_size is not None:
             data = crop_data(data, box_size=self._cutout_size)
-            
         return data

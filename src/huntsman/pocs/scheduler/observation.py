@@ -119,7 +119,7 @@ class DitheredFlatObservation(DitheredObservation):
         # Specify directory root for file storage
         self._directory = os.path.join(self._image_dir, 'flats')
 
-    def get_get_exposure_filename(self, camera):
+    def get_exposure_filename(self, camera):
         """ Get the exposure filename for a camera.
         Args:
             camera (Camera): A camera instance.
