@@ -86,8 +86,7 @@ def test_bad_observatory():
 
 
 def test_take_flat_fields(pocs):
-    """
-
+    """ TODO: Improve this test!
     """
     os.environ['POCSTIME'] = '2020-10-09 12:00:00'
     assert pocs.observatory.is_dark(horizon='flat') is True
