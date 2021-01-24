@@ -1,6 +1,6 @@
 from astropy import units as u
 
-from panoptes.utils import current_time
+from panoptes.utils.time import current_time
 
 from panoptes.pocs.scheduler import dispatch
 from panoptes.pocs.scheduler.field import Field

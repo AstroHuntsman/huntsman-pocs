@@ -1,12 +1,11 @@
 import os
 import time
-from contextlib import suppress
 from functools import partial
 from astropy import units as u
 
-from panoptes.utils import error, altaz_to_radec, listify, get_quantity_value
+from panoptes.utils import error, altaz_to_radec, get_quantity_value
 from panoptes.utils.library import load_module
-from panoptes.utils.time import current_time, flatten_time, wait_for_events, CountdownTimer
+from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
@@ -181,14 +180,10 @@ class HuntsmanObservatory(Observatory):
     def take_flat_fields(self, cameras=None, safety_func=None, **kwargs):
         """ Take flat fields for each camera in each filter, respecting filter order.
         Args:
-            camera_names (list, optional): List of camera names to take flats with.
-                Default to `None`, which uses all cameras.
-            alt (float, optional): Altitude for flats in degrees. Default `None` will use the
-                `flat_fields.alt` config value.
-            az (float, optional): Azimuth for flats in degrees. Default `None` will use the
-                `flat_fields.az` config value.
+            cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
             safety_func (callable|None): Boolean function that returns True only if safe to
                 continue. The default `None` will call `self.is_dark(horizon='flat')`.
+            **kwargs: Overrides config entries under `calibs.flat`.
         """
         if cameras is None:
             cameras = self.cameras
@@ -256,7 +251,7 @@ class HuntsmanObservatory(Observatory):
         position = self.mount.get_current_coordinates()
         observation = BiasObservation(position=position)
         # Take the observation (blocking)
-        self._take_observation(observation, cameras=cameras, **kwargs)
+        self._take_observation_block(observation, cameras=cameras, **kwargs)
 
     def take_dark_observation(self, exptimes=None, cameras=None, **kwargs):
         """ Take a dark observation block on each camera (blocking).
@@ -270,7 +265,7 @@ class HuntsmanObservatory(Observatory):
         position = self.mount.get_current_coordinates()
         observation = DarkObservation(exptimes=exptimes, position=position)
         # Take the observation (blocking)
-        self._take_observation(observation, cameras=cameras, **kwargs)
+        self._take_observation_block(observation, cameras=cameras, **kwargs)
 
     def activate_camera_cooling(self):
         """

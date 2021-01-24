@@ -24,13 +24,13 @@ class DitheredFlatObservation(DitheredObservation):
         super().__init__(field=field, *args, **kwargs)
 
         # Listify the exposure time
-        self.exptime = [self.exptime for _ in range(n_positions)]
+        self.exptime = [self.exptime] * n_positions
 
         # Setup the dither fields
         dither_coords = dither.get_dither_positions(field.coord, n_positions=n_positions,
                                                     pattern=pattern, pattern_offset=dither_offset,
                                                     random_offset=random_offset)
-        self.field = [Field(f'FlatDither{i:02d}', c) for i, c in enumerate(dither_coords)]
+        self.field = [Field(f'FlatDither{i:03d}', c) for i, c in enumerate(dither_coords)]
 
         # Setup attributes for the scheduler
         self.min_nexp = n_positions
