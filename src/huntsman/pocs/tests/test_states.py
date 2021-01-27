@@ -68,6 +68,7 @@ def test_startup(pocs):
     pocs.goto_next_state()
     assert pocs.state == "starting"
 
+
 def test_starting_sleeping(pocs):
     '''
     Test if the parking state transitions back into ready.
