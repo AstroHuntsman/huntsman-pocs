@@ -3,13 +3,13 @@ import pytest
 
 from panoptes.utils import current_time
 
-from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.mount import create_mount_simulator
 from panoptes.utils.config.client import set_config
 from panoptes.pocs.dome import create_dome_simulator
 
+from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
@@ -48,13 +48,25 @@ def dome():
 @pytest.fixture(scope='function')
 def pocs(observatory, dome):
     os.environ['POCSTIME'] = '2020-01-01 08:00:00'
-    pocs = POCS(observatory, run_once=True)
+    pocs = HuntsmanPOCS(observatory, run_once=True)
     pocs.observatory.set_dome(dome)
     yield pocs
     pocs.power_down()
 
 
 # ==============================================================================
+
+def test_startup(pocs):
+    """ Test if we are able to start up properly.
+    """
+    pocs.initialize()
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power', 'night'])
+    assert pocs.state == "sleeping"
+    pocs.next_state = "starting"  # Usually handled by pocs.run()
+    assert pocs.next_state == "starting"
+    assert pocs.is_safe()
+    pocs.goto_next_state()
+    assert pocs.state == "starting"
 
 
 def test_starting_sleeping(pocs):

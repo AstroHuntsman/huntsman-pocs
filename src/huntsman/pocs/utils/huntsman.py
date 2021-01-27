@@ -2,11 +2,11 @@ from panoptes.utils.config.client import get_config
 
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.mount import create_mount_from_config
-from panoptes.pocs.core import POCS
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory
 from huntsman.pocs.dome import create_dome_from_config
+from huntsman.pocs.core import HuntsmanPOCS
 
 
 def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, scheduler=None,
@@ -61,7 +61,7 @@ def create_huntsman_pocs(observatory=None, simulators=['power', ], **kwargs):
     if observatory is None:
         observatory = create_huntsman_observatory(**kwargs)
 
-    pocs = POCS(observatory, simulators=simulators)
-    pocs.initialize()
+    huntsman = HuntsmanPOCS(observatory=observatory, simulators=simulators)
+    huntsman.initialize()
 
-    return pocs
+    return huntsman
