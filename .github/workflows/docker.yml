@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - develop
-  workflow_dispatch:
+      - switch-gha-buildx
 jobs:
   buildx:
     runs-on: ubuntu-latest
