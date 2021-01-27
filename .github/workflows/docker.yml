@@ -30,7 +30,7 @@ jobs:
             --tag huntsmanarray/huntsman-pocs:develop \
             --output "type=image,push=true" .
       -
-        name: Build and push huntsman-pocs-camera image.
+        name: Build and push huntsman-pocs-camera image
         run: |
           docker buildx build \
             -f docker/camera/Dockerfile \
