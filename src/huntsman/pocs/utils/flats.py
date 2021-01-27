@@ -45,7 +45,7 @@ class FlatFieldSequence():
         self._max_exptime = get_quantity_value(max_exptime, u.second) * u.second
         self._initial_exposure_time = get_quantity_value(initial_exposure_time) * u.second
         self._target_counts = get_quantity_value(target_counts, u.adu)
-        self._counts_tolerance = get_quantity_value(target_counts, u.adu)
+        self._counts_tolerance = get_quantity_value(counts_tolerance, u.adu)
         self._bias = int(bias)
 
         self._filenames = []

@@ -117,7 +117,9 @@ class Archiver(PanBase):
                 break
             # Get the current status
             status = self.status
-            self.logger.debug(f"Archiver status: {status}")
+            self.logger.trace(f"Archiver status: {status}")
+            if not self.is_running:
+                self.logger.warning(f"Archiver is not running.")
             # Sleep before reporting status again
             time.sleep(self._status_interval)
 
@@ -188,7 +190,7 @@ class Archiver(PanBase):
             filename (str): The filename string.
         """
         if not os.path.exists(filename):  # May have already been archived or deleted
-            self.logger.warning(f"Tried to archive {filename} but it does not exist.")
+            self.logger.trace(f"Tried to archive {filename} but it does not exist.")
             raise FileNotFoundError
 
         # Get the archived filename
@@ -196,5 +198,5 @@ class Archiver(PanBase):
         # Make sure the archive directory exists
         os.makedirs(os.path.dirname(archive_filename), exist_ok=True)
         # Move the file to the archive directory
-        self.logger.debug(f"Moving {filename} to {archive_filename}.")
+        self.logger.trace(f"Moving {filename} to {archive_filename}.")
         shutil.move(filename, archive_filename)

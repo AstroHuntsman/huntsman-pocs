@@ -638,6 +638,6 @@ class HuntsmanObservatory(Observatory):
                 if remove_on_error:
                     self.logger.warning(f"Timeout while waiting for camera event on {cam_name}. "
                                         "Removing from observatory.")
-                    self.observatory.remove_camera(cam_name)
+                    self.remove_camera(cam_name)
                 else:
                     raise error.Timeout(f"Timeout while waiting for camera event on {cam_name}.")
