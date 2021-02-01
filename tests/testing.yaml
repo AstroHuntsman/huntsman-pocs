@@ -27,12 +27,12 @@ scheduler:
   check_file: True
 
 directories:
-  base: /var/huntsman
+  base: /huntsman
   data: data
   images: images
-  mounts: POCS/resources/mounts
-  resources: POCS/resources
-  targets: /var/huntsman/huntsman-pocs/conf_files
+  mounts: /POCS/resources/mounts
+  resources: /POCS/resources
+  targets: /POCS/resources/conf_files
   webcam: webcams
 
 cameras:
@@ -111,6 +111,7 @@ pyro:
   nameserver:
     host: localhost
     port: 6564
+    auto_clean: 300
   CameraService:
     metadata:
       - "huntsman"
