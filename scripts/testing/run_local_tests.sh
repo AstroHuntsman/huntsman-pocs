@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-set -eu
+set -e
 
 # Run tests inside docker container
-docker-compose -f ${HUNTSMAN_POCS}/docker/testing/docker-compose.yml run --rm \
-  -v ${HUNTSMAN_POCS}:/var/huntsman/huntsman-pocs python_tests
+docker-compose -f docker/testing/docker-compose.yml run --rm python_tests
