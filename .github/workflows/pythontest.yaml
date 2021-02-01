@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ 3.7 ]
+        python-version: [ 3.8 ]
     steps:
       - name: Make coverage directory
         run: mkdir -p ${{ env.PANLOG }}/huntsman-coverage && chmod -R 777 ${{ env.PANLOG }}
