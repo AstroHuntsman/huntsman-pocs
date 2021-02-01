@@ -13,7 +13,7 @@ def pyro_service(service_class=None,
                  service_name=None,
                  host=None,
                  port=None,
-                 metadata=None):
+                 metadata=None, **kwargs):
     """Creates and runs a Pyro Service.
 
     This is the "server" portion of the Pyro communication, which should be started
