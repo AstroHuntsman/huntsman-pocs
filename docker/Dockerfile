@@ -27,12 +27,13 @@ RUN echo "Building from ${image_name}:${image_tag}" && \
     sudo chown -R "${userid}:${userid}" "${POCS}"
 
 COPY docker/environment.yaml .
-RUN /conda/bin/conda env update -n base -f environment.yaml
+RUN /conda/bin/conda env update -n base -f environment.yaml && \
+    # POCS from github.
+    /conda/bin/pip install "git+https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs[focuser]"
 
 ARG pip_install_name="."
 ARG pip_install_extras=""
 
-WORKDIR "${POCS}"
 COPY --chown="${userid}:${userid}" . .
 RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
     /conda/bin/pip install "${pip_install_name}${pip_install_extras}" && \
@@ -44,6 +45,11 @@ RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
     sudo apt-get autoclean --yes && \
     sudo apt-get --yes clean && \
     sudo rm -rf /var/lib/apt/lists/*
+
+WORKDIR "${POCS}"
+COPY --chown="${userid}:${userid}" docker/docker-compose.yaml .
+COPY --chown="${userid}:${userid}" resources resources
+COPY --chown="${userid}:${userid}" scripts scripts
 
 ENTRYPOINT [ "/usr/bin/env", "bash", "-ic" ]
 CMD [ "ipython" ]

@@ -1,15 +1,13 @@
 import os
-import pytest
 
+import pytest
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.utils.time import CountdownTimer
-
 from panoptes.pocs.core import POCS
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.mount import create_mount_simulator
-
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 from huntsman.pocs.utils.huntsman import create_huntsman_pocs
@@ -36,32 +34,30 @@ def wait_for_state(sub, state, max_duration=90):
 
 
 @pytest.fixture(scope='function')
-def cameras(config_with_simulated_stuff):
+def cameras():
     """Get the default cameras from the config."""
-    return create_cameras_from_config(config_with_simulated_stuff)
+    return create_cameras_from_config()
 
 
 @pytest.fixture(scope='function')
-def scheduler(config_with_simulated_stuff):
-    site_details = create_location_from_config(config_with_simulated_stuff)
-    return create_scheduler_from_config(config_with_simulated_stuff,
-                                        observer=site_details['observer'])
+def scheduler():
+    site_details = create_location_from_config()
+    return create_scheduler_from_config(observer=site_details['observer'])
 
 
 @pytest.fixture(scope='function')
-def dome(config_with_simulated_stuff):
-    return create_dome_from_config(config_with_simulated_stuff)
+def dome():
+    return create_dome_from_config()
 
 
 @pytest.fixture(scope='function')
-def mount(config_with_simulated_stuff):
-    return create_mount_from_config(config_with_simulated_stuff)
+def mount():
+    return create_mount_from_config()
 
 
 @pytest.fixture(scope='function')
-def observatory(config_with_simulated_stuff, db_type, cameras, scheduler, dome, mount):
+def observatory(db_type, cameras, scheduler, dome, mount):
     observatory = Observatory(
-        config=config_with_simulated_stuff,
         cameras=cameras,
         scheduler=scheduler,
         dome=dome,
@@ -72,12 +68,10 @@ def observatory(config_with_simulated_stuff, db_type, cameras, scheduler, dome, 
 
 
 @pytest.fixture(scope='function')
-def pocs(config_with_simulated_stuff, observatory):
+def pocs(observatory):
     os.environ['POCSTIME'] = '2016-08-13 13:00:00'
 
-    pocs = POCS(observatory,
-                run_once=True,
-                config=config_with_simulated_stuff)
+    pocs = POCS(observatory, run_once=True, simulators=['night', 'weather', 'power'])
 
     yield pocs
 

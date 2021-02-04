@@ -1,22 +1,18 @@
 import os
-import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
 from astropy.io import fits
 from astropy import units as u
 from Pyro5.api import Proxy
-
 from panoptes.utils import error
 from panoptes.utils.time import CountdownTimer
 from panoptes.utils.utils import get_quantity_value
 from panoptes.pocs.camera import AbstractCamera
-
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.event import RemoteEvent
-from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
 
 
 class Camera(AbstractCamera):
@@ -187,8 +183,8 @@ class Camera(AbstractCamera):
         if self._proxy.has_filterwheel:
             self.filterwheel = PyroFilterWheel(camera=self)
 
-    def take_exposure(self, seconds=1.0*u.second, filename=None, dark=False, blocking=False,
-                      sleep_interval=0.1*u.second, max_write_time=10, *args, timeout=None,
+    def take_exposure(self, seconds=1.0 * u.second, filename=None, dark=False, blocking=False,
+                      sleep_interval=0.1 * u.second, max_write_time=10, *args, timeout=None,
                       **kwargs):
         """Take an exposure for given number of seconds and saves to provided filename.
         Args:
@@ -209,7 +205,7 @@ class Camera(AbstractCamera):
                 the exposure, if True will block (on the client-side) until it completes.
             timeout (float, optional): If provided, override the default timeout with this value.
         Returns:
-            threading.Thread: The readout thread, which joins once readout has finished.
+            concurrent.futures.Future: The Future object for the exposure.
         """
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {filename}')
@@ -299,25 +295,29 @@ class Camera(AbstractCamera):
 
     # Private Methods
     def _wait_for_file(self, filename, timeout, sleep_interval=0.1):
-        """ Wait for the file to be written. Useful when files are written from camera to host
-        over network with SSHFS.
+        """ Wait for the file to be written.
+
+        Useful when files are written from camera to host over network with SSHFS.
+
         Args:
             timeout (float): The timeout in seconds.
         """
         sleep_interval = get_quantity_value(sleep_interval, u.second)
         proxy = self._proxy
         timer = CountdownTimer(timeout)
+        self.logger.debug(f'Starting {timer=}')
         while not timer.expired():
-            if not proxy.is_reading_out:
-                with suppress(TypeError, FileNotFoundError):
-                    # The best way of checking the file is written appears to be to get its data
-                    # TODO: Check if there is a better way of doing this
-                    fits.getdata(filename)
+            self.logger.trace(f'{proxy.is_reading_out=}')
+            if not proxy.is_reading_out and os.path.exists(filename):
+                try:
+                    hdul = fits.open(filename, output_verify='exception')
                     self.logger.debug(f"Finished waiting for file {filename}.")
                     return
-            time.sleep(sleep_interval)
-        raise error.Timeout(f"Timeout of {timeout} reached while waiting for file {filename} to"
-                            f" exist on camera client {self}.")
+                except Exception as e:
+                    self.logger.error(f'Problem reading out file: {e!r}')
+            timer.sleep(sleep_interval)
+
+        raise error.Timeout(f"{timeout!r} reached for {filename=} to exist on {self}.")
 
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""

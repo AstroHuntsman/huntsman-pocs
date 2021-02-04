@@ -10,4 +10,5 @@ dependencies:
   - readline  # POCS shell
   - scipy
   - pip:
-      - -e git+https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs[focuser]
+      - panoptes-utils[config,images,social]
+      - panoptes-pocs[focuser]  # Docker image uses updated github install

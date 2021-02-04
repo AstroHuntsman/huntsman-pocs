@@ -1,26 +1,23 @@
 version: '3.7'
 services:
   python_tests:
-    image: huntsmanarray/huntsman-pocs:develop
+    image: huntsman-pocs:testing
     build:
-      context: ../../
-      dockerfile: docker/Dockerfile
+      context: ../
+      dockerfile: tests/Dockerfile
       args:
         - pip_install_extras=[testing]
-    network_mode: host
     stdin_open: true
+    init: true
     tty: true
     environment:
       - PANDIR=/huntsman
       - POCS=/POCS
       - PANLOG=/huntsman/logs
       - HUNTSMAN_POCS=/huntsman
-      - PANOPTES_CONFIG_FILE=/huntsman/tests/testing.yaml
-      - PANOPTES_CONFIG_HOST=0.0.0.0
-      - PANOPTES_CONFIG_PORT=8765
     volumes:
       - "$PWD/logs:/huntsman/logs"
       - "$PWD/build:/huntsman/build"
       - "$PWD/src:/huntsman/src"
       - "$PWD/tests:/huntsman/tests"
-    command: /huntsman/scripts/testing/run_docker_tests.sh
+    command: [ "pytest" ]
