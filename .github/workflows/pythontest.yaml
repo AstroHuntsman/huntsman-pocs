@@ -32,16 +32,12 @@ jobs:
     steps:
       - name: Checkout huntsman-pocs
         uses: actions/checkout@v2
-        with:
-          path: huntsman-pocs
       - name: Build huntsman-pocs docker image
-        working-directory: ${{ env.HUNTSMAN_POCS }}
         run: |
           docker-compose -f tests/docker-compose.yml build
           mkdir -p logs && chmod -R 777 logs
           mkdir -p build && chmod -R 777 build
       - name: Test with pytest in huntsman-pocs container
-        working-directory: ${{ env.HUNTSMAN_POCS }}
         run: docker-compose -f tests/docker-compose.yml run --rm python_tests
       - name: Upload coverage report to codecov.io
         uses: codecov/codecov-action@v1
