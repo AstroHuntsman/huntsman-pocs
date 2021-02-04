@@ -1,4 +1,4 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-utils
+ARG image_url=gcr.io/panoptes-exp/panoptes-pocs
 ARG image_tag=develop
 FROM ${image_url}:${image_tag} AS pocs-base
 
@@ -19,7 +19,7 @@ USER "${userid}"
 RUN echo "Building from ${image_name}:${image_tag}" && \
     sudo apt-get update && \
     sudo apt-get install -y --no-install-recommends \
-        udev && \
+        gcc git udev && \
     sudo mkdir -p "${POCS}/images"  && \
     sudo mkdir -p "${POCS}/logs"  && \
     sudo mkdir -p "${POCS}/archive"  && \
