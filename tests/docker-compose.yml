@@ -13,7 +13,6 @@ services:
     environment:
       - PANDIR=/huntsman
       - POCS=/POCS
-      - PANLOG=/huntsman/logs
       - HUNTSMAN_POCS=/huntsman
     volumes:
       - "$PWD/logs:/huntsman/logs"
