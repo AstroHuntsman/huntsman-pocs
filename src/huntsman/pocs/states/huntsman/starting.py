@@ -15,4 +15,4 @@ def on_enter(event_data):
     pocs.observatory.open_dome()
 
     pocs.say("Initialisation complete.")
-    pocs.next_state == "ready"  # If not safe, the state machine goes to park automatically
+    pocs.next_state = "ready"  # If not safe, the state machine goes to park automatically

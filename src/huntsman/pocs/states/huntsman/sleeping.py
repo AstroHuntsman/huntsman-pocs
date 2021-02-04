@@ -1,7 +1,7 @@
 def on_enter(event_data):
     """ """
     pocs = event_data.model
-    pocs.next_state = 'initialising'
+    pocs.next_state = 'starting'
 
     # If it is dark and safe we shouldn't be in sleeping state
     if pocs.is_safe(horizon='focus') and not pocs.should_retry:
