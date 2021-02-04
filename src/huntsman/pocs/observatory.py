@@ -11,8 +11,8 @@ from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
 
 from huntsman.pocs.guide.bisque import Guide
-from huntsman.pocs.scheduler.observation.bias import BiasObservation
-from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from panoptes.pocs.scheduler.observation.bias import BiasObservation
+from panoptes.pocs.scheduler.observation.dark import DarkObservation
 from huntsman.pocs.scheduler.observation.flat import DitheredFlatObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories
