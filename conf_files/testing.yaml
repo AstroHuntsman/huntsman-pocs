@@ -90,7 +90,7 @@ focusing:
 
 calibs:
   bias:
-    number: 10
+    min_nexp: 10
   dark:
     exposure_times:
       - 1 s
