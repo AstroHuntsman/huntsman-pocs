@@ -15,7 +15,7 @@ def pyro_service_process(auto_start=False, *args, **kwargs):
     logger.debug(f'Setting up Pyro service process.')
     service_process = Process(target=pyro_service, args=args, kwargs=kwargs)
 
-    if auto_start:
+    if auto_start:  # noqa
         logger.info("Auto-starting pyro service")
         service_process.start()
         logger.success("Pyro service started, will block until finished...(Ctrl-c/Cmd-c to exit)")
