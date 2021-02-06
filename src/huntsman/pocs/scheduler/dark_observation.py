@@ -4,7 +4,7 @@ from contextlib import suppress
 
 from panoptes.pocs.scheduler.field import Field
 from panoptes.pocs.scheduler.observation import Observation
-from panoptes.utils import listify
+from panoptes.utils.utils import listify
 
 
 class DarkObservation(Observation):

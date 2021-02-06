@@ -4,15 +4,14 @@ This needs to be done for the server and the client. Currently custom serializer
 included for astropy Quantities and the custom exceptions from POCS (pocs.utils.error).
 """
 import re
+
 from astropy import units as u
 from astropy.io.misc import yaml as ayaml
-from panoptes.utils import error
-
 from Pyro5.api import config, register_class_to_dict, register_dict_to_class
+from panoptes.utils import error
 
 # use serpent
 config.SERIALIZER = "serpent"
-
 
 # serializers/deserializers
 error_pattern = re.compile(r"error\.(\w+)'>$")

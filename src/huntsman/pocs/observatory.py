@@ -4,7 +4,8 @@ from contextlib import suppress
 from functools import partial
 from astropy import units as u
 
-from panoptes.utils import error, altaz_to_radec, listify, get_quantity_value
+from panoptes.utils import error
+from panoptes.utils.utils import (altaz_to_radec, listify, get_quantity_value)
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, flatten_time, wait_for_events, CountdownTimer
 
