@@ -4,7 +4,7 @@ from panoptes.utils.time import current_time
 
 from panoptes.pocs.scheduler import dispatch
 from panoptes.pocs.scheduler.field import Field
-from panoptes.pocs.scheduler.observation import Observation
+from panoptes.pocs.scheduler.observation.base import Observation
 
 from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
 from huntsman.pocs.utils import dither
