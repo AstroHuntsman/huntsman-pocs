@@ -1,6 +1,7 @@
-from panoptes.utils.time import CountdownTimer
-from panoptes.utils.time import current_time
+from panoptes.utils.time import CountdownTimer, current_time
+
 from panoptes.utils.utils import altaz_to_radec
+from panoptes.pocs.utils.location import create_location_from_config
 
 
 def on_enter(event_data):

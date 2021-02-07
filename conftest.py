@@ -1,16 +1,18 @@
 import logging
 import os
 import stat
+import time
 from contextlib import suppress
-import pytest
 
+import pytest
+from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
-from panoptes.utils.config.client import set_config, get_config
-
+from panoptes.utils.config.client import get_config, set_config
+from panoptes.utils.config.server import config_server
 from huntsman.pocs.utils.logger import logger
-# from huntsman.pocs.utils.pyro.service import pyro_service
-
+from huntsman.pocs.utils.pyro.service import pyro_service_process
+import huntsman.pocs.utils.pyro.serializers  # noqa
 
 _all_databases = ['file', 'memory']
 
@@ -20,10 +22,11 @@ log_fmt = "<lvl>{level:.1s}</lvl> " \
           "<light-blue>{time:MM-DD HH:mm:ss.ss!UTC}</>" \
           "<blue>({time:HH:mm:ss.ss})</> " \
           "| <c>{name} {function}:{line}</c> | " \
-          "<lvl>{message}</lvl>\n"
+          "<lvl>{message}</lvl>"
 
 # Put the log file in the tmp dir.
-log_file_path = '/var/huntsman/logs/huntsman-testing.log'
+log_dir = os.getenv('PANLOG', 'logs')
+log_file_path = os.path.join(log_dir, 'huntsman-testing.log')
 startup_message = f' STARTING NEW PYTEST RUN - LOGS: {log_file_path} '
 logger.add(log_file_path,
            enqueue=True,  # multiprocessing
@@ -40,6 +43,52 @@ logger.log('testing', '*' * 25 + startup_message + '*' * 25)
 
 # Make the log file world readable.
 os.chmod(log_file_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+
+
+def pytest_configure(config):
+    """Set up the testing."""
+    logger.info('Setting up the config server.')
+    config_file = 'tests/testing.yaml'
+
+    config_host = 'localhost'
+    config_port = '8765'
+    service_class = 'CameraService'
+
+    os.environ['PANOPTES_CONFIG_HOST'] = config_host
+    os.environ['PANOPTES_CONFIG_PORT'] = config_port
+
+    logger.info(f'Starting config-server for testing: {config_host=} {config_port=}')
+    config_proc = config_server(config_file,
+                                host=config_host,
+                                port=config_port,
+                                load_local=False,
+                                save_local=False)
+    logger.success(f'Config server set up: {config_proc!r}')
+
+    while get_config(key='pyro.nameserver', host=config_host, port=config_port) is None:
+        logger.info(f'Waiting for config server')
+        time.sleep(1)
+
+    nameserver_config = get_config(key='pyro.nameserver', host=config_host, port=config_port)
+    service_config = get_config(key=f'pyro.{service_class}', host=config_host, port=config_port)
+
+    # Start pyro nameserver
+    logger.info(f'Starting nameserver with {nameserver_config!r}')
+    ns_proc = pyro_nameserver(**nameserver_config)
+    ns_proc.daemon = True
+    ns_proc.start()
+    logger.success(f'Pyro nameserver started: {ns_proc!r}')
+
+    # Start a pyro camera service
+    logger.info(f"Creating testing Pyro {service_class}")
+    pyro_proc = pyro_service_process(
+        service_class=f'huntsman.pocs.camera.pyro.service.{service_class}',
+        service_name='dslr.00',
+        **service_config,
+    )
+    pyro_proc.daemon = True
+    pyro_proc.start()
+    logger.success(f'Pyro service created: {pyro_proc!r}')
 
 
 def pytest_addoption(parser):
@@ -167,7 +216,7 @@ def db_name():
 
 @pytest.fixture(scope='session')
 def config_path(base_dir):
-    return os.path.expandvars(f'{base_dir}/conf_files/testing.yaml')
+    return os.path.expandvars(f'{base_dir}/testing/testing.yaml')
 
 
 @pytest.fixture
@@ -213,46 +262,6 @@ def caplog(_caplog):
         logger.remove(handler_id)
 
 
-@pytest.fixture(scope="module")
-def config_with_simulated_stuff():
-    return get_config()
-
-
-@pytest.fixture(scope='session')
-def pocs_config_port():
-    return 9999
-
-
-@pytest.fixture(scope='session')
-def pyro_namserver_port():
-    return 9998
-
-
 @pytest.fixture(scope='module')
 def camera_service_name():
     return 'dslr.00'
-
-
-"""
-# Start up a pyro camera service that we can test against.
-# TODO This isn't working at all.
-@pytest.fixture(scope='module', autouse=False)
-def pyro_camera_service(camera_service_name):
-    service_class = 'huntsman.pocs.camera.pyro.service.CameraService'
-
-    try:
-        logger.info(f'Creating TestPyro service {camera_service_name}')
-
-        service_proc = pyro_service(service_class=service_class,
-                                    service_name=camera_service_name,
-                                    auto_start=False)
-        logger.info(f'Starting TestPyro service {camera_service_name}')
-        service_proc.start()
-        service_proc.join()
-    except (KeyboardInterrupt, StopIteration):
-        logger.info(f'TestPyro service {camera_service_name} interrupted, shutting down.')
-    except Exception as e:  # noqa
-        logger.error(f'TestPyro {camera_service_name} shutdown unexpectedly {e!r}')
-    finally:
-        logger.info(f'TestPyro {camera_service_name} shut down.')
-"""

@@ -23,16 +23,16 @@ db:
 
 scheduler:
   type: dispatch
-  fields_file: targets.yaml
+  fields_file: simulator.yaml
   check_file: True
 
 directories:
-  base: /var/huntsman
+  base: /huntsman
   data: data
   images: images
-  mounts: POCS/resources/mounts
-  resources: POCS/resources
-  targets: /var/huntsman/huntsman-pocs/conf_files
+  mounts: /POCS/resources/mounts
+  resources: /POCS/resources
+  targets: /POCS/conf_files/targets
   webcam: webcams
 
 cameras:
@@ -77,7 +77,7 @@ pointing:
   max_iterations: 3
   threshold: 0.05
 
-state_machine: /var/huntsman/huntsman-pocs/resources/state_table/huntsman.yaml
+state_machine: /huntsman/resources/state_table/huntsman.yaml
 
 focusing:
   coarse:
@@ -117,8 +117,11 @@ pocs:
 pyro:
   nameserver:
     host: localhost
-    port: 6564
+    port: 8764
+    auto_clean: 300
   CameraService:
+    host: localhost
+    port: 0  # Autoselect
     metadata:
       - "huntsman"
       - "camera_service"

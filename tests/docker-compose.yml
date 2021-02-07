@@ -1,0 +1,22 @@
+version: '3.7'
+services:
+  python_tests:
+    image: huntsman-pocs:testing
+    build:
+      context: ../
+      dockerfile: tests/Dockerfile
+      args:
+        - pip_install_extras=[testing]
+    stdin_open: true
+    init: true
+    tty: true
+    environment:
+      - PANDIR=/huntsman
+      - POCS=/POCS
+      - HUNTSMAN_POCS=/huntsman
+    volumes:
+      - "$PWD/logs:/huntsman/logs"
+      - "$PWD/build:/huntsman/build"
+      - "$PWD/src:/huntsman/src"
+      - "$PWD/tests:/huntsman/tests"
+    command: [ "pytest" ]

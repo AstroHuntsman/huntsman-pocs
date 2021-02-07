@@ -10,8 +10,9 @@ from huntsman.pocs.utils.pyro.service import pyro_service
 @click.option('--verbose/--no-verbose', help='Turn on logger for panoptes utils, default False')
 @click.option('--host', default=None, help='The config server IP address or host name. '
                                            'If None, lookup in config-server, else default localhost.')
-@click.option('--port', default=None, help='The config server port. If None, lookup in config-server, else '
-                                           'default 0 for auto-assign.')
+@click.option('--port', default=None,
+              help='The config server port. If None, lookup in config-server, else '
+                   'default 0 for auto-assign.')
 @click.pass_context
 def entry_point(context, host=None, port=None, verbose=False):
     context.ensure_object(dict)
@@ -23,8 +24,9 @@ def entry_point(context, host=None, port=None, verbose=False):
 
 
 @click.command('nameserver')
-@click.option('--auto-clean', default=0, help='Interval in seconds to perform automatic object cleanup, '
-                                              'default 0 for no auto_cleaning.')
+@click.option('--auto-clean', default=0,
+              help='Interval in seconds to perform automatic object cleanup, '
+                   'default 0 for no auto_cleaning.')
 @click.pass_context
 def nameserver(context, auto_clean=0):
     """Starts the pyro name server.
@@ -58,8 +60,6 @@ def nameserver(context, auto_clean=0):
               help='The class to register with Pyro. '
                    'This should be the fully qualified namespace for the class, '
                    'e.g. huntsman.pocs.camera.pyro.CameraService.')
-
-
 @click.pass_context
 def service(context, service_name, service_class=None):
     """Starts a pyro service.
@@ -78,8 +78,7 @@ def service(context, service_name, service_class=None):
         logger.info(f'Creating Pyro service {service_name}')
 
         # Start the request loop
-        pyro_service(service_class=service_class, service_name=service_name, host=host,
-                     port=port)
+        pyro_service(service_class=service_class, service_name=service_name, host=host, port=port)
 
     except (KeyboardInterrupt, StopIteration):
         logger.info(f'Pyro service {service_name} interrupted, shutting down.')

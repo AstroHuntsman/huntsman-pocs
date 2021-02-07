@@ -17,8 +17,8 @@ def get_running_nameserver(host=None, port=None, broadcast=True):
     broadcast do its job.
     """
 
-    host = host or get_config('pyro.nameserver.ip')
-    port = int(port or get_config('pyro.nameserver.port', default=0))
+    host = host or get_config('pyro.nameserver.host', default='localhost')
+    port = int(port or get_config('pyro.nameserver.port', default=6564))
 
     logger.info(f'Looking for nameserver on {host}:{port}')
     name_server = locate_ns(host=host, port=port, broadcast=broadcast)
@@ -75,7 +75,8 @@ def pyro_nameserver(host=None,
         except KeyboardInterrupt:  # noqa
             logger.info(f'Pyro nameserver requested shutdown by user.')
         except Exception as e:  # noqa
-            logger.warning(f'Problem starting Pyro nameserver, is another nameserver already running?')
+            logger.warning(
+                f'Problem starting Pyro nameserver, is another nameserver already running?')
             logger.error(f'Error: {e!r}')
         finally:
             logger.info(f'Pyro nameserver shutting down.')
@@ -87,7 +88,8 @@ def pyro_nameserver(host=None,
     if auto_start:
         logger.info("Auto-starting new pyro nameserver")
         server_process.start()
-        logger.success("Pyro nameserver started, will block until finished...(Ctrl-c/Cmd-c to exit)")
+        logger.success(
+            "Pyro nameserver started, will block until finished...(Ctrl-c/Cmd-c to exit)")
         server_process.join()
 
     return server_process
