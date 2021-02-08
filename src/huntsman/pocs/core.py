@@ -17,3 +17,19 @@ class HuntsmanPOCS(POCS):
             *args, **kwargs: Parsed to POCS.run.
         """
         return super().run(initial_next_state=initial_next_state, *args, **kwargs)
+
+    def _load_state(self, state, state_info=None):
+        """
+        """
+        state_machine = super()._load_state(state, state_info=state_info)
+
+        # Add the callback to open the dome
+        if state_info is None:
+            state_info = {}
+        if state_info.get("requires_open_dome", False):
+            state_machine.add_callback('enter', '_open_dome')
+
+        return state_machine
+
+    def _open_dome(self):
+        self.observatory.open_dome()
