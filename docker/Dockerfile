@@ -2,16 +2,18 @@ ARG image_url=gcr.io/panoptes-exp/panoptes-pocs
 ARG image_tag=develop
 FROM ${image_url}:${image_tag} AS pocs-base
 
+ARG pocs_url="https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs"
+
 LABEL description="Huntsman POCS Service"
 LABEL maintainers="developers@huntsman.space"
 LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-ENV POCS "/huntsman"
+ENV POCS="/huntsman"
 
 ARG userid=1000
-ENV USERID $userid
+ENV USERID=$userid
 
 USER "${userid}"
 
@@ -29,7 +31,7 @@ RUN echo "Building from ${image_name}:${image_tag}" && \
 COPY docker/environment.yaml .
 RUN /conda/bin/conda env update -n base -f environment.yaml && \
     # POCS from github.
-    /conda/bin/pip install "git+https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs[focuser]"
+    /conda/bin/pip install "git+${pocs_url}[focuser]"
 
 ARG pip_install_name="."
 ARG pip_install_extras=""
