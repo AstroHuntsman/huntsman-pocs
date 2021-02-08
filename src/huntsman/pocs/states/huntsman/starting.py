@@ -16,7 +16,7 @@ def on_enter(event_data):
 
     pocs.say("Initialisation complete.")
 
-    if pocs.is_dark(horizon="flat") and not pocs.is_weather_safe():  # TODO: Use scheduler?
-        pocs.next_state = "taking_darks"
+    if not pocs.is_weather_safe():  # TODO: Use scheduler?
+        pocs.next_state = 'taking_darks'
     else:
         pocs.next_state = "ready"  # If not safe, the state machine goes to park automatically

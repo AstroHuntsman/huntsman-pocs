@@ -14,7 +14,7 @@ from panoptes.pocs.scheduler import constraint
 from huntsman.pocs.guide.bisque import Guide
 from panoptes.pocs.scheduler.observation.bias import BiasObservation
 from panoptes.pocs.scheduler.observation.dark import DarkObservation
-from huntsman.pocs.scheduler.observation.flat import DitheredFlatObservation
+from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.utils.flats import FlatFieldSequence
@@ -229,7 +229,7 @@ class HuntsmanObservatory(Observatory):
             # Create the Observation object
             position = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                       obstime=current_time())
-            observation = DitheredFlatObservation(position=position)
+            observation = FlatFieldObservation(position=position)
             observation.seq_time = current_time(flatten=True)
 
             # Take the flats for each camera in this filter
