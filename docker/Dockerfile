@@ -33,6 +33,7 @@ RUN echo "Building from ${image_url}:${image_tag}" && \
 ARG pip_install_name="."
 ARG pip_install_extras=""
 
+WORKDIR "${POCS}"
 COPY --chown="${userid}:${userid}" . .
 RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
     /conda/bin/pip install "${pip_install_name}${pip_install_extras}"
