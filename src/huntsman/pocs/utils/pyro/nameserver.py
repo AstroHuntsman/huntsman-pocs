@@ -57,7 +57,7 @@ def pyro_nameserver(host=None,
     """
     logger.info(f"Pyro nameserver start request: host={host}, port={port}, auto_clean={auto_clean}"
                 f", auto_start={auto_start}.")
-    host = host or get_config('pyro.nameserver.ip')
+    host = host or get_config('pyro.nameserver.host')
     port = int(port or get_config('pyro.nameserver.port', default=0))
 
     with suppress(error.PyroNameServerNotFound, Pyro5.errors.NamingError):
