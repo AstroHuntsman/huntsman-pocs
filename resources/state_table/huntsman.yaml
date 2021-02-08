@@ -62,7 +62,7 @@ transitions:
         dest: housekeeping
         trigger: clean_up
     -
-        source: parked
+        source: starting
         dest: taking_darks
         trigger: take_darks
     -

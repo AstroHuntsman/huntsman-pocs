@@ -19,7 +19,7 @@ class HuntsmanPOCS(POCS):
         return super().run(initial_next_state=initial_next_state, *args, **kwargs)
 
     def _load_state(self, state, state_info=None):
-        """
+        """ Override method to open dome if required.
         """
         state_machine = super()._load_state(state, state_info=state_info)
 
