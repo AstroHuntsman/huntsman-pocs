@@ -360,14 +360,15 @@ class HuntsmanObservatory(Observatory):
         # Take the observation block
         while not observation.set_is_finished:
             headers['start_time'] = current_time(flatten=True)  # Normally handled elsewhere?
+            # observation.exptime updates itself after calling take_observation
+            # TODO: Use same timeout as camera client
+            duration = timeout + observation.exptime
             # Start the exposures and get events
             # TODO: Replace with concurrent.futures
             events = {}
             for cam_name, camera in cameras.items():
                 events[cam_name] = camera.take_observation(observation, headers=headers)
             # Wait for the exposures (blocking)
-            # TODO: Use same timeout as camera client
-            duration = timeout + observation.exptime
             self._wait_for_camera_events(events, duration=duration, remove_on_error=True)
 
     def _create_scheduler(self):
