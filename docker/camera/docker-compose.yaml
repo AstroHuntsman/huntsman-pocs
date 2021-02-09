@@ -12,5 +12,5 @@ services:
       PANOPTES_CONFIG_PORT:
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:
-      - "${PANDIR}/images:/var/huntsman/images"
-      - "${PANDIR}/logs:/var/huntsman/logs"
+      - "${PANDIR}/images:/huntsman/images"
+      - "${PANDIR}/logs:/huntsman/logs"

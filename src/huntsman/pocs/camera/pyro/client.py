@@ -14,6 +14,8 @@ from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.event import RemoteEvent
 
+from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
+
 
 class Camera(AbstractCamera):
     """A python remote object (pyro) camera client.
