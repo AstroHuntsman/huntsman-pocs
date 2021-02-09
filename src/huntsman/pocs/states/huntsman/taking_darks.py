@@ -1,7 +1,7 @@
 def on_enter(event_data):
 
     pocs = event_data.model
-    pocs.next_state = 'housekeeping'
+    pocs.next_state = 'starting'
 
     # Take bias frames
     pocs.say("Taking bias frames.")

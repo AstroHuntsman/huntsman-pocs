@@ -85,7 +85,7 @@ def test_starting_darks(pocs, pocstime_flat):
 
     pocs.goto_next_state()
     assert pocs.state == "taking_darks"
-    assert pocs.next_state == "housekeeping"
+    assert pocs.next_state == "starting"
     assert not pocs.observatory.dome.is_open
 
 

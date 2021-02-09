@@ -68,8 +68,8 @@ transitions:
         trigger: take_darks
     -
         source: taking_darks
-        dest: housekeeping
-        trigger: clean_up
+        dest: starting
+        trigger: startup
     -
         source: housekeeping
         dest: sleeping
