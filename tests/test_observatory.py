@@ -4,11 +4,11 @@ import pytest
 from panoptes.utils import error
 from panoptes.utils.time import wait_for_events
 
-from panoptes.pocs.core import POCS
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from panoptes.pocs.mount import create_mount_simulator
 
+from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
@@ -40,7 +40,7 @@ def observatory(mount, cameras, images_dir):
 
 @pytest.fixture(scope='function')
 def pocs(observatory):
-    pocs = POCS(observatory, run_once=True)
+    pocs = HuntsmanPOCS(observatory, run_once=True)
     yield pocs
     pocs.power_down()
 
@@ -86,8 +86,7 @@ def test_bad_observatory():
 
 
 def test_take_flat_fields(pocs):
-    """
-
+    """ TODO: Improve this test!
     """
     os.environ['POCSTIME'] = '2020-10-09 12:00:00'
     assert pocs.observatory.is_dark(horizon='flat') is True

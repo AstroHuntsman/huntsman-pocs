@@ -1,4 +1,5 @@
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
@@ -13,6 +14,8 @@ from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.event import RemoteEvent
+
+from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
 
 
 class Camera(AbstractCamera):
@@ -315,7 +318,7 @@ class Camera(AbstractCamera):
                     return
                 except Exception as e:
                     self.logger.error(f'Problem reading out file: {e!r}')
-            timer.sleep(sleep_interval)
+            time.sleep(sleep_interval)
 
         raise error.Timeout(f"{timeout!r} reached for {filename=} to exist on {self}.")
 

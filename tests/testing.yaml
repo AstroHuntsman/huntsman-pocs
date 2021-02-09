@@ -88,19 +88,26 @@ focusing:
     alt: 70  # degrees
     az: 120  # degrees
 
-flat_fields:
-  alt: 70  # degrees
-  az: 120  # degrees
-  filter_order:
-    - one
-    - deux
-    - drei
-    - quattro
-  autoflats:
-    required_exposures: 2  # Per filter per camera
-    max_exposures: 2  # Per filter per camera
-    max_exptime: 1 s
-    min_exptime: 0.0001 s
+calibs:
+  bias:
+    min_nexp: 10
+  dark:
+    exposure_times:
+      - 1
+      - 2
+  flat:
+    alt: 70 deg
+    az: 120 deg
+    filter_order:
+      - one
+      - deux
+      - drei
+      - quattro
+    autoflats:
+      required_exposures: 2  # Per filter per camera
+      max_exposures: 2  # Per filter per camera
+      max_exptime: 1 s
+      min_exptime: 0.0001 s
 
 pocs:
   INITIALIZED: false
