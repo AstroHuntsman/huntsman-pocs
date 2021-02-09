@@ -348,12 +348,12 @@ class HuntsmanObservatory(Observatory):
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
-    def _take_observation_block(self, observation, cameras, timeout=60):
+    def _take_observation_block(self, observation, cameras, timeout=60 * u.second):
         """ Take an observation block (blocking).
         Args:
             observation (Observation): The observation object.
             cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
-            timeout (float, optional): The timeout in seconds. Default 60s.
+            timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
         """
         observation.seq_time = current_time(flatten=True)  # Normally handled by the scheduler
         headers = self.get_standard_headers(observation=observation)
@@ -366,7 +366,9 @@ class HuntsmanObservatory(Observatory):
             for cam_name, camera in cameras.items():
                 events[cam_name] = camera.take_observation(observation, headers=headers)
             # Wait for the exposures (blocking)
-            self._wait_for_camera_events(events, duration=timeout, remove_on_error=True)
+            # TODO: Use same timeout as camera client
+            duration = timeout + observation.exptime
+            self._wait_for_camera_events(events, duration=duration, remove_on_error=True)
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
