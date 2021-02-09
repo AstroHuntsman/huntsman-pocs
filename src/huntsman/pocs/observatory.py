@@ -4,7 +4,7 @@ from functools import partial
 from astropy import units as u
 
 from panoptes.utils import error
-from panoptes.utils.utils import (altaz_to_radec, listify, get_quantity_value)
+from panoptes.utils.utils import altaz_to_radec, get_quantity_value
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
@@ -13,7 +13,7 @@ from panoptes.pocs.scheduler import constraint
 
 from huntsman.pocs.guide.bisque import Guide
 from panoptes.pocs.scheduler.observation.bias import BiasObservation
-from panoptes.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.scheduler.observation.dark import DarkObservation
 from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories

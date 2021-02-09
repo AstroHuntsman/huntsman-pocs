@@ -93,8 +93,8 @@ calibs:
     min_nexp: 10
   dark:
     exposure_times:
-      - 1 s
-      - 2 s
+      - 1
+      - 2
   flat:
     alt: 70 deg
     az: 120 deg

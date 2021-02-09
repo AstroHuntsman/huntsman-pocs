@@ -22,10 +22,7 @@ class DitheredObservation(Observation):
         fields = [Field(f'FlatDither{i:03d}', c) for i, c in enumerate(dither_coords)]
 
         # Initialise the observation
-        super().__init__(field=fields, **kwargs)
-
-        self.min_nexp = n_positions
-        self.exp_set_size = n_positions
+        super().__init__(field=fields, min_nexp=n_positions, exp_set_size=n_positions, **kwargs)
 
     @property
     def field(self):

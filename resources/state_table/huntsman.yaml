@@ -51,6 +51,7 @@ transitions:
             - analyzing
             - dithering
             - starting
+            - taking_darks
         dest: parking
         trigger: park
     -
