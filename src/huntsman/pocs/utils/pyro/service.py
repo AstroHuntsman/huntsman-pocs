@@ -8,6 +8,8 @@ from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.utils.config import get_own_ip
 
+from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
+
 
 def pyro_service_process(auto_start=False, *args, **kwargs):
     """Start a pyro service in a separate process."""
