@@ -382,7 +382,7 @@ class HuntsmanObservatory(Observatory):
                 self._wait_for_camera_events(events, duration=exptime + timeout,
                                              remove_on_error=remove_on_error)
             except error.Timeout as err:
-                self.logger.error(f"{err}!r")
+                self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
 
     def _create_scheduler(self):
