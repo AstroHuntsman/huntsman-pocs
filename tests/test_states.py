@@ -57,12 +57,12 @@ def pocs(observatory, dome):
 
 @pytest.fixture(scope="function")
 def pocstime_flat():
-    return '2020-04-29 08:20:00'
+    return '2021-04-29 08:20:00'
 
 
 @pytest.fixture(scope="function")
 def pocstime_observe():
-    return '2020-04-29 11:10:00'
+    return '2021-04-29 11:10:00'
 
 
 # ==============================================================================
