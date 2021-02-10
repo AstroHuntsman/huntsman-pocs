@@ -1,3 +1,5 @@
+from contextlib import suppress
+
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from panoptes.utils.images import fits as fits_utils
@@ -62,11 +64,20 @@ class FlatFieldSequence():
             is_finished = True
         elif self._n_exposures >= self._max_exposures:
             is_finished = True
+
+        average_counts = None
+        exptime = None
+        with suppress(IndexError):
+            average_counts = self._average_counts[-1]
+            exptime = self._exptimes[-1]
+
         status = {"good_exposures": self._n_good_exposures,
                   "total_exposures": self._n_exposures,
                   "max_exposures": self._max_exposures,
                   "required_exposures": self._required_exposures,
-                  "is_finished": is_finished}
+                  "is_finished": is_finished,
+                  "exptime": exptime,
+                  "average_counts": average_counts}
         return status
 
     @property

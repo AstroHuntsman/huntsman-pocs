@@ -348,12 +348,15 @@ class HuntsmanObservatory(Observatory):
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
-    def _take_observation_block(self, observation, cameras, timeout=60 * u.second):
+    def _take_observation_block(self, observation, cameras, timeout=60 * u.second,
+                                remove_on_error=False):
         """ Take an observation block (blocking).
         Args:
             observation (Observation): The observation object.
             cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
             timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
         """
         observation.seq_time = current_time(flatten=True)  # Normally handled by the scheduler
         headers = self.get_standard_headers(observation=observation)
@@ -369,7 +372,7 @@ class HuntsmanObservatory(Observatory):
             for cam_name, camera in cameras.items():
                 events[cam_name] = camera.take_observation(observation, headers=headers)
             # Wait for the exposures (blocking)
-            self._wait_for_camera_events(events, duration=duration, remove_on_error=True)
+            self._wait_for_camera_events(events, duration=duration, remove_on_error=remove_on_error)
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
@@ -432,7 +435,7 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug(f'Finished waiting for filterwheels.')
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
-                        timeout=60, bias=32, safety_func=None, **kwargs):
+                        timeout=60, bias=32, safety_func=None, remove_on_error=False, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
@@ -447,6 +450,8 @@ class HuntsmanObservatory(Observatory):
             bias (int): The bias to subtract from the frames. TODO: Use a real bias image!
             safety_func (None or callable): If given, calls to this object return True if safe to
                 continue.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
             **kwargs: Parsed to FlatFieldSequence.
         """
         cam_names = list(self.cameras.keys())
@@ -498,17 +503,28 @@ class HuntsmanObservatory(Observatory):
             # Wait for the exposures, dropping cameras that timeout
             self.logger.info('Waiting for flat field exposures to complete.')
             duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
-            self._wait_for_camera_events(events, duration, remove_on_error=True)
+            self._wait_for_camera_events(events, duration, remove_on_error=remove_on_error)
 
             # Update the flat field sequences with new data
             for cam_name in list(sequences.keys()):
-                if cam_name not in self.cameras:  # Camera removed
+
+                # Remove sequence for any removed cameras
+                if cam_name not in self.cameras:
                     del sequences[cam_name]
                     continue
-                sequences[cam_name].update(filename=filenames[cam_name], exptime=exptimes[cam_name],
-                                           time_start=start_times[cam_name])
+
+                # Attempt to update the exposure sequence for this camera.
+                # If the exposure failed, use info from the last successful exposure.
+                try:
+                    sequences[cam_name].update(filename=filenames[cam_name],
+                                               exptime=exptimes[cam_name],
+                                               time_start=start_times[cam_name])
+                except (KeyError, FileNotFoundError):
+                    self.logger.warning(f"Unable to update flat field sequence for {cam_name}.")
+
                 # Log sequence status
                 status = sequences[cam_name].status
+                status["filter_name"] = observation.filter_name
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
     def _autoflat_target_counts(self, cam_name, target_scaling, scaling_tolerance):
@@ -537,8 +553,8 @@ class HuntsmanObservatory(Observatory):
         Args:
             events (dict of camera_name: threading.Event): The events to wait for.
             duration (float): The total amount of time to wait for (should include exptime).
-            remove (bool, default False): If True, remove cameras that timeout. If False, raise
-                a TimeoutError instead.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
             sleep (float): Sleep this long between event checks. Default 1s.
         """
         self.logger.debug(f'Waiting for {len(events)} events with timeout of {duration}.')
