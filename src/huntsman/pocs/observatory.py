@@ -229,7 +229,7 @@ class HuntsmanObservatory(Observatory):
             # Create the Observation object
             position = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
                                       obstime=current_time())
-            observation = FlatFieldObservation(position=position)
+            observation = FlatFieldObservation(position=position, filter_name=filter_name)
             observation.seq_time = current_time(flatten=True)
 
             # Take the flats for each camera in this filter
