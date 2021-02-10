@@ -370,12 +370,20 @@ class HuntsmanObservatory(Observatory):
             # TODO: Replace with concurrent.futures
             events = {}
             for cam_name, camera in cameras.items():
-                events[cam_name] = camera.take_observation(observation, headers=headers,
-                                                           exptime=exptime)
+                try:
+                    events[cam_name] = camera.take_observation(observation, headers=headers,
+                                                               exptime=exptime)
+                except error.PanError as err:
+                    self.logger.error(f"{err}!r")
+                    self.logger.warning("Continuing with observation block after error on {cam_name}.")
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
-            self._wait_for_camera_events(events, duration=exptime + timeout,
-                                         remove_on_error=remove_on_error)
+            try:
+                self._wait_for_camera_events(events, duration=exptime + timeout,
+                                             remove_on_error=remove_on_error)
+            except error.Timeout as err:
+                self.logger.error(f"{err!r}")
+                self.logger.warning("Continuing with observation block after error.")
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
@@ -499,14 +507,22 @@ class HuntsmanObservatory(Observatory):
 
                 # Start the exposure and get event
                 # TODO: Replace with concurrent.futures
-                events[cam_name] = camera.take_observation(
-                    observation, headers=headers, filename=filenames[cam_name],
-                    exptime=exptimes[cam_name])
+                try:
+                    events[cam_name] = camera.take_observation(
+                        observation, headers=headers, filename=filenames[cam_name],
+                        exptime=exptimes[cam_name])
+                except error.PanError as err:
+                    self.logger.error(f"{err}!r")
+                    self.logger.warning("Continuing with flat observation after error.")
 
-            # Wait for the exposures, dropping cameras that timeout
+            # Wait for the exposures
             self.logger.info('Waiting for flat field exposures to complete.')
             duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
-            self._wait_for_camera_events(events, duration, remove_on_error=remove_on_error)
+            try:
+                self._wait_for_camera_events(events, duration, remove_on_error=remove_on_error)
+            except error.Timeout as err:
+                self.logger.error(f"{err}!r")
+                self.logger.warning("Continuing with flat observation after timeout error.")
 
             # Update the flat field sequences with new data
             for cam_name in list(sequences.keys()):
@@ -522,9 +538,9 @@ class HuntsmanObservatory(Observatory):
                     sequences[cam_name].update(filename=filenames[cam_name],
                                                exptime=exptimes[cam_name],
                                                time_start=start_times[cam_name])
-                except (KeyError, FileNotFoundError):
-                    self.logger.warning(f"Unable to update flat field sequence for {cam_name}.")
-
+                except (KeyError, FileNotFoundError) as err:
+                    self.logger.warning(f"Unable to update flat field sequence for {cam_name}:"
+                                        f" {err}!r")
                 # Log sequence status
                 status = sequences[cam_name].status
                 status["filter_name"] = observation.filter_name
