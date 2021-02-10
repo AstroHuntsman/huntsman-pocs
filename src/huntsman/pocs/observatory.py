@@ -375,7 +375,7 @@ class HuntsmanObservatory(Observatory):
                                                                exptime=exptime)
                 except error.PanError as err:
                     self.logger.error(f"{err}!r")
-                    self.logger.warning("Continuing with observation block after error.")
+                    self.logger.warning("Continuing with observation block after error on {cam_name}.")
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:
