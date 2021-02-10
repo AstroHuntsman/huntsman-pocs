@@ -21,7 +21,7 @@ class FlatFieldObservation(DitheredObservation):
         super().__init__(field=field, **kwargs)
 
         # Specify directory root for file storage
-        self._directory = os.path.join(self._image_dir, 'flats')
+        self._directory = os.path.join(self._image_dir, "flat")
 
     def get_exposure_filename(self, camera):
         """ Get the exposure filename for a camera.

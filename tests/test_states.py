@@ -57,7 +57,12 @@ def pocs(observatory, dome):
 
 @pytest.fixture(scope="function")
 def pocstime_flat():
-    return '2020-04-29 08:10:00'
+    return '2021-04-29 08:20:00'
+
+
+@pytest.fixture(scope="function")
+def pocstime_observe():
+    return '2021-04-29 11:10:00'
 
 
 # ==============================================================================
@@ -151,12 +156,14 @@ def test_starting_ready_park(pocs, pocstime_flat):
     assert not pocs.observatory.dome.is_open
 
 
-def test_ready_scheduling_1(pocs):
+def test_ready_scheduling_1(pocs, pocstime_observe):
     '''
     Test if ready goes into observe if its dark enough.
     '''
     pocs.set_config('simulator', ['camera', 'mount', 'power', 'weather'])
-    os.environ['POCSTIME'] = '2020-10-29 13:00:00'
+    os.environ['POCSTIME'] = pocstime_observe
+    assert pocs.is_dark(horizon="observe")
+
     pocs.initialize()
     pocs.startup()
     pocs.observatory.last_focus_time = current_time()
