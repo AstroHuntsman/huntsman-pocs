@@ -68,7 +68,6 @@ def pocstime_observe():
 # ==============================================================================
 
 
-@pytest.mark.skip()
 def test_starting_darks(pocs, pocstime_flat):
     '''
     Test if the parking state transitions from sleeping into darks.
@@ -94,7 +93,6 @@ def test_starting_darks(pocs, pocstime_flat):
     assert not pocs.observatory.dome.is_open
 
 
-@pytest.mark.skip()
 def test_starting_ready_flats_focus(pocs, pocstime_flat):
     '''
     Test if the parking state transitions from sleeping into ready.

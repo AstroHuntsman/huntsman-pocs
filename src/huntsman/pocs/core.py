@@ -26,6 +26,7 @@ class HuntsmanPOCS(POCS):
 
         # Check if the state requires the dome to be open
         if state_info.pop("requires_open_dome", False):
+            self.logger.debug(f"Adding state to open dome states: {state}.")
             self._dome_open_states.append(state)
 
         return super()._load_state(state, state_info=state_info)
@@ -34,8 +35,8 @@ class HuntsmanPOCS(POCS):
         """ Called before each state.
         Args:
             event_data(transitions.EventData):  Contains information about the event
-         """
-        if self.state in self._dome_open_states:
+        """
+        if self.next_state in self._dome_open_states:
             self.say(f"Opening the dome before entering the {self.next_state} state.")
             self.observatory.open_dome()
         self.say(f"Entering {self.next_state} state from the {self.state} state.")
