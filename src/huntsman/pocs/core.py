@@ -25,8 +25,7 @@ class HuntsmanPOCS(POCS):
             state_info = {}
 
         # Check if the state requires the dome to be open
-        requires_open_dome = state_info.pop("requires_open_dome", False)
-        if requires_open_dome:
+        if state_info.pop("requires_open_dome", False):
             self._dome_open_states.append(state)
 
         return super()._load_state(state, state_info=state_info)
