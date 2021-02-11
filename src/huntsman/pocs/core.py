@@ -37,7 +37,7 @@ class HuntsmanPOCS(POCS):
             event_data(transitions.EventData):  Contains information about the event
          """
         if self.state in self._dome_open_states:
-            self.say(f"Opening the dome before entering the {self.state} state.")
+            self.say(f"Opening the dome before entering the {self.next_state} state.")
             self.observatory.open_dome()
         self.say(f"Entering {self.next_state} state from the {self.state} state.")
 
