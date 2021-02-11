@@ -5,8 +5,8 @@ class HuntsmanPOCS(POCS):
     """ Minimal overrides to the POCS class """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self._dome_open_states = []
+        super().__init__(*args, **kwargs)
 
     def run(self, initial_next_state='starting', *args, **kwargs):
         """ Override the default initial_next_state parameter from "ready" to "starting".
