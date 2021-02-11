@@ -1,7 +1,8 @@
 from panoptes.utils.config.client import get_config
 
 from panoptes.pocs.scheduler import create_scheduler_from_config
-from panoptes.pocs.mount import create_mount_from_config
+# from panoptes.pocs.mount import create_mount_from_config
+from huntsman.pocs.mount.bisque import create_mount
 
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory
@@ -30,7 +31,7 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
         cameras = create_cameras_from_config(config=config)
 
     if mount is None:
-        mount = create_mount_from_config()   # TODO: Parse config
+        mount = create_mount()   # TODO: Parse config
     mount.initialize()
 
     if scheduler is None:
