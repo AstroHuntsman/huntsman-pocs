@@ -1,6 +1,15 @@
 """ Minimal overrides to the bisque mount. """
+import time
+
 from panoptes.utils import error
 from panoptes.pocs.mount.bisque import Mount as BisqueMount
+from panoptes.pocs.utils.location import create_location_from_config
+
+
+def create_mount():
+    """ Placeholder until the normal function is working from POCS. """
+    location = create_location_from_config()['earth_location']
+    return Mount(location=location)
 
 
 class Mount(BisqueMount):
@@ -20,5 +29,6 @@ class Mount(BisqueMount):
         self.logger.debug("Deactivating tracking before slewing to target.")
         self.query('stop_moving')
         self.query('stop_tracking')
+        time.sleep(10)
 
         return super().slew_to_target(*args, **kwargs)
