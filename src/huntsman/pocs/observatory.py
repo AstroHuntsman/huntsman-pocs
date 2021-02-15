@@ -136,25 +136,28 @@ class HuntsmanObservatory(Observatory):
 
         return self.current_offset_info
 
-    def autofocus_cameras(self, coarse=False, *args, **kwargs):
+    def autofocus_cameras(self, coarse=False, filter_name=None, *args, **kwargs):
         """ Override autofocus_cameras to update the last focus time and move filterwheels.
         Args:
             coarse (bool, optional): Perform coarse focus? Default False.
+            filter_name (str, optional): The filter name to focus with. If None (default), will
+                attempt to get from config, by default using the coarse focus filter.
             *args, **kwargs: Parsed to `pocs.observatory.Observatory.autofocus_cameras`.
         Returns:
             threading.Event: The autofocus event.
         """
         # Move to appropriate filter
         # TODO: Do this on a per-camera basis to allow for different filters simultaneously
-        if coarse:
-            filter_name = self._coarse_focus_filter
-        else:
-            try:
-                filter_name = self.current_observation.filter_name
-            except AttributeError:
+        if filter_name is None:
+            if coarse:
                 filter_name = self._coarse_focus_filter
-                self.logger.warning("Unable to retrieve filter name from current observation."
-                                    f" Defaulting to coarse focus filter ({filter_name}).")
+            else:
+                try:
+                    filter_name = self.current_observation.filter_name
+                except AttributeError:
+                    filter_name = self._coarse_focus_filter
+                    self.logger.warning("Unable to retrieve filter name from current observation."
+                                        f" Defaulting to coarse focus filter ({filter_name}).")
 
         # Move all the filterwheels to the luminance position.
         self._move_all_filterwheels_to(filter_name)
