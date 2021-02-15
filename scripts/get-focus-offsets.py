@@ -38,7 +38,9 @@ if __name__ == "__main__":
     # Calculate focus offsets
     focus_offsets = {cam_name: {} for cam_name in cameras.keys()}
     for cam_name in cameras.keys():
-        reference_position = focus_positions[REFERENCE_FILTER]
+
+        reference_position = focus_positions[cam_name][REFERENCE_FILTER]
+
         for filter_name in FILTER_NAMES:
             focus_position = focus_positions[cam_name][filter_name]
             focus_offsets[cam_name][filter_name] = focus_position - reference_position
