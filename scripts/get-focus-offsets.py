@@ -6,7 +6,7 @@ from panoptes.utils.time import wait_for_events
 from huntsman.pocs.utils.huntsman import create_huntsman_pocs
 
 FILTER_NAMES = "luminance", "s_II", "halpha", "r_band", "g_band"
-TIMEOUT = 300
+TIMEOUT = 900
 REFERENCE_FILTER = "luminance"
 OUTPUT_FILENAME = "focus_offsets.json"
 
