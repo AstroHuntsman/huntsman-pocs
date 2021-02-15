@@ -32,7 +32,6 @@ if __name__ == "__main__":
 
         # Store focus positions
         for cam_name, cam in cameras.items():
-            focus_position = cam.focuser.position
             focus_positions[cam_name][filter_name] = cam.focuser.position
 
     # Calculate focus offsets
