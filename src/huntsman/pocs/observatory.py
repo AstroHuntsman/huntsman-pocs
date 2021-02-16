@@ -1,6 +1,6 @@
 import os
 import time
-from copy import deepcopy
+from copy import copy
 from functools import partial
 from astropy import units as u
 
@@ -373,7 +373,7 @@ class HuntsmanObservatory(Observatory):
             # One problem is that POCS uses the primary camera to update the observation exp index
             # The observation index can change e.g. the exposure time for dark observations
             # We therefore need to make sure each camera is using consistent settings
-            frozen_observation = deepcopy(observation)
+            frozen_observation = copy(observation)
             for cam_name, camera in cameras.items():
                 obs = observation if camera.is_primary else frozen_observation
                 try:
