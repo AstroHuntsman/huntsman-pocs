@@ -1,5 +1,6 @@
 import os
 import time
+from contextlib import suppress
 from functools import partial
 from astropy import units as u
 
@@ -366,27 +367,28 @@ class HuntsmanObservatory(Observatory):
         # Take the observation block
         while not observation.set_is_finished:
             headers['start_time'] = current_time(flatten=True)  # Normally handled elsewhere?
-            # observation.exptime can update itself after calling take_observation on the primary
-            # Extract the exposure time here to ensure consistent exposure times for all cameras
-            exptime = observation.exptime
             # Start the exposures and get events
             # TODO: Replace with concurrent.futures
             events = {}
             for cam_name, camera in cameras.items():
                 try:
-                    events[cam_name] = camera.take_observation(observation, headers=headers,
-                                                               exptime=exptime)
+                    events[cam_name] = camera.take_observation(observation, headers=headers)
                 except error.PanError as err:
                     self.logger.error(f"{err}!r")
-                    self.logger.warning("Continuing with observation block after error on {cam_name}.")
+                    self.logger.warning("Continuing with observation block after error on"
+                                        f" {cam_name}.")
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:
-                self._wait_for_camera_events(events, duration=exptime + timeout,
+                self._wait_for_camera_events(events, duration=observation.exptime + timeout,
                                              remove_on_error=remove_on_error)
             except error.Timeout as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
+
+            # There's probably a better way of doing this but we've got bigger problems right now
+            with suppress(AttributeError):
+                observation.mark_exposure_complete()
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """

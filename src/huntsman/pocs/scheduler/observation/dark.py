@@ -22,6 +22,8 @@ class DarkObservation(Observation):
         if exptimes is None:
             raise ValueError("No exposure times provided.")
 
+        self._current_exp_num = 0
+
         # Create the observation
         field = Field('Dark', position=position)
         super().__init__(field=field, exptime=exptimes, dark=True)
@@ -38,7 +40,11 @@ class DarkObservation(Observation):
         self._directory = os.path.join(self._image_dir, 'dark')
 
     def __str__(self):
-        return f"DarkObservation"
+        return "DarkObservation"
+
+    @property
+    def current_exp_num(self):
+        return self._current_exp_num
 
     @property
     def exptime(self):
@@ -48,3 +54,6 @@ class DarkObservation(Observation):
     @exptime.setter
     def exptime(self, exptimes):
         self._exptime = exptimes
+
+    def mark_exposure_complete(self):
+        self._current_exp_num += 1
