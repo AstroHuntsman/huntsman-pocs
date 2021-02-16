@@ -1,6 +1,6 @@
 import os
 import time
-from copy import copy
+from contextlib import suppress
 from functools import partial
 from astropy import units as u
 
@@ -370,14 +370,9 @@ class HuntsmanObservatory(Observatory):
             # Start the exposures and get events
             # TODO: Replace with concurrent.futures
             events = {}
-            # One problem is that POCS uses the primary camera to update the observation exp index
-            # The observation index can change e.g. the exposure time for dark observations
-            # We therefore need to make sure each camera is using consistent settings
-            frozen_observation = copy(observation)
             for cam_name, camera in cameras.items():
-                obs = observation if camera.is_primary else frozen_observation
                 try:
-                    events[cam_name] = camera.take_observation(obs, headers=headers)
+                    events[cam_name] = camera.take_observation(observation, headers=headers)
                 except error.PanError as err:
                     self.logger.error(f"{err}!r")
                     self.logger.warning("Continuing with observation block after error on"
@@ -385,11 +380,15 @@ class HuntsmanObservatory(Observatory):
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:
-                self._wait_for_camera_events(events, duration=frozen_observation.exptime + timeout,
+                self._wait_for_camera_events(events, duration=observation.exptime + timeout,
                                              remove_on_error=remove_on_error)
             except error.Timeout as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
+
+            # There's probably a better way of doing this but we've got bigger problems right now
+            with suppress(AttributeError):
+                observation.mark_exposure_complete()
 
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
