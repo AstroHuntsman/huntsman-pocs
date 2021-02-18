@@ -11,7 +11,7 @@ WINDOW_CMDS = {"DOCKER": ["cd ${PANDIR}/huntsman-config && git pull",
                           "cd ${HUNTSMAN_POCS}/docker && docker-compose down",
                           "docker-compose pull",
                           "docker-compose up"],
-               "PYTHON": ["docker exec -it -u huntsman pocs-control /bin/bash",
+               "PYTHON": ["docker exec -it pocs-control /bin/bash",
                           "ipython",
                           "from huntsman.pocs.utils.huntsman import create_huntsman_pocs",
                           "pocs = create_huntsman_pocs(with_dome=True, simulators=['power'])",
@@ -20,12 +20,11 @@ WINDOW_CMDS = {"DOCKER": ["cd ${PANDIR}/huntsman-config && git pull",
                "PILOGS": ["cd $PANLOG && tail -F -n 1000 huntsman.log"],
                "WEATHER": ["cd $PANDIR/huntsman-environment-monitor/src/huntsmanenv",
                            "python run_dash.py"],
-               "SHUTTER": [["sudo rfcomm connect rfcomm0 20:13:11:05:17:32"],
-                           ["#docker exec -it -u huntsman pocs-config-server /bin/bash",
-                            "#ipython",
-                            "#from huntsman.pocs.dome import create_dome_from_config",
-                            "#dome = create_dome_from_config()",
-                            "#dome.status"]]}
+               "SHUTTER": ["#docker exec -it -u huntsman pocs-config-server /bin/bash",
+                           "#ipython",
+                           "#from huntsman.pocs.dome import create_dome_from_config",
+                           "#dome = create_dome_from_config()",
+                           "#dome.status"]}
 
 
 def call_byobu(cmd, screen_cmd='byobu', shell=True, executable='/bin/bash'):
@@ -237,12 +236,9 @@ def setup_shutter_window(window_name="SHUTTER", cmd_prefix='#'):
 
     """
     select_window(window_name)
-    call_byobu(f"split-window -v")
-    # start the bluetooth connection in the first pane
-    send_command_to_pane(WINDOW_CMDS[window_name][0][0], 0)
     # connect to the pocs-config-server container to control the shutter
-    for cmd in WINDOW_CMDS[window_name][1]:
-        send_command_to_pane(cmd_prefix+cmd, 1)
+    for cmd in WINDOW_CMDS[window_name]:
+        send_command_to_pane(cmd_prefix+cmd, 0)
     return
 
 
