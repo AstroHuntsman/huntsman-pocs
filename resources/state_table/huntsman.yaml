@@ -16,19 +16,24 @@ states:
     tags: always_safe
   scheduling:
     tags: always_safe
+  starting:
+    tags: always_safe
+    horizon: flat  # TODO: Start up slightly before flat horizon
   twilight_flat_fielding:
     horizon: flat
+    requires_open_dome: True
   coarse_focusing:
     horizon: focus
+    requires_open_dome: True
   focusing:
     horizon: focus
-  starting:
-    horizon: flat
+    requires_open_dome: True
   ready:
     horizon: flat
   preparing:
   slewing:
   observing:
+    requires_open_dome: True
   analyzing:
   dithering:
 
@@ -46,6 +51,7 @@ transitions:
             - analyzing
             - dithering
             - starting
+            - taking_darks
         dest: parking
         trigger: park
     -
@@ -57,13 +63,13 @@ transitions:
         dest: housekeeping
         trigger: clean_up
     -
-        source: parked
+        source: starting
         dest: taking_darks
         trigger: take_darks
     -
         source: taking_darks
-        dest: housekeeping
-        trigger: clean_up
+        dest: starting
+        trigger: startup
     -
         source: housekeeping
         dest: sleeping

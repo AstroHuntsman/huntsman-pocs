@@ -1,10 +1,12 @@
+from contextlib import suppress
+
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.images import crop_data
 
 from panoptes.utils.time import current_time
-from panoptes.utils import get_quantity_value
+from panoptes.utils.utils import get_quantity_value
 from huntsman.pocs.utils.logger import logger as LOGGER
 
 
@@ -12,9 +14,9 @@ class FlatFieldSequence():
     """ Class to facilitate flat fields with automatic exposure time updates.
     """
 
-    def __init__(self, target_counts, counts_tolerance, initial_exposure_time=1*u.second,
-                 min_exptime=0.0001*u.second, max_exptime=60*u.second, max_exposures=10,
-                 required_exposures=5, cutout_size=300, bias=0, logger=None,):
+    def __init__(self, target_counts, counts_tolerance, initial_exposure_time=1 * u.second,
+                 min_exptime=0.0001 * u.second, max_exptime=60 * u.second, max_exposures=10,
+                 required_exposures=5, cutout_size=300, bias=0, logger=None, ):
         """
         Args:
             target_counts (float): The target counts for each exposure.
@@ -62,11 +64,20 @@ class FlatFieldSequence():
             is_finished = True
         elif self._n_exposures >= self._max_exposures:
             is_finished = True
+
+        average_counts = None
+        exptime = None
+        with suppress(IndexError):
+            average_counts = self._average_counts[-1]
+            exptime = self._exptimes[-1]
+
         status = {"good_exposures": self._n_good_exposures,
                   "total_exposures": self._n_exposures,
                   "max_exposures": self._max_exposures,
                   "required_exposures": self._required_exposures,
-                  "is_finished": is_finished}
+                  "is_finished": is_finished,
+                  "exptime": exptime,
+                  "average_counts": average_counts}
         return status
 
     @property
