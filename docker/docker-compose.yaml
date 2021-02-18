@@ -1,4 +1,4 @@
-version: '3.7'
+version: "3.7"
 
 volumes:
   panlog:
@@ -31,6 +31,12 @@ volumes:
       type: none
       device: ${PANDIR}/archive
       o: bind
+  my-agg-weather:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${PANDIR}/my-aag-weather
+      o: bind
 
 services:
   pocs-config-server:
@@ -51,7 +57,10 @@ services:
       - config:/huntsman/conf_files
       - panlog:/huntsman/logs
       - images:/huntsman/images
-    command: [ "panoptes-config-server --verbose run --no-save-local --no-load-local --config-file /huntsman/conf_files/huntsman.yaml" ]
+    command:
+      [
+        "panoptes-config-server --verbose run --no-save-local --no-load-local --config-file /huntsman/conf_files/huntsman.yaml",
+      ]
 
   pyro-name-server:
     image: huntsmanarray/huntsman-pocs:develop
@@ -67,7 +76,8 @@ services:
     environment:
       HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "wait-for-it localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
+    command:
+      ["wait-for-it localhost:6563 -- huntsman-pyro nameserver --auto-clean 90"]
     volumes:
       - config:/huntsman/conf_files
       - panlog:/huntsman/logs
@@ -88,7 +98,7 @@ services:
     environment:
       HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "wait-for-it localhost:6563 -- tail -f /dev/null" ]
+    command: ["wait-for-it localhost:6563 -- tail -f /dev/null"]
     volumes:
       - config:/huntsman/conf_files
       - panlog:/huntsman/logs
@@ -109,7 +119,10 @@ services:
     environment:
       HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "wait-for-it localhost:6563 -- /conda/bin/python /huntsman/scripts/archive-images.py" ]
+    command:
+      [
+        "wait-for-it localhost:6563 -- /conda/bin/python /huntsman/scripts/archive-images.py",
+      ]
     volumes:
       - config:/huntsman/conf_files
       - panlog:/huntsman/logs
@@ -117,7 +130,8 @@ services:
       - archive:/huntsman/archive
 
   aag-weather-reader:
-    image: gcr.io/panoptes-exp/aag-weather:latest
+    #image: gcr.io/panoptes-exp/aag-weather:latest
+    image: aag-weather:develop
     init: true
     container_name: aag-weather-reader
     privileged: true
@@ -132,10 +146,11 @@ services:
       - "/data/weather.db"
       - "--store-result"
     volumes:
-      - ./:/data
+      - my-agg-weather:/data
 
   aag-weather-server:
-    image: gcr.io/panoptes-exp/aag-weather:latest
+    #image: gcr.io/panoptes-exp/aag-weather:latest
+    image: aag-weather:develop
     init: true
     container_name: aag-weather-server
     privileged: true
@@ -149,26 +164,24 @@ services:
       - FLASK_RUN_HOST=0.0.0.0
       - FLASK_RUN_PORT=5000
     volumes:
-      - ./:/data
-
-  aag-pocs-monitor:
-    image: huntsmanarray/huntsman-pocs:develop
-    init: true
-    container_name: aag-pocs-monitor
-    privileged: true
-    network_mode: host
-    restart: on-failure
-    command: [ "/var/panoptes/conda/bin/python /app/pocs-monitor.py" ]
-    volumes:
-      - ./:/app
-      - /var/huntsman/json_store:/var/huntsman/json_store
-#
-#weather-dash:
-#  image: huntsmanarray/environment-monitor:latest
-#  init: true
-#  container_name: environment-monitor
-#  privileged: true
-#  network_mode: host
-#  restart: on-failure
-#  volumes:
-#    - ./:/assets/
+      - my-agg-weather:/data
+  # aag-pocs-monitor:
+  #   image: huntsmanarray/huntsman-pocs:develop
+  #   init: true
+  #   container_name: aag-pocs-monitor
+  #   privileged: true
+  #   network_mode: host
+  #   restart: on-failure
+  #   command: ["/var/panoptes/conda/bin/python /app/pocs-monitor.py"]
+  #   volumes:
+  #     - my-agg-weather:/app
+  #     - /var/huntsman/json_store:/var/huntsman/json_store
+  # weather-dash:
+  #   image: huntsmanarray/environment-monitor:latest
+  #   init: true
+  #   container_name: environment-monitor
+  #   privileged: true
+  #   network_mode: host
+  #   restart: on-failure
+  #   volumes:
+  #     - ./:/assets/
