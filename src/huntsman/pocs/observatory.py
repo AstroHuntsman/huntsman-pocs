@@ -4,16 +4,18 @@ from contextlib import suppress
 from functools import partial
 from astropy import units as u
 
-from panoptes.utils import error, altaz_to_radec, listify, get_quantity_value
+from panoptes.utils import error
+from panoptes.utils.utils import altaz_to_radec, get_quantity_value
 from panoptes.utils.library import load_module
-from panoptes.utils.time import current_time, flatten_time, wait_for_events, CountdownTimer
+from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
 
 from huntsman.pocs.guide.bisque import Guide
-from huntsman.pocs.scheduler.dark_observation import DarkObservation
-from huntsman.pocs.scheduler.observation import DitheredFlatObservation
+from panoptes.pocs.scheduler.observation.bias import BiasObservation
+from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.utils.flats import FlatFieldSequence
@@ -135,25 +137,28 @@ class HuntsmanObservatory(Observatory):
 
         return self.current_offset_info
 
-    def autofocus_cameras(self, coarse=False, *args, **kwargs):
+    def autofocus_cameras(self, coarse=False, filter_name=None, *args, **kwargs):
         """ Override autofocus_cameras to update the last focus time and move filterwheels.
         Args:
             coarse (bool, optional): Perform coarse focus? Default False.
+            filter_name (str, optional): The filter name to focus with. If None (default), will
+                attempt to get from config, by default using the coarse focus filter.
             *args, **kwargs: Parsed to `pocs.observatory.Observatory.autofocus_cameras`.
         Returns:
             threading.Event: The autofocus event.
         """
         # Move to appropriate filter
         # TODO: Do this on a per-camera basis to allow for different filters simultaneously
-        if coarse:
-            filter_name = self._coarse_focus_filter
-        else:
-            try:
-                filter_name = self.current_observation.filter_name
-            except AttributeError:
+        if filter_name is None:
+            if coarse:
                 filter_name = self._coarse_focus_filter
-                self.logger.warning("Unable to retrieve filter name from current observation."
-                                    f" Defaulting to coarse focus filter ({filter_name}).")
+            else:
+                try:
+                    filter_name = self.current_observation.filter_name
+                except AttributeError:
+                    filter_name = self._coarse_focus_filter
+                    self.logger.warning("Unable to retrieve filter name from current observation."
+                                        f" Defaulting to coarse focus filter ({filter_name}).")
 
         # Move all the filterwheels to the luminance position.
         self._move_all_filterwheels_to(filter_name)
@@ -177,177 +182,95 @@ class HuntsmanObservatory(Observatory):
         archive_dir = self.get_config("directories.archive")
         remove_empty_directories(archive_dir)
 
-    def take_flat_fields(self, camera_names=None, alt=None, az=None, safety_func=None, **kwargs):
+    def take_flat_fields(self, cameras=None, safety_func=None, **kwargs):
         """ Take flat fields for each camera in each filter, respecting filter order.
         Args:
-            camera_names (list, optional): List of camera names to take flats with.
-                Default to `None`, which uses all cameras.
-            alt (float, optional): Altitude for flats in degrees. Default `None` will use the
-                `flat_fields.alt` config value.
-            az (float, optional): Azimuth for flats in degrees. Default `None` will use the
-                `flat_fields.az` config value.
+            cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
             safety_func (callable|None): Boolean function that returns True only if safe to
                 continue. The default `None` will call `self.is_dark(horizon='flat')`.
+            **kwargs: Overrides config entries under `calibs.flat`.
         """
+        if cameras is None:
+            cameras = self.cameras
         if safety_func is None:
             safety_func = partial(self.is_dark, horizon='flat')
 
-        # Load the flat fielding config
-        flat_field_config = self.get_config('flat_fields', default=dict())
-        flat_field_config.update(kwargs)
+        # Load the flat field config, allowing overrides from kwargs
+        flat_config = self.get_config('calibs.flat', default=dict())
+        flat_config.update(kwargs)
 
         # Specify flat field coordinates
-        if (alt is None) or (az is None):
-            self.logger.debug(f'Using flat-field alt/az from config.')
-            alt = flat_field_config['alt']
-            az = flat_field_config['az']
+        # This must be done at the observatory level to convert alt/az to ra/dec
+        alt = flat_config['alt']
+        az = flat_config['az']
+        self.logger.debug(f'Flat field alt/az: {alt:.03f}, {az:.03f}.')
 
-        if camera_names is None:
-            cameras_all = self.cameras
-        else:
-            cameras_all = {c: self.cameras[c] for c in camera_names}
-
-        # Obtain the filter order
-        filter_order = flat_field_config['filter_order'].copy()
+        # Specify filter order
+        filter_order = flat_config['filter_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
+        # Take flat fields in each filter
         for filter_name in filter_order:
-
             if not safety_func():
                 self.logger.info('Terminating flat-fielding because it is no longer safe.')
                 return
 
             # Get a dict of cameras that have this filter
-            filter_cameras = {}
-            for cam_name, cam in cameras_all.items():
+            cameras_with_filter = {}
+            for cam_name, cam in cameras.items():
                 if cam.filterwheel is None:
                     if cam.filter_type == filter_name:
-                        filter_cameras[cam_name] = cam
+                        cameras_with_filter[cam_name] = cam
                 elif filter_name in cam.filterwheel.filter_names:
-                    filter_cameras[cam_name] = cam
+                    cameras_with_filter[cam_name] = cam
 
             # Go to next filter if there are no cameras with this one
-            if not filter_cameras:
-                self.logger.debug(f'No cameras found with {filter_name} filter.')
+            if not cameras_with_filter:
+                self.logger.warning(f'No cameras found with {filter_name} filter.')
                 continue
 
             # Create the Observation object
-            obs = self._create_flat_field_observation(alt=alt, az=az, filter_name=filter_name)
+            position = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+                                      obstime=current_time())
+            observation = FlatFieldObservation(position=position, filter_name=filter_name)
+            observation.seq_time = current_time(flatten=True)
 
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
-            autoflat_config = flat_field_config.get("autoflats", {})
-            self._take_autoflats(filter_cameras, obs, safety_func=safety_func, **autoflat_config)
+            autoflat_config = flat_config.get("autoflats", {})
+            self._take_autoflats(cameras_with_filter, observation, safety_func=safety_func,
+                                 **autoflat_config)
 
         self.logger.info('Finished flat-fielding.')
 
-    def take_dark_images(self, exptimes=None, camera_names=None, n_darks=10, imtype='dark',
-                         set_from_config=False, *args, **kwargs):
-        """Take n_darks for each exposure time specified,
-           for each camera.
-
+    def take_bias_observation(self, cameras=None, **kwargs):
+        """ Take a bias observation block on each camera (blocking).
         Args:
-            exptimes (list, optional): List of exposure times for darks
-            camera_names (list, optional): List of cameras to use for darks
-            n_darks (int or list, optional): if int, the same number of darks will be taken
-                for each exptime. If list, the len has to be the same than len(exptimes), where each
-                element is the number of darks we want for the corresponding exptime, e.g.:
-                take_dark_images(exptimes=[1*u.s, 60*u.s, 15*u.s], n_darks=[30, 10, 20])
-                will take 30x1s, 10x60s, and 20x15s darks
-            set_from_config (bool, optional): flag to set exptimes and n_darks directly
-                from config file.
-            imtype (str, optional): type of image
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                the cameras.
         """
+        if cameras is None:
+            cameras = self.cameras
+        # Create the observation
+        position = self.mount.get_current_coordinates()
+        observation = BiasObservation(position=position)
+        # Take the observation (blocking)
+        self._take_observation_block(observation, cameras=cameras, **kwargs)
 
-        if exptimes is None:
-            exptimes = list()
-
-        if camera_names is None:
-            cameras_list = self.cameras
-        else:
-            cameras_list = {c: self.cameras[c] for c in camera_names}
-
-        self.logger.debug(f'Using cameras {cameras_list}')
-
-        # Move all the filterwheels to the blank position.
-        self._move_all_filterwheels_to('blank')
-
-        # List to check that the final number of darks is equal to the number
-        # of cameras times the number of exptimes times n_darks.
-        darks_filenames = list()
-
-        exptimes = listify(exptimes)
-
-        if set_from_config:
-            dark_config = self.get_config('darks', default=dict())
-            exptimes = dark_config['exposure_time']
-            n_darks = dark_config['n_darks']
-
-        if not isinstance(n_darks, list):
-            n_darks = listify(n_darks) * len(exptimes)
-
-        # Loop over cameras.
-        if len(exptimes) == 0:
-            raise error.PanError('No exposure times were provided. No dark images were taken.')
-
-        self.logger.info(f'Going to take {n_darks} darks for these exposure times {exptimes}')
-        for exptime, num_darks in zip(exptimes, n_darks):
-
-            start_time = current_time()
-
-            with suppress(AttributeError):
-                exptime = get_quantity_value(exptime, u.second)
-
-            # Create dark observation
-            dark_obs = self._create_dark_observation(exptime)
-
-            # Loop over exposure times for each camera.
-            for num in range(num_darks):
-
-                self.logger.debug(f'Taking dark {num + 1} of {num_darks} with exptime={exptime} s.')
-
-                camera_events = dict()
-
-                # Take a given number of exposures for each exposure time.
-                for camera in cameras_list.values():
-
-                    # Set header
-                    fits_headers = self.get_standard_headers(observation=dark_obs)
-                    # Common start time for cameras
-                    fits_headers['start_time'] = flatten_time(start_time)
-
-                    # Create filename
-                    path = os.path.join(dark_obs.directory, camera.uid, dark_obs.seq_time)
-
-                    filename = os.path.join(path, f'{imtype}_{num:02d}.{camera.file_extension}')
-
-                    # Take picture and get event
-                    camera_event = camera.take_observation(
-                        dark_obs,
-                        fits_headers,
-                        filename=filename,
-                        exptime=exptime,
-                        dark=True,
-                        blocking=False
-                    )
-
-                    self.logger.debug(f'Camera {camera.uid} is exposing for {exptime}s')
-
-                    camera_events[camera] = {
-                        'event': camera_event,
-                        'filename': filename,
-                    }
-
-                    darks_filenames.append(filename)
-
-                    self.logger.debug(camera_events)
-
-                # Block until done exposing on all cameras
-                self.logger.debug('Waiting for dark images...')
-                wait_for_events(list(info['event'] for info in camera_events.values()))
-        self.logger.debug(darks_filenames)
-        return darks_filenames
+    def take_dark_observation(self, exptimes=None, cameras=None, **kwargs):
+        """ Take a dark observation block on each camera (blocking).
+        Args:
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                the cameras.
+        """
+        if cameras is None:
+            cameras = self.cameras
+        # Create the observation
+        position = self.mount.get_current_coordinates()
+        observation = DarkObservation(exptimes=exptimes, position=position)
+        # Take the observation (blocking)
+        self._take_observation_block(observation, cameras=cameras, **kwargs)
 
     def activate_camera_cooling(self):
         """
@@ -429,6 +352,44 @@ class HuntsmanObservatory(Observatory):
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
+    def _take_observation_block(self, observation, cameras, timeout=60 * u.second,
+                                remove_on_error=False):
+        """ Take an observation block (blocking).
+        Args:
+            observation (Observation): The observation object.
+            cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
+            timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
+        """
+        observation.seq_time = current_time(flatten=True)  # Normally handled by the scheduler
+        headers = self.get_standard_headers(observation=observation)
+        # Take the observation block
+        while not observation.set_is_finished:
+            headers['start_time'] = current_time(flatten=True)  # Normally handled elsewhere?
+            # Start the exposures and get events
+            # TODO: Replace with concurrent.futures
+            events = {}
+            for cam_name, camera in cameras.items():
+                try:
+                    events[cam_name] = camera.take_observation(observation, headers=headers)
+                except error.PanError as err:
+                    self.logger.error(f"{err}!r")
+                    self.logger.warning("Continuing with observation block after error on"
+                                        f" {cam_name}.")
+            # Wait for the exposures (blocking)
+            # TODO: Use same timeout as camera client
+            try:
+                self._wait_for_camera_events(events, duration=observation.exptime + timeout,
+                                             remove_on_error=remove_on_error)
+            except error.Timeout as err:
+                self.logger.error(f"{err!r}")
+                self.logger.warning("Continuing with observation block after error.")
+
+            # There's probably a better way of doing this but we've got bigger problems right now
+            with suppress(AttributeError):
+                observation.mark_exposure_complete()
+
     def _create_scheduler(self):
         """ Sets up the scheduler that will be used by the observatory """
 
@@ -465,32 +426,6 @@ class HuntsmanObservatory(Observatory):
 
         self.autoguider = guider
 
-    def _create_flat_field_observation(self, alt, az, *args, **kwargs):
-        """Create the flat-field `Observation` object."""
-        flat_coords = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
-                                     obstime=current_time())
-        self.logger.debug(f'Making flat-field observation for alt/az: {alt:.03f}, {az:.03f}.')
-        self.logger.debug(f'Flat field coordinates: {flat_coords}')
-
-        # Create the Observation object
-        obs = DitheredFlatObservation(position=flat_coords, *args, **kwargs)
-        obs.seq_time = current_time(flatten=True)
-        self.logger.debug(f"Created flat-field observation: {obs}")
-
-        return obs
-
-    def _create_dark_observation(self, exptime, *args, **kwargs):
-
-        # Create the observation object
-        dark_position = self.mount.get_current_coordinates()
-        dark_obs = DarkObservation(dark_position, *args, **kwargs)
-        dark_obs.seq_time = current_time(flatten=True)
-
-        if isinstance(dark_obs, DarkObservation):
-            dark_obs.exptime = exptime
-
-        return dark_obs
-
     def _move_all_filterwheels_to(self, filter_name, camera_names=None):
         """Move all the filterwheels to a given filter
         Args:
@@ -516,7 +451,7 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug(f'Finished waiting for filterwheels.')
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
-                        timeout=60, bias=32, safety_func=None, **kwargs):
+                        timeout=60, bias=32, safety_func=None, remove_on_error=False, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
@@ -531,6 +466,8 @@ class HuntsmanObservatory(Observatory):
             bias (int): The bias to subtract from the frames. TODO: Use a real bias image!
             safety_func (None or callable): If given, calls to this object return True if safe to
                 continue.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
             **kwargs: Parsed to FlatFieldSequence.
         """
         cam_names = list(self.cameras.keys())
@@ -575,24 +512,43 @@ class HuntsmanObservatory(Observatory):
 
                 # Start the exposure and get event
                 # TODO: Replace with concurrent.futures
-                events[cam_name] = camera.take_observation(
-                    observation, headers=headers, filename=filenames[cam_name],
-                    exptime=exptimes[cam_name])
+                try:
+                    events[cam_name] = camera.take_observation(
+                        observation, headers=headers, filename=filenames[cam_name],
+                        exptime=exptimes[cam_name])
+                except error.PanError as err:
+                    self.logger.error(f"{err}!r")
+                    self.logger.warning("Continuing with flat observation after error.")
 
-            # Wait for the exposures, dropping cameras that timeout
+            # Wait for the exposures
             self.logger.info('Waiting for flat field exposures to complete.')
             duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
-            self._wait_for_camera_events(events, duration, remove_on_error=True)
+            try:
+                self._wait_for_camera_events(events, duration, remove_on_error=remove_on_error)
+            except error.Timeout as err:
+                self.logger.error(f"{err}!r")
+                self.logger.warning("Continuing with flat observation after timeout error.")
 
             # Update the flat field sequences with new data
             for cam_name in list(sequences.keys()):
-                if cam_name not in self.cameras:  # Camera removed
+
+                # Remove sequence for any removed cameras
+                if cam_name not in self.cameras:
                     del sequences[cam_name]
                     continue
-                sequences[cam_name].update(filename=filenames[cam_name], exptime=exptimes[cam_name],
-                                           time_start=start_times[cam_name])
+
+                # Attempt to update the exposure sequence for this camera.
+                # If the exposure failed, use info from the last successful exposure.
+                try:
+                    sequences[cam_name].update(filename=filenames[cam_name],
+                                               exptime=exptimes[cam_name],
+                                               time_start=start_times[cam_name])
+                except (KeyError, FileNotFoundError) as err:
+                    self.logger.warning(f"Unable to update flat field sequence for {cam_name}:"
+                                        f" {err}!r")
                 # Log sequence status
                 status = sequences[cam_name].status
+                status["filter_name"] = observation.filter_name
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
     def _autoflat_target_counts(self, cam_name, target_scaling, scaling_tolerance):
@@ -621,8 +577,8 @@ class HuntsmanObservatory(Observatory):
         Args:
             events (dict of camera_name: threading.Event): The events to wait for.
             duration (float): The total amount of time to wait for (should include exptime).
-            remove (bool, default False): If True, remove cameras that timeout. If False, raise
-                a TimeoutError instead.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
             sleep (float): Sleep this long between event checks. Default 1s.
         """
         self.logger.debug(f'Waiting for {len(events)} events with timeout of {duration}.')

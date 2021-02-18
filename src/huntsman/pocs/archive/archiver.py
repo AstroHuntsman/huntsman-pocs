@@ -8,7 +8,7 @@ from contextlib import suppress
 from threading import Thread
 from astropy import units as u
 
-from panoptes.utils import get_quantity_value
+from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.time import current_time
 from panoptes.pocs.base import PanBase
 

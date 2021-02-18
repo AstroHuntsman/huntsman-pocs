@@ -4,8 +4,10 @@ from threading import Lock
 
 from astropy import units as u
 
-from panoptes.utils import error, get_quantity_value
+from panoptes.utils import error
 from panoptes.utils.time import CountdownTimer
+from panoptes.utils.utils import get_quantity_value
+
 from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 
 

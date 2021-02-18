@@ -1,4 +1,4 @@
-version: '3.3'
+version: '3.7'
 
 volumes:
   panlog:
@@ -36,86 +36,85 @@ services:
   pocs-config-server:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
+    init: true
     container_name: pocs-config-server
     hostname: pocs-config-server
-    privileged: true
+    deploy:
+      mode: global
     network_mode: host
     environment:
-      HUNTSMAN_POCS: /var/huntsman
+      HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_HOST: 0.0.0.0
       PANOPTES_CONFIG_PORT: 6563
     restart: on-failure
     volumes:
-      - config:/var/huntsman/huntsman-pocs/conf_files
-      - panlog:/var/huntsman/logs
-      - images:/var/huntsman/images
-    command: [ "panoptes-config-server --verbose run --no-save-local --no-load-local --config-file /var/huntsman/huntsman-pocs/conf_files/huntsman.yaml" ]
+      - config:/huntsman/conf_files
+      - panlog:/huntsman/logs
+      - images:/huntsman/images
+    command: [ "panoptes-config-server --verbose run --no-save-local --no-load-local --config-file /huntsman/conf_files/huntsman.yaml" ]
 
   pyro-name-server:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
+    init: true
     container_name: pyro-name-server
     hostname: pyro-name-server
+    deploy:
+      mode: global
     privileged: true
     network_mode: host
     restart: on-failure
-    depends_on:
-      - "pocs-config-server"
     environment:
-      HUNTSMAN_POCS: /var/huntsman
-      PANDIR: /var/panoptes
-      POCS: /var/panoptes/POCS
+      HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
+    command: [ "wait-for-it localhost:6563 -- huntsman-pyro nameserver --auto-clean 90" ]
     volumes:
-      - config:/var/huntsman/huntsman-pocs/conf_files
-      - panlog:/var/huntsman/logs
-      - images:/var/huntsman/images
+      - config:/huntsman/conf_files
+      - panlog:/huntsman/logs
+      - images:/huntsman/images
 
   pocs-control:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
+    init: true
+    stdin_open: true
     container_name: pocs-control
     hostname: pocs-control
+    deploy:
+      mode: global
     privileged: true
     network_mode: host
     restart: on-failure
-    depends_on:
-      - "pyro-name-server"
     environment:
-      HUNTSMAN_POCS: /var/huntsman
-      PANDIR: /var/panoptes
-      POCS: /var/panoptes/POCS
+      HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- tail -f /dev/null" ]
+    command: [ "wait-for-it localhost:6563 -- tail -f /dev/null" ]
     volumes:
-      - config:/var/huntsman/huntsman-pocs/conf_files
-      - panlog:/var/huntsman/logs
-      - images:/var/huntsman/images
-      - json_store:/var/huntsman/json_store
-      - archive:/var/huntsman/archive
+      - config:/huntsman/conf_files
+      - panlog:/huntsman/logs
+      - images:/huntsman/images
+      - json_store:/huntsman/json_store
+      - archive:/huntsman/archive
 
   huntsman-file-archiver:
     image: huntsmanarray/huntsman-pocs:develop
     tty: true
     container_name: huntsman-file-archiver
     hostname: huntsman-file-archiver
+    deploy:
+      mode: global
     privileged: true
     network_mode: host
     restart: on-failure
-    depends_on:
-      - "pocs-config-server"
     environment:
-      HUNTSMAN_POCS: /var/huntsman
-      PANDIR: /var/panoptes
-      POCS: /var/panoptes/POCS
+      HUNTSMAN_POCS: /huntsman
       PANOPTES_CONFIG_PORT: 6563
-    command: [ "/var/panoptes/POCS/scripts/wait-for-it.sh localhost:6563 -- /var/panoptes/conda/bin/python /var/huntsman/huntsman-pocs/scripts/archive-images.py" ]
+    command: [ "wait-for-it localhost:6563 -- /conda/bin/python /huntsman/scripts/archive-images.py" ]
     volumes:
-      - config:/var/huntsman/huntsman-pocs/conf_files
-      - panlog:/var/huntsman/logs
-      - images:/var/huntsman/images
-      - archive:/var/huntsman/archive
+      - config:/huntsman/conf_files
+      - panlog:/huntsman/logs
+      - images:/huntsman/images
+      - archive:/huntsman/archive
 
   aag-weather-reader:
     image: gcr.io/panoptes-exp/aag-weather:latest
