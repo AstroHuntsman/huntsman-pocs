@@ -86,6 +86,50 @@ class FlatFieldSequence():
         """
         return self.status["is_finished"]
 
+    @property
+    def min_exptime_reached(self):
+        """ Check if the last exposure was at the minimum exposure time.
+        Returns:
+            bool: True if the min exposure time is reached, else False.
+        """
+        try:
+            return self._exptimes[-1] <= self._min_exptime
+        except IndexError:
+            return False
+
+    @property
+    def max_exptime_reached(self):
+        """ Check if the last exposure was at the maximum exposure time.
+        Returns:
+            bool: True if the max exposure time is reached, else False.
+        """
+        try:
+            return self._exptimes[-1] >= self._max_exptime
+        except IndexError:
+            return False
+
+    @property
+    def is_too_faint(self):
+        """ Check if the last exposure was too faint.
+        Returns:
+            bool: True if the last exposure was too faint, else False.
+        """
+        try:
+            return self._average_counts[-1] + self._counts_tolerance < self._target_counts
+        except IndexError:
+            return False
+
+    @property
+    def is_too_bright(self):
+        """ Check if the last exposure was too bright.
+        Returns:
+            bool: True if the last exposure was too bright, else False.
+        """
+        try:
+            return self._average_counts[-1] - self._counts_tolerance > self._target_counts
+        except IndexError:
+            return False
+
     def update(self, filename, exptime, time_start):
         """ Update the sequence data with the previous iteration.
         Args:
