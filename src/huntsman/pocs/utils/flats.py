@@ -94,7 +94,7 @@ class FlatFieldSequence():
         """
         try:
             return self._exptimes[-1] <= self._min_exptime
-        except KeyError:
+        except IndexError:
             return False
 
     @property
@@ -105,7 +105,7 @@ class FlatFieldSequence():
         """
         try:
             return self._exptimes[-1] >= self._max_exptime
-        except KeyError:
+        except IndexError:
             return False
 
     @property
@@ -116,7 +116,7 @@ class FlatFieldSequence():
         """
         try:
             return self._average_counts[-1] + self._counts_tolerance < self._target_counts
-        except KeyError:
+        except IndexError:
             return False
 
     @property
@@ -127,7 +127,7 @@ class FlatFieldSequence():
         """
         try:
             return self._average_counts[-1] - self._counts_tolerance > self._target_counts
-        except KeyError:
+        except IndexError:
             return False
 
     def update(self, filename, exptime, time_start):
