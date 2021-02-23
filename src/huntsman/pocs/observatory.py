@@ -553,13 +553,13 @@ class HuntsmanObservatory(Observatory):
 
             # Check if we need to terminate the sequence early
             if self.past_midnight:  # Sky getting brighter
-                if all([s.is_too_bright and s.min_exptime_reached for s in sequences]):
+                if all([s.is_too_bright and s.min_exptime_reached for s in sequences.values()]):
                     self.logger.info("Terminating flat field sequence for the "
                                      f"{observation.filter_name} filter because all exposures are"
                                      " too bright at the minimum exposure time.")
                     return
             else:  # Sky getting fainter
-                if all([s.is_too_faint and s.max_exptime_reached for s in sequences]):
+                if all([s.is_too_faint and s.max_exptime_reached for s in sequences.values()]):
                     self.logger.info("Terminating flat field sequence for the "
                                      f"{observation.filter_name} filter because all exposures are"
                                      " too faint at the maximum exposure time.")
