@@ -251,25 +251,20 @@ class HuntsmanDome(AbstractSerialDome):
         Returns:
             dict: The dome status.
         """
-        if max_reads is None:
-            max_reads = 10 * len(Protocol.VALID_DEVICE)
-
         self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
 
         status = {}
-        for i in range(max_reads):
-            try:
-                k, v = self.serial.read().strip().split(':')
-            except ValueError:  # not enough values to unpack
-                continue
-            if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
-                v = float(v)
-            if k != 'Status':
-                status[k] = v
-            if all([v in status.keys() for v in Protocol.VALID_DEVICE]):
-                break
-            elif i == max_reads - 1:
-                raise error.PanError("Max reads reached while attempting to get dome status.")
+        num_lines = len(Protocol.VALID_DEVICE) + 1
+        for i in range(num_lines):
+
+            raw_response = self.serial.read()
+            response = [s.strip() for s in raw_response.split(":")]
+
+            if response[0] != "Status":
+                # The first line of the status query should begin with "Status"
+                if i == 0:
+                    raise error.PanError("Serial communication problem reading musca status.")
+                status[response[0]] = response[1]
 
         return status
 
