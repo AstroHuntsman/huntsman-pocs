@@ -242,19 +242,15 @@ class HuntsmanDome(AbstractSerialDome):
             return 'Shutter in ILLEGAL state?'
         return 'Unexpected response from Huntsman Shutter Controller: %r' % v
 
-    def _get_status_dict(self, max_reads=None):
+    def _get_status_dict(self):
         """ Return dictionary of musca status.
-        Args:
-            max_reads (int, optional): Maximum number of lines to read in order to get the status.
-                This is useful because musca seems to send the status of the same component
-                several times consecutively. If None (default, use 10*the number of expected lines).
         Returns:
             dict: The dome status.
         """
         self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
 
         status = {}
-        num_lines = len(Protocol.VALID_DEVICE) + 1
+        num_lines = len(Protocol.VALID_DEVICE) + 1  # +1 because first line is "Status"
         for i in range(num_lines):
 
             raw_response = self.serial.read()
