@@ -259,7 +259,7 @@ class HuntsmanDome(AbstractSerialDome):
             if response[0] != "Status":
                 # The first line of the status query should begin with "Status"
                 if i == 0:
-                    raise error.PanError("Serial communication problem reading musca status.")
+                    raise error.BadSerialConnection("Serial communication problem reading musca status.")
                 status[response[0]] = response[1]
 
         return status
