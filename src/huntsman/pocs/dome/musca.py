@@ -113,7 +113,7 @@ class HuntsmanDome(AbstractSerialDome):
     @property
     def is_safe_to_open(self):
         v = self.status[Protocol.BATTERY]
-        if float(v) < self.MIN_OPERATING_VOLTAGE:
+        if v < self.MIN_OPERATING_VOLTAGE:
             self.logger.debug('Dome shutter battery voltage too low to open: {!r}', v)
             return False
         return True
@@ -127,6 +127,10 @@ class HuntsmanDome(AbstractSerialDome):
                     status = self._get_status_dict()
                     status["status_thread_running"] = self._dome_thread.is_alive()
                     status["keep_shutter_open"] = self._keep_open
+
+                    # Convert voltage and solar array to floats.
+                    status[Protocol.BATTERY] = float(status[Protocol.BATTERY])
+                    status[Protocol.SOLAR_ARRAY] = float(status[Protocol.SOLAR_ARRAY])
                     return status
                 except Exception as err:
                     self.logger.warning(f"Dome status check {i+1} of {self._max_status_attempts}"
