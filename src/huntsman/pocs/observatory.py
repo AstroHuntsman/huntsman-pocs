@@ -11,6 +11,7 @@ from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler import constraint
+from huntsman.pocs.scheduler.constraint import MoonAvoidance
 
 from huntsman.pocs.guide.bisque import Guide
 from panoptes.pocs.scheduler.observation.bias import BiasObservation
@@ -56,7 +57,7 @@ class HuntsmanObservatory(Observatory):
         self.last_focus_time = None
         self.coarse_focus_config = self.get_config('focusing.coarse')
         self._focus_frequency = self.coarse_focus_config['frequency'] \
-            * u.Unit(self.coarse_focus_config['frequency_unit'])
+                                * u.Unit(self.coarse_focus_config['frequency_unit'])
         self._coarse_focus_filter = self.coarse_focus_config['filter_name']
 
         if self.has_autoguider:
@@ -411,13 +412,12 @@ class HuntsmanObservatory(Observatory):
 
                 # Simple constraint for now
                 constraints = [
-                    constraint.MoonAvoidance(),
+                    MoonAvoidance(),
                     constraint.Duration(30 * u.deg)]
 
                 # Create the Scheduler instance
                 self.scheduler = module.Scheduler(
                     self.observer, fields_file=fields_path, constraints=constraints)
-                self.scheduler.common_properties['min_moon_sep'] = min_moon_sep
                 self.logger.debug("Scheduler created")
             except ImportError as e:
                 raise error.NotFound(msg=e)
