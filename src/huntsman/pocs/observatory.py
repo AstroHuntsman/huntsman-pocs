@@ -411,12 +411,13 @@ class HuntsmanObservatory(Observatory):
 
                 # Simple constraint for now
                 constraints = [
-                    constraint.MoonAvoidance(min_moon_sep=min_moon_sep),
+                    constraint.MoonAvoidance(),
                     constraint.Duration(30 * u.deg)]
 
                 # Create the Scheduler instance
                 self.scheduler = module.Scheduler(
                     self.observer, fields_file=fields_path, constraints=constraints)
+                self.scheduler.common_properties['min_moon_sep'] = min_moon_sep
                 self.logger.debug("Scheduler created")
             except ImportError as e:
                 raise error.NotFound(msg=e)
