@@ -113,7 +113,7 @@ class HuntsmanDome(AbstractSerialDome):
     @property
     def is_safe_to_open(self):
         v = self.status[Protocol.BATTERY]
-        if v < self.MIN_OPERATING_VOLTAGE:
+        if float(v) < self.MIN_OPERATING_VOLTAGE:
             self.logger.debug('Dome shutter battery voltage too low to open: {!r}', v)
             return False
         return True
