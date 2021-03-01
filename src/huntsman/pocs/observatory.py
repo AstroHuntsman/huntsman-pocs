@@ -395,6 +395,7 @@ class HuntsmanObservatory(Observatory):
 
         scheduler_config = self.get_config('scheduler', default=dict())
         scheduler_type = scheduler_config.get('type', 'dispatch')
+        min_moon_sep = scheduler_config.get('min_moon_sep', 45)
 
         # Read the targets from the file
         fields_file = scheduler_config.get('fields_file', 'simple.yaml')
@@ -409,7 +410,9 @@ class HuntsmanObservatory(Observatory):
                 module = load_module(f'huntsman.scheduler.{scheduler_type}')
 
                 # Simple constraint for now
-                constraints = [constraint.MoonAvoidance(), constraint.Duration(30 * u.deg)]
+                constraints = [
+                    constraint.MoonAvoidance(min_moon_sep=min_moon_sep),
+                    constraint.Duration(30 * u.deg)]
 
                 # Create the Scheduler instance
                 self.scheduler = module.Scheduler(
