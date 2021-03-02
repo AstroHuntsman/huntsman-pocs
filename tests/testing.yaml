@@ -96,8 +96,6 @@ calibs:
       - 1
       - 2
   flat:
-    alt: 70 deg
-    az: 120 deg
     filter_order:
       - one
       - deux
