@@ -19,7 +19,7 @@ from huntsman.pocs.scheduler.observation.dark import DarkObservation
 from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
 
 from huntsman.pocs.archive.utils import remove_empty_directories
-from huntsman.pocs.utils.flats import FlatFieldSequence
+from huntsman.pocs.utils.flats import FlatFieldSequence, get_flat_field_altaz
 
 
 class HuntsmanObservatory(Observatory):
@@ -200,12 +200,6 @@ class HuntsmanObservatory(Observatory):
         flat_config = self.get_config('calibs.flat', default=dict())
         flat_config.update(kwargs)
 
-        # Specify flat field coordinates
-        # This must be done at the observatory level to convert alt/az to ra/dec
-        alt = flat_config['alt']
-        az = flat_config['az']
-        self.logger.debug(f'Flat field alt/az: {alt:.03f}, {az:.03f}.')
-
         # Specify filter order
         filter_order = flat_config['filter_order'].copy()
         if self.past_midnight:  # If it's the morning, order is reversed
@@ -231,8 +225,11 @@ class HuntsmanObservatory(Observatory):
                 self.logger.warning(f'No cameras found with {filter_name} filter.')
                 continue
 
-            # Create the Observation object
-            position = altaz_to_radec(alt=alt, az=az, location=self.earth_location,
+            # Get the flat field coordinates
+            altaz = get_flat_field_altaz(location=self.earth_location)
+            self.logger.debug(f"Flat field alt/az for {filter_name} filter: {altaz}")
+
+            position = altaz_to_radec(alt=altaz.alt, az=altaz.az, location=self.earth_location,
                                       obstime=current_time())
             observation = FlatFieldObservation(position=position, filter_name=filter_name)
             observation.seq_time = current_time(flatten=True)
