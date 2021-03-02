@@ -11,7 +11,7 @@ class Focuser(BirgerFocuser):
         """ Close and open serial port and reconnect to focuser. """
         self.logger.debug(f"Attempting to reconnect to {self}.")
         self.__del__()
-        self.connect()
+        self.connect(port=self.port)
 
     def _send_command(self, *args, **kwargs):
         """ Try command, attempt to reconnect on error and send command again. """
