@@ -122,21 +122,16 @@ class HuntsmanDome(AbstractSerialDome):
     def status(self):
         """A dictionary containing all status info for dome. """
         with self._command_lock:  # Make status call thread-safe
-            for i in range(self._max_status_attempts):
-                try:
-                    status = self._get_status_dict()
-                    status["status_thread_running"] = self._dome_thread.is_alive()
-                    status["keep_shutter_open"] = self._keep_open
+            status = self._get_status_dict()
 
-                    # Convert voltage and solar array to floats
-                    status[Protocol.BATTERY] = float(status[Protocol.BATTERY])
-                    status[Protocol.SOLAR_ARRAY] = float(status[Protocol.SOLAR_ARRAY])
-                    return status
-                except Exception as err:
-                    self.logger.warning(f"Dome status check {i+1} of {self._max_status_attempts}"
-                                        f" failed with exception: {err!r}")
+        status["status_thread_running"] = self._dome_thread.is_alive()
+        status["keep_shutter_open"] = self._keep_open
 
-            raise error.PanError("Unable to get dome status: max attempts reached.")
+        # Convert voltage and solar array to floats
+        status[Protocol.BATTERY] = float(status[Protocol.BATTERY])
+        status[Protocol.SOLAR_ARRAY] = float(status[Protocol.SOLAR_ARRAY])
+
+        return status
 
     def open(self):
         """Open the shutter using musca.
@@ -246,24 +241,25 @@ class HuntsmanDome(AbstractSerialDome):
             return 'Shutter in ILLEGAL state?'
         return 'Unexpected response from Huntsman Shutter Controller: %r' % v
 
-    def _get_status_dict(self):
+    def _get_status_dict(self, retry_limit=10, retry_delay=2):
         """ Return dictionary of musca status.
         Returns:
             dict: The dome status.
         """
+        self.serial.reset_input_buffer()
         self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
 
         status = {}
         num_lines = len(Protocol.VALID_DEVICE) + 1  # +1 because first line is "Status"
         for i in range(num_lines):
 
-            raw_response = self.serial.read()
+            raw_response = self.serial.read(retry_limit=retry_limit, retry_delay=retry_delay)
             response = [s.strip() for s in raw_response.split(":")]
 
             if response[0] != "Status":
                 # The first line of the status query should begin with "Status"
                 if i == 0:
-                    raise error.BadSerialConnection("Serial communication problem reading musca status.")
+                    raise error.BadSerialConnection(f"Expected 'Status', got {raw_response!r}.")
                 status[response[0]] = response[1]
 
         return status
