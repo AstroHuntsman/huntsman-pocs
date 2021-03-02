@@ -10,6 +10,28 @@ from panoptes.utils.utils import get_quantity_value
 from huntsman.pocs.utils.logger import logger as LOGGER
 
 
+from astropy.coordinates import get_sun
+from astropy.coordinates import AltAz
+
+
+def get_flat_field_altaz(location):
+    """ Return the alt/az opposite the Sun now at a given location.
+    Args:
+        location (astropy.coordinates.EarthLocation): The location.
+    Returns:
+        astropy.coordinates.AltAz: The alt/az opposite the Sun.
+    """
+    time_now = current_time()
+    frame = AltAz(obstime=time_now, location=location)
+    altaz_sun = get_sun(time_now).transform_to(frame)
+
+    # We want the anti-solar direction
+    alt = -1 * altaz_sun.alt  # Alt between -90 and 90 deg
+    az = ((altaz_sun.az.to_value(u.deg) + 180) % 360) * u.deg  # Az between 0 and 360 deg
+
+    return AltAz(alt=alt, az=az, obstime=time_now, location=location)
+
+
 class FlatFieldSequence():
     """ Class to facilitate flat fields with automatic exposure time updates.
     """
