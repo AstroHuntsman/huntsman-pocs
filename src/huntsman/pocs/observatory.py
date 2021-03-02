@@ -229,8 +229,6 @@ class HuntsmanObservatory(Observatory):
             altaz = get_flat_field_altaz(location=self.earth_location)
             self.logger.debug(f"Flat field alt/az for {filter_name} filter: {altaz}")
 
-            assert False
-
             position = altaz_to_radec(alt=altaz.alt, az=altaz.az, location=self.earth_location,
                                       obstime=current_time())
             observation = FlatFieldObservation(position=position, filter_name=filter_name)
