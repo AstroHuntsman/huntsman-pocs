@@ -56,17 +56,17 @@ class Camera(AbstractSDKCamera):
         # default value is too low for their temperature resolution.
         self.temperature_tolerance = kwargs.get('temperature_tolerance', 0.6 * u.Celsius)
 
-        if gain:
-            self.gain = gain
+        self._gain = gain
 
         if image_type:
-            self.image_type = image_type
+            self._image_type = image_type
+        # Take monochrome 12 bit raw images by default, if we can
+        elif 'RAW16' in self.properties['supported_video_format']:
+            self._image_type = 'RAW16'
         else:
-            # Take monochrome 12 bit raw images by default, if we can
-            if 'RAW16' in self.properties['supported_video_format']:
-                self.image_type = 'RAW16'
+            self._image_type = None
 
-        self.logger.info('{} initialised'.format(self))
+        self.logger.info(f'Initialised {self}.')
 
     def __del__(self):
         """ Attempt some clean up """
@@ -166,6 +166,11 @@ class Camera(AbstractSDKCamera):
         self._control_info = Camera._driver.get_control_caps(self._handle)
         self._info['control_info'] = self._control_info  # control info accessible via properties
         Camera._driver.disable_dark_subtract(self._handle)
+
+        if self._gain is not None:
+            self.gain = self._gain
+        self.image_type = self._image_type
+
         self._connected = True
 
     def reconnect(self):
