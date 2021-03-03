@@ -50,12 +50,6 @@ class Camera(AbstractSDKCamera):
 
         self._video_event = threading.Event()
 
-        super().__init__(name, ASIDriver, *args, **kwargs)
-
-        # Increase default temperature_tolerance for ZWO cameras because the
-        # default value is too low for their temperature resolution.
-        self.temperature_tolerance = kwargs.get('temperature_tolerance', 0.6 * u.Celsius)
-
         self._gain = gain
 
         if image_type:
@@ -65,6 +59,12 @@ class Camera(AbstractSDKCamera):
             self._image_type = 'RAW16'
         else:
             self._image_type = None
+
+        super().__init__(name, ASIDriver, *args, **kwargs)
+
+        # Increase default temperature_tolerance for ZWO cameras because the
+        # default value is too low for their temperature resolution.
+        self.temperature_tolerance = kwargs.get('temperature_tolerance', 0.6 * u.Celsius)
 
         self.logger.info(f'Initialised {self}.')
 
