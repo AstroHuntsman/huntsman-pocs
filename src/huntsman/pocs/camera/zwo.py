@@ -55,10 +55,8 @@ class Camera(AbstractSDKCamera):
         if image_type:
             self._image_type = image_type
         # Take monochrome 12 bit raw images by default, if we can
-        elif 'RAW16' in self.properties['supported_video_format']:
-            self._image_type = 'RAW16'
         else:
-            self._image_type = None
+            self._image_type = 'RAW16'
 
         super().__init__(name, ASIDriver, *args, **kwargs)
 
