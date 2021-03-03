@@ -241,7 +241,7 @@ class HuntsmanDome(AbstractSerialDome):
             return 'Shutter in ILLEGAL state?'
         return 'Unexpected response from Huntsman Shutter Controller: %r' % v
 
-    def _get_status_dict(self, retry_limit=10, retry_delay=2):
+    def _get_status_dict(self):
         """ Return dictionary of musca status.
         Returns:
             dict: The dome status.
@@ -249,20 +249,36 @@ class HuntsmanDome(AbstractSerialDome):
         self.serial.reset_input_buffer()
         self._write_musca(Protocol.GET_STATUS)  # Automatically sleeps for self._command_delay
 
-        status = {}
-        num_lines = len(Protocol.VALID_DEVICE) + 1  # +1 because first line is "Status"
+        num_lines = len(Protocol.VALID_DEVICE)
+
+        # "Status" comes before the start of each status reading
+        # This loop makes sure we wait for the start of the next status reading
         for i in range(num_lines):
+            response, raw_response = self._get_status_response()
+            if response[0] == "Status":
+                break
 
-            raw_response = self.serial.read(retry_limit=retry_limit, retry_delay=retry_delay)
-            response = [s.strip() for s in raw_response.split(":")]
+        if response[0] != "Status":
+            raise error.BadSerialConnection(f"Expected 'Status', got {raw_response!r}.")
 
-            if response[0] != "Status":
-                # The first line of the status query should begin with "Status"
-                if i == 0:
-                    raise error.BadSerialConnection(f"Expected 'Status', got {raw_response!r}.")
-                status[response[0]] = response[1]
+        # Read the status
+        status = {}
+        for i in range(num_lines):
+            response, _ = self._get_status_response()
+            status[response[0]] = response[1]
+
+        # Ensure required keys are present
+        if not all([r in status for r in Protocol.VALID_DEVICE]):
+            raise error.BadSerialConnection("Incomplete status dictionary.")
 
         return status
+
+    def _get_status_response(self, retry_limit=10, retry_delay=2):
+        """ Get the response from musca and format it so we can read it into the status dict.
+        """
+        raw_response = self.serial.read(retry_limit=retry_limit, retry_delay=retry_delay)
+        response = [s.strip() for s in raw_response.split(":")]
+        return response, raw_response
 
     def _wait_for_true(self, prop, sleep=1):
         """ Wait for a property to evaluate to True. """
