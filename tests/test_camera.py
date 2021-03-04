@@ -12,7 +12,7 @@ import pytest
 import astropy.units as u
 from astropy.io import fits
 from panoptes.pocs.scheduler.field import Field
-from panoptes.pocs.scheduler.observation.base import Observation
+from huntsman.pocs.scheduler.observation.base import Observation
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
