@@ -372,7 +372,7 @@ class HuntsmanObservatory(Observatory):
                 try:
                     events[cam_name] = camera.take_observation(observation, headers=headers)
                 except error.PanError as err:
-                    self.logger.error(f"{err}!r")
+                    self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with observation block after error on"
                                         f" {cam_name}.")
             # Wait for the exposures (blocking)
@@ -518,7 +518,7 @@ class HuntsmanObservatory(Observatory):
                         observation, headers=headers, filename=filenames[cam_name],
                         exptime=exptimes[cam_name])
                 except error.PanError as err:
-                    self.logger.error(f"{err}!r")
+                    self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with flat observation after error.")
 
             # Wait for the exposures
@@ -527,7 +527,7 @@ class HuntsmanObservatory(Observatory):
             try:
                 self._wait_for_camera_events(events, duration, remove_on_error=remove_on_error)
             except error.Timeout as err:
-                self.logger.error(f"{err}!r")
+                self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with flat observation after timeout error.")
 
             # Update the flat field sequences with new data
@@ -546,7 +546,7 @@ class HuntsmanObservatory(Observatory):
                                                time_start=start_times[cam_name])
                 except (KeyError, FileNotFoundError) as err:
                     self.logger.warning(f"Unable to update flat field sequence for {cam_name}:"
-                                        f" {err}!r")
+                                        f" {err!r}")
                 # Log sequence status
                 status = sequences[cam_name].status
                 status["filter_name"] = observation.filter_name
