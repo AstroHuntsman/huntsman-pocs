@@ -18,7 +18,7 @@ def create_huntsman_scheduler(**kwargs):
     TODO: Implement this in panoptes-pocs.
     """
     scheduler = create_scheduler_from_config(**kwargs)
-    constraints = [c for c in scheduler.contstrains if not isinstance(c, MoonAvoidance)]
+    constraints = [c for c in scheduler.contstraints if not isinstance(c, MoonAvoidance)]
     constraints.append(HuntsmanMoonAvoidance())
     scheduler.constrains = constraints
     return scheduler
