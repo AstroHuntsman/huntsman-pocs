@@ -12,7 +12,7 @@ import pytest
 import astropy.units as u
 from astropy.io import fits
 from panoptes.pocs.scheduler.field import Field
-from panoptes.pocs.scheduler.observation.base import Observation
+from huntsman.pocs.scheduler.observation.base import Observation
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
@@ -309,7 +309,7 @@ def test_client_exposure_timeout(camera, tmpdir):
     assert camera.is_ready
 
 
-def test_observation(camera, images_dir):
+def test_observation(camera):
     """
     Tests functionality of take_observation()
     """
@@ -319,8 +319,9 @@ def test_observation(camera, images_dir):
     camera.take_observation(observation, headers={})
     time.sleep(7)
     # TODO: Should this go into the fields subdirectory?
-    observation_pattern = os.path.join(images_dir, 'TestObservation',
-                                       camera.uid, observation.seq_time, '*.fits*')
+    observation_pattern = os.path.join(observation.directory, camera.uid, observation.seq_time,
+                                       '*.fits*')
+    camera.logger.info(observation.directory)
     assert len(glob.glob(observation_pattern)) == 1
     for _ in glob.glob(observation_pattern):
         os.remove(_)
@@ -336,8 +337,8 @@ def test_observation_nofilter(camera, images_dir):
     camera.take_observation(observation, headers={})
     time.sleep(7)
     # TODO: Should this go into the fields subdirectory?
-    observation_pattern = os.path.join(images_dir, 'TestObservation',
-                                       camera.uid, observation.seq_time, '*.fits*')
+    observation_pattern = os.path.join(observation.directory, camera.uid, observation.seq_time,
+                                       '*.fits*')
     assert len(glob.glob(observation_pattern)) == 1
     for _ in glob.glob(observation_pattern):
         os.remove(_)
