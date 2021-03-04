@@ -9,6 +9,20 @@ from huntsman.pocs.observatory import HuntsmanObservatory
 from huntsman.pocs.dome import create_dome_from_config
 from huntsman.pocs.core import HuntsmanPOCS
 
+from panoptes.pocs.scheduler.constraint import MoonAvoidance
+from huntsman.pocs.scheduler.constraint import MoonAvoidance as HuntsmanMoonAvoidance
+
+
+def create_huntsman_scheduler(**kwargs):
+    """ Create scheduler, including configurable moon avoidance.
+    TODO: Implement this in panoptes-pocs.
+    """
+    scheduler = create_scheduler_from_config(**kwargs)
+    constraints = [c for c in scheduler.constraints if not isinstance(c, MoonAvoidance)]
+    constraints.append(HuntsmanMoonAvoidance())
+    scheduler.constraints = constraints
+    return scheduler
+
 
 def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, scheduler=None,
                                 dome=None, config=None, **kwargs):
@@ -35,7 +49,7 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
     mount.initialize()
 
     if scheduler is None:
-        scheduler = create_scheduler_from_config()  # TODO: Parse config
+        scheduler = create_huntsman_scheduler()  # TODO: Parse config
 
     if with_dome:
         if dome is None:

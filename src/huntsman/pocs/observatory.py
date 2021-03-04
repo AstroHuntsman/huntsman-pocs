@@ -388,39 +388,6 @@ class HuntsmanObservatory(Observatory):
             with suppress(AttributeError):
                 observation.mark_exposure_complete()
 
-    def _create_scheduler(self):
-        """ Sets up the scheduler that will be used by the observatory """
-
-        scheduler_config = self.get_config('scheduler', default=dict())
-        scheduler_type = scheduler_config.get('type', 'dispatch')
-        min_moon_sep = scheduler_config.get('min_moon_sep', 45)
-
-        # Read the targets from the file
-        fields_file = scheduler_config.get('fields_file', 'simple.yaml')
-        fields_path = os.path.join(self.get_config('directories.targets'), fields_file)
-
-        self.logger.debug(f'Creating scheduler: {fields_path}')
-
-        if os.path.exists(fields_path):
-
-            try:
-                # Load the required module
-                module = load_module(f'huntsman.scheduler.{scheduler_type}')
-
-                # Simple constraint for now
-                constraints = [
-                    MoonAvoidance(),
-                    constraint.Duration(30 * u.deg)]
-
-                # Create the Scheduler instance
-                self.scheduler = module.Scheduler(
-                    self.observer, fields_file=fields_path, constraints=constraints)
-                self.logger.debug("Scheduler created")
-            except ImportError as e:
-                raise error.NotFound(msg=e)
-        else:
-            raise error.NotFound(msg=f"Fields file does not exist: {fields_file}")
-
     def _create_autoguider(self):
         guider_config = self.get_config('guider')
         guider = Guide(**guider_config)
