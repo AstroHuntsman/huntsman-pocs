@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 from contextlib import suppress
@@ -8,11 +9,14 @@ from astropy import units as u
 from astropy.time import Time
 
 from panoptes.utils import error
+from panoptes.utils.time import current_time
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
 
 from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
+
+from huntsman.pocs.utils.focus import AutofocusSequence
 
 
 class Camera(AbstractSDKCamera):
@@ -212,6 +216,57 @@ class Camera(AbstractSDKCamera):
         self._video_event.set()
         Camera._driver.stop_video_capture(self._handle)
         self.logger.debug("Video capture stopped on {}".format(self))
+
+    def autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
+                  keep_files=None, take_dark=None, merit_function='vollath_F4',
+                  merit_function_kwargs=None, mask_dilations=None, coarse=False, make_plots=None,
+                  blocking=False, **kwargs):
+        """
+        """
+        if not self.has_focuser:
+            raise AttributeError("Camera must have a focuser for autofocus!")
+
+        start_time = start_time = current_time(flatten=True)
+        imagedir = os.path.join(self.get_config('directories.images'), 'focus', self.uid,
+                                start_time)
+
+        # Get focus range
+        idx = 1 if coarse else 0
+        position_step = focus_step[idx]
+        position_min = self.focuser.position - focus_range[idx] / 2
+        position_max = self.focuser.position + focus_range[idx] / 2
+
+        # Make sequence object
+        sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
+                                     position_step=position_step)
+
+        # Add a dark exposure
+        filename = os.path.join(imagedir, f"dark.{self.file_extension}")
+        cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files, dark=True)
+        sequence.dark_image = cutout
+
+        while not sequence.is_finished:
+            new_position = sequence.get_next_position()
+
+            basename = f"{new_position}-{sequence.exposure_index:02d}.{self.file_extension}"
+            filename = os.path.join(imagedir, basename)
+
+            # Move the focuser
+            self.focuser.move_to(new_position)
+
+            # Get the cutout
+            try:
+                cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files)
+            except error.PanError as err:
+                self.logger.warning(f"Exception encountered in get_cutout on {self}: {err!r}")
+                continue
+
+            # Update the sequence
+            sequence.update(cutout, position=self.focuser.position)
+
+        # Get the best position
+        best_position = sequence.best_position
+        self.focuser.move_to(best_position)
 
     # Private methods
 

@@ -4,6 +4,8 @@ import numpy as np
 from panoptes.pocs.base import PanBase
 from panoptes.utils.images import mask_saturated
 
+IMAGE_DTYPE = np.float32
+
 
 class AutofocusSequence(PanBase):
 
@@ -78,22 +80,30 @@ class AutofocusSequence(PanBase):
         """
         """
         if self._image_shape is None:
-            self._initialise_images(image.shape, image.dtype)
+            self._initialise_images(image.shape)
 
-        self._dark_image = image
-        self._mask = np.logical_or(self._mask, self._mask_saturated(image))
+        self._dark_image = image.astype(IMAGE_DTYPE)
+        self._mask = np.logical_or(self._mask, self._mask_saturated(self._dark_image))
 
     def update(self, image, focus_position):
         """
         """
         if self._image_shape is None:
-            self._initialise_images(image.shape, image.dtype)
+            self._initialise_images(image.shape)
 
-        self._images[self._exposure_index] = image
         self._positions_actual.append(int(focus_position))
-        self._mask = np.logical_or(self._mask, self._mask_saturated(image))
-        self._exposure_index += 1
 
+        # Store the image
+        self._images[self._exposure_index, :, :] = image
+        if self.dark_image is not None:
+            self._images[self._exposure_index] -= self.dark_image
+
+        # Update the mask
+        self._mask = np.logical_or(self._mask,
+                                   self._mask_saturated(self._images[self._exposure_index]))
+
+        # Update the exposure index
+        self._exposure_index += 1
         if self._exposure_index == self.n_positions:
 
             # Calculate metrics
@@ -103,6 +113,9 @@ class AutofocusSequence(PanBase):
             # Check if the sequence is finished
             if best_index not in (0, self.n_positions - 1):
                 self._best_index = best_index
+                self._metrics = metrics
+
+                # Do the fit if required
                 if self._do_fit:
                     self._fit()
                 return
@@ -139,22 +152,17 @@ class AutofocusSequence(PanBase):
         """
         return mask_saturated(image, threshold=self._mask_threshold, bit_depth=self._bit_depth)
 
-    def _initialise_images(self, shape, dtype):
+    def _initialise_images(self, shape):
         """
         """
         self._image_shape = shape
         self._mask = np.zeros(shape, dtype="bool")
-        self._images = np.zeros((self.n_positions, *shape), dtype=dtype)
-
-    def _calculate_metrics(self):
-        """
-        """
-        self._metrics = np.array([self._merit_function(im) for im in self.images])
+        self._images = np.zeros((self.n_positions, *shape), dtype=IMAGE_DTYPE)
 
     def _fit(self):
         """ Fit data around the maximum value to determine best focus position. """
         raise NotImplementedError
 
-    def make_plot(self, filename, **kwargs):
+    def make_plot(self, filename, title=None, **kwargs):
         """ """
         raise NotImplementedError
