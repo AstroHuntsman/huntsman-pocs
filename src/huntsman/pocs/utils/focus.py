@@ -1,5 +1,6 @@
 from functools import partial
 import numpy as np
+from scipy.ndimage import binary_dilation
 
 from panoptes.pocs.base import PanBase
 from panoptes.utils.images import mask_saturated
@@ -11,7 +12,7 @@ class AutofocusSequence(PanBase):
 
     def __init__(self, position_min, position_max, position_step, merit_function, bit_depth,
                  mask_threshold=0.3, extra_focus_steps=2, merit_function_kwargs=None, do_fit=False,
-                 **kwargs):
+                 mask_dilations=1, **kwargs):
         """
         """
         super().__init__(**kwargs)
@@ -23,6 +24,7 @@ class AutofocusSequence(PanBase):
         self._mask_threshold = float(mask_threshold)
         self._extra_focus_steps = int(extra_focus_steps)
         self._do_fit = bool(do_fit)
+        self._mask_dilations = int(mask_dilations)
 
         if merit_function_kwargs is not None:
             merit_function = partial(merit_function, **merit_function_kwargs)
@@ -107,8 +109,8 @@ class AutofocusSequence(PanBase):
         if self._exposure_index == self.n_positions:
 
             # Calculate metrics
-            metrics = np.array([self._merit_function(im) for im in self.images])
-            best_index = np.argmax(metrics)
+            metrics = self._calculate_metrics()
+            best_index = np.nanargmax(metrics)
 
             # Check if the sequence is finished
             if best_index not in (0, self.n_positions - 1):
@@ -158,6 +160,16 @@ class AutofocusSequence(PanBase):
         self._image_shape = shape
         self._mask = np.zeros(shape, dtype="bool")
         self._images = np.zeros((self.n_positions, *shape), dtype=IMAGE_DTYPE)
+
+    def _calculate_metrics(self):
+        """
+        """
+        mask = binary_dilation(self._mask, iterations=self._mask_dilations)
+        metrics = []
+        for image in self.images:
+            im = np.ma.array(image, mask=mask)
+            metrics.append(self._merit_function(im))
+        return np.array(metrics)
 
     def _fit(self):
         """ Fit data around the maximum value to determine best focus position. """

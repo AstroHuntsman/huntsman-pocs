@@ -218,9 +218,8 @@ class Camera(AbstractSDKCamera):
         self.logger.debug("Video capture stopped on {}".format(self))
 
     def autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
-                  keep_files=None, take_dark=None, merit_function='vollath_F4',
-                  merit_function_kwargs=None, mask_dilations=None, coarse=False, make_plots=None,
-                  blocking=False, **kwargs):
+                  keep_files=None, take_dark=True, mask_dilations=None, coarse=False,
+                  make_plots=None, blocking=False, filter_name=None, **kwargs):
         """
         """
         if not self.has_focuser:
@@ -230,6 +229,12 @@ class Camera(AbstractSDKCamera):
         imagedir = os.path.join(self.get_config('directories.images'), 'focus', self.uid,
                                 start_time)
 
+        if self.has_filterwheel:
+            if coarse and filter_name is None:
+                filter_name = self.get_config("focusing.coarse.filter_name")
+            if filter_name is not None:
+                self.filterwheel.move_to(filter_name)
+
         # Get focus range
         idx = 1 if coarse else 0
         position_step = focus_step[idx]
@@ -238,13 +243,16 @@ class Camera(AbstractSDKCamera):
 
         # Make sequence object
         sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
-                                     position_step=position_step)
-
+                                     position_step=position_step, bit_depth=self.bit_depth,
+                                     **kwargs)
         # Add a dark exposure
-        filename = os.path.join(imagedir, f"dark.{self.file_extension}")
-        cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files, dark=True)
-        sequence.dark_image = cutout
+        if take_dark:
+            filename = os.path.join(imagedir, f"dark.{self.file_extension}")
+            cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files,
+                                     dark=True)
+            sequence.dark_image = cutout
 
+        # Take the focusing exposures
         while not sequence.is_finished:
             new_position = sequence.get_next_position()
 
@@ -254,7 +262,7 @@ class Camera(AbstractSDKCamera):
             # Move the focuser
             self.focuser.move_to(new_position)
 
-            # Get the cutout
+            # Get the exposure cutout
             try:
                 cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files)
             except error.PanError as err:
@@ -267,6 +275,12 @@ class Camera(AbstractSDKCamera):
         # Get the best position
         best_position = sequence.best_position
         self.focuser.move_to(best_position)
+
+        if make_plots:
+            focus_type = "coarse" if coarse else "fine"
+            plot_filename = os.path.join(imagedir, f'{focus_type}-focus.png')
+            plot_title = f'{self} {focus_type} focus at {start_time}'
+            sequence.make_plot(filename=plot_filename, title=plot_title)
 
     # Private methods
 
