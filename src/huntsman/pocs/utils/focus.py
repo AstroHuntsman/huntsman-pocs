@@ -10,9 +10,9 @@ IMAGE_DTYPE = np.float32
 
 class AutofocusSequence(PanBase):
 
-    def __init__(self, position_min, position_max, position_step, merit_function, bit_depth,
-                 mask_threshold=0.3, extra_focus_steps=2, merit_function_kwargs=None, do_fit=False,
-                 mask_dilations=1, **kwargs):
+    def __init__(self, position_min, position_max, position_step, bit_depth, mask_threshold=0.3,
+                 extra_focus_steps=2, merit_function_kwargs=None, do_fit=False,
+                 mask_dilations=1, merit_function="vollath_F4", **kwargs):
         """
         """
         super().__init__(**kwargs)
@@ -31,7 +31,7 @@ class AutofocusSequence(PanBase):
             merit_function = partial(merit_function, **merit_function_kwargs)
         self._merit_function = merit_function
 
-        self._exposure_index = 0
+        self.exposure_index = 0
         self._best_index = None
         self._dark_image = None
         self._image_shape = None
@@ -59,7 +59,7 @@ class AutofocusSequence(PanBase):
     @property
     def status(self):
         return {"is_finished": self.is_finished,
-                "completed_exposures": self._exposure_index,
+                "completed_exposures": self.exposure_index,
                 "n_positions": self.n_positions}
 
     @property
@@ -105,17 +105,17 @@ class AutofocusSequence(PanBase):
         self.positions_actual.append(int(focus_position))
 
         # Store the image
-        self.images[self._exposure_index, :, :] = image
+        self.images[self.exposure_index, :, :] = image
         if self.dark_image is not None:
-            self.images[self._exposure_index] -= self.dark_image
+            self.images[self.exposure_index] -= self.dark_image
 
         # Update the mask
         self._mask = np.logical_or(self._mask,
-                                   self._mask_saturated(self.images[self._exposure_index]))
+                                   self._mask_saturated(self.images[self.exposure_index]))
 
         # Update the exposure index
-        self._exposure_index += 1
-        if self._exposure_index == self.n_positions:
+        self.exposure_index += 1
+        if self.exposure_index == self.n_positions:
 
             # Calculate metrics
             metrics = self._calculate_metrics()
@@ -156,7 +156,7 @@ class AutofocusSequence(PanBase):
     def get_next_position(self):
         """
         """
-        return self.positions[self._exposure_index]
+        return self.positions[self.exposure_index]
 
     def _mask_saturated(self, image):
         """

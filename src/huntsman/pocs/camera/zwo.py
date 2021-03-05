@@ -256,6 +256,8 @@ class Camera(AbstractSDKCamera):
 
         # Take the focusing exposures
         while not sequence.is_finished:
+            self.logger.info(f"Autofocus status on {self}: {sequence.status}")
+
             new_position = sequence.get_next_position()
 
             basename = f"{new_position}-{sequence.exposure_index:02d}.{self.file_extension}"
