@@ -26,6 +26,7 @@ class AutofocusSequence(PanBase):
         self._do_fit = bool(do_fit)
         self._mask_dilations = int(mask_dilations)
 
+        self.merit_function_name = merit_function
         if merit_function_kwargs is not None:
             merit_function = partial(merit_function, **merit_function_kwargs)
         self._merit_function = merit_function
@@ -34,20 +35,20 @@ class AutofocusSequence(PanBase):
         self._best_index = None
         self._dark_image = None
         self._image_shape = None
-        self._images = None
+        self.images = None
         self._mask = None
         self._metrics = None
         self._best_fit_position = None
 
         # Setup focus positions
-        self._positions = np.arange(self._position_min, self._position_max + self._position_step,
-                                    self._position_step)
-        self._positions_actual = []
-        self.n_positions = self._positions.size
+        self.positions = np.arange(self._position_min, self._position_max + self._position_step,
+                                   self._position_step)
+        self.positions_actual = []
+        self.n_positions = self.positions.size
 
     @property
     def n_positions(self):
-        return self._positions.size
+        return self.positions.size
 
     @property
     def is_finised(self):
@@ -69,7 +70,15 @@ class AutofocusSequence(PanBase):
             raise RuntimeError("The focus sequence is not complete.")
         if self._do_fit:
             return self._best_fit_position
-        return self._positions[self._best_index]
+        return self.positions[self._best_index]
+
+    @property
+    def metrics(self):
+        """
+        """
+        if not self.is_finished:
+            raise RuntimeError("The focus sequence is not complete.")
+        return self._metrics
 
     @property
     def dark_image(self):
@@ -93,16 +102,16 @@ class AutofocusSequence(PanBase):
         if self._image_shape is None:
             self._initialise_images(image.shape)
 
-        self._positions_actual.append(int(focus_position))
+        self.positions_actual.append(int(focus_position))
 
         # Store the image
-        self._images[self._exposure_index, :, :] = image
+        self.images[self._exposure_index, :, :] = image
         if self.dark_image is not None:
-            self._images[self._exposure_index] -= self.dark_image
+            self.images[self._exposure_index] -= self.dark_image
 
         # Update the mask
         self._mask = np.logical_or(self._mask,
-                                   self._mask_saturated(self._images[self._exposure_index]))
+                                   self._mask_saturated(self.images[self._exposure_index]))
 
         # Update the exposure index
         self._exposure_index += 1
@@ -139,7 +148,7 @@ class AutofocusSequence(PanBase):
                         self._position_step
 
                 extra_positions = np.arange(min_position, max_position, self._position_step)
-                self.positions = np.vstack([self._positions, extra_positions])
+                self.positions = np.vstack([self.positions, extra_positions])
 
                 # Setting this to zero stops the positions being expanded again
                 self._extra_focus_steps = 0
@@ -147,7 +156,7 @@ class AutofocusSequence(PanBase):
     def get_next_position(self):
         """
         """
-        return self._positions[self._exposure_index]
+        return self.positions[self._exposure_index]
 
     def _mask_saturated(self, image):
         """
@@ -159,7 +168,7 @@ class AutofocusSequence(PanBase):
         """
         self._image_shape = shape
         self._mask = np.zeros(shape, dtype="bool")
-        self._images = np.zeros((self.n_positions, *shape), dtype=IMAGE_DTYPE)
+        self.images = np.zeros((self.n_positions, *shape), dtype=IMAGE_DTYPE)
 
     def _calculate_metrics(self):
         """
@@ -173,8 +182,4 @@ class AutofocusSequence(PanBase):
 
     def _fit(self):
         """ Fit data around the maximum value to determine best focus position. """
-        raise NotImplementedError
-
-    def make_plot(self, filename, title=None, **kwargs):
-        """ """
         raise NotImplementedError

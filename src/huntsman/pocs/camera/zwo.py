@@ -15,6 +15,7 @@ from panoptes.utils.utils import get_quantity_value
 
 from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
+from panoptes.pocs.utils.plotting import make_autofocus_plot
 
 from huntsman.pocs.utils.focus import AutofocusSequence
 
@@ -228,6 +229,7 @@ class Camera(AbstractSDKCamera):
         start_time = start_time = current_time(flatten=True)
         imagedir = os.path.join(self.get_config('directories.images'), 'focus', self.uid,
                                 start_time)
+        initial_position = self.focuser.position
 
         if self.has_filterwheel:
             if coarse and filter_name is None:
@@ -238,8 +240,8 @@ class Camera(AbstractSDKCamera):
         # Get focus range
         idx = 1 if coarse else 0
         position_step = focus_step[idx]
-        position_min = self.focuser.position - focus_range[idx] / 2
-        position_max = self.focuser.position + focus_range[idx] / 2
+        position_min = initial_position - focus_range[idx] / 2
+        position_max = initial_position + focus_range[idx] / 2
 
         # Make sequence object
         sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
@@ -274,13 +276,26 @@ class Camera(AbstractSDKCamera):
 
         # Get the best position
         best_position = sequence.best_position
-        self.focuser.move_to(best_position)
+        best_position_actual = self.focuser.move_to(best_position)
 
         if make_plots:
             focus_type = "coarse" if coarse else "fine"
             plot_filename = os.path.join(imagedir, f'{focus_type}-focus.png')
             plot_title = f'{self} {focus_type} focus at {start_time}'
-            sequence.make_plot(filename=plot_filename, title=plot_title)
+
+            metrics = sequence.metrics
+            focus_positions = sequence.positions_actual
+            merit_function = sequence.merit_function_name
+
+            initial_idx = np.argmin(abs(focus_positions - initial_position))
+            initial_cutout = sequence.images[initial_idx]
+
+            final_idx = np.argmin(abs(focus_positions - best_position))
+            final_cutout = sequence.images[final_idx]
+
+            make_autofocus_plot(plot_filename, initial_cutout, final_cutout, initial_position,
+                                best_position_actual, focus_positions, metrics, merit_function,
+                                plot_title=plot_title)
 
     # Private methods
 
