@@ -1,5 +1,6 @@
 import os
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 from contextlib import suppress
 from usb.core import find as finddev
@@ -68,6 +69,8 @@ class Camera(AbstractSDKCamera):
         # Increase default temperature_tolerance for ZWO cameras because the
         # default value is too low for their temperature resolution.
         self.temperature_tolerance = kwargs.get('temperature_tolerance', 0.6 * u.Celsius)
+
+        self._autofocus_executor = ThreadPoolExecutor(max_workers=1)
 
         self.logger.info(f'Initialised {self}.')
 
@@ -218,11 +221,49 @@ class Camera(AbstractSDKCamera):
         Camera._driver.stop_video_capture(self._handle)
         self.logger.debug("Video capture stopped on {}".format(self))
 
-    def autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
-                  keep_files=False, take_dark=True, mask_dilations=10, coarse=False,
-                  make_plots=False, blocking=False, filter_name=None, max_exposure_retries=3,
-                  **kwargs):
+    def autofocus(self, blocking=False, timeout=None, **kwargs):
+        """ Start the autofocus routine.
+        Args:
+            blocking (bool, optional): If True, blocks until complete. Default False.
+            timeout (float, optional): The timeout in seconds on blocking autofocus. Default None.
+            **kwargs: Parsed to self._autofocus.
+        Returns:
+            concurrent.futures.Future: The autofocus future object.
         """
+        future = self._autofocus_executor.submit(self._autofocus, **kwargs)
+        if blocking:
+            self.logger.info(f"Blocking on autofocus for {self} with timeout: {timeout}.")
+            future.result(timeout=timeout)
+        return future
+
+    def _autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
+                   keep_files=False, take_dark=True, coarse=False, make_plots=False,
+                   filter_name=None, max_exposure_retries=3, **kwargs):
+        """
+        Focuses the camera using the specified merit function. Optionally performs
+        a coarse focus to find the approximate position of infinity focus, which
+        should be followed by a fine focus before observing.
+        Args:
+            seconds (scalar, optional): Exposure time for focus exposures, if not
+                specified will use value from config.
+            focus_range (2-tuple, optional): Coarse & fine focus sweep range, in
+                encoder units. Specify to override values from config.
+            focus_step (2-tuple, optional): Coarse & fine focus sweep steps, in
+                encoder units. Specify to override values from config.
+            cutout_size (int, optional): Size of square central region of image
+                to use, default 500 x 500 pixels.
+            keep_files (bool, optional): If True will keep all images taken
+                during focusing. If False (default) will delete all except the
+                first and last images from each focus run.
+            take_dark (bool, optional): If True will attempt to take a dark frame
+                before the focus run, and use it for dark subtraction and hot
+                pixel masking, default True.
+            coarse (bool, optional): Whether to perform a coarse focus, otherwise will perform
+                a fine focus. Default False.
+            make_plots (bool, optional): Whether to write focus plots to images folder. If not
+                given will fall back on value of `autofocus_make_plots` set on initialisation,
+                and if it wasn't set then will default to False.
+            blocking (bool, optional): Whether to block until autofocus complete, default False.
         """
         if not self.has_focuser:
             raise AttributeError("Camera must have a focuser for autofocus!")
@@ -276,7 +317,7 @@ class Camera(AbstractSDKCamera):
 
             new_position = sequence.get_next_position()
 
-            basename = f"{new_position}-{sequence.exposure_index:02d}.{self.file_extension}"
+            basename = f"{new_position}-{sequence.exposure_idx:02d}.{self.file_extension}"
             filename = os.path.join(imagedir, basename)
 
             # Move the focuser
