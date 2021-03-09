@@ -17,7 +17,7 @@ from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 from panoptes.pocs.utils.plotting import make_autofocus_plot
 
-from huntsman.pocs.utils.focus import AutofocusSequence
+# from huntsman.pocs.utils.focus import AutofocusSequence
 
 
 class Camera(AbstractSDKCamera):
@@ -219,23 +219,27 @@ class Camera(AbstractSDKCamera):
         self.logger.debug("Video capture stopped on {}".format(self))
 
     def autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
-                  keep_files=None, take_dark=True, mask_dilations=None, coarse=False,
-                  make_plots=None, blocking=False, filter_name=None, **kwargs):
+                  keep_files=False, take_dark=True, mask_dilations=10, coarse=False,
+                  make_plots=False, blocking=False, filter_name=None, max_exposure_retries=3,
+                  **kwargs):
         """
         """
         if not self.has_focuser:
             raise AttributeError("Camera must have a focuser for autofocus!")
 
+        if focus_range is None:
+            focus_range = self.focuser.autofocus_range
+        if focus_step is None:
+            focus_step = self.focuser.autofocus_step
+        if seconds is None:
+            seconds = self.focuser.autofocus_seconds
+        if cutout_size is None:
+            cutout_size = self.focuser.autofocus_size
+
         start_time = start_time = current_time(flatten=True)
         imagedir = os.path.join(self.get_config('directories.images'), 'focus', self.uid,
                                 start_time)
         initial_position = self.focuser.position
-
-        if self.has_filterwheel:
-            if coarse and filter_name is None:
-                filter_name = self.get_config("focusing.coarse.filter_name")
-            if filter_name is not None:
-                self.filterwheel.move_to(filter_name)
 
         # Get focus range
         idx = 1 if coarse else 0
@@ -249,12 +253,24 @@ class Camera(AbstractSDKCamera):
                                      **kwargs)
         # Add a dark exposure
         if take_dark:
+            self.logger.info(f"Taking dark frame before autofocus on {self}.")
             filename = os.path.join(imagedir, f"dark.{self.file_extension}")
             cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files,
                                      dark=True)
             sequence.dark_image = cutout
 
+        # Move filterwheel to the correct position
+        if self.has_filterwheel:
+            if filter_name is None:
+                if coarse:
+                    filter_name = self.get_config("focusing.coarse.filter_name")
+                else:
+                    filter_name = self.filterwheel.current_filter
+            self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on {self}.")
+            self.filterwheel.move_to(filter_name, blocking=True)
+
         # Take the focusing exposures
+        exposure_retries = 0
         while not sequence.is_finished:
             self.logger.info(f"Autofocus status on {self}: {sequence.status}")
 
@@ -269,24 +285,34 @@ class Camera(AbstractSDKCamera):
             # Get the exposure cutout
             try:
                 cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files)
+                exposure_retries = 0  # Reset exposure retries
             except error.PanError as err:
                 self.logger.warning(f"Exception encountered in get_cutout on {self}: {err!r}")
+
+                # Abort the sequence if max exposure retries is reached
+                exposure_retries += 1
+                if exposure_retries >= max_exposure_retries:
+                    raise error.PanError(f"Max exposure retries reached during autofocus on"
+                                         f" {self}.")
+                self.logger.warning("Continuing with autofocus sequence after exposure error on"
+                                    f" {self}.")
                 continue
 
             # Update the sequence
             sequence.update(cutout, position=self.focuser.position)
 
-        # Get the best position
+        # Get the best position and move to it
         best_position = sequence.best_position
         best_position_actual = self.focuser.move_to(best_position)
+        self.logger.info(f"Best focus position for {self} in {filter_name} filter: {best_position}")
 
         if make_plots:
             focus_type = "coarse" if coarse else "fine"
-            plot_filename = os.path.join(imagedir, f'{focus_type}-focus.png')
+            plot_filename = os.path.join(imagedir, f'{focus_type}-focus-{self.uid}.png')
             plot_title = f'{self} {focus_type} focus at {start_time}'
 
             metrics = sequence.metrics
-            focus_positions = sequence.positions_actual
+            focus_positions = np.array(sequence.positions_actual)
             merit_function = sequence.merit_function_name
 
             initial_idx = np.argmin(abs(focus_positions - initial_position))
@@ -295,6 +321,7 @@ class Camera(AbstractSDKCamera):
             final_idx = np.argmin(abs(focus_positions - best_position))
             final_cutout = sequence.images[final_idx]
 
+            self.logger.info(f"Writing focus plot for {self} to {plot_filename}.")
             make_autofocus_plot(plot_filename, initial_cutout, final_cutout, initial_position,
                                 best_position_actual, focus_positions, metrics, merit_function,
                                 plot_title=plot_title)
