@@ -312,7 +312,7 @@ class Camera(AbstractSDKCamera):
             plot_title = f'{self} {focus_type} focus at {start_time}'
 
             metrics = sequence.metrics
-            focus_positions = np.array(sequence.positions_actual)
+            focus_positions = sequence.positions
             merit_function = sequence.merit_function_name
 
             initial_idx = np.argmin(abs(focus_positions - initial_position))

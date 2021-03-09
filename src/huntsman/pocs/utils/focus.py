@@ -6,8 +6,6 @@ from panoptes.pocs.base import PanBase
 from panoptes.utils.images import mask_saturated
 from panoptes.utils.images.focus import focus_metric
 
-IMAGE_DTYPE = np.float32
-
 
 class AutofocusSequence(PanBase):
     """ The purpose of the AutofocusSequence is to facilitate autofocusing that is robust against
@@ -17,7 +15,7 @@ class AutofocusSequence(PanBase):
 
     def __init__(self, position_min, position_max, position_step, bit_depth, mask_threshold=0.3,
                  extra_focus_steps=2, mask_dilations=10, merit_function_name="vollath_F4",
-                 merit_function_kwargs=None, **kwargs):
+                 merit_function_kwargs=None, image_dtype=np.float32, **kwargs):
         """
         Args:
             position_min (int): The minimal focus position.
@@ -31,6 +29,8 @@ class AutofocusSequence(PanBase):
             merit_function_name (str, optional): The name of the focus merit function.
                 Default 'vollath_F4'.
             merit_function_kwargs (dict, optional): Extra kwargs for the merit function.
+            image_dtype (str or Type, optional): The image data type. Default np.float32.
+            **kwargs parsed to PanBase.
         """
         super().__init__(**kwargs)
 
@@ -41,6 +41,7 @@ class AutofocusSequence(PanBase):
         self._mask_threshold = float(mask_threshold)
         self._extra_focus_steps = int(extra_focus_steps)
         self._mask_dilations = int(mask_dilations)
+        self._image_dtype = image_dtype
 
         if merit_function_kwargs is None:
             merit_function_kwargs = {}
@@ -56,12 +57,11 @@ class AutofocusSequence(PanBase):
         self._image_shape = None
         self._mask = None
         self._metrics = None
-        self._best_fit_position = None
 
         # Setup focus positions
-        self.positions = np.arange(self._position_min, self._position_max + self._position_step,
-                                   self._position_step)
-        self.positions_actual = []
+        self._positions = np.arange(self._position_min, self._position_max + self._position_step,
+                                    self._position_step)
+        self._positions_actual = np.zeros_like(self._positions)
 
     # Properties
 
@@ -72,7 +72,7 @@ class AutofocusSequence(PanBase):
         Returns:
             int: The number of focus positions.
         """
-        return self.positions.size
+        return self._positions.size
 
     @property
     def is_finished(self):
@@ -93,30 +93,6 @@ class AutofocusSequence(PanBase):
                 "total_positions": self.n_positions}
 
     @property
-    def best_position(self):
-        """ Get the best focus position.
-        This can only be obtained after the sequence has finished.
-        Returns:
-            int: The best focus position.
-        """
-        if not self.is_finished:
-            raise AttributeError("The focus sequence is not complete.")
-        if self._do_fit:
-            return self._best_fit_position
-        return self.positions[self._best_index]
-
-    @property
-    def metrics(self):
-        """ Return the focus metrics for each position.
-        This can only be obtained after the sequence has finished.
-        Returns:
-            np.array: 1D array of focus metrics.
-        """
-        if not self.is_finished:
-            raise AttributeError("The focus sequence is not complete.")
-        return self._metrics
-
-    @property
     def dark_image(self):
         """ Return the dark image.
         Returns:
@@ -133,8 +109,41 @@ class AutofocusSequence(PanBase):
         if self._image_shape is None:
             self._initialise_images(image.shape)
 
-        self._dark_image = image.astype(IMAGE_DTYPE)
+        self._dark_image = image.astype(self._image_dtype)
         self._mask = np.logical_or(self._mask, self._mask_saturated(self._dark_image))
+
+    @property
+    def positions(self):
+        """ Return the actual focus positions (i.e. not the requested ones).
+        This can only be obtained after the sequence has finished.
+        Returns:
+            np.array: The 1D array of actual focus positions.
+        """
+        if not self.is_finished:
+            raise AttributeError("The focus sequence is not complete.")
+        return self._positions_actual
+
+    @property
+    def best_position(self):
+        """ Get the best focus position.
+        This can only be obtained after the sequence has finished.
+        Returns:
+            int: The best focus position.
+        """
+        if not self.is_finished:
+            raise AttributeError("The focus sequence is not complete.")
+        return self.positions[self._best_index]
+
+    @property
+    def metrics(self):
+        """ Return the focus metrics for each position.
+        This can only be obtained after the sequence has finished.
+        Returns:
+            np.array: 1D array of focus metrics.
+        """
+        if not self.is_finished:
+            raise AttributeError("The focus sequence is not complete.")
+        return self._metrics
 
     # Public methods
 
@@ -147,10 +156,10 @@ class AutofocusSequence(PanBase):
         if self._image_shape is None:
             self._initialise_images(image.shape)
 
-        self.positions_actual.append(int(position))
-
-        # Store the image
+        self._positions_actual[self.exposure_index] = position
         self.images[self.exposure_index, :, :] = image
+
+        # Subtract dark image
         if self.dark_image is not None:
             self.images[self.exposure_index] -= self.dark_image
         else:
@@ -191,7 +200,7 @@ class AutofocusSequence(PanBase):
         Returns:
             int: The next focus position.
         """
-        return self.positions[self.exposure_index]
+        return self._positions[self.exposure_index]
 
     # Private methods
 
@@ -211,7 +220,7 @@ class AutofocusSequence(PanBase):
         """
         self._image_shape = shape
         self._mask = np.zeros(shape, dtype="bool")
-        self.images = np.empty((self.n_positions, *shape), dtype=IMAGE_DTYPE)
+        self.images = np.empty((self.n_positions, *shape), dtype=self._image_dtype)
 
     def _calculate_metrics(self):
         """ Calculate the focus metric for all the focus positions.
@@ -242,7 +251,7 @@ class AutofocusSequence(PanBase):
 
         # Update positions
         extra_positions = np.arange(min_position, max_position, self._position_step)
-        self.positions = np.hstack([self.positions, extra_positions])
+        self._positions = np.hstack([self._positions, extra_positions])
 
         # Update images
         extra_images = np.empty((extra_positions.size, *self.images.shape[1:]),
