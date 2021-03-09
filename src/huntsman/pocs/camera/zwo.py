@@ -18,7 +18,7 @@ from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 from panoptes.pocs.utils.plotting import make_autofocus_plot
 
-# from huntsman.pocs.utils.focus import AutofocusSequence
+from huntsman.pocs.utils.focus import AutofocusSequence
 
 
 class Camera(AbstractSDKCamera):
@@ -236,6 +236,8 @@ class Camera(AbstractSDKCamera):
             future.result(timeout=timeout)
         return future
 
+    # Private methods
+
     def _autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
                    keep_files=False, take_dark=True, coarse=False, make_plots=False,
                    filter_name=None, max_exposure_retries=3, **kwargs):
@@ -285,8 +287,8 @@ class Camera(AbstractSDKCamera):
         # Get focus range
         idx = 1 if coarse else 0
         position_step = focus_step[idx]
-        position_min = initial_position - focus_range[idx] / 2
-        position_max = initial_position + focus_range[idx] / 2
+        position_min = max(self.focuser.min_position, initial_position - focus_range[idx] / 2)
+        position_max = min(self.focuser.max_position, initial_position + focus_range[idx] / 2)
 
         # Make sequence object
         sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
@@ -366,8 +368,6 @@ class Camera(AbstractSDKCamera):
             make_autofocus_plot(plot_filename, initial_cutout, final_cutout, initial_position,
                                 best_position_actual, focus_positions, metrics, merit_function,
                                 plot_title=plot_title)
-
-    # Private methods
 
     def _set_target_temperature(self, target):
         self._control_setter('TARGET_TEMP', target)

@@ -167,7 +167,7 @@ class AutofocusSequence(PanBase):
             self._mask = np.zeros(shape=image.shape, dtype="bool")
 
         self._positions_actual.append(position)
-        self.images.append(image.copy())
+        self.images.append(image.astype(self._image_dtype))
 
         # Subtract dark image
         if self.dark_image is not None:
