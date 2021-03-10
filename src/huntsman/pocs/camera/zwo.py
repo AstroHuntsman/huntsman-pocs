@@ -1,4 +1,3 @@
-import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -10,15 +9,11 @@ from astropy import units as u
 from astropy.time import Time
 
 from panoptes.utils import error
-from panoptes.utils.time import current_time
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
 
 from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
-from panoptes.pocs.utils.plotting import make_autofocus_plot
-
-from huntsman.pocs.utils.focus import AutofocusSequence
 
 
 class Camera(AbstractSDKCamera):
@@ -221,153 +216,7 @@ class Camera(AbstractSDKCamera):
         Camera._driver.stop_video_capture(self._handle)
         self.logger.debug("Video capture stopped on {}".format(self))
 
-    def autofocus(self, blocking=False, timeout=None, **kwargs):
-        """ Start the autofocus routine.
-        Args:
-            blocking (bool, optional): If True, blocks until complete. Default False.
-            timeout (float, optional): The timeout in seconds on blocking autofocus. Default None.
-            **kwargs: Parsed to self._autofocus.
-        Returns:
-            concurrent.futures.Future: The autofocus future object.
-        """
-        future = self._autofocus_executor.submit(self._autofocus, **kwargs)
-        if blocking:
-            self.logger.info(f"Blocking on autofocus for {self} with timeout: {timeout}.")
-            future.result(timeout=timeout)
-        return future
-
     # Private methods
-
-    def _autofocus(self, seconds=None, focus_range=None, focus_step=None, cutout_size=None,
-                   keep_files=False, take_dark=True, coarse=False, make_plots=False,
-                   filter_name=None, max_exposure_retries=3, **kwargs):
-        """
-        Focuses the camera using the specified merit function. Optionally performs
-        a coarse focus to find the approximate position of infinity focus, which
-        should be followed by a fine focus before observing.
-        Args:
-            seconds (scalar, optional): Exposure time for focus exposures, if not
-                specified will use value from config.
-            focus_range (2-tuple, optional): Coarse & fine focus sweep range, in
-                encoder units. Specify to override values from config.
-            focus_step (2-tuple, optional): Coarse & fine focus sweep steps, in
-                encoder units. Specify to override values from config.
-            cutout_size (int, optional): Size of square central region of image
-                to use, default 500 x 500 pixels.
-            keep_files (bool, optional): If True will keep all images taken
-                during focusing. If False (default) will delete all except the
-                first and last images from each focus run.
-            take_dark (bool, optional): If True will attempt to take a dark frame
-                before the focus run, and use it for dark subtraction and hot
-                pixel masking, default True.
-            coarse (bool, optional): Whether to perform a coarse focus, otherwise will perform
-                a fine focus. Default False.
-            make_plots (bool, optional): Whether to write focus plots to images folder. If not
-                given will fall back on value of `autofocus_make_plots` set on initialisation,
-                and if it wasn't set then will default to False.
-            blocking (bool, optional): Whether to block until autofocus complete, default False.
-        """
-        if not self.has_focuser:
-            raise AttributeError("Camera must have a focuser for autofocus!")
-
-        if focus_range is None:
-            focus_range = self.focuser.autofocus_range
-        if focus_step is None:
-            focus_step = self.focuser.autofocus_step
-        if seconds is None:
-            seconds = self.focuser.autofocus_seconds
-        if cutout_size is None:
-            cutout_size = self.focuser.autofocus_size
-
-        start_time = start_time = current_time(flatten=True)
-        imagedir = os.path.join(self.get_config('directories.images'), 'focus', self.uid,
-                                start_time)
-        initial_position = self.focuser.position
-
-        # Get focus range
-        idx = 1 if coarse else 0
-        position_step = focus_step[idx]
-        position_min = max(self.focuser.min_position, initial_position - focus_range[idx] / 2)
-        position_max = min(self.focuser.max_position, initial_position + focus_range[idx] / 2)
-
-        # Make sequence object
-        sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
-                                     position_step=position_step, bit_depth=self.bit_depth,
-                                     **kwargs)
-        # Add a dark exposure
-        if take_dark:
-            self.logger.info(f"Taking dark frame before autofocus on {self}.")
-            filename = os.path.join(imagedir, f"dark.{self.file_extension}")
-            cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files,
-                                     dark=True)
-            sequence.dark_image = cutout
-
-        # Move filterwheel to the correct position
-        if self.has_filterwheel:
-            if filter_name is None:
-                if coarse:
-                    filter_name = self.get_config("focusing.coarse.filter_name")
-                else:
-                    filter_name = self.filterwheel.current_filter
-            self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on {self}.")
-            self.filterwheel.move_to(filter_name, blocking=True)
-
-        # Take the focusing exposures
-        exposure_retries = 0
-        while not sequence.is_finished:
-            self.logger.info(f"Autofocus status on {self}: {sequence.status}")
-
-            new_position = sequence.get_next_position()
-
-            basename = f"{new_position}-{sequence.exposure_idx:02d}.{self.file_extension}"
-            filename = os.path.join(imagedir, basename)
-
-            # Move the focuser
-            self.focuser.move_to(new_position)
-
-            # Get the exposure cutout
-            try:
-                cutout = self.get_cutout(seconds, filename, cutout_size, keep_file=keep_files)
-                exposure_retries = 0  # Reset exposure retries
-            except error.PanError as err:
-                self.logger.warning(f"Exception encountered in get_cutout on {self}: {err!r}")
-
-                # Abort the sequence if max exposure retries is reached
-                exposure_retries += 1
-                if exposure_retries >= max_exposure_retries:
-                    raise error.PanError(f"Max exposure retries reached during autofocus on"
-                                         f" {self}.")
-                self.logger.warning("Continuing with autofocus sequence after exposure error on"
-                                    f" {self}.")
-                continue
-
-            # Update the sequence
-            sequence.update(cutout, position=self.focuser.position)
-
-        # Get the best position and move to it
-        best_position = sequence.best_position
-        best_position_actual = self.focuser.move_to(best_position)
-        self.logger.info(f"Best focus position for {self} in {filter_name} filter: {best_position}")
-
-        if make_plots:
-            focus_type = "coarse" if coarse else "fine"
-            plot_filename = os.path.join(imagedir, f'{focus_type}-focus-{self.uid}.png')
-            plot_title = f'{self} {focus_type} focus at {start_time}'
-
-            metrics = sequence.metrics
-            focus_positions = sequence.positions
-            merit_function = sequence.merit_function_name
-
-            initial_idx = np.argmin(abs(focus_positions - initial_position))
-            initial_cutout = sequence.images[initial_idx]
-
-            final_idx = np.argmin(abs(focus_positions - best_position))
-            final_cutout = sequence.images[final_idx]
-
-            self.logger.info(f"Writing focus plot for {self} to {plot_filename}.")
-            make_autofocus_plot(plot_filename, initial_cutout, final_cutout, initial_position,
-                                best_position_actual, focus_positions, metrics, merit_function,
-                                plot_title=plot_title)
 
     def _set_target_temperature(self, target):
         self._control_setter('TARGET_TEMP', target)
