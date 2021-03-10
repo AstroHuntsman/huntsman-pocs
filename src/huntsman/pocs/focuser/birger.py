@@ -39,9 +39,9 @@ class Focuser(BirgerFocuser):
             if focus_event is not None:
                 focus_event.set()
 
-    def _run_autofocus(self, seconds, focus_range, focus_step, cutout_size, focus_event,
-                       keep_files=False, take_dark=True, coarse=False, make_plots=False,
-                       filter_name=None, max_exposure_retries=3, **kwargs):
+    def _run_autofocus(self, seconds, focus_range, focus_step, cutout_size, keep_files=False,
+                       take_dark=True, coarse=False, make_plots=False, filter_name=None,
+                       max_exposure_retries=3, **kwargs):
         """
         Focuses the camera using the specified merit function. Optionally performs
         a coarse focus to find the approximate position of infinity focus, which
