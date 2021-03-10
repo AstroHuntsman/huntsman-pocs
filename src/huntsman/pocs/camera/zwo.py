@@ -1,5 +1,4 @@
 import threading
-from concurrent.futures import ThreadPoolExecutor
 import time
 from contextlib import suppress
 from usb.core import find as finddev
@@ -64,8 +63,6 @@ class Camera(AbstractSDKCamera):
         # Increase default temperature_tolerance for ZWO cameras because the
         # default value is too low for their temperature resolution.
         self.temperature_tolerance = kwargs.get('temperature_tolerance', 0.6 * u.Celsius)
-
-        self._autofocus_executor = ThreadPoolExecutor(max_workers=1)
 
         self.logger.info(f'Initialised {self}.')
 
