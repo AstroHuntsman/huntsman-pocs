@@ -53,8 +53,10 @@ class HuntsmanDome(AbstractSerialDome):
     """Class for musca serial shutter control plus sending updated commands to TSX.
     Musca Port setting: 9600/8/N/1
 
-    TODO: See about checking status every 60 seconds to monitor connectivity.
-
+    The default behaviour of the Musca is to asynchronously send status updates when something
+    (e.g. battery voltage) changes. A full status update can be requested by sending the appropriate
+    command to the musca. However, it appears that musca will not send status updates while the
+    shutter is moving, but sends a full status update after it stops moving.
     """
     LISTEN_TIMEOUT = 3  # Max number of seconds to wait for a response.
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
@@ -65,7 +67,7 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=1, max_status_attempts=10, shutter_timeout=100, sleep=120,
+    def __init__(self, command_delay=1, max_status_attempts=10, shutter_timeout=100, sleep=60,
                  *args, **kwargs):
         """
         Args:
@@ -75,7 +77,7 @@ class HuntsmanDome(AbstractSerialDome):
                 raising a PanError. Default: 10.
             shutter_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 80s.
             sleep (u.Quantity, optional): Time to sleep between dome loop iterations.
-                Default is 2 min.
+                Default is 1 min.
         """
         super().__init__(*args, **kwargs)
         self._command_lock = Lock()  # Use a lock to make class thread-safe
@@ -88,15 +90,27 @@ class HuntsmanDome(AbstractSerialDome):
         self._sleep = get_quantity_value(sleep, u.second)
 
         self._status = {}
+        self._status_updated = {d: False for d in Protocol.VALID_DEVICE}
         self._keep_open = None
         self._stop_dome_thread = False
         self._stop_status_thread = False
 
         self._status_thread = Thread(target=self._async_status_loop)
-        self._status_thead.start()
-
         self._dome_thread = Thread(target=self._async_dome_loop)
+
+        # Start the status thread running and wait until we have a complete status reading
+        self._status_thread.start()
+        self._wait_for_status()
+
+        # Start the main dome control loop
         self._dome_thread.start()
+
+    def __del__(self):
+        self._stop_dome_thread = True
+        self.close()
+        self._dome_thread.join()
+        self._stop_status_thread = True
+        self._status_thread.join()
 
     @property
     def is_open(self):
@@ -144,7 +158,9 @@ class HuntsmanDome(AbstractSerialDome):
 
         self.logger.info("Opening dome shutter.")
         self._write_musca(Protocol.OPEN_DOME)
-        self._wait_for_true(self.is_open)
+
+        # Wait for the shutter to actually open
+        self._wait_for_true("is_open")
 
         if not self.is_open:
             raise error.PanError("Attempted to open the dome shutter but got wrong status:"
@@ -162,18 +178,13 @@ class HuntsmanDome(AbstractSerialDome):
 
         self.logger.info("Closing dome shutter.")
         self._write_musca(Protocol.CLOSE_DOME)
-        self._wait_for_true(self.is_closed)
+
+        # Wait for the it to actually close
+        self._wait_for_true("is_closed")
 
         if not self.is_closed:
             raise error.PanError("Attempted to close the dome shutter but got wrong status:"
                                  f" {self.status[Protocol.SHUTTER]}")
-
-    def __del__(self):
-        self._stop_dome_thread = True
-        self.close()
-        self._dome_thread.join()
-        self._stop_status_thread = True
-        self._status_thread.join()
 
     # Private Methods
 
@@ -217,10 +228,11 @@ class HuntsmanDome(AbstractSerialDome):
                 self.logger.debug("Stopping status loop.")
                 return
 
-            self._status["status_thread_running"] = self._dome_thread.is_alive()
+            self._status["dome_loop_running"] = self._dome_thread.is_alive()
+            self._status["status_loop_running"] = self._status_thread.is_alive()
             self._status["keep_shutter_open"] = self._keep_open
 
-            raw_response = self.serial.read()
+            raw_response = self.serial.read(retry_limit=1, retry_delay=0.1)
             if not raw_response:
                 continue
 
@@ -234,28 +246,33 @@ class HuntsmanDome(AbstractSerialDome):
 
             if key in Protocol.VALID_DEVICE:
                 self._status[key] = value
+                self._status_updated[key] = True
 
     def _write_musca(self, cmd):
         """Wait for the command lock then write command to serial bluetooth device musca."""
         with self._command_lock:
+            self.serial.reset_input_buffer()
             self.serial.write(f'{cmd}\n')
             time.sleep(self._command_delay)
 
-    def _wait_for_status(self, timeout=20, sleep=0.1):
-        """
+    def _wait_for_status(self, timeout=60, sleep=0.1):
+        """ Wait for a complete status.
+        Args:
+            timeout (float, optional): The timeout in seconds. Default 60.
+            sleep (float, optional): Time to sleep between checks in seconds. Default 0.1.
         """
         timer = CountdownTimer(duration=timeout)
         while not timer.expired():
-            if all([r in self.status for r in Protocol.VALID_DEVICE]):
+            if all(self._status_updated.values()):
                 return
             time.sleep(sleep)
         raise error.Timeout("Timeout while waiting for dome shutter status.")
 
-    def _wait_for_true(self, prop, sleep=1):
+    def _wait_for_true(self, property_name, sleep=1):
         """ Wait for a property to evaluate to True. """
         timer = CountdownTimer(self._shutter_timeout)
         while not timer.expired():
-            if bool(prop) is True:  # Maybe not necessary
+            if getattr(self, property_name):
                 return
             time.sleep(sleep)
-        raise error.Timeout("Timeout while waiting for dome shutter.")
+        raise error.Timeout(f"Timeout while waiting for dome shutter property: {property_name}.")
