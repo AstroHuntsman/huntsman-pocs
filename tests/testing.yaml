@@ -30,9 +30,9 @@ directories:
   base: /huntsman
   data: data
   images: images
-  mounts: /POCS/resources/mounts
-  resources: /POCS/resources
-  targets: /POCS/conf_files/targets
+  mounts: /panoptes-pocs/resources/mounts
+  resources: /panoptes-pocs/resources
+  targets: /panoptes-pocs/conf_files/targets
   webcam: webcams
 
 cameras:
