@@ -12,7 +12,6 @@ services:
     tty: true
     environment:
       - PANDIR=/huntsman
-      - POCS=/POCS
       - HUNTSMAN_POCS=/huntsman
     volumes:
       - "$PWD/logs:/huntsman/logs"

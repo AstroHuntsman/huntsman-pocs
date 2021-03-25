@@ -151,13 +151,17 @@ def test_exposure(camera, tmpdir):
     assert not os.path.exists(fits_path)
     # Move filterwheel before exposure.
     camera.filterwheel.move_to(1, blocking=True)
+
+    assert os.path.isfile(os.path.join(os.environ['POCS'], 'tests', 'data', 'unsolved.fits'))
+
     # A one second normal exposure
+    assert os.path.exists(os.path.dirname(fits_path))
     readout_future = camera.take_exposure(seconds=1, filename=fits_path)
     assert readout_future.running()
     assert camera.is_exposing
     assert not camera.is_ready
-    # By default take_exposure is non-blocking, need to give it some time to complete.
 
+    # By default take_exposure is non-blocking, need to give it some time to complete.
     readout_future.result(30)  # 30 second timeout
 
     # Output file should exist, Event should be set and camera should say it's not exposing.
