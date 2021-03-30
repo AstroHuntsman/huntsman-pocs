@@ -379,12 +379,20 @@ if __name__ == '__main__':
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=49, type=int)
     parser.add_argument('--min_altitude', default=50, type=float)
+    parser.add_argument('--only_plot', default=False, type=bool)
+    parser.add_argument('--daytime_mode', default=False, type=bool)
     args = parser.parse_args()
 
-    response = input("This script is intended to be run with the Sun below the horizon."
-                     " Would you like to continue?")
-    if response not in ["", "y", "Y", "yes", "Yes"]:
-        sys.exit()
+    if not daytime_mode:
+	    response = input("This script is intended to be run with the Sun below the horizon."
+	                     " Would you like to continue?")
+	    if response not in ["", "y", "Y", "yes", "Yes"]:
+	        sys.exit()
+	else:
+		response = input("You've indicated you would like to run this during the day."
+						 "Would you like to continue?")
+	    if response not in ["y", "Y", "yes", "Yes"]:
+	        sys.exit()	
 
     # Create the observatory instance
     observatory = create_huntsman_observatory(with_autoguider=False)
