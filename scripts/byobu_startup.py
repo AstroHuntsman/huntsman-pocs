@@ -231,12 +231,12 @@ def setup_main_control_window(cmd_prefix='#'):
     send_command_to_pane(
         cmd_prefix + 'python ${HUNTSMAN_POCS}/scripts/start_config_server.py', 1)
 
-    send_command_to_pane(f'ipython', 2)
+    send_command_to_pane(f'jupyter-lab', 2)
 
-    for cmd in POCS_STARTUP:
-        send_command_to_pane(cmd_prefix + cmd, 2)
-        # issues occur without small pause between commands, unsure why
-        time.sleep(0.01)
+    #for cmd in POCS_STARTUP:
+    #    send_command_to_pane(cmd_prefix + cmd, 2)
+    #    # issues occur without small pause between commands, unsure why
+    #    time.sleep(0.01)
 
     send_command_to_pane(
        cmd_prefix + 'grc tail -F -n 1000 $PANDIR/logs/ipython-all.log', 3)
