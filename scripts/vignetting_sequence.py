@@ -17,11 +17,16 @@ from astropy.io import fits
 from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import get_sun, AltAz
+from astropy.coordinates import EarthLocation
+
+from astroplan import Observer
+
+from matplotlib import pylab as plt
 
 from panoptes.utils import utils
-from pocs.scheduler.field import Field
-from pocs.scheduler.observation import Observation
-from huntsman.pocs.observatory import create_huntsman_observatory
+from panoptes.pocs.scheduler.field import Field
+from huntsman.pocs.scheduler.observation.base import Observation
+from huntsman.pocs.utils.huntsman import create_huntsman_observatory
 
 
 def parse_date(object):
@@ -370,6 +375,23 @@ class ExposureSequence():
         return exptime
 
 
+def only_plot_locations(n_exposures,
+                        initial_exptime,
+                        observatory_name='Siding Spring Observatory'):
+    location = EarthLocation.of_site(observatory_name)
+    observer = Observer.at_site(observatory_name)
+    time_now = Time(datetime.now())
+
+    coordinates = AltAzGenerator(location=location, n_samples=n_exposures,
+                                 exposure_time=initial_exptime)
+
+    from astroplan.plots import plot_sky
+
+    fig = plt.figure(figsize=(12, 8.2))
+    plot_sky(coordinates, observer, time_now)
+    fig.saveas('plot_vignetting_locations.png')
+
+
 if __name__ == '__main__':
 
     # Parse args
@@ -383,6 +405,12 @@ if __name__ == '__main__':
     parser.add_argument('--only_plot', default=False, type=bool)
     parser.add_argument('--daytime_mode', default=False, type=bool)
     args = parser.parse_args()
+
+    if args.only_plot:
+        only_plot_locations(n_exposures=args.n_exposures,
+                            initial_exptime=args.initial_exptime)
+        print("Only plotting locations then exiting.")
+        sys.exit()
 
     if not args.daytime_mode:
         response = input("This script is intended to be run with the Sun below the horizon."
