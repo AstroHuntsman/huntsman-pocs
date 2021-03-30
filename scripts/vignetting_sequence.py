@@ -222,7 +222,7 @@ class ExposureSequence():
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
         self.etcs = {cam_name: ExposureTimeCalculator() for cam_name in self.cameras.keys()}
-        self.image_dir = self.observatory.config["directories"]["images"]
+        self.image_dir = self.observatory.get_config("directories.images")
 
     def run(self):
         """
@@ -233,7 +233,7 @@ class ExposureSequence():
             print("Un-parking mount...")
             self.mount.unpark()
         # Wait for cameras to be ready
-        print(f"Preparing {len(observatory.cameras)} cameras...")
+        print(f"Preparing {len(self.observatory.cameras)} cameras...")
         self.observatory.prepare_cameras()
         try:
             self._take_exposure_sequence()
@@ -295,7 +295,7 @@ class ExposureSequence():
 
         events = []
         print("Taking exposures...")
-        for cam_name, cam in observatory.cameras.items():
+        for cam_name, cam in self.observatory.cameras.items():
             filename = filename_dict[cam_name]
             events.append(cam.take_observation(observation, headers=headers, filename=filename))
 
