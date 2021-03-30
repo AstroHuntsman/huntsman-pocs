@@ -18,8 +18,10 @@ from astropy import units as u
 from astropy.time import Time
 from astropy.coordinates import get_sun, AltAz
 from astropy.coordinates import EarthLocation
+from astropy.coordinates import SkyCoord
 
-from astroplan import Observer
+from astroplan import Observer, FixedTarget
+from astroplan.plots import plot_sky
 
 from matplotlib import pylab as plt
 
@@ -77,6 +79,12 @@ class AltAzGenerator():
     def set_exposure_time(self, exposure_time):
         """Set the exposure time."""
         self.exposure_time = utils.get_quantity_value(exposure_time, u.second)
+
+    def get_coordinate_list(self):
+        coord_list = []
+        for alt, az in self._coordinates:
+            coord_list.append((alt, az))
+        return(coord_list)
 
     def _get_coordinate(self, exposure_time, sleep_time=60, **kwargs):
         """
@@ -195,7 +203,7 @@ class ExposureTimeCalculator():
 class ExposureSequence():
 
     def __init__(self, observatory, filter_name, initial_exptime, n_exposures=100,
-                 field_name='VigTest', min_exptime=0, max_exptime=10, **kwargs):
+                 field_name='VigTest', min_exptime=0, max_exptime=10, safe_sun_distance=50, **kwargs):
         self.observatory = observatory
         self.cameras = observatory.cameras
         self.mount = observatory.mount
@@ -205,9 +213,11 @@ class ExposureSequence():
         self.inital_exptime = utils.get_quantity_value(initial_exptime, u.second) * u.second
         self.max_exptime = utils.get_quantity_value(max_exptime, u.second) * u.second
         self.min_exptime = utils.get_quantity_value(min_exptime, u.second) * u.second
+        self.safe_sun_distance = safe_sun_distance
         # Create the coordinate generator
         self.coordinates = AltAzGenerator(location=self.earth_location, n_samples=n_exposures,
-                                          exposure_time=initial_exptime, **kwargs)
+                                          exposure_time=initial_exptime,
+                                          safe_sun_distance=safe_sun_distance, **kwargs)
         self.n_exposures = len(self.coordinates)  # May be different from n_exposures
         # Create the exposure time calculators
         self.etcs = {cam_name: ExposureTimeCalculator() for cam_name in self.cameras.keys()}
@@ -377,19 +387,38 @@ class ExposureSequence():
 
 def only_plot_locations(n_exposures,
                         initial_exptime,
+                        safe_sun_distance,
+                        min_altitude,
                         observatory_name='Siding Spring Observatory'):
     location = EarthLocation.of_site(observatory_name)
     observer = Observer.at_site(observatory_name)
     time_now = Time(datetime.now())
 
-    coordinates = AltAzGenerator(location=location, n_samples=n_exposures,
-                                 exposure_time=initial_exptime)
+    sun_coord = get_sun(time_now)
+    sun_fixed_target = FixedTarget(coord=SkyCoord(
+        ra=sun_coord.ra.deg * u.degree, dec=sun_coord.dec.deg * u.degree))
 
-    from astroplan.plots import plot_sky
+    coordinates = AltAzGenerator(location=location,
+                                 n_samples=n_exposures,
+                                 exposure_time=initial_exptime,
+                                 safe_sun_distance=safe_sun_distance,
+                                 min_altitude=min_altitude)
+    coordinate_list = coordinates.get_coordinate_list()
 
     fig = plt.figure(figsize=(12, 8.2))
-    plot_sky(coordinates, observer, time_now)
-    fig.saveas('plot_vignetting_locations.png')
+    plt.title("Field locations. Sun's position is 'x'.")
+    for coordinate in coordinate_list:
+        alt, az = coordinate
+        position = utils.altaz_to_radec(alt=alt, az=az, location=location,
+                                        obstime=time_now)
+        sc = SkyCoord(ra=position.ra.deg * u.degree,
+                      dec=position.dec.deg * u.degree)
+        ft = FixedTarget(coord=sc)
+
+        plot_sky(ft, observer, time_now)
+
+    plot_sky(sun_fixed_target, observer, time_now, style_kwargs={'marker': 'x'})
+    fig.savefig('plot_vignetting_locations.png', dpi=200)
 
 
 if __name__ == '__main__':
@@ -402,13 +431,17 @@ if __name__ == '__main__':
     parser.add_argument('--filter_name', default="luminance", type=str)
     parser.add_argument('--n_exposures', default=49, type=int)
     parser.add_argument('--min_altitude', default=50, type=float)
+    parser.add_argument('--safe_sun_distance', default=50, type=float)
     parser.add_argument('--only_plot', default=False, type=bool)
     parser.add_argument('--daytime_mode', default=False, type=bool)
     args = parser.parse_args()
 
     if args.only_plot:
         only_plot_locations(n_exposures=args.n_exposures,
-                            initial_exptime=args.initial_exptime)
+                            initial_exptime=args.initial_exptime,
+                            safe_sun_distance=args.safe_sun_distance,
+                            min_altitude=args.min_altitude,
+                            )
         print("Only plotting locations then exiting.")
         sys.exit()
 
@@ -430,5 +463,5 @@ if __name__ == '__main__':
     expseq = ExposureSequence(observatory, initial_exptime=args.initial_exptime,
                               filter_name=args.filter_name, n_exposures=args.n_exposures,
                               min_altitude=args.min_altitude, max_exptime=args.max_exptime,
-                              field_name=args.field_name)
+                              field_name=args.field_name, safe_sun_distance=safe_sun_distance)
     expseq.run()
