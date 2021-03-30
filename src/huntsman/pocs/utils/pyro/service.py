@@ -1,23 +1,40 @@
 import time
-from Pyro5.api import Daemon as PyroDaemon
+from multiprocessing.context import Process
 
+from Pyro5.api import Daemon as PyroDaemon
 from panoptes.utils.library import load_module
 from panoptes.utils.config.client import get_config, server_is_running
-
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.utils.config import get_own_ip
+
+from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
+
+
+def pyro_service_process(auto_start=False, *args, **kwargs):
+    """Start a pyro service in a separate process."""
+    # Set up nameserver process.
+    logger.debug(f'Setting up Pyro service process.')
+    service_process = Process(target=pyro_service, args=args, kwargs=kwargs)
+
+    if auto_start:  # noqa
+        logger.info("Auto-starting pyro service")
+        service_process.start()
+        logger.success("Pyro service started, will block until finished...(Ctrl-c/Cmd-c to exit)")
+        service_process.join()
+
+    return service_process
 
 
 def pyro_service(service_class=None,
                  service_name=None,
                  host=None,
                  port=None,
-                 metadata=None):
+                 metadata=None, **kwargs):
     """Creates and runs a Pyro Service.
 
-    This is the "server" portion of the Pyro communication, which should be started
-    on a remote device (not on the central control computer).
+    This is the "service" portion of the Pyro communication, which should be
+    started on a remote device (not on the central control computer).
 
     Parameters
     ----------
@@ -39,7 +56,7 @@ def pyro_service(service_class=None,
         time.sleep(5)
 
     # Specify address
-    host = host or get_config(f'pyro.{service_name}.ip', default=None)
+    host = host or get_config(f'pyro.{service_name}.host', default=None)
     if host is None:
         host = get_own_ip(verbose=True)
     # If port is not in config set to 0 so that Pyro will choose a random one.

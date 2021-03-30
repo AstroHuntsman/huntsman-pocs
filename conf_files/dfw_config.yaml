@@ -1,0 +1,211 @@
+working_cams:
+    - 'pi0'
+    - 'pi1'
+    - 'pi2'
+    - 'pi5'
+    - 'pi6'
+
+
+FRB190608:
+    pi0:
+      cam_name: 'camera.zwo.0'
+      filter_type: 'g'
+      focus_position: 22224
+      target_name: 'FRB190608'
+      exposure_time: 60
+    pi1:
+      cam_name: 'camera.zwo.1'
+      filter_type: 'g'
+      focus_position: 22131
+      target_name: 'FRB190608'
+      exposure_time: 60
+    pi2:
+      cam_name: 'camera.zwo.2'
+      filter_type: 'g'
+      focus_position: 22103
+      target_name: 'FRB190608'
+      exposure_time: 60
+    pi3:
+      cam_name: 'camera.zwo.3'
+      filter_type: 'r'
+      focus_position: 22258
+      target_name: 'FRB190608'
+      exposure_time: 60
+    pi5:
+      cam_name: 'camera.zwo.5'
+      filter_type: 'r'
+      focus_position: 22217
+      target_name: 'FRB190608'
+      exposure_time: 60
+    pi6:
+      cam_name: 'camera.zwo.6'
+      filter_type: 'r'
+      focus_position: 22220
+      target_name: 'FRB190608'
+      exposure_time: 60
+    pi9:
+      cam_name: 'camera.zwo.9'
+      filter_type: 'g'
+      focus_position: 22141
+      target_name: 'FRB190608'
+      exposure_time: 60
+    
+FRB200914:
+    pi0:
+      cam_name: 'camera.zwo.0'
+      filter_type: 'g'
+      focus_position: 22224
+      target_name: 'FRB200914'
+      exposure_time: 60
+    pi1:
+      cam_name: 'camera.zwo.1'
+      filter_type: 'g'
+      focus_position: 22131
+      target_name: 'FRB200914'
+      exposure_time: 60
+    pi2:
+      cam_name: 'camera.zwo.2'
+      filter_type: 'g'
+      focus_position: 22103
+      target_name: 'FRB200914'
+      exposure_time: 60
+    pi3:
+      cam_name: 'camera.zwo.3'
+      filter_type: 'g'
+      focus_position: 22258
+      target_name: 'FRB200914'
+      exposure_time: 60
+    pi5:
+      cam_name: 'camera.zwo.5'
+      filter_type: 'r'
+      focus_position: 22217
+      target_name: 'FRB200914'
+      exposure_time: 60
+    pi6:
+      cam_name: 'camera.zwo.6'
+      filter_type: 'r'
+      focus_position: 22220
+      target_name: 'FRB200914'
+      exposure_time: 60
+    pi9:
+      cam_name: 'camera.zwo.9'
+      filter_type: 'luminance'
+      focus_position: 22141
+      target_name: 'FRB200914'
+      exposure_time: 60
+
+
+
+
+
+
+flats:
+    filters_list:
+        - 'g'
+        - 'r'
+        - 'luminance'
+    day_exp_times:
+        g: 0.1
+        r: 0.1
+        luminance: 0.1
+    pi0:
+      cam_name: 'camera.zwo.0'
+      focus_position: 22266
+
+    pi1:
+      cam_name: 'camera.zwo.1'
+      focus_position: 22147
+
+    pi2:
+      cam_name: 'camera.zwo.2'
+      focus_position: 22099
+ 
+    pi3:
+      cam_name: 'camera.zwo.3'
+      focus_position: 22258
+
+    pi5:
+      cam_name: 'camera.zwo.5'
+      focus_position: 22232
+
+    pi6:
+      cam_name: 'camera.zwo.6'
+      focus_position: 22272
+
+    pi9:
+      cam_name: 'camera.zwo.9'
+      focus_position: 22189
+ 
+
+
+
+
+darks:
+    pi0:
+      cam_name: 'camera.zwo.0'
+      filter_type: 'blank'
+      focus_position: 22266
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 60
+                    - 0.0005
+                    - 0.002
+    pi1:
+      cam_name: 'camera.zwo.1'
+      filter_type: 'blank'
+      focus_position: 22147
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 60
+                    - 0.0005
+                    - 0.002
+    pi2:
+      cam_name: 'camera.zwo.2'
+      filter_type: 'blank'
+      focus_position: 22099
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 60
+                    - 0.0005
+                    - 0.002
+    pi3:
+      cam_name: 'camera.zwo.3'
+      filter_type: 'blank'
+      focus_position: 22258
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 60
+                    - 0.0005
+                    - 0.002
+    pi5:
+      cam_name: 'camera.zwo.5'
+      filter_type: 'blank'
+      focus_position: 22232
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 60
+                    - 0.0005
+                    - 0.002
+    pi6:
+      cam_name: 'camera.zwo.6'
+      filter_type: 'blank'
+      focus_position: 22272
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 60
+                    - 0.0005
+                    - 0.002
+    pi9:
+      cam_name: 'camera.zwo.9'
+      filter_type: 'blank'
+      focus_position: 22189
+      target_name: 'FRB190608'
+      exposure_time:
+                    - 1
+                    - 2

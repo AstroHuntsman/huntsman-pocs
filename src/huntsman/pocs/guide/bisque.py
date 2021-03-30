@@ -1,15 +1,14 @@
 import json
 import os
 import time
+from string import Template
 
 from astropy.io import fits
 from astropy.stats import sigma_clipped_stats
 from photutils import DAOStarFinder
-from string import Template
-
 from panoptes.pocs.base import PanBase
 from panoptes.utils import error
-from panoptes.utils.theskyx import TheSkyX
+from panoptes.pocs.utils.theskyx import TheSkyX
 
 
 class Guide(PanBase):

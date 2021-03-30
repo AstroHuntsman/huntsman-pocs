@@ -1,15 +1,11 @@
-import os
-import time
 from threading import Event, Thread
 from contextlib import suppress
-import Pyro5.server
 
+import Pyro5.server
 from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
-
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.config import get_own_ip
-from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
 
 
 @Pyro5.server.expose
@@ -35,7 +31,6 @@ class CameraService(object):
         self.config = get_config()
 
         self.host = self.config.get('host')
-        self.user = os.getenv('PANUSER', 'huntsman')
 
         # Prepare the camera config
         self.camera_config = self._get_camera_config(device_name)

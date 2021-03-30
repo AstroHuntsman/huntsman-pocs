@@ -7,21 +7,19 @@ import glob
 import os
 import shutil
 import time
-import pytest
 
+import pytest
 import astropy.units as u
 from astropy.io import fits
-
 from panoptes.pocs.scheduler.field import Field
-from panoptes.pocs.scheduler.observation import Observation
+from huntsman.pocs.scheduler.observation.base import Observation
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
-
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def patterns(camera, images_dir):
     # It would be better to replace images_dir by images_dir.
     # However, problems with rmtree and SSHFS causes the autofocus code to hang.
@@ -36,7 +34,7 @@ def patterns(camera, images_dir):
     return patterns
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def camera(camera_service_name):
     nameserver = get_running_nameserver()
     camera_client = Camera(uri=nameserver.lookup(camera_service_name))
@@ -78,7 +76,7 @@ def test_set_target_temperature(camera):
         camera.target_temperature = 10 * u.Celsius
         assert abs(camera.target_temperature - 10 * u.Celsius) < 0.5 * u.Celsius
     else:
-        pytest.skip("Camera {} doesn't implement temperature control".format(camera.name))
+        pytest.skip(f"Camera {camera.name} doesn't implement temperature control")
 
 
 def test_cooling_enabled(camera):
@@ -92,7 +90,7 @@ def test_enable_cooling(camera):
         camera.cooling_enabled = True
         assert camera.cooling_enabled
     else:
-        pytest.skip("Camera {} doesn't implement control of cooling status".format(camera.name))
+        pytest.skip(f"Camera {camera.name} doesn't implement control of cooling status")
 
 
 def test_get_cooling_power(camera):
@@ -100,7 +98,7 @@ def test_get_cooling_power(camera):
         power = camera.cooling_power
         assert power is not None
     else:
-        pytest.skip("Camera {} doesn't implement cooling power readout".format(camera.name))
+        pytest.skip(f"Camera {camera.name} doesn't implement cooling power readout")
 
 
 def test_disable_cooling(camera):
@@ -108,7 +106,7 @@ def test_disable_cooling(camera):
         camera.cooling_enabled = False
         assert not camera.cooling_enabled
     else:
-        pytest.skip("Camera {} doesn't implement control of cooling status".format(camera.name))
+        pytest.skip(f"Camera {camera.name} doesn't implement control of cooling status")
 
 
 def test_temperature_tolerance(camera):
@@ -142,9 +140,7 @@ def test_move_filterwheel(camera):
 
 
 def test_exposure(camera, tmpdir):
-    """
-    Tests basic take_exposure functionality
-    """
+    """ Tests basic take_exposure functionality """
     fits_path = str(tmpdir.join('test_exposure.fits'))
     if camera.is_cooled_camera and camera.cooling_enabled is False:
         camera.cooling_enabled = True
@@ -153,12 +149,21 @@ def test_exposure(camera, tmpdir):
     assert not camera.is_exposing
     assert not camera._proxy.get("is_exposing")
     assert not os.path.exists(fits_path)
+    # Move filterwheel before exposure.
+    camera.filterwheel.move_to(1, blocking=True)
+
+    assert os.path.isfile(os.path.join(os.environ['POCS'], 'tests', 'data', 'unsolved.fits'))
+
     # A one second normal exposure
-    camera.take_exposure(seconds=1, filename=fits_path)
+    assert os.path.exists(os.path.dirname(fits_path))
+    readout_future = camera.take_exposure(seconds=1, filename=fits_path)
+    assert readout_future.running()
     assert camera.is_exposing
     assert not camera.is_ready
+
     # By default take_exposure is non-blocking, need to give it some time to complete.
-    time.sleep(5)
+    readout_future.result(30)  # 30 second timeout
+
     # Output file should exist, Event should be set and camera should say it's not exposing.
     assert os.path.exists(fits_path)
     assert not camera.is_exposing
@@ -308,7 +313,7 @@ def test_client_exposure_timeout(camera, tmpdir):
     assert camera.is_ready
 
 
-def test_observation(camera, images_dir):
+def test_observation(camera):
     """
     Tests functionality of take_observation()
     """
@@ -318,8 +323,9 @@ def test_observation(camera, images_dir):
     camera.take_observation(observation, headers={})
     time.sleep(7)
     # TODO: Should this go into the fields subdirectory?
-    observation_pattern = os.path.join(images_dir, 'TestObservation',
-                                       camera.uid, observation.seq_time, '*.fits*')
+    observation_pattern = os.path.join(observation.directory, camera.uid, observation.seq_time,
+                                       '*.fits*')
+    camera.logger.info(observation.directory)
     assert len(glob.glob(observation_pattern)) == 1
     for _ in glob.glob(observation_pattern):
         os.remove(_)
@@ -335,8 +341,8 @@ def test_observation_nofilter(camera, images_dir):
     camera.take_observation(observation, headers={})
     time.sleep(7)
     # TODO: Should this go into the fields subdirectory?
-    observation_pattern = os.path.join(images_dir, 'TestObservation',
-                                       camera.uid, observation.seq_time, '*.fits*')
+    observation_pattern = os.path.join(observation.directory, camera.uid, observation.seq_time,
+                                       '*.fits*')
     assert len(glob.glob(observation_pattern)) == 1
     for _ in glob.glob(observation_pattern):
         os.remove(_)
