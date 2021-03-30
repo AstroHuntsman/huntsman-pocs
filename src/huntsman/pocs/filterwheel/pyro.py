@@ -1,27 +1,26 @@
-from threading import Event
+from Pyro5.api import Proxy
 
-from pocs.filterwheel import AbstractFilterWheel
-
+from panoptes.pocs.filterwheel import AbstractFilterWheel
 from huntsman.pocs.utils.pyro.event import RemoteEvent
 
 
 class FilterWheel(AbstractFilterWheel):
     """ Class representing the client side interface to the Filterwheel of a distributed camera. """
+
     def __init__(self,
                  name='Pyro Filterwheel',
                  model='pyro',
                  camera=None,
                  **kwargs):
-
         # Need to get filter names before calling base class constructor.
         filter_names = camera._proxy.get("filter_names", "filterwheel")
         kwargs['filter_names'] = filter_names
         super().__init__(name=name, model=model, camera=camera, **kwargs)
         self.connect()
 
-##################################################################################################
-# Properties
-##################################################################################################
+    ################################################################################################
+    # Properties
+    ################################################################################################
 
     @property
     def is_connected(self):
@@ -52,16 +51,20 @@ class FilterWheel(AbstractFilterWheel):
     def is_unidirectional(self):
         return self._proxy.get("is_unidirectional", "filterwheel")
 
-##################################################################################################
-# Methods
-##################################################################################################
+    @property
+    def _proxy(self):
+        return Proxy(self._uri)
+
+    ################################################################################################
+    # Methods
+    ################################################################################################
 
     def connect(self):
-        # Pyro4 proxy to remote huntsman.camera.pyro.CameraServer instance.
-        self._proxy = self.camera._proxy
+        # Pyro4 proxy to remote huntsman.camera.pyro.CameraService instance.
+        self._uri = self.camera._uri
         # Replace _move_event created by base class constructor with
         # an interface to the remote one.
-        self._move_event = RemoteEvent(self._proxy, event_type="filterwheel")
+        self._move_event = RemoteEvent(self._uri, event_type="filterwheel")
         # Fetch and locally cache properties that won't change.
         self._name = self._proxy.get("name", "filterwheel")
         self._model = self._proxy.get("model", "filterwheel")
@@ -69,9 +72,13 @@ class FilterWheel(AbstractFilterWheel):
 
         self.logger.debug(f"{self} connected.")
 
-##################################################################################################
-# Private methods
-##################################################################################################
+    def move_to(self, new_position, **kwargs):
+        self._proxy.filterwheel_move_to(new_position=new_position, **kwargs)
+        return self._move_event
 
-    def _move_to(self, position):
-        self._proxy.filterwheel_move_to(position)
+    ################################################################################################
+    # Private Methods
+    ################################################################################################
+
+    def _move_to(self, *args, **kwargs):
+        raise NotImplementedError

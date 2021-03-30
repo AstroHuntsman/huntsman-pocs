@@ -1,10 +1,14 @@
-# based upon @jamessynge's astrohave.py code in POCS
-
-import threading
 import time
+from contextlib import suppress
+from threading import Thread, Lock
 
-from pocs.dome.abstract_serial_dome import AbstractSerialDome
-from pocs.utils import CountdownTimer
+from astropy import units as u
+
+from panoptes.utils import error
+from panoptes.utils.time import CountdownTimer
+from panoptes.utils.utils import get_quantity_value
+
+from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 
 
 class Protocol:
@@ -40,223 +44,235 @@ class Protocol:
     DOOR_OPEN = 'Open'
     DOOR_CLOSED = 'Closed'
 
+    # Types for status values
+    STATUS_TYPES = {'Battery': float,
+                    "Solar_A": float}
+
 
 class HuntsmanDome(AbstractSerialDome):
     """Class for musca serial shutter control plus sending updated commands to TSX.
     Musca Port setting: 9600/8/N/1
 
-    TODO: See about checking status every 60 seconds to monitor connectivity.
-
+    The default behaviour of the Musca is to asynchronously send status updates when something
+    (e.g. battery voltage) changes. A full status update can be requested by sending the appropriate
+    command to the musca. However, it appears that musca will not send status updates while the
+    shutter is moving, but sends a full status update after it stops moving.
     """
     LISTEN_TIMEOUT = 3  # Max number of seconds to wait for a response.
-    MOVE_TIMEOUT = 45  # Max number of seconds to run the door motors.
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
     NUM_CLOSE_FEEDBACKS = 2  # Number of target_feedback bytes needed.
 
-    # s, Wait this long before allowing next command due to slow musica CPU
-    SHUTTER_CMD_DELAY = 0.5
     # s, A status_update is requested every minute to monitor connectivity.
     STATUS_UPDATE_FREQUENCY = 60.
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, command_delay=1, max_status_attempts=10, shutter_timeout=100, sleep=60,
+                 *args, **kwargs):
+        """
+        Args:
+            command_delay (float, optional): Wait this long in seconds before allowing next command
+                due to slow musca CPU. Default 1s.
+            max_status_attempts (int, optional): If status fails, retry this many times before
+                raising a PanError. Default: 10.
+            shutter_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 80s.
+            sleep (u.Quantity, optional): Time to sleep between dome loop iterations.
+                Default is 1 min.
+        """
         super().__init__(*args, **kwargs)
+        self._command_lock = Lock()  # Use a lock to make class thread-safe
 
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT
 
-        self._status = dict()
-        self._status_delay = 5  # seconds
-        self._status_timer = CountdownTimer(self._status_delay)
-        self._close_event = threading.Event()
+        self._command_delay = get_quantity_value(command_delay, u.second)
+        self._shutter_timeout = get_quantity_value(shutter_timeout, u.second)
+        self._max_status_attempts = int(max_status_attempts)
+        self._sleep = get_quantity_value(sleep, u.second)
+
+        self._status = {}
+        self._status_updated = {d: False for d in Protocol.VALID_DEVICE}
+        self._keep_open = None
+        self._stop_dome_thread = False
+        self._stop_status_thread = False
+
+        self._status_thread = Thread(target=self._async_status_loop)
+        self._dome_thread = Thread(target=self._async_dome_loop)
+
+        # Start the status thread running and wait until we have a complete status reading
+        self._status_thread.start()
+        self._wait_for_status()
+
+        # Start the main dome control loop
+        self._dome_thread.start()
+
+    def __del__(self):
+        self._stop_dome_thread = True
+        self.close()
+        self._dome_thread.join()
+        self._stop_status_thread = True
+        self._status_thread.join()
 
     @property
     def is_open(self):
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         return v == Protocol.OPEN
 
     @property
     def is_closed(self):
-        v = self.status()[Protocol.SHUTTER]
+        v = self.status[Protocol.SHUTTER]
         return v == Protocol.CLOSED
 
     @property
     def door_open(self):
-        v = self.status()[Protocol.DOOR]
+        v = self.status[Protocol.DOOR]
         return v == Protocol.DOOR_OPEN
 
     @property
     def door_closed(self):
-        v = self.status()[Protocol.DOOR]
+        v = self.status[Protocol.DOOR]
         return v == Protocol.DOOR_CLOSED
 
-    def status(self):
-        """A dictionary containing all status info for dome.
+    @property
+    def is_safe_to_open(self):
+        v = self.status[Protocol.BATTERY]
+        if v < self.MIN_OPERATING_VOLTAGE:
+            self.logger.debug(f'Dome shutter battery voltage too low to open: {v!r}')
+            return False
+        return True
 
-        TODO: Add other info (e.g. dome moving)
-        TODO: Auto-update this every ~60s
-        """
-        if self._status_timer.expired():
-            self._status = self._get_shutter_status_dict()
-            self._status_timer = CountdownTimer(self._status_delay)
+    @property
+    def status(self):
+        """A dictionary containing all status info for dome. """
         return self._status
 
     def open(self):
         """Open the shutter using musca.
-
-        Returns
-        -------
-        Boolean
-            True if Opened, False if it did not Open.
+        Returns:
+            bool: True if Opened, False if it did not Open.
         """
         if self.is_open:
             return True
 
-        v = self.status()[Protocol.BATTERY]
-        if v < self.MIN_OPERATING_VOLTAGE:
-            self.logger.error(
-                'Dome shutter battery voltage too low to open: {!r}', v)
-            return False
+        if not self.is_safe_to_open:
+            raise error.PanError("Tried to open the dome shutter while not safe.")
 
-        self._write_musca(Protocol.OPEN_DOME, 'Opening dome shutter')
-        time.sleep(HuntsmanDome.MOVE_TIMEOUT)
+        self.logger.info("Opening dome shutter.")
+        self._write_musca(Protocol.OPEN_DOME)
 
-        v = self.status()[Protocol.SHUTTER]
-        if v == Protocol.OPEN:
-            # refresh the threading close event
-            self._close_event.clear()
-            self.logger.info('Starting thread to keep dome open.')
-            # start a thread to send the keep dome open command to musca
-            keep_open = threading.Thread(target=self.keep_dome_open)
-            keep_open.start()
-            return True
-        self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
-        return False
+        # Wait for the shutter to actually open
+        self._wait_for_true("is_open")
 
-    def keep_dome_open(self):
-        """Periodically tell musca to reset watchdog timer
-
-        """
-        last_time = time.monotonic()
-        # maximum shutter open time in seconds
-        max_open_seconds = 15 * 60 * 60  # 15 hours in seconds
-        for i in range(max_open_seconds):
-            # check to see if a dome closure has occured
-            if self._close_event.is_set():
-                self.logger.info(
-                    'Keep dome open thread has detected a dome closure, ending thread.')
-                # if dome has closed, don't try to 'keep dome open'
-                return
-            now = time.monotonic()
-            if now - last_time > 290:
-
-                status = self._get_shutter_status_dict()  # Sometimes empty dict
-                try:
-                    self.logger.info((f'Status Update: Shutter is '
-                                      f'{status[Protocol.SHUTTER]}, '
-                                      f'Door is {status[Protocol.DOOR]}, '
-                                      f'Battery voltage is {status[Protocol.BATTERY]}'))
-                except KeyError:
-                    self.logger.debug("Failed to get shutter status.")
-
-                self._write_musca(Protocol.KEEP_DOME_OPEN, 'Keeping dome open.')
-                last_time = now
-                self.logger.debug('Keep dome open thread sleeping for ~5 minutes.')
-
-            time.sleep(1)
-        self.logger.warning(
-            'Maximum keep dome open loops exceeded. Dome will close in 5 minutes.')
+        if not self.is_open:
+            raise error.PanError("Attempted to open the dome shutter but got wrong status:"
+                                 f" {self.status[Protocol.SHUTTER]}")
+        self._keep_open = True
 
     def close(self):
         """Close the shutter using musca.
-
-        Returns
-        -------
-        Boolean
-            True if Closed, False if it did not Close.
+        Returns:
+            bool: True if Closed, False if it did not Close.
         """
+        self._keep_open = False
         if self.is_closed:
             return True
 
-        self._close_event.set()
-        self._write_musca(Protocol.CLOSE_DOME, 'Closing dome shutter')
-        time.sleep(HuntsmanDome.MOVE_TIMEOUT)
+        self.logger.info("Closing dome shutter.")
+        self._write_musca(Protocol.CLOSE_DOME)
 
-        v = self.status()[Protocol.SHUTTER]
-        if v == Protocol.CLOSED:
-            return True
-        self.logger.warning('HuntsmanDome.open wrong final state: {!r}', v)
-        return False
+        # Wait for the it to actually close
+        self._wait_for_true("is_closed")
 
-    def __str__(self):
-        if self.is_connected:
-            return self._get_shutter_status_string()
-        return 'Disconnected'
+        if not self.is_closed:
+            raise error.PanError("Attempted to close the dome shutter but got wrong status:"
+                                 f" {self.status[Protocol.SHUTTER]}")
 
-    def __del__(self):
-        self.close()
+    # Private Methods
 
-###############################################################################
-# Private Methods
-###############################################################################
+    def _async_dome_loop(self):
+        """ Repeatedly check status and keep dome open if necessary. """
+        self.logger.debug("Starting dome loop.")
+        while True:
+            # Check if the thread should terminate
+            if self._stop_dome_thread:
+                self.logger.debug("Stopping dome loop.")
+                return
 
-    def _write_musca(self, cmd, log_message=None):
-        """Write command to serial bluetooth device musca."""
-        if log_message is not None:
-            self.logger.info(log_message)
-        self.serial.ser.write('{}\n'.format(cmd).encode())
-        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
+            # Log the dome status
+            self.logger.debug(f"Dome status: {self.status}.")
 
-    def _read_musca(self, log_message=None):
-        """Read serial bluetooth device musca."""
-        if log_message is not None:
-            self.logger.info(log_message)
-        lines = self.serial.ser.readlines()
-        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
-        return lines
+            # If thread has just started, maintain current dome state
+            if self._keep_open is None:
+                if self.is_open:
+                    self.logger.info("Dome shutter is already open, keeping it that way for now.")
+                    self._keep_open = True
+                else:
+                    self._keep_open = False
 
-    def _get_shutter_status_string(self):
-        """Return a text string describing dome shutter's current status."""
-        if not self.is_connected:
-            return 'Not connected to the shutter'
-        v = self.status()[Protocol.SHUTTER]
-        if v == Protocol.CLOSED:
-            return 'Shutter closed'
-        if v == Protocol.OPENING:
-            return 'Shutter opening'
-        if v == Protocol.CLOSING:
-            return 'Shutter closing'
-        if v == Protocol.OPEN:
-            return 'Shutter open'
-        if v == Protocol.PARTIALLY_OPEN:
-            return 'Shutter partially open'
-        if v == Protocol.ILLEGAL:
-            return 'Shutter in ILLEGAL state?'
-        return 'Unexpected response from Huntsman Shutter Controller: %r' % v
+            # Check if we need to keep the dome open
+            if self._keep_open:
+                self.logger.debug("Keeping dome open.")
+                self._write_musca(Protocol.KEEP_DOME_OPEN)
 
-    def _get_shutter_status_dict(self):
-        """ Return dictionary of musca status.
+            time.sleep(self._sleep)
 
-        Example output line:
-        # # [b'Status:\r\n', b'Shutter:Closed\r\n', b'Door:Closed\r\n',
-        b'Battery:\t 13.0671\r\n',
-        b'Solar_A:\t 0.400871\r\n', b'Switch:EM243A\r\n',
-        b'Battery:\t 13.101\r\n',
-        b'Solar_A:\t 0.439232\r\n']
-        """
+    def _async_status_loop(self):
+        """ Continually read status updates from Musca. """
+
+        # Tell musca to send the full status
         self._write_musca(Protocol.GET_STATUS)
-        shutter_status_list = self._read_musca()
-        shutter_status_dict = {}
-        for shutter_status_item in shutter_status_list:
-            k, v = shutter_status_item.strip().decode().split(':')
-            if k == Protocol.SOLAR_ARRAY or k == Protocol.BATTERY:
-                v = float(v)
-            shutter_status_dict[k] = v
-        time.sleep(HuntsmanDome.SHUTTER_CMD_DELAY)
-        return shutter_status_dict
 
+        self.logger.debug("Starting status loop.")
+        while True:
+            # Check if the thread should terminate
+            if self._stop_status_thread:
+                self.logger.debug("Stopping status loop.")
+                return
 
-# Expose as Dome so that we can generically load by module name, without
-# knowing the specific type  of dome. But for testing, it make sense to
-# *know* that we're dealing with the correct class.
-Dome = HuntsmanDome
+            self._status["dome_loop_running"] = self._dome_thread.is_alive()
+            self._status["status_loop_running"] = self._status_thread.is_alive()
+            self._status["keep_shutter_open"] = self._keep_open
+
+            raw_response = self.serial.read(retry_limit=1, retry_delay=0.1)
+            if not raw_response:
+                continue
+
+            response = [s.strip() for s in raw_response.split(":")]
+            if len(response) != 2:
+                continue
+
+            key, value = response
+            with suppress(KeyError):
+                value = Protocol.STATUS_TYPES[key](value)
+
+            if key in Protocol.VALID_DEVICE:
+                self._status[key] = value
+                self._status_updated[key] = True
+
+    def _write_musca(self, cmd):
+        """Wait for the command lock then write command to serial bluetooth device musca."""
+        with self._command_lock:
+            self.serial.reset_input_buffer()
+            self.serial.write(f'{cmd}\n')
+            time.sleep(self._command_delay)
+
+    def _wait_for_status(self, timeout=60, sleep=0.1):
+        """ Wait for a complete status.
+        Args:
+            timeout (float, optional): The timeout in seconds. Default 60.
+            sleep (float, optional): Time to sleep between checks in seconds. Default 0.1.
+        """
+        timer = CountdownTimer(duration=timeout)
+        while not timer.expired():
+            if all(self._status_updated.values()):
+                return
+            time.sleep(sleep)
+        raise error.Timeout("Timeout while waiting for dome shutter status.")
+
+    def _wait_for_true(self, property_name, sleep=1):
+        """ Wait for a property to evaluate to True. """
+        timer = CountdownTimer(self._shutter_timeout)
+        while not timer.expired():
+            if getattr(self, property_name):
+                return
+            time.sleep(sleep)
+        raise error.Timeout(f"Timeout while waiting for dome shutter property: {property_name}.")

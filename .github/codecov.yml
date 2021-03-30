@@ -1,0 +1,3 @@
+ignore:
+  - "huntsman/dome/musca.py"
+  - "huntsman/guide/bisque.py"

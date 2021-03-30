@@ -1,47 +1,38 @@
-name: Build and push Huntsman docker images
-
+name: Docker CI
 on:
   push:
     branches:
       - develop
-
 jobs:
   buildx:
     runs-on: ubuntu-latest
     steps:
       -
-        name: Checkout
-        uses: actions/checkout@v1
-      -
-        name: Set up Docker Buildx
-        id: buildx
-        uses: crazy-max/ghaction-docker-buildx@v1
-        with:
-          version: latest
+        name: Checkout huntsman-pocs
+        uses: actions/checkout@v2
       -
         name: Docker login
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
       -
-        name: Build and push arm_device
-        working-directory: ./docker/arm_device
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      -
+        name: Build and push huntsman-pocs:develop image
         run: |
           docker buildx build \
-            --platform linux/arm64 \
-            --tag huntsmanarray/arm_device:latest \
+            -f docker/Dockerfile \
+            --platform linux/arm64,linux/amd64 \
+            --tag huntsmanarray/huntsman-pocs:develop \
             --output "type=image,push=true" .
       -
-        name: Build and push camera
-        working-directory: ./docker/camera
+        name: Build and push huntsman-pocs-camera image
         run: |
           docker buildx build \
-            --platform linux/arm64 \
-            --tag huntsmanarray/camera:latest \
-            --output "type=image,push=true" .
-      -
-        name: Build and push testenv
-        working-directory: ./docker/testenv
-        run: |
-          docker buildx build \
-            --platform linux/arm64 \
-            --tag huntsmanarray/testenv:latest \
+            -f docker/camera/Dockerfile \
+            --platform linux/arm64,linux/amd64 \
+            --tag huntsmanarray/huntsman-pocs-camera:develop \
             --output "type=image,push=true" .

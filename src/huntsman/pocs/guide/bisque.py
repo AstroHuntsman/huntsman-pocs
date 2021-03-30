@@ -1,15 +1,14 @@
 import json
 import os
 import time
+from string import Template
 
 from astropy.io import fits
 from astropy.stats import sigma_clipped_stats
 from photutils import DAOStarFinder
-from string import Template
-
-from pocs.base import PanBase
-from pocs.utils import error
-from pocs.utils.theskyx import TheSkyX
+from panoptes.pocs.base import PanBase
+from panoptes.utils import error
+from panoptes.pocs.utils.theskyx import TheSkyX
 
 
 class Guide(PanBase):
@@ -310,9 +309,9 @@ class Guide(PanBase):
 
         return success
 
-##################################################################################################
-# Communication Methods
-##################################################################################################
+    ##################################################################################################
+    # Communication Methods
+    ##################################################################################################
 
     def query(self, template, params=None, timeout=5):
         """ Query the guider
@@ -376,9 +375,9 @@ class Guide(PanBase):
 
         return response_obj
 
-##################################################################################################
-# Private Methods
-##################################################################################################
+    ##################################################################################################
+    # Private Methods
+    ##################################################################################################
 
     def _get_command(self, filename, params=None):
         """ Looks up appropriate command for telescope """

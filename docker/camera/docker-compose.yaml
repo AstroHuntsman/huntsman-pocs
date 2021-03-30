@@ -1,0 +1,16 @@
+version: '3.7'
+services:
+  camera:
+    image: huntsmanarray/huntsman-pocs-camera:develop
+    privileged: true
+    network_mode: host
+    stdin_open: true
+    tty: true
+    environment:
+      PANDIR: /var/huntsman
+      PANOPTES_CONFIG_HOST:
+      PANOPTES_CONFIG_PORT:
+    command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
+    volumes:
+      - "${PANDIR}/images:/huntsman/images"
+      - "${PANDIR}/logs:/huntsman/logs"
