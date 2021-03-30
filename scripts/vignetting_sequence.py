@@ -203,7 +203,8 @@ class ExposureTimeCalculator():
 class ExposureSequence():
 
     def __init__(self, observatory, filter_name, initial_exptime, n_exposures=100,
-                 field_name='VigTest', min_exptime=0, max_exptime=10, safe_sun_distance=50, **kwargs):
+                 field_name='VigTest', min_exptime=0, max_exptime=10, safe_sun_distance=50,
+                 **kwargs):
         self.observatory = observatory
         self.cameras = observatory.cameras
         self.mount = observatory.mount
@@ -249,7 +250,7 @@ class ExposureSequence():
         print("Starting exposure sequence.")
         for i, (alt, az) in enumerate(self.coordinates):
             calibrate_exptime = i == 0  # Only on the first exposure
-            print(f"---------------------------------------------------------")
+            print("---------------------------------------------------------")
             print(f"Exposure {i+1} of {self.n_exposures}:")
             self._take_exposure(alt=alt, az=az, suffix=f'_{i}',
                                 calibrate_exptime=calibrate_exptime)
@@ -321,7 +322,7 @@ class ExposureSequence():
 
     def _slew_to_field(self, field):
         """Slew to the field, moving FWs to blank beforehand."""
-        print(f"Moving filterwheels to blank position before slewing...")
+        print("Moving filterwheels to blank position before slewing...")
         self._move_fws(filter_name="blank")
         self.mount.set_target_coordinates(field)
         print("Slewing to target...")
@@ -329,7 +330,7 @@ class ExposureSequence():
 
     def _park_mount(self):
         """Park mount after moving FWs to blank positions"""
-        print(f"Moving filterwheels to blank position before parking...")
+        print("Moving filterwheels to blank position before parking...")
         self._move_fws(filter_name="blank")
         print("Parking mount...")
         self.mount.park()
@@ -463,5 +464,5 @@ if __name__ == '__main__':
     expseq = ExposureSequence(observatory, initial_exptime=args.initial_exptime,
                               filter_name=args.filter_name, n_exposures=args.n_exposures,
                               min_altitude=args.min_altitude, max_exptime=args.max_exptime,
-                              field_name=args.field_name, safe_sun_distance=safe_sun_distance)
+                              field_name=args.field_name, safe_sun_distance=args.safe_sun_distance)
     expseq.run()
