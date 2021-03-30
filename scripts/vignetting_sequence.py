@@ -95,7 +95,7 @@ class AltAzGenerator():
         # Get time array
         time_now = Time(datetime.now())
         time_period = self.exposure_time + overhead_time
-        times = np.linspace(0, time_period, sampling_interval)*u.second + time_now
+        times = np.linspace(0, time_period, sampling_interval) * u.second + time_now
 
         # Calculate Solar position
         frame = AltAz(obstime=times, location=self.location)
@@ -374,6 +374,7 @@ if __name__ == '__main__':
 
     # Parse args
     parser = argparse.ArgumentParser()
+    parser.add_argument('--field_name', default='VigTest', type=str)
     parser.add_argument('--initial_exptime', default=0.0001, type=float)
     parser.add_argument('--max_exptime', default=30, type=float)
     parser.add_argument('--filter_name', default="luminance", type=str)
@@ -383,16 +384,16 @@ if __name__ == '__main__':
     parser.add_argument('--daytime_mode', default=False, type=bool)
     args = parser.parse_args()
 
-    if not daytime_mode:
-	    response = input("This script is intended to be run with the Sun below the horizon."
-	                     " Would you like to continue?")
-	    if response not in ["", "y", "Y", "yes", "Yes"]:
-	        sys.exit()
-	else:
-		response = input("You've indicated you would like to run this during the day."
-						 "Would you like to continue?")
-	    if response not in ["y", "Y", "yes", "Yes"]:
-	        sys.exit()	
+    if not args.daytime_mode:
+        response = input("This script is intended to be run with the Sun below the horizon."
+                         " Would you like to continue?")
+        if response not in ["", "y", "Y", "yes", "Yes"]:
+            sys.exit()
+    else:
+        response = input("You've indicated you would like to run this during the day."
+                         "Would you like to continue?")
+        if response not in ["y", "Y", "yes", "Yes"]:
+            sys.exit()
 
     # Create the observatory instance
     observatory = create_huntsman_observatory(with_autoguider=False)
@@ -400,5 +401,6 @@ if __name__ == '__main__':
     # Run exposure sequence
     expseq = ExposureSequence(observatory, initial_exptime=args.initial_exptime,
                               filter_name=args.filter_name, n_exposures=args.n_exposures,
-                              min_altitude=args.min_altitude, max_exptime=args.max_exptime)
+                              min_altitude=args.min_altitude, max_exptime=args.max_exptime,
+                              field_name=args.field_name)
     expseq.run()
