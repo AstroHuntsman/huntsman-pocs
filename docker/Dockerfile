@@ -23,7 +23,7 @@ USER "${userid}"
 RUN echo "Building from ${image_url}:${image_tag}" && \
     sudo apt-get update && \
     sudo apt-get install -y --no-install-recommends \
-        gcc git udev && \
+        gcc git udev nano vim-nox && \
     sudo mkdir -p "${POCS}/images"  && \
     sudo mkdir -p "${POCS}/logs"  && \
     sudo mkdir -p "${POCS}/archive"  && \
