@@ -53,7 +53,7 @@ class HuntsmanObservatory(Observatory):
         # Attributes for focusing
         self.last_coarse_focus_time = None
         self.coarse_focus_config = self.get_config('focusing.coarse')
-        self._focus_frequency = self.coarse_focus_config['frequency'] \
+        self._coarse_focus_frequency = self.coarse_focus_config['frequency'] \
                                 * u.Unit(self.coarse_focus_config['frequency_unit'])
         self._coarse_focus_filter = self.coarse_focus_config['filter_name']
 
@@ -92,7 +92,7 @@ class HuntsmanObservatory(Observatory):
         """
         if self.last_coarse_focus_time is None:
             return True
-        if current_time() - self.last_coarse_focus_time > self._focus_frequency:
+        if current_time() - self.last_coarse_focus_time > self._coarse_focus_frequency:
             return True
         return False
 
