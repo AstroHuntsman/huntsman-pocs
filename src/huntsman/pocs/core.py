@@ -1,3 +1,4 @@
+from panoptes.utils.time import current_time
 from panoptes.pocs.core import POCS
 
 
@@ -8,15 +9,19 @@ class HuntsmanPOCS(POCS):
         self._dome_open_states = []
         super().__init__(*args, **kwargs)
 
-    def run(self, initial_next_state='starting', *args, **kwargs):
+    def run(self, initial_next_state='starting', skip_coarse_focus=False, *args, **kwargs):
         """ Override the default initial_next_state parameter from "ready" to "starting".
         This allows us to call pocs.run() as normal, without needing to specify the initial next
         state explicitly.
         Args:
             initial_next_state (str, optional): The first state the machine should move to from
                 the `sleeping` state, default `starting`.
+            skip_coarse_focus (bool, optional): If True, will skip the initial coarse focus.
+                Default False.
             *args, **kwargs: Parsed to POCS.run.
         """
+        if skip_coarse_focus:
+            self.observatory.last_coarse_focus_time = current_time()
         return super().run(initial_next_state=initial_next_state, *args, **kwargs)
 
     def _load_state(self, state, state_info=None):
