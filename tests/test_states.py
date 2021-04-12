@@ -164,7 +164,7 @@ def test_ready_scheduling_1(pocs, pocstime_observe):
 
     pocs.initialize()
     pocs.startup()
-    pocs.observatory.last_focus_time = current_time()
+    pocs.observatory.last_coarse_focus_time = current_time()
     assert not pocs.observatory.coarse_focus_required
     pocs.get_ready()
     assert pocs.state == 'ready'
@@ -180,7 +180,7 @@ def test_ready_scheduling_2(pocs):
     pocs.set_config('simulator', ['camera', 'mount', 'power', 'weather'])
     os.environ['POCSTIME'] = '2020-04-29 08:40:00'
     pocs.initialize()
-    pocs.observatory.last_focus_time = current_time()
+    pocs.observatory.last_coarse_focus_time = current_time()
     assert not pocs.observatory.past_midnight
     assert not pocs.observatory.coarse_focus_required
     assert not pocs.is_dark(horizon='observe')
@@ -249,7 +249,7 @@ def test_morning_parking(pocs):
     os.environ['POCSTIME'] = '2020-04-29 19:30:00'
     pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
     pocs.initialize()
-    pocs.observatory.last_focus_time = current_time()
+    pocs.observatory.last_coarse_focus_time = current_time()
     pocs.startup()
     pocs.get_ready()
     assert pocs.state == 'ready'

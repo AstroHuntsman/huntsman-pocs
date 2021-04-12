@@ -6,12 +6,9 @@ from astropy import units as u
 
 from panoptes.utils import error
 from panoptes.utils.utils import altaz_to_radec, get_quantity_value
-from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
-from panoptes.pocs.scheduler import constraint
-from huntsman.pocs.scheduler.constraint import MoonAvoidance
 
 from huntsman.pocs.guide.bisque import Guide
 from panoptes.pocs.scheduler.observation.bias import BiasObservation
@@ -54,9 +51,9 @@ class HuntsmanObservatory(Observatory):
         self.flat_fields_required = take_flats
 
         # Attributes for focusing
-        self.last_focus_time = None
+        self.last_coarse_focus_time = None
         self.coarse_focus_config = self.get_config('focusing.coarse')
-        self._focus_frequency = self.coarse_focus_config['frequency'] \
+        self._coarse_focus_frequency = self.coarse_focus_config['frequency'] \
                                 * u.Unit(self.coarse_focus_config['frequency_unit'])
         self._coarse_focus_filter = self.coarse_focus_config['filter_name']
 
@@ -93,9 +90,9 @@ class HuntsmanObservatory(Observatory):
         using the amount of time specified by `focusing.coarse.frequency` in the config,
         else False.
         """
-        if self.last_focus_time is None:
+        if self.last_coarse_focus_time is None:
             return True
-        if current_time() - self.last_focus_time > self._focus_frequency:
+        if current_time() - self.last_coarse_focus_time > self._coarse_focus_frequency:
             return True
         return False
 
@@ -167,7 +164,7 @@ class HuntsmanObservatory(Observatory):
         result = super().autofocus_cameras(coarse=coarse, *args, **kwargs)
 
         # Update last focus time
-        self.last_focus_time = current_time()
+        self.last_coarse_focus_time = current_time()
 
         return result
 

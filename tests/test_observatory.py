@@ -97,7 +97,7 @@ def test_take_flat_fields(pocs):
 def test_autofocus_cameras(observatory):
     """
     """
-    observatory.last_focus_time = None
+    observatory.last_coarse_focus_time = None
     assert observatory.coarse_focus_required
     events = observatory.autofocus_cameras()
     wait_for_events(list(events.values()), timeout=60)
