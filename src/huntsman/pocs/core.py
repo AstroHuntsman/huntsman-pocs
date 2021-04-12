@@ -20,7 +20,8 @@ class HuntsmanPOCS(POCS):
                 Default False.
             *args, **kwargs: Parsed to POCS.run.
         """
-        if skip_coarse_focus:
+        # Override last coarse focus time if not doing initial coarse focus.
+        if initial_focus is False:
             self.observatory.last_coarse_focus_time = current_time()
         return super().run(initial_next_state=initial_next_state, *args, **kwargs)
 
