@@ -9,7 +9,7 @@ class HuntsmanPOCS(POCS):
         self._dome_open_states = []
         super().__init__(*args, **kwargs)
 
-    def run(self, initial_next_state='starting', skip_coarse_focus=False, *args, **kwargs):
+    def run(self, initial_next_state='starting', initial_focus=True, *args, **kwargs):
         """ Override the default initial_next_state parameter from "ready" to "starting".
         This allows us to call pocs.run() as normal, without needing to specify the initial next
         state explicitly.
