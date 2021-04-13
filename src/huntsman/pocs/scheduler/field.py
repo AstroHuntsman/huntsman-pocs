@@ -1,16 +1,17 @@
 from astroplan import FixedTarget
 from astropy.coordinates import SkyCoord
 
+from panoptes.utils.library import load_module
 from panoptes.pocs.base import PanBase
-
 from huntsman.pocs.utils import dither
 
 
 class AbstractField(PanBase):
 
     def __init__(self, name, equinox="J2000", frame="icrs", **kwargs):
-        """
-
+        """ Abstract base class for Field objects.
+        Args:
+            name (str): The name of the field (e.g. target name).
         """
         super().__init__(**kwargs)
 
@@ -18,12 +19,32 @@ class AbstractField(PanBase):
         self.frame = frame
         self.name = name
 
+        # Prepare the field name
+        self._field_name = self.name.title().replace(' ', '').replace('-', '')
+        if not self._field_name:
+            raise ValueError('Name is empty.')
+
+    def __str__(self):
+        return f"{self.__name__}: {self.name}"
+
+    # Properties
+
+    @property
+    def field_name(self):
+        """ Flattened field name appropriate for paths. """
+        return self._field_name
+
 
 class Field(FixedTarget, AbstractField):
 
     def __init__(self, name, position, **kwargs):
-        """
-
+        """ An object representing an area to be observed.
+        A `Field` corresponds to an `~astroplan.ObservingBlock` and contains information
+        about the center of the field (represented by an `astroplan.FixedTarget`).
+        Args:
+            name (str): The name of the field (e.g. target name).
+            position (str or SkyCoord): The coordinates of the field centre.
+            **kwargs: Parsed to `AbstractField`.
         """
         AbstractField.__init__(self, name=name, **kwargs)
 
@@ -32,32 +53,27 @@ class Field(FixedTarget, AbstractField):
             coord = position
         else:
             coord = SkyCoord(position, equinox=self.equinox, frame=self.frame)
-        super().__init__(coord, name=name, **kwargs)
-
-        # Prepare the field name
-        self._field_name = self.name.title().replace(' ', '').replace('-', '')
-        if not self._field_name:
-            raise ValueError('Name is empty.')
-
-    @property
-    def field_name(self):
-        """ Flattened field name appropriate for paths """
-        return self._field_name
-
-    def __str__(self):
-        return self.name
+        super().__init__(coord, name=name)
 
 
 class CompoundField(AbstractField):
     """ An iterable, indexable class consisting of several fields. """
 
-    def __init__(self, name, field_config_list, field_class=Field):
+    def __init__(self, name, field_config_list, field_type="huntsman.pocs.scheduler.field.Field",
+                 **kwargs):
         """
+        Args:
+            name (str): The name of the field (e.g. target name).
+            field_config_list (list of dict): Config for each field.
+            field_type (str, optional): The python class name to use for the fields.
+                Default: huntsman.pocs.scheduler.field.Field.
+        """
+        super().__init__(name, **kwargs)
 
-        """
         self._idx = 0
-
         self._fields = []
+
+        field_class = load_module(field_type)
         for field_config in field_config_list:
             self._fields.append(field_class(**field_config))
 

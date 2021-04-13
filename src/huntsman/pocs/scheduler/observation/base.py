@@ -59,6 +59,9 @@ class AbstractObservation(PanBase, ABC):
             directory = self._get_directory()
         self.directory = directory
 
+    def __str__(self):
+        return f"{self.__name__}: {self._field}: exptime={self.exptime}, filter={self.filter_name}"
+
     # Abstract properties
 
     @property
@@ -74,6 +77,11 @@ class AbstractObservation(PanBase, ABC):
     @property
     @abstractmethod
     def set_is_finished(self):
+        """ Check if the current observing block has finished, which is True when the minimum
+        number of exposures have been obtained and and integer number of sets have been completed.
+        Returns:
+            bool: True if finished, False if not.
+        """
         pass
 
     @property
@@ -186,6 +194,10 @@ class AbstractObservation(PanBase, ABC):
         self.merit = 0.0
         self.seq_time = None
 
+    def mark_exposure_complete(self):
+        """ Explicitly mark the current exposure as complete. """
+        pass
+
     # Private methods
     def _get_directory(self):
         return os.path.join(self._image_dir, "fields", self.field.field_name)
@@ -214,11 +226,6 @@ class Observation(AbstractObservation):
 
     @property
     def set_is_finished(self):
-        """ Check if the current observing block has finished, which is True when the minimum
-        number of exposures have been obtained and and integer number of sets have been completed.
-        Returns:
-            bool: True if finished, False if not.
-        """
         # Check the min required number of exposures have been obtained
         has_min_exposures = self.current_exp_num >= self.min_nexp
 

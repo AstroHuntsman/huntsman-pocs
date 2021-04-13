@@ -12,6 +12,3 @@ class DitheredObservation(CompoundObservation):
             raise ValueError("field must be an instance of DitheredField.")
 
         super().__init__(field=field, **kwargs)
-
-    def __str__(self):
-        return f"DitheredObservation: {self.field}: {self.exptime}"
