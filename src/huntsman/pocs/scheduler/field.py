@@ -12,6 +12,11 @@ class AbstractField(PanBase):
         """ Abstract base class for Field objects.
         Args:
             name (str): The name of the field (e.g. target name).
+            equinox (str, optional): The equinox, parsed to astropy.coordinates.SkyCoord.
+                Default: J2000.
+            frame (str, option): The frame to be parsed to astropy.coordinates.SkyCoord.
+                Default: icrs.
+            **kwargs: parsed to PanBase.__init__.
         """
         super().__init__(**kwargs)
 
@@ -23,6 +28,9 @@ class AbstractField(PanBase):
         self._field_name = self.name.title().replace(' ', '').replace('-', '')
         if not self._field_name:
             raise ValueError('Name is empty.')
+
+    def __name__(self):
+        return self.__class__.__name__
 
     def __str__(self):
         return f"{self.__name__}: {self.name}"
@@ -44,7 +52,7 @@ class Field(FixedTarget, AbstractField):
         Args:
             name (str): The name of the field (e.g. target name).
             position (str or SkyCoord): The coordinates of the field centre.
-            **kwargs: Parsed to `AbstractField`.
+            **kwargs: Parsed to AbstractField.__init__.
         """
         AbstractField.__init__(self, name=name, **kwargs)
 
@@ -97,22 +105,31 @@ class CompoundField(AbstractField):
 class DitheredField(CompoundField):
     """ A compound field consisting of several dithered coordinates. """
 
-    def __init__(self, name, position, dither_kwargs=None, **kwargs):
+    def __init__(self, name, position, dither_kwargs=None, equinox="J2000", frame="icrs",
+                 **kwargs):
         """
-
+        Args:
+            name (str): The name of the field (e.g. target name).
+            position (str or SkyCoord): The coordinates of the field centre.
+            dither_kwargs (dict, optional): Parsed to dither.get_dither_positions. Default: None.
+            equinox (str, optional): The equinox, parsed to astropy.coordinates.SkyCoord.
+                Default: J2000.
+            frame (str, option): The frame to be parsed to astropy.coordinates.SkyCoord.
+                Default: icrs.
+            **kwargs: Parsed to AbstractField.__init__.
         """
         if dither_kwargs is None:
             dither_kwargs = {}
 
         # Get dither coords
-        centre = SkyCoord(position, equinox=self.equinox, frame=self.frame)
+        centre = SkyCoord(position, equinox=equinox, frame=frame)
         coords = dither.get_dither_positions(centre, **dither_kwargs)
 
         # Make dithered field configs
         field_configs = []
         for i, coord in enumerate(coords):
-            dither_name = f"{self.name}_{i}"
+            dither_name = f"{name}_{i}"
             field_configs.append(dict(position=coord, name=dither_name))
 
         # Initialise compound field
-        super().__init__(name, field_configs, **kwargs)
+        super().__init__(name, field_configs, equinox=equinox, frame=frame, **kwargs)

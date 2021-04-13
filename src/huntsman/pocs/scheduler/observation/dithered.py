@@ -1,4 +1,4 @@
-from panoptes.pocs.scheduler.field import DitheredField
+from huntsman.pocs.scheduler.field import DitheredField
 from huntsman.pocs.scheduler.observation.base import CompoundObservation
 
 

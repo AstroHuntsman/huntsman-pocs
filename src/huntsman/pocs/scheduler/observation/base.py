@@ -56,8 +56,11 @@ class AbstractObservation(PanBase, ABC):
         self.exp_set_size = int(exp_set_size)
 
         if directory is None:
-            directory = self._get_directory()
+            directory = os.path.join(self._image_dir, "fields", self.field.field_name)
         self.directory = directory
+
+    def __name__(self):
+        return self.__class__.__name__
 
     def __str__(self):
         return f"{self.__name__}: {self._field}: exptime={self.exptime}, filter={self.filter_name}"
@@ -198,15 +201,11 @@ class AbstractObservation(PanBase, ABC):
         """ Explicitly mark the current exposure as complete. """
         pass
 
-    # Private methods
-    def _get_directory(self):
-        return os.path.join(self._image_dir, "fields", self.field.field_name)
-
 
 class Observation(AbstractObservation):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
 
     def __str__(self):
         return "{}: {} exposures in blocks of {}, minimum {}, priority {:.0f}".format(
@@ -254,10 +253,10 @@ class CompoundObservation(AbstractObservation):
             raise TypeError("field must be an instance of CompoundField for CompoundObservation.")
 
         if min_nexp is None:
-            min_nexp = len(self._field)
+            min_nexp = len(field)
 
         if exp_set_size is None:
-            exp_set_size = len(self._field)
+            exp_set_size = len(field)
 
         super().__init__(field, min_nexp=min_nexp, exp_set_size=exp_set_size, *args, **kwargs)
 
@@ -276,17 +275,17 @@ class CompoundObservation(AbstractObservation):
     @property
     def set_is_finished(self):
         # Check the min required number of exposures have been obtained
-        has_min_exposures = self.current_exp_num >= self.min_nexp * len(self._fields)
+        has_min_exposures = self.current_exp_num >= self.min_nexp * len(self._field)
 
         # Check if the current set is finished
-        this_set_finished = (self.current_exp_num / len(self._fields)) % self.exp_set_size == 0
+        this_set_finished = (self.current_exp_num / len(self._field)) % self.exp_set_size == 0
 
         return has_min_exposures and this_set_finished
 
     @property
     def minimum_duration(self):
-        return self.exptime * self.min_nexp * len(self._fields)
+        return self.exptime * self.min_nexp * len(self._field)
 
     @property
     def set_duration(self):
-        return self.exptime * self.exp_set_size * len(self._fields)
+        return self.exptime * self.exp_set_size * len(self._field)

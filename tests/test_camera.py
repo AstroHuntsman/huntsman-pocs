@@ -7,14 +7,16 @@ import glob
 import os
 import shutil
 import time
-
 import pytest
+
 import astropy.units as u
 from astropy.io import fits
-from panoptes.pocs.scheduler.field import Field
-from huntsman.pocs.scheduler.observation.base import Observation
+
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
+
+from huntsman.pocs.scheduler.field import Field
+from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
 
