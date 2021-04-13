@@ -1,4 +1,5 @@
 import os
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from astropy import units as u
 
@@ -8,83 +9,120 @@ from panoptes.pocs.base import PanBase
 from panoptes.pocs.scheduler.field import Field
 
 
-class Observation(PanBase):
+class AbstractObservation(PanBase, ABC):
+    """ Abstract class for Observations. """
+
+    def __init__(self, priority=1, dark=False, filter_name=None, directory=None, **kwargs):
+        """
+        Args:
+        """
+        super().__init__(**kwargs)
+
+        if float(priority) <= 0.0:
+            raise ValueError("Priority must be larger than 0.")
+
+        self._image_dir = self.get_config('directories.images')
+
+        self.merit = 0.0
+        self._seq_time = None
+
+        self.dark = dark
+        self.priority = float(priority)
+        self.filter_name = filter_name
+
+        if directory is None:
+            directory = self._get_directory()
+        self.directory = directory
+
+    # Abstract properties
+
+    @property
+    @abstractmethod
+    def field(self):
+        pass
+
+    @field.setter
+    @abstractmethod
+    def field(self, field):
+        pass
+
+    @property
+    @abstractmethod
+    def exposure_index(self):
+        pass
+
+    @property
+    @abstractmethod
+    def set_is_finished(self):
+        pass
+
+    # Abstract methods
+
+    @abstractmethod
+    def reset(self):
+        """Resets the exposure information for the observation. """
+        pass
+
+    # Abstract private methods
+    @abstractmethod
+    def _get_directory(self):
+        pass
+
+    # Properties
+
+    @property
+    def seq_time(self):
+        """ The time at which the observation was selected by the scheduler. """
+        return self._seq_time
+
+    @seq_time.setter
+    def seq_time(self, time):
+        self._seq_time = time
+
+
+class Observation(AbstractObservation):
 
     def __init__(self, field, exptime=120 * u.second, min_nexp=60, exp_set_size=10, priority=100,
-                 filter_name=None, dark=False, *args, **kwargs):
+                 **kwargs):
         """ An observation of a given `panoptes.pocs.scheduler.field.Field`.
 
         An observation consists of a minimum number of exposures (`min_nexp`) that
         must be taken at a set exposure time (`exptime`). These exposures come
         in sets of a certain size (`exp_set_size`) where the minimum number of
         exposures  must be an integer multiple of the set size.
-
         Note:
             An observation may consist of more exposures than `min_nexp` but
             exposures will always come in groups of `exp_set_size`.
-
-        Decorators:
-            u.quantity_input
-
-        Arguments:
-            field {`pocs.scheduler.field.Field`} -- An object representing the
-            field to be captured
-
-        Keyword Arguments:
-            exptime {u.second} -- Exposure time for individual exposures
-                (default: {120 * u.second})
-            min_nexp {int} -- The minimum number of exposures to be taken for a
-                given field (default: 60)
-            exp_set_size {int} -- Number of exposures to take per set
-                (default: {10})
-            priority {int} -- Overall priority for field, with 1.0 being highest
-                (default: {100})
-            filter_name {str} -- Name of the filter to be used. If specified,
-                will override the default filter name (default: {None}).
-            dark (bool, optional): If True, exposures should be taken with the shutter closed.
-                Default: False.
+        Args:
+            field (pocs.scheduler.field.Field): An object representing the field to be captured.
+            exptime (u.second): Exposure time for individual exposures (default 120 * u.second).
+            min_nexp (int): The minimum number of exposures to be taken (default: 60).
+            exp_set_size (int): Number of exposures to take per set, default: 10.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
 
         if not min_nexp % exp_set_size == 0:
             raise ValueError(f"Minimum number of exposures (min_nexp={min_nexp}) must be "
                              f"a multiple of set size (exp_set_size={exp_set_size}).")
 
-        if not float(priority) > 0.0:
-            raise ValueError("Priority must be larger than 0.")
-
-        # Use the property setters to set the field and exptime
-        # The setters can be easily overridden from subclasses
         self.field = field
         self.exptime = exptime
-
-        self.dark = dark  # This is parsed to the take_exposure camera method
 
         self.min_nexp = min_nexp
         self.exp_set_size = exp_set_size
         self.exposure_list = OrderedDict()
         self.pointing_images = OrderedDict()
 
-        self.priority = float(priority)
-
-        self.filter_name = filter_name
-
         self._min_duration = self.exptime * self.min_nexp
         self._set_duration = self.exptime * self.exp_set_size
 
-        self._image_dir = self.get_config('directories.images')
-        self._directory = None
-        self._seq_time = None
-
-        self.merit = 0.0
-
         self.reset()
 
-        self.logger.debug(f"Observation created: {self}")
+    def __str__(self):
+        return "{}: {} exposures in blocks of {}, minimum {}, priority {:.0f}".format(
+            self.field, self.exptime, self.exp_set_size, self.min_nexp, self.priority)
 
-    ##################################################################################################
     # Properties
-    ##################################################################################################
 
     @property
     def status(self):
@@ -158,34 +196,6 @@ class Observation(PanBase):
         return self.field.name
 
     @property
-    def seq_time(self):
-        """ The time at which the observation was selected by the scheduler
-
-        This is used for path name construction
-        """
-        return self._seq_time
-
-    @seq_time.setter
-    def seq_time(self, time):
-        self._seq_time = time
-
-    @property
-    def directory(self):
-        """Return the directory for this Observation.
-
-        This return the base directory for the Observation. This does *not* include
-        the subfolders for each of the cameras.
-
-        Returns:
-            str: Full path to base directory.
-        """
-        if self._directory is None:
-            self._directory = os.path.join(self._image_dir, "fields", self.field.field_name)
-            self.logger.warning(f'Set observation directory to {self._directory}')
-
-        return self._directory
-
-    @property
     def current_exp_num(self):
         """ Return the current number of exposures.
 
@@ -246,9 +256,7 @@ class Observation(PanBase):
 
         return has_min_exposures and this_set_finished
 
-    ##################################################################################################
     # Methods
-    ##################################################################################################
 
     def reset(self):
         """Resets the exposure information for the observation """
@@ -258,10 +266,7 @@ class Observation(PanBase):
         self.merit = 0.0
         self.seq_time = None
 
-    ##################################################################################################
     # Private Methods
-    ##################################################################################################
 
-    def __str__(self):
-        return "{}: {} exposures in blocks of {}, minimum {}, priority {:.0f}".format(
-            self.field, self.exptime, self.exp_set_size, self.min_nexp, self.priority)
+    def _get_directory(self):
+        return os.path.join(self._image_dir, "fields", self.field.field_name)

@@ -24,6 +24,11 @@ class DitheredObservation(Observation):
         # Initialise the observation
         super().__init__(field=fields, min_nexp=n_positions, exp_set_size=n_positions, **kwargs)
 
+    def __str__(self):
+        return f"DitheredObservation: {self.field}: {self.exptime}"
+
+    # Properties
+
     @property
     def field(self):
         return self._field[self.exposure_index]
@@ -39,6 +44,8 @@ class DitheredObservation(Observation):
     def exposure_index(self):
         return self.current_exp_num % len(self._field)
 
+    # Methods
+
     def add_field(self, field):
         """ Add a new field to observe along with exposure time
         Args:
@@ -47,6 +54,3 @@ class DitheredObservation(Observation):
         current_fields = deepcopy(self._field)
         current_fields.extend(field)
         self.field = current_fields
-
-    def __str__(self):
-        return f"DitheredObservation: {self.field}: {self.exptime}"
