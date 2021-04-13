@@ -10,7 +10,7 @@ class AbstractField(PanBase):
 
     def __init__(self, name, equinox="J2000", frame="icrs", **kwargs):
         """
-        
+
         """
         super().__init__(**kwargs)
 
@@ -69,7 +69,7 @@ class CompoundField(AbstractField):
 class DitheredField(CompoundField):
     """ A compound field consisting of several dithered coordinates. """
 
-    def __init__(self, name, position, dither_kwargs=None):
+    def __init__(self, name, position, dither_kwargs=None, **kwargs):
         """
 
         """
@@ -87,7 +87,7 @@ class DitheredField(CompoundField):
             field_configs.append(dict(position=coord, name=dither_name))
 
         # Initialise compound field
-        super().__init__(name, field_configs)
+        super().__init__(name, field_configs, **kwargs)
 
 
 class SkyOffsetField(CompoundField):
