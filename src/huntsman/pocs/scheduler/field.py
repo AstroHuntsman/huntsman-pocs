@@ -116,21 +116,3 @@ class DitheredField(CompoundField):
 
         # Initialise compound field
         super().__init__(name, field_configs, **kwargs)
-
-
-class OffsetSkyField(CompoundField):
-    """ A compound field consisting of a target and sky field. """
-
-    def __init__(self, target_config, sky_config, **kwargs):
-        """
-
-        """
-        super().__init__([target_config, sky_config], **kwargs)
-
-    @property
-    def target_field(self):
-        return self[0]
-
-    @property
-    def sky_field(self):
-        return self[1]
