@@ -52,7 +52,6 @@ RUN /conda/bin/conda env update -n base -f environment.yaml && \
     sudo apt-get --yes clean && \
     sudo rm -rf /var/lib/apt/lists/*
 
-COPY --chown="${userid}:${userid}" docker/docker-compose.yaml .
 COPY --chown="${userid}:${userid}" resources resources
 COPY --chown="${userid}:${userid}" scripts scripts
 
