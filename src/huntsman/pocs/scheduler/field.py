@@ -49,12 +49,14 @@ class Field(FixedTarget, AbstractField):
 
 
 class CompoundField(AbstractField):
-    """ An indexable class consisting of several fields. """
+    """ An iterable, indexable class consisting of several fields. """
 
     def __init__(self, name, field_config_list, field_class=Field):
         """
 
         """
+        self._idx = 0
+
         self._fields = []
         for field_config in field_config_list:
             self._fields.append(field_class(**field_config))
@@ -64,6 +66,16 @@ class CompoundField(AbstractField):
 
     def __len__(self):
         return len(self._fields)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return self._fields[self._idx]
+        except IndexError:
+            self._idx = 0
+            raise StopIteration
 
 
 class DitheredField(CompoundField):
@@ -90,7 +102,7 @@ class DitheredField(CompoundField):
         super().__init__(name, field_configs, **kwargs)
 
 
-class SkyOffsetField(CompoundField):
+class OffsetSkyField(CompoundField):
     """ A compound field consisting of a target and sky field. """
 
     def __init__(self, target_config, sky_config, **kwargs):

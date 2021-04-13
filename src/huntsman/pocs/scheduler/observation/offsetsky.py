@@ -1,25 +1,32 @@
 from huntsman.pocs.scheduler.observation.base import AbstractObservation
 from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
+from huntsman.pocs.scheduler.field import OffsetSkyField
 
 
 class OffsetSkyObservation(AbstractObservation):
     """ Observation with paired offset sky field. Successive exposures will switch between the
     target and sky coordianates."""
 
-    def __init__(self, target_field, sky_field, observation_type=DitheredObservation,
+    def __init__(self, field, observation_type=DitheredObservation,
                  observation_kwargs=None, batch_size=3, **kwargs):
         """
         Args:
         """
+        if not isinstance(field, OffsetSkyField):
+            raise ValueError("field must be an instance of OffsetSkyField.")
+
         super().__init__(**kwargs)
 
+        self._field = field
         self.batch_size = int(batch_size)
 
         if observation_kwargs is None:
             observation_kwargs = {}
 
-        self.target_observation = observation_type(field=target_field, **observation_kwargs)
-        self.sky_observation = observation_type(field=sky_field, **observation_kwargs)
+        self.target_observation = observation_type(field=self._field.target_field,
+                                                   **observation_kwargs)
+        self.sky_observation = observation_type(field=self._field.sky_field,
+                                                **observation_kwargs)
 
     # Properties
 
@@ -31,8 +38,8 @@ class OffsetSkyObservation(AbstractObservation):
     @property
     def field(self):
         if self.on_target:
-            return self.target_observation.field
-        return self.sky_observation.field
+            return self._field.target_field
+        return self._field.sky_field
 
     @field.setter
     def field(self, field):
