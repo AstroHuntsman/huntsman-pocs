@@ -77,26 +77,6 @@ class AbstractObservation(PanBase, ABC):
     def field(self, field):
         pass
 
-    @property
-    @abstractmethod
-    def set_is_finished(self):
-        """ Check if the current observing block has finished, which is True when the minimum
-        number of exposures have been obtained and and integer number of sets have been completed.
-        Returns:
-            bool: True if finished, False if not.
-        """
-        pass
-
-    @property
-    @abstractmethod
-    def minimum_duration(self):
-        pass
-
-    @property
-    @abstractmethod
-    def set_duration(self):
-        pass
-
     # Properties
 
     @property
@@ -188,6 +168,29 @@ class AbstractObservation(PanBase, ABC):
         except IndexError:
             self.logger.warning("No pointing image available.")
 
+    @property
+    def minimum_duration(self):
+        return self.exptime * self.min_nexp
+
+    @property
+    def set_duration(self):
+        return self.exptime * self.exp_set_size
+
+    @property
+    def set_is_finished(self):
+        """ Check if the current observing block has finished, which is True when the minimum
+        number of exposures have been obtained and and integer number of sets have been completed.
+        Returns:
+            bool: True if finished, False if not.
+        """
+        # Check the min required number of exposures have been obtained
+        has_min_exposures = self.current_exp_num >= self.min_nexp
+
+        # Check if the current set is finished
+        this_set_finished = self.current_exp_num % self.exp_set_size == 0
+
+        return has_min_exposures and this_set_finished
+
     # Methods
 
     def reset(self):
@@ -225,42 +228,24 @@ class Observation(AbstractObservation):
             raise TypeError(f"field must be a valid Field instance, got {type(field)}.")
         self._field = field
 
-    @property
-    def set_is_finished(self):
-        # Check the min required number of exposures have been obtained
-        has_min_exposures = self.current_exp_num >= self.min_nexp
-
-        # Check if the current set is finished
-        this_set_finished = self.current_exp_num % self.exp_set_size == 0
-
-        return has_min_exposures and this_set_finished
-
-    @property
-    def minimum_duration(self):
-        return self.exptime * self.min_nexp
-
-    @property
-    def set_duration(self):
-        return self.exptime * self.exp_set_size
-
 
 class CompoundObservation(AbstractObservation):
     """ Compound observation class for use with CompoundField objects. Compound observations share
     the same basic attributes e.g. exposure time and filter name.
     """
 
-    def __init__(self, field, min_nexp=1, exp_set_size=1, batch_size=1, *args, **kwargs):
+    def __init__(self, field, batch_size=1, *args, **kwargs):
         """
         Args:
             field (huntsman.pocs.scheduler.field.CompoundField): The CompoundField object.
-            min_nexp (int): The minimum number of exposures to be taken for each subfield.
-                (default: 1).
-            exp_set_size (int): Number of exposures to take per set, default: 1.
             batch_size (int): Take this many exposures before moving onto the next sub-field.
             **kwargs: Parsed to AbstractObservation.
         """
         if not isinstance(field, CompoundField):
             raise TypeError("field must be an instance of CompoundField.")
+
+        min_nexp = field.max_subfields * len(field) * self.batch_size
+        exp_set_size = min_nexp
 
         self.batch_size = int(batch_size)
 
@@ -281,25 +266,3 @@ class CompoundObservation(AbstractObservation):
         if not isinstance(field, CompoundField):
             raise TypeError("field must be an instance of CompoundField.")
         self._field = field
-
-    @property
-    def set_is_finished(self):
-        # Check the min required number of exposures have been obtained
-        min_exposures = self.min_nexp * self._field.max_subfields * len(self._field) * \
-            self.batch_size
-        has_min_exposures = self.current_exp_num >= min_exposures
-
-        # Check if the current set is finished
-        exposures_in_set = self._field.max_subfields * len(self._field) * self.exp_set_size * \
-            self.batch_size
-        this_set_finished = self.current_exp_num % exposures_in_set == 0
-
-        return has_min_exposures and this_set_finished
-
-    @property
-    def minimum_duration(self):
-        return self.exptime * self.min_nexp * len(self._field)
-
-    @property
-    def set_duration(self):
-        return self.exptime * self.exp_set_size * len(self._field)
