@@ -32,7 +32,7 @@ directories:
   images: images
   mounts: /panoptes-pocs/resources/mounts
   resources: /panoptes-pocs/resources
-  targets: /panoptes-pocs/conf_files/targets
+  fields: /panoptes-pocs/conf_files/fields
   webcam: webcams
 
 cameras:

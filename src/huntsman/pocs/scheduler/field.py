@@ -96,7 +96,9 @@ class CompoundField(AbstractField):
 
     def __next__(self):
         try:
-            return self._fields[self._idx]
+            f = self._fields[self._idx]
+            self._idx += 1
+            return f
         except IndexError:
             self._idx = 0
             raise StopIteration

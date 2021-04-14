@@ -204,12 +204,14 @@ class AbstractObservation(PanBase, ABC):
 
 class Observation(AbstractObservation):
 
+    """ A normal observation consisting of a single Field. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def __str__(self):
-        return "{}: {} exposures in blocks of {}, minimum {}, priority {:.0f}".format(
-            self.field, self.exptime, self.exp_set_size, self.min_nexp, self.priority)
+        return (f"{self.field}: {self.exp_set_size} exposures in blocks of {self.exp_set_size},"
+                f" minimum {self.min_nexp}, priority {self.priority:.1f}")
 
     # Properties
 
@@ -247,8 +249,16 @@ class CompoundObservation(AbstractObservation):
     the same basic attributes e.g. exposure time and filter name.
     """
 
-    def __init__(self, field, min_nexp=None, exp_set_size=None, *args, **kwargs):
-
+    def __init__(self, field, min_nexp=None, exp_set_size=None, batch_size=1, *args, **kwargs):
+        """
+        Args:
+            field (huntsman.pocs.scheduler.field.CompoundField): The CompoundField object.
+            exptime (u.second): Exposure time for individual exposures (default 120 * u.second).
+            min_nexp (int): The minimum number of exposures to be taken (default: 60).
+            exp_set_size (int): Number of exposures to take per set, default: 10.
+            batch_size (int): Take this many exposures before moving onto the next field.
+            **kwargs: Parsed to AbstractObservation.
+        """
         if not isinstance(field, CompoundField):
             raise TypeError("field must be an instance of CompoundField for CompoundObservation.")
 
@@ -258,27 +268,35 @@ class CompoundObservation(AbstractObservation):
         if exp_set_size is None:
             exp_set_size = len(field)
 
+        self.batch_size = int(batch_size)
+
         super().__init__(field, min_nexp=min_nexp, exp_set_size=exp_set_size, *args, **kwargs)
 
     # Properties
 
     @property
     def field(self):
-        return self._field[self.current_exp_num % len(self._field)]
+        """
+        The field is determined by current exposure number, number of sub-fields and batch size.
+        """
+        field_idx = int(self.current_exp_num / self.batch_size) % len(self._field)
+        return self._field[field_idx]
 
     @field.setter
     def field(self, field):
         if not isinstance(field, CompoundField):
-            raise TypeError("field must be an instance of CompoundField for CompoundObservation.")
+            raise TypeError("field must be an instance of CompoundField.")
         self._field = field
 
     @property
     def set_is_finished(self):
         # Check the min required number of exposures have been obtained
-        has_min_exposures = self.current_exp_num >= self.min_nexp * len(self._field)
+        min_exposures = self.min_nexp * len(self._field) * self.batch_size
+        has_min_exposures = self.current_exp_num >= min_exposures
 
         # Check if the current set is finished
-        this_set_finished = (self.current_exp_num / len(self._field)) % self.exp_set_size == 0
+        exposures_in_set = len(self._field) * self.exp_set_size * self.batch_size
+        this_set_finished = self.current_exp_num % exposures_in_set == 0
 
         return has_min_exposures and this_set_finished
 
