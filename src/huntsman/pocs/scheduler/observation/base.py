@@ -11,7 +11,7 @@ from huntsman.pocs.scheduler.field import AbstractField, CompoundField
 class AbstractObservation(PanBase, ABC):
     """ Abstract base class for Observation objects. """
 
-    def __init__(self, field, exptime=120 * u.second, min_nexp=60, exp_set_size=10, priority=1,
+    def __init__(self, field, exptime=120 * u.second, min_nexp=1, exp_set_size=1, priority=1,
                  dark=False, filter_name=None, directory=None, **kwargs):
         """ An observation of a given `panoptes.pocs.scheduler.field.Field`.
 
@@ -25,8 +25,8 @@ class AbstractObservation(PanBase, ABC):
         Args:
             field (pocs.scheduler.field.Field): An object representing the field to be captured.
             exptime (u.second): Exposure time for individual exposures (default 120 * u.second).
-            min_nexp (int): The minimum number of exposures to be taken (default: 60).
-            exp_set_size (int): Number of exposures to take per set, default: 10.
+            min_nexp (int): The minimum number of exposures to be taken. Default: 1.
+            exp_set_size (int): Number of exposures to take per set, default: 1.
         """
         super().__init__(**kwargs)
 
