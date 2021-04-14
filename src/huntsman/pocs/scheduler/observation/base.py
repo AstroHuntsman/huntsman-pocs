@@ -249,24 +249,18 @@ class CompoundObservation(AbstractObservation):
     the same basic attributes e.g. exposure time and filter name.
     """
 
-    def __init__(self, field, min_nexp=None, exp_set_size=None, batch_size=1, *args, **kwargs):
+    def __init__(self, field, min_nexp=1, exp_set_size=1, batch_size=1, *args, **kwargs):
         """
         Args:
             field (huntsman.pocs.scheduler.field.CompoundField): The CompoundField object.
-            exptime (u.second): Exposure time for individual exposures (default 120 * u.second).
-            min_nexp (int): The minimum number of exposures to be taken (default: 60).
-            exp_set_size (int): Number of exposures to take per set, default: 10.
-            batch_size (int): Take this many exposures before moving onto the next field.
+            min_nexp (int): The minimum number of exposures to be taken for each subfield.
+                (default: 1).
+            exp_set_size (int): Number of exposures to take per set, default: 1.
+            batch_size (int): Take this many exposures before moving onto the next sub-field.
             **kwargs: Parsed to AbstractObservation.
         """
         if not isinstance(field, CompoundField):
-            raise TypeError("field must be an instance of CompoundField for CompoundObservation.")
-
-        if min_nexp is None:
-            min_nexp = len(field)
-
-        if exp_set_size is None:
-            exp_set_size = len(field)
+            raise TypeError("field must be an instance of CompoundField.")
 
         self.batch_size = int(batch_size)
 
@@ -291,11 +285,13 @@ class CompoundObservation(AbstractObservation):
     @property
     def set_is_finished(self):
         # Check the min required number of exposures have been obtained
-        min_exposures = self.min_nexp * len(self._field) * self.batch_size
+        min_exposures = self.min_nexp * self._field.max_subfields * len(self._field) * \
+            self.batch_size
         has_min_exposures = self.current_exp_num >= min_exposures
 
         # Check if the current set is finished
-        exposures_in_set = len(self._field) * self.exp_set_size * self.batch_size
+        exposures_in_set = self._field.max_subfields * len(self._field) * self.exp_set_size * \
+            self.batch_size
         this_set_finished = self.current_exp_num % exposures_in_set == 0
 
         return has_min_exposures and this_set_finished

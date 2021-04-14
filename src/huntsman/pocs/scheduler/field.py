@@ -29,6 +29,9 @@ class AbstractField(PanBase):
         if not self._field_name:
             raise ValueError('Name is empty.')
 
+    def __len__(self):
+        return 1
+
     def __name__(self):
         return self.__class__.__name__
 
@@ -89,6 +92,15 @@ class CompoundField(AbstractField):
             field_class = load_module(field_type)
 
             self._fields.append(field_class(**field_config))
+
+    @property
+    def max_subfields(self):
+        """ Return the maximum number of sub-fields in any of the fields.
+        If all self._fields are Field objects, max_subfields=1. If there are some CompoundField
+        objects in self._fields, then max_subfields>=1. This is useful for determining if the
+        observation set is finished.
+        """
+        return max([len(_) for _ in self._fields])
 
     def __getitem__(self, index):
         return self._fields[index]

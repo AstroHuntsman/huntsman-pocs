@@ -87,6 +87,13 @@ def test_compound_observation(field_config_1, field_config_2):
     with pytest.raises(TypeError):
         obsbase.CompoundObservation(field=field)
 
+    i = 0
+    expected_exp = 2  # len(field_configs)
+    while obs.current_exp_num < expected_exp:
+        assert not obs.set_is_finished
+        obs.exposure_list[f"{i}"] = None
+        i += 1
+
 
 def test_dithered_observation(field_config_1):
 
@@ -121,3 +128,11 @@ def test_compound_dithered_observation(field_config_1, field_config_2):
     assert isinstance(obs.field, DitheredField)
     assert obs.field.name == field_config_2["name"]
     assert len(obs.field) == 5
+
+    i = 0
+    expected_exp = 9 * 2  # max(n_positions) * len(field_configs)
+    while obs.current_exp_num < expected_exp:
+        assert not obs.set_is_finished
+        obs.exposure_list[f"{i}"] = None
+        i += 1
+    assert obs.set_is_finished
