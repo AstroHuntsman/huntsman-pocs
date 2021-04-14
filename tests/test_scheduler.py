@@ -88,11 +88,12 @@ def test_compound_observation(field_config_1, field_config_2):
         obsbase.CompoundObservation(field=field)
 
     i = 0
-    expected_exp = 2  # len(field_configs)
+    expected_exp = 4  # len(field_configs) * batch_size
     while obs.current_exp_num < expected_exp:
         assert not obs.set_is_finished
         obs.exposure_list[f"{i}"] = None
         i += 1
+    assert obs.set_is_finished
 
 
 def test_dithered_observation(field_config_1):
