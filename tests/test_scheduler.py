@@ -2,6 +2,7 @@ import pytest
 
 from huntsman.pocs.scheduler.field import Field, CompoundField, DitheredField
 from huntsman.pocs.scheduler.observation import base as obsbase
+from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
 
 
 @pytest.fixture(scope="function")
@@ -85,3 +86,38 @@ def test_compound_observation(field_config_1, field_config_2):
     field = Field(**field_config_1)
     with pytest.raises(TypeError):
         obsbase.CompoundObservation(field=field)
+
+
+def test_dithered_observation(field_config_1):
+
+    field = DitheredField(**field_config_1)
+
+    obs = DitheredObservation(field)
+    assert isinstance(obs.field, Field)
+
+    field = Field(**field_config_1)
+    with pytest.raises(TypeError):
+        DitheredObservation(field)
+
+
+def test_compound_dithered_observation(field_config_1, field_config_2):
+
+    field_config_1["type"] = "huntsman.pocs.scheduler.field.DitheredField"
+    field_config_1["dither_kwargs"] = dict(n_positions=9)
+
+    field_config_2["type"] = "huntsman.pocs.scheduler.field.DitheredField"
+    field_config_2["dither_kwargs"] = dict(n_positions=5)
+
+    field = CompoundField("test", [field_config_1, field_config_2])
+    for f in field:
+        assert isinstance(f, DitheredField)
+
+    obs = obsbase.CompoundObservation(field)
+    assert isinstance(obs.field, DitheredField)
+    assert obs.field.name == field_config_1["name"]
+    assert len(obs.field) == 9
+
+    obs.exposure_list["a"] = None
+    assert isinstance(obs.field, DitheredField)
+    assert obs.field.name == field_config_2["name"]
+    assert len(obs.field) == 5

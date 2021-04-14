@@ -9,6 +9,6 @@ class DitheredObservation(CompoundObservation):
     def __init__(self, field, **kwargs):
 
         if not isinstance(field, DitheredField):
-            raise ValueError("field must be an instance of DitheredField.")
+            raise TypeError("field must be an instance of DitheredField.")
 
         super().__init__(field=field, **kwargs)

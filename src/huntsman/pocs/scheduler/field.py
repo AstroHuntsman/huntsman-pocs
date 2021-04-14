@@ -67,13 +67,14 @@ class Field(FixedTarget, AbstractField):
 class CompoundField(AbstractField):
     """ An iterable, indexable class consisting of several fields. """
 
-    def __init__(self, name, field_config_list, field_type="huntsman.pocs.scheduler.field.Field",
-                 **kwargs):
+    def __init__(self, name, field_config_list,
+                 default_field_type="huntsman.pocs.scheduler.field.Field", **kwargs):
         """
         Args:
             name (str): The name of the field (e.g. target name).
             field_config_list (list of dict): Config for each field.
-            field_type (str, optional): The python class name to use for the fields.
+            default_field_type (str, optional): The default python class name to use for the
+                sub-fields. This can be overridden by providing the 'type' item to the field_config.
                 Default: huntsman.pocs.scheduler.field.Field.
         """
         super().__init__(name, **kwargs)
@@ -81,8 +82,12 @@ class CompoundField(AbstractField):
         self._idx = 0
         self._fields = []
 
-        field_class = load_module(field_type)
         for field_config in field_config_list:
+
+            field_type = field_config.pop("type", default_field_type)
+            self.logger.debug(f"Adding {field_type} field to {name} observation.")
+            field_class = load_module(field_type)
+
             self._fields.append(field_class(**field_config))
 
     def __getitem__(self, index):
