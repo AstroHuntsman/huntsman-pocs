@@ -183,12 +183,12 @@ class Camera(AbstractSDKCamera):
         self._reset_usb()
         return self.connect()
 
-    def take_observation(self, observation, *args, **kwargs):
+    def take_exposure(self, defocused=False, *args, **kwargs):
         """ Overrride class method to add defocusing offset. """
-        if observation.is_defocused:
+        if defocused:
             required_focus_offset = self._defocus_offset - self._current_defocus_offset
             self.logger.debug(f"Applying focus offset of {self._defocus_offset} for defocused "
-                              "observation.")
+                              "exposure.")
         else:
             self.logger.debug("Nullifying defocus offset.")
             required_focus_offset = -self._current_defocus_offset
@@ -197,7 +197,12 @@ class Camera(AbstractSDKCamera):
             self.focuser.move_by(required_focus_offset)
             self._current_defocus_offset += required_focus_offset
 
-        return super().take_observation(observation, *args, **kwargs)
+        return super().take_exposure(*args, **kwargs)
+
+    def take_observation(self, observation, *args, **kwargs):
+        """ Overrride class method to add defocusing offset. """
+        return super().take_observation(observation, defocused=observation.is_defocused,
+                                        *args, **kwargs)
 
     def start_video(self, seconds, filename_root, max_frames, image_type=None):
         if not isinstance(seconds, u.Quantity):

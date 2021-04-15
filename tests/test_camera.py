@@ -511,6 +511,7 @@ def test_autofocus_no_focuser(camera):
     assert camera.focuser.position == initial_focus
 
 
+@pytest.mark.skip("Defocusing logic has not been built into testing cameras!")
 def test_observation_defocused(camera):
     """
     """
