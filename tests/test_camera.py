@@ -529,6 +529,7 @@ def test_observation_defocused(camera):
     assert focus_value_final == focus_value_initial + camera._defocus_offset
 
     observation2 = Observation(field, exptime=1.5 * u.second, filter_name='deux', defocused=False)
+    observation2.seq_time = '19991231T235959'
     camera.take_observation(observation2, blocking=True)
     focus_value_final = camera.focuser.position
     assert focus_value_final == focus_value_initial
