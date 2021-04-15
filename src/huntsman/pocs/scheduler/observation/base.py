@@ -12,7 +12,7 @@ class AbstractObservation(PanBase, ABC):
     """ Abstract base class for Observation objects. """
 
     def __init__(self, field, exptime=120 * u.second, min_nexp=1, exp_set_size=1, priority=1,
-                 dark=False, filter_name=None, directory=None, **kwargs):
+                 dark=False, filter_name=None, directory=None, defocused=False, **kwargs):
         """ An observation of a given `panoptes.pocs.scheduler.field.Field`.
 
         An observation consists of a minimum number of exposures (`min_nexp`) that
@@ -27,6 +27,8 @@ class AbstractObservation(PanBase, ABC):
             exptime (u.second): Exposure time for individual exposures (default 120 * u.second).
             min_nexp (int): The minimum number of exposures to be taken. Default: 1.
             exp_set_size (int): Number of exposures to take per set, default: 1.
+            defocused (bool): True if the observation should be taken in defocused mode.
+                Default False.
         """
         super().__init__(**kwargs)
 
@@ -43,6 +45,7 @@ class AbstractObservation(PanBase, ABC):
         self._image_dir = self.get_config('directories.images')
         self._field = field
         self._exptime = exptime
+        self._is_defocused = bool(defocused)
 
         self.merit = 0.0
         self._seq_time = None
@@ -190,6 +193,10 @@ class AbstractObservation(PanBase, ABC):
         this_set_finished = self.current_exp_num % self.exp_set_size == 0
 
         return has_min_exposures and this_set_finished
+
+    @property
+    def is_defocused(self):
+        return self._is_defocused
 
     # Methods
 
