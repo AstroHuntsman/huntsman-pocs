@@ -1,27 +1,18 @@
 import os
-from contextlib import suppress
-
-from panoptes.pocs.scheduler.field import Field
 from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
 
 
 class FlatFieldObservation(DitheredObservation):
+    """ Observation object for flat fields. """
 
-    def __init__(self, position, **kwargs):
+    def __init__(self, *args, **kwargs):
         """
-        Args:
-            position (str or astropy.coordinates.SkyCoord): Center of field, can
-                be anything accepted by `astropy.coordinates.SkyCoord`.
+            *args, **kwargs: Parsed to DitheredObservation.__init__
         """
-        # Convert from SkyCoord if required
-        with suppress(AttributeError):
-            position = position.to_string('hmsdms')
-        field = Field('Flat', position=position)
+        super().__init__(*args, **kwargs)
+        self.directory = os.path.join(self._image_dir, "flat")
 
-        super().__init__(field=field, **kwargs)
-
-        # Specify directory root for file storage
-        self._directory = os.path.join(self._image_dir, "flat")
+    # Methods
 
     def get_exposure_filename(self, camera):
         """ Get the exposure filename for a camera.

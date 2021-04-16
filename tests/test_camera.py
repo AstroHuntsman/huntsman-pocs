@@ -7,14 +7,16 @@ import glob
 import os
 import shutil
 import time
-
 import pytest
+
 import astropy.units as u
 from astropy.io import fits
-from panoptes.pocs.scheduler.field import Field
-from huntsman.pocs.scheduler.observation.base import Observation
+
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
+
+from huntsman.pocs.scheduler.field import Field
+from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
 
@@ -507,3 +509,28 @@ def test_autofocus_no_focuser(camera):
         camera.autofocus()
     camera.focuser = focuser
     assert camera.focuser.position == initial_focus
+
+
+@pytest.mark.skip("Defocusing logic has not been built into testing cameras!")
+def test_observation_defocused(camera):
+    """
+    """
+    if not camera.has_focuser:
+        pytest.skip("Camera does not have a focuser.")
+
+    field = Field('Test Observation', '20h00m43.7135s +22d42m39.0645s')
+    observation = Observation(field, exptime=1.5 * u.second, filter_name='deux', defocused=True)
+    observation.seq_time = '19991231T235959'
+
+    camera._defocus_offset = 5
+    focus_value_initial = camera.focuser.position
+    camera.take_observation(observation, blocking=True)
+
+    focus_value_final = camera.focuser.position
+    assert focus_value_final == focus_value_initial + camera._defocus_offset
+
+    observation2 = Observation(field, exptime=1.5 * u.second, filter_name='deux', defocused=False)
+    observation2.seq_time = '19991231T235959'
+    camera.take_observation(observation2, blocking=True)
+    focus_value_final = camera.focuser.position
+    assert focus_value_final == focus_value_initial

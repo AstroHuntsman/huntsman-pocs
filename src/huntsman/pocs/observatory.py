@@ -5,28 +5,21 @@ from functools import partial
 from astropy import units as u
 
 from panoptes.utils import error
-from panoptes.utils.utils import altaz_to_radec, get_quantity_value
+from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
+from panoptes.pocs.scheduler.observation.bias import BiasObservation
 
 from huntsman.pocs.guide.bisque import Guide
-from panoptes.pocs.scheduler.observation.bias import BiasObservation
-from huntsman.pocs.scheduler.observation.dark import DarkObservation
-from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
-
 from huntsman.pocs.archive.utils import remove_empty_directories
-from huntsman.pocs.utils.flats import FlatFieldSequence, get_flat_field_altaz
+from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.utils.flats import FlatFieldSequence, make_flat_field_observation
 
 
 class HuntsmanObservatory(Observatory):
 
-    def __init__(self,
-                 with_autoguider=True,
-                 hdr_mode=False,
-                 take_flats=True,
-                 *args, **kwargs
-                 ):
+    def __init__(self, with_autoguider=True, hdr_mode=False, take_flats=True, *args, **kwargs):
         """Huntsman POCS Observatory
 
         Args:
@@ -54,7 +47,7 @@ class HuntsmanObservatory(Observatory):
         self.last_coarse_focus_time = None
         self.coarse_focus_config = self.get_config('focusing.coarse')
         self._coarse_focus_frequency = self.coarse_focus_config['frequency'] \
-                                * u.Unit(self.coarse_focus_config['frequency_unit'])
+            * u.Unit(self.coarse_focus_config['frequency_unit'])
         self._coarse_focus_filter = self.coarse_focus_config['filter_name']
 
         if self.has_autoguider:
@@ -222,13 +215,8 @@ class HuntsmanObservatory(Observatory):
                 self.logger.warning(f'No cameras found with {filter_name} filter.')
                 continue
 
-            # Get the flat field coordinates
-            altaz = get_flat_field_altaz(location=self.earth_location)
-            self.logger.debug(f"Flat field alt/az for {filter_name} filter: {altaz}")
-
-            position = altaz_to_radec(alt=altaz.alt, az=altaz.az, location=self.earth_location,
-                                      obstime=current_time())
-            observation = FlatFieldObservation(position=position, filter_name=filter_name)
+            # Get the flat field observation
+            observation = make_flat_field_observation(self.earth_location)
             observation.seq_time = current_time(flatten=True)
 
             # Take the flats for each camera in this filter

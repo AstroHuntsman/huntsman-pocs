@@ -4,7 +4,7 @@ from astropy import units as u
 from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.config.client import get_config
 
-from panoptes.pocs.scheduler.field import Field
+from huntsman.pocs.scheduler.field import Field
 from huntsman.pocs.scheduler.observation.base import Observation
 
 
@@ -36,11 +36,9 @@ class DarkObservation(Observation):
             min_nexp = exp_set_size
         self.min_nexp = min_nexp
 
-        # Specify directory root for file storage
-        self._directory = os.path.join(self._image_dir, 'dark')
+        self.directory = os.path.join(self._image_dir, 'dark')
 
-    def __str__(self):
-        return "DarkObservation"
+    # Properties
 
     @property
     def current_exp_num(self):
@@ -51,9 +49,7 @@ class DarkObservation(Observation):
         exptime = self._exptime[self.current_exp_num]
         return get_quantity_value(exptime, u.second) * u.second
 
-    @exptime.setter
-    def exptime(self, exptimes):
-        self._exptime = exptimes
+    # Methods
 
     def mark_exposure_complete(self):
         self._current_exp_num += 1

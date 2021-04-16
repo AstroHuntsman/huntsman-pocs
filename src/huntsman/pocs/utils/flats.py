@@ -2,16 +2,18 @@ from contextlib import suppress
 
 from astropy.stats import sigma_clipped_stats
 from astropy import units as u
-from panoptes.utils.images import fits as fits_utils
-from panoptes.utils.images import crop_data
-
-from panoptes.utils.time import current_time
-from panoptes.utils.utils import get_quantity_value
-from huntsman.pocs.utils.logger import logger as LOGGER
-
-
 from astropy.coordinates import get_sun
 from astropy.coordinates import AltAz
+
+from panoptes.utils.images import fits as fits_utils
+from panoptes.utils.images import crop_data
+from panoptes.utils.utils import altaz_to_radec
+from panoptes.utils.time import current_time
+from panoptes.utils.utils import get_quantity_value
+
+from huntsman.pocs.utils.logger import logger as LOGGER
+from huntsman.pocs.scheduler.field import DitheredField
+from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
 
 
 def get_flat_field_altaz(location):
@@ -31,6 +33,25 @@ def get_flat_field_altaz(location):
     az = ((altaz_sun.az.to_value(u.deg) + 180) % 360) * u.deg  # Az between 0 and 360 deg
 
     return AltAz(alt=alt, az=az, obstime=time_now, location=location)
+
+
+def make_flat_field_observation(earth_location):
+    """ Make a flat field Observation.
+    Args:
+        earth_location (astropy.coordinates.EarthLocation): The observatory location.
+    Returns:
+        FlatFieldObservation: The Observation object.
+    """
+    # Get the flat field coordinates
+    altaz = get_flat_field_altaz(location=earth_location)
+
+    # Make the flat field Field object
+    position = altaz_to_radec(alt=altaz.alt, az=altaz.az, location=earth_location,
+                              obstime=current_time())
+    field = DitheredField(name="Flat", position=position)
+
+    # Return the observation object
+    return FlatFieldObservation(field=field)
 
 
 class FlatFieldSequence():
@@ -197,11 +218,11 @@ class FlatFieldSequence():
 
         # Make sure the exptime is within limits
         if exptime >= self._max_exptime:
-            self.logger.warning(f"Truncating exptime at maximum value.")
+            self.logger.warning("Truncating exptime at maximum value.")
             exptime = self._max_exptime
 
         elif exptime <= self._min_exptime:
-            self.logger.warning(f"Truncating exptime at minimum value.")
+            self.logger.warning("Truncating exptime at minimum value.")
             exptime = self._min_exptime
 
         return exptime
