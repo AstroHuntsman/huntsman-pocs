@@ -35,7 +35,10 @@ class AbstractObservation(PanBase, ABC):
         if float(priority) <= 0:
             raise ValueError("Priority must be larger than 0.")
 
-        if min_nexp % exp_set_size != 0:
+        self.exp_set_size = int(exp_set_size)
+        self.min_nexp = max(int(min_nexp), self.exp_set_size)
+
+        if self.min_nexp % self.exp_set_size != 0:
             raise ValueError(f"Minimum number of exposures (min_nexp={min_nexp}) must be "
                              f"a multiple of set size (exp_set_size={exp_set_size}).")
 
@@ -55,8 +58,6 @@ class AbstractObservation(PanBase, ABC):
         self.dark = bool(dark)
         self.priority = float(priority)
         self.filter_name = filter_name
-        self.exp_set_size = int(exp_set_size)
-        self.min_nexp = max(int(min_nexp), self.exp_set_size)
 
         if directory is None:
             directory = os.path.join(self._image_dir, "fields", self._field.field_name)
