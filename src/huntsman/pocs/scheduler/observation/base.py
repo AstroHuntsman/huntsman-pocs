@@ -251,12 +251,14 @@ class CompoundObservation(AbstractObservation):
     the same basic attributes e.g. exposure time and filter name.
     """
 
-    def __init__(self, field, batch_size=1, *args, **kwargs):
+    def __init__(self, field, batch_size=1, exp_set_size=None, *args, **kwargs):
         """
         Args:
             field (huntsman.pocs.scheduler.field.CompoundField): The CompoundField object.
             batch_size (int, optional): Take this many exposures before moving onto the next
                 sub-field. Default: 1.
+            exp_set_size (int): Number of exposures to take per set. If None (default), will
+                calculate using field and batch_size.
             **kwargs: Parsed to AbstractObservation.
         """
         if not isinstance(field, CompoundField):
@@ -264,10 +266,10 @@ class CompoundObservation(AbstractObservation):
 
         self.batch_size = int(batch_size)
 
-        min_nexp = field.max_subfields * len(field) * self.batch_size
-        exp_set_size = min_nexp
+        if exp_set_size is None:
+            exp_set_size = field.max_subfields * len(field) * self.batch_size
 
-        super().__init__(field, min_nexp=min_nexp, exp_set_size=exp_set_size, *args, **kwargs)
+        super().__init__(field, exp_set_size=exp_set_size, *args, **kwargs)
 
     # Properties
 
