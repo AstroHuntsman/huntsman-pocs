@@ -73,6 +73,12 @@ class AbstractObservation(PanBase, ABC):
     @property
     @abstractmethod
     def field(self):
+        """ Return the current Field for this observation.
+        Note that this *must* be an instance of huntsman.pocs.scheduler.field.Field, rather than
+        e.g. a CompoundField for the scheduler to work correctly.
+        Returns:
+            huntsman.pocs.scheduler.field.Field: The Field object.
+        """
         pass
 
     @field.setter
@@ -227,6 +233,10 @@ class Observation(AbstractObservation):
 
     @property
     def field(self):
+        """
+        Returns:
+            huntsman.pocs.scheduler.field.Field: A Field object.
+        """
         return self._field
 
     @field.setter
@@ -260,14 +270,33 @@ class CompoundObservation(AbstractObservation):
         super().__init__(field, min_nexp=min_nexp, exp_set_size=exp_set_size, *args, **kwargs)
 
     # Properties
+    # exposures_per_field = current_exp_num / (len(self._field) * batch_size)
 
     @property
     def field(self):
         """
         The field is determined by current exposure number, number of sub-fields and batch size.
+        Returns:
+            huntsman.pocs.scheduler.field.Field: A Field object.
         """
         field_idx = int(self.current_exp_num / self.batch_size) % len(self._field)
-        return self._field[field_idx]
+        field = self._field[field_idx]
+
+        # Check if the field is nested (i.e. another Compound Field)
+        if isinstance(field, CompoundField):
+
+            # Count the number of exposures for this subfield
+            exposure_cadence = self.batch_size * len(self.field)
+            exposures_this_field = len(self.exposure_list[field_idx:][::exposure_cadence])
+
+            # Get the corresponding nested field index
+            nested_field_idx = (exposures_this_field / field.batch_size) % len(self._field._field)
+
+            # Returned the nested field
+            nested_field = field[nested_field_idx]
+            return nested_field
+
+        return field
 
     @field.setter
     def field(self, field):
