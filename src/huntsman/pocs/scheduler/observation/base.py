@@ -56,7 +56,7 @@ class AbstractObservation(PanBase, ABC):
         self.priority = float(priority)
         self.filter_name = filter_name
         self.exp_set_size = int(exp_set_size)
-        self.min_nexp = min(int(min_nexp), self.exp_set_size)
+        self.min_nexp = max(int(min_nexp), self.exp_set_size)
 
         if directory is None:
             directory = os.path.join(self._image_dir, "fields", self._field.field_name)
