@@ -121,17 +121,61 @@ def test_compound_dithered_observation(field_config_1, field_config_2):
         assert isinstance(f, DitheredField)
 
     obs = obsbase.CompoundObservation(field)
-    assert isinstance(obs.field, DitheredField)
-    assert obs.field.name == field_config_1["name"]
-    assert len(obs.field) == 9
+    assert isinstance(obs.field, Field)
+    assert obs.field.name.startswith(field_config_1["name"])
+    assert obs.field.name.endswith("0")
 
     obs.exposure_list["a"] = None
-    assert isinstance(obs.field, DitheredField)
-    assert obs.field.name == field_config_2["name"]
-    assert len(obs.field) == 5
+    assert isinstance(obs.field, Field)
+    assert obs.field.name.startswith(field_config_2["name"])
+    assert obs.field.name.endswith("0")
+
+    obs.exposure_list["b"] = None
+    assert isinstance(obs.field, Field)
+    assert obs.field.name.startswith(field_config_1["name"])
+    assert obs.field.name.endswith("1")
 
     i = 0
     expected_exp = 9 * 2  # max(n_positions) * len(field_configs)
+    while obs.current_exp_num < expected_exp:
+        assert not obs.set_is_finished
+        obs.exposure_list[f"{i}"] = None
+        i += 1
+    assert obs.set_is_finished
+
+
+def test_compound_dithered_observation_batch(field_config_1, field_config_2):
+
+    field_config_1["type"] = "huntsman.pocs.scheduler.field.DitheredField"
+    field_config_1["dither_kwargs"] = dict(n_positions=9)
+
+    field_config_2["type"] = "huntsman.pocs.scheduler.field.DitheredField"
+    field_config_2["dither_kwargs"] = dict(n_positions=5)
+
+    field = CompoundField("test", [field_config_1, field_config_2])
+    for f in field:
+        assert isinstance(f, DitheredField)
+
+    obs = obsbase.CompoundObservation(field, batch_size=2)
+
+    for _ in ["a", "b"]:
+        assert isinstance(obs.field, Field)
+        print(_, obs.field.name, field_config_1["name"])
+        assert obs.field.name.startswith(field_config_1["name"])
+        assert obs.field.name.endswith("0")
+        obs.exposure_list[_] = None
+
+    for _ in ["c", "d"]:
+        assert isinstance(obs.field, Field)
+        assert obs.field.name.startswith(field_config_2["name"])
+        assert obs.field.name.endswith("0")
+        obs.exposure_list[_] = None
+
+    assert obs.field.name.startswith(field_config_1["name"])
+    assert obs.field.name.endswith("1")
+
+    i = 0
+    expected_exp = 9 * 2 * 2  # max(n_positions) * len(field_configs) * batch_size
     while obs.current_exp_num < expected_exp:
         assert not obs.set_is_finished
         obs.exposure_list[f"{i}"] = None

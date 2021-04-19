@@ -285,15 +285,22 @@ class CompoundObservation(AbstractObservation):
         # Check if the field is nested (i.e. another Compound Field)
         if isinstance(field, CompoundField):
 
+            exposure_list = list(self.exposure_list.keys())
+            exposure_step = self.batch_size * len(self._field)
+
             # Count the number of exposures for this subfield
-            exposure_cadence = self.batch_size * len(self.field)
-            exposures_this_field = len(self.exposure_list[field_idx:][::exposure_cadence])
+            # This is a bit tricky and could be improved by having an "update" method
+            exposures_this_field = 0
+            for i in range(self.batch_size):
+                exposure_offset = field_idx * self.batch_size + i
+                exposures_this_field += len(exposure_list[exposure_offset::exposure_step])
 
             # Get the corresponding nested field index
-            nested_field_idx = (exposures_this_field / field.batch_size) % len(self._field._field)
+            nested_field_idx = int(exposures_this_field / self.batch_size) % len(field)
 
             # Returned the nested field
             nested_field = field[nested_field_idx]
+
             return nested_field
 
         return field
