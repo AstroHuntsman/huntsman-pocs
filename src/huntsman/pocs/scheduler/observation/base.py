@@ -59,8 +59,8 @@ class AbstractObservation(PanBase, ABC):
         self.exp_set_size = int(exp_set_size)
 
         if directory is None:
-            directory = os.path.join(self._image_dir, "fields", self.field.field_name)
-        self.directory = directory
+            directory = os.path.join(self._image_dir, "fields", self._field.field_name)
+        self._directory = directory
 
     def __name__(self):
         return self.__class__.__name__
@@ -113,6 +113,10 @@ class AbstractObservation(PanBase, ABC):
             'dark': self.dark
         }
         return status
+
+    @property
+    def directory(self):
+        return self._directory
 
     @property
     def name(self):
@@ -272,6 +276,11 @@ class CompoundObservation(AbstractObservation):
         super().__init__(field, exp_set_size=exp_set_size, *args, **kwargs)
 
     # Properties
+
+    @property
+    def directory(self):
+        """ Add subfield as subdirectory. """
+        return os.path.join(self._directory, self.field.field_name)
 
     @property
     def field(self):
