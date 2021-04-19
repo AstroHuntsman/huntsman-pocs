@@ -10,12 +10,14 @@ from huntsman.pocs.scheduler.observation.base import Observation
 
 class DarkObservation(Observation):
 
-    def __init__(self, position, exptimes=None, exp_set_size=None, min_nexp=None, **kwargs):
+    def __init__(self, position, exptimes=None, exp_set_size=None, **kwargs):
         """
         Args:
             position (str): Center of field, can be anything accepted by
                 `~astropy.coordinates.SkyCoord`.
             exptimes (optional): The list of exposure times. If None (default), get from config.
+            exp_set_size (int): Number of exposures to take per set. If None (default), uses the
+                length of exptimes.
         """
         if exptimes is None:
             exptimes = get_config("calibs.dark.exposure_times", None)
@@ -25,7 +27,7 @@ class DarkObservation(Observation):
         self._current_exp_num = 0
 
         if exp_set_size is None:
-            exp_set_size = len(self._exptime)
+            exp_set_size = len(exptimes)
 
         # Create the observation
         field = Field('Dark', position=position)
@@ -34,7 +36,7 @@ class DarkObservation(Observation):
         self._directory = os.path.join(self._image_dir, "dark")
 
     # Properties
-    
+
     @property
     def directory(self):
         return self._directory
