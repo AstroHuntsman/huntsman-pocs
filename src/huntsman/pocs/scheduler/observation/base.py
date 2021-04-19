@@ -44,7 +44,7 @@ class AbstractObservation(PanBase, ABC):
 
         self._image_dir = self.get_config('directories.images')
         self._field = field
-        self._exptime = exptime
+        self._exptime = get_quantity_value(exptime, u.second) * u.second
         self._is_defocused = bool(defocused)
 
         self.merit = 0.0
