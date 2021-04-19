@@ -270,7 +270,6 @@ class CompoundObservation(AbstractObservation):
         super().__init__(field, min_nexp=min_nexp, exp_set_size=exp_set_size, *args, **kwargs)
 
     # Properties
-    # exposures_per_field = current_exp_num / (len(self._field) * batch_size)
 
     @property
     def field(self):
