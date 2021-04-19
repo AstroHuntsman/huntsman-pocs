@@ -10,7 +10,12 @@ class FlatFieldObservation(DitheredObservation):
             *args, **kwargs: Parsed to DitheredObservation.__init__
         """
         super().__init__(*args, **kwargs)
-        self.directory = os.path.join(self._image_dir, "flat")
+        self._directory = os.path.join(self._image_dir, "flat")
+
+    # Properties
+    @property
+    def directory(self):
+        return self._directory
 
     # Methods
 
