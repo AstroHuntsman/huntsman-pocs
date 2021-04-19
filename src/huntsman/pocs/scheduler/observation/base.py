@@ -73,6 +73,12 @@ class AbstractObservation(PanBase, ABC):
     @property
     @abstractmethod
     def field(self):
+        """ Return the current Field for this observation.
+        Note that this *must* be an instance of huntsman.pocs.scheduler.field.Field, rather than
+        e.g. a CompoundField for the scheduler to work correctly.
+        Returns:
+            huntsman.pocs.scheduler.field.Field: The Field object.
+        """
         pass
 
     @field.setter
@@ -227,6 +233,10 @@ class Observation(AbstractObservation):
 
     @property
     def field(self):
+        """
+        Returns:
+            huntsman.pocs.scheduler.field.Field: A Field object.
+        """
         return self._field
 
     @field.setter
@@ -265,9 +275,34 @@ class CompoundObservation(AbstractObservation):
     def field(self):
         """
         The field is determined by current exposure number, number of sub-fields and batch size.
+        Returns:
+            huntsman.pocs.scheduler.field.Field: A Field object.
         """
         field_idx = int(self.current_exp_num / self.batch_size) % len(self._field)
-        return self._field[field_idx]
+        field = self._field[field_idx]
+
+        # Check if the field is nested (i.e. another Compound Field)
+        if isinstance(field, CompoundField):
+
+            exposure_list = list(self.exposure_list.keys())
+            exposure_step = self.batch_size * len(self._field)
+
+            # Count the number of exposures for this subfield
+            # This is a bit tricky and could be improved by having an "update" method
+            exposures_this_field = 0
+            for i in range(self.batch_size):
+                exposure_offset = field_idx * self.batch_size + i
+                exposures_this_field += len(exposure_list[exposure_offset::exposure_step])
+
+            # Get the corresponding nested field index
+            nested_field_idx = int(exposures_this_field / self.batch_size) % len(field)
+
+            # Returned the nested field
+            nested_field = field[nested_field_idx]
+
+            return nested_field
+
+        return field
 
     @field.setter
     def field(self, field):

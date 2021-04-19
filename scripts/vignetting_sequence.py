@@ -26,7 +26,7 @@ from astroplan.plots import plot_sky
 from matplotlib import pylab as plt
 
 from panoptes.utils import utils
-from panoptes.pocs.scheduler.field import Field
+from huntsman.pocs.scheduler.field import Field
 from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.utils.huntsman import create_huntsman_observatory
 
