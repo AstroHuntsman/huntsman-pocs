@@ -35,10 +35,11 @@ def get_flat_field_altaz(location):
     return AltAz(alt=alt, az=az, obstime=time_now, location=location)
 
 
-def make_flat_field_observation(earth_location):
+def make_flat_field_observation(earth_location, **kwargs):
     """ Make a flat field Observation.
     Args:
         earth_location (astropy.coordinates.EarthLocation): The observatory location.
+        **kwargs: Parsed to FlatFieldObservation.
     Returns:
         FlatFieldObservation: The Observation object.
     """
@@ -51,7 +52,7 @@ def make_flat_field_observation(earth_location):
     field = DitheredField(name="Flat", position=position)
 
     # Return the observation object
-    return FlatFieldObservation(field=field)
+    return FlatFieldObservation(field=field, **kwargs)
 
 
 class FlatFieldSequence():
