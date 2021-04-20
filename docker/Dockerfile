@@ -36,16 +36,16 @@ ARG pip_install_extras=""
 WORKDIR "${POCS}"
 COPY --chown="${userid}:${userid}" . .
 RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
-    /conda/bin/pip install "${pip_install_name}${pip_install_extras}"
+    pip install "${pip_install_name}${pip_install_extras}"
 
 COPY docker/environment.yaml .
 RUN /conda/bin/conda env update -n base -f environment.yaml && \
     # Make sure we are using the intended version of POCS
-    /conda/bin/pip uninstall -y panoptes-pocs && \
-    /conda/bin/pip install "git+${pocs_url}[focuser]" && \
+    pip uninstall -y panoptes-pocs && \
+    pip install "git+${pocs_url}[focuser]" && \
     # Cleanup
-    /conda/bin/pip cache purge && \
-    /conda/bin/conda clean -fay && \
+    pip cache purge && \
+    conda clean -fay && \
     sudo apt-get autoremove --purge --yes \
         gcc pkg-config git && \
     sudo apt-get autoclean --yes && \
