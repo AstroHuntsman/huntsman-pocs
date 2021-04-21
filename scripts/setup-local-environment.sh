@@ -69,5 +69,5 @@ Done building the local images.
 
 To run the tests enter:
 
-scripts/testing/run_local_tests.sh
+scripts/testing/run-local-tests.sh
 EOF

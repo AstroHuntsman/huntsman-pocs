@@ -216,7 +216,7 @@ class HuntsmanObservatory(Observatory):
                 continue
 
             # Get the flat field observation
-            observation = make_flat_field_observation(self.earth_location)
+            observation = make_flat_field_observation(self.earth_location, filter_name=filter_name)
             observation.seq_time = current_time(flatten=True)
 
             # Take the flats for each camera in this filter
