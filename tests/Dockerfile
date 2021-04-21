@@ -29,15 +29,15 @@ RUN echo "Building from ${image_name}:${image_tag}" && \
     sudo chown -R "${userid}:${userid}" "${HUNTSMAN_POCS}"
 
 COPY docker/environment.yaml .
-RUN /conda/bin/conda env update -n base -f environment.yaml && \
+RUN conda env update -n base -f environment.yaml && \
     # POCS from github.
-    /conda/bin/pip install "git+https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs[focuser]"
+    pip install "git+https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs[focuser]"
 
 ARG pip_install_extras="[testing]"
 
 WORKDIR "${HUNTSMAN_POCS}"
 COPY --chown="${userid}:${userid}" . .
-RUN /conda/bin/pip install -e ".${pip_install_extras}"
+RUN pip install -e ".${pip_install_extras}"
 
 ENTRYPOINT [ "/usr/bin/env", "bash", "-ic" ]
 CMD [ "pytest" ]
