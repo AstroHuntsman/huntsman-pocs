@@ -1,6 +1,7 @@
 """
 State to handle the taking of calibration frames (evening and morning).
 """
+import time
 from functools import partial
 
 
@@ -13,7 +14,7 @@ def wait_for_twilight(pocs):
     pocs.logger.debug('Waiting for twilight...')
     while pocs.is_safe(horizon='flat'):
         if pocs.is_dark(horizon='focus'):
-            pocs.sleep(delay=pocs._safe_delay)
+            time.sleep(pocs._safe_delay)
         else:
             return True
     return False
