@@ -73,7 +73,7 @@ transitions:
     -
         source: housekeeping
         dest: sleeping
-        trigger: goto_sleep
+        trigger: sleep
     -
         source: housekeeping
         dest: ready
