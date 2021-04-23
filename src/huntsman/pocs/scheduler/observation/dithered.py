@@ -16,4 +16,4 @@ class DitheredObservation(CompoundObservation):
         super().__init__(field=field, **kwargs)
 
         # Do not put separate dithers in their own subdirectories
-        self.directory = os.path.join(self._image_dir, "fields", self._field.field_name)
+        self._directory = os.path.join(self._image_dir, "fields", self._field.field_name)
