@@ -117,6 +117,10 @@ transitions:
         dest: preparing
         trigger: prepare_observations
     -
+        source: scheduling
+        dest: ready
+        trigger: get_ready
+    -
         source: preparing
         dest: slewing
         trigger: start_slewing

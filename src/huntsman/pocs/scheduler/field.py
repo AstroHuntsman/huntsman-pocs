@@ -45,6 +45,10 @@ class AbstractField(PanBase):
         """ Flattened field name appropriate for paths. """
         return self._field_name
 
+    @field_name.setter
+    def field_name(self, field_name):
+        self._field_name = str(field_name)
+
 
 class Field(FixedTarget, AbstractField):
 
