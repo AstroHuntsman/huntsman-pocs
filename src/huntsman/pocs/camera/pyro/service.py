@@ -4,7 +4,7 @@ from contextlib import suppress
 import Pyro5.server
 from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
-from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.utils.config import get_own_ip
 
 
@@ -22,8 +22,15 @@ class CameraService(object):
                         "focuser": ("_focus_event",),
                         "filterwheel": ("_camera", "filterwheel", "_move_event")}
 
-    def __init__(self, device_name=None):
+    def __init__(self, device_name=None, logger=None):
+        """
+
+        """
+        if not logger:
+            logger = get_logger()
+
         self.logger = logger
+
         # Fetch the config once during object creation
         # TODO determine if we want to make all config calls dynamic.
 

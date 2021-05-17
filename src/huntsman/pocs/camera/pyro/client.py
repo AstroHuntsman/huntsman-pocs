@@ -299,25 +299,30 @@ class Camera(AbstractCamera):
     # Private Methods
     def _wait_for_file(self, filename, timeout, sleep_interval=0.1):
         """ Wait for the file to be written.
-
-        Useful when files are written from camera to host over network with SSHFS.
-
+        Useful when files are written from camera to host over network with SSHFS, which can be
+        slow.
         Args:
+            filename (str): The filename to wait for.
             timeout (float): The timeout in seconds.
+            sleep_interval (float, optional): Wait for this long in between checks. Default 0.1s.
         """
         sleep_interval = get_quantity_value(sleep_interval, u.second)
         proxy = self._proxy
         timer = CountdownTimer(timeout)
-        self.logger.debug(f'Starting {timer=}')
+
+        self.logger.debug(f'Waiting for {filename} to exist with timeout of {timeout}s.')
+
         while not timer.expired():
-            self.logger.trace(f'{proxy.is_reading_out=}')
+
+            # Make sure the file exists and we can read it
             if not proxy.is_reading_out and os.path.exists(filename):
                 try:
-                    hdul = fits.open(filename, output_verify='exception')
+                    fits.open(filename, output_verify='exception')
                     self.logger.debug(f"Finished waiting for file {filename}.")
                     return
                 except Exception as e:
                     self.logger.error(f'Problem reading out file: {e!r}')
+
             time.sleep(sleep_interval)
 
         raise error.Timeout(f"{timeout!r} reached for {filename=} to exist on {self}.")
