@@ -10,6 +10,8 @@ from panoptes.utils.utils import get_quantity_value
 
 from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
 
+from huntsman.pocs.utils.logger import get_logger
+
 
 class Protocol:
     # device names
@@ -68,7 +70,7 @@ class HuntsmanDome(AbstractSerialDome):
     MIN_OPERATING_VOLTAGE = 12.
 
     def __init__(self, command_delay=1, max_status_attempts=10, shutter_timeout=100, sleep=60,
-                 *args, **kwargs):
+                 logger=None, *args, **kwargs):
         """
         Args:
             command_delay (float, optional): Wait this long in seconds before allowing next command
@@ -78,8 +80,14 @@ class HuntsmanDome(AbstractSerialDome):
             shutter_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 80s.
             sleep (u.Quantity, optional): Time to sleep between dome loop iterations.
                 Default is 1 min.
+            logger (logger, optional): The logger instance. If not provided, use default Huntsman
+                logger.
         """
-        super().__init__(*args, **kwargs)
+        if not logger:
+            logger = get_logger()
+
+        super().__init__(logger=logger, *args, **kwargs)
+
         self._command_lock = Lock()  # Use a lock to make class thread-safe
 
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT

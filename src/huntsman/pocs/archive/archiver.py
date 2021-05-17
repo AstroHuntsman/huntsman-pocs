@@ -12,6 +12,8 @@ from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.time import current_time
 from panoptes.pocs.base import PanBase
 
+from huntsman.pocs.utils.logger import get_logger
+
 VALID_EXTENSIONS = (".fits", ".fits.fz")
 
 
@@ -22,7 +24,7 @@ class Archiver(PanBase):
     _valid_extensions = VALID_EXTENSIONS
 
     def __init__(self, images_directory=None, archive_directory=None, delay_interval=None,
-                 sleep_interval=None, status_interval=60, *args, **kwargs):
+                 sleep_interval=None, status_interval=60, logger=None, *args, **kwargs):
         """
         Args:
             images_directory (str): The images directory to archive. If None (default), uses
@@ -37,9 +39,14 @@ class Archiver(PanBase):
                 (default), uses the archiver.sleep_interval confing entry.
             status_interval (float, optional): Sleep for this long between status reports. Default
                 60s.
+            logger (logger, optional): The logger instance. If not provided, use default Huntsman
+                logger.
             *args, **kwargs: Parsed to PanBase initialiser.
         """
-        super().__init__(*args, **kwargs)
+        if not logger:
+            logger = get_logger()
+
+        super().__init__(logger=logger, *args, **kwargs)
 
         if images_directory is None:
             images_directory = self.get_config("directories.images")
@@ -117,9 +124,9 @@ class Archiver(PanBase):
                 break
             # Get the current status
             status = self.status
-            self.logger.trace(f"Archiver status: {status}")
+            self.logger.debug(f"Archiver status: {status}")
             if not self.is_running:
-                self.logger.warning(f"Archiver is not running.")
+                self.logger.warning("Archiver is not running.")
             # Sleep before reporting status again
             time.sleep(self._status_interval)
 
@@ -190,7 +197,7 @@ class Archiver(PanBase):
             filename (str): The filename string.
         """
         if not os.path.exists(filename):  # May have already been archived or deleted
-            self.logger.trace(f"Tried to archive {filename} but it does not exist.")
+            self.logger.debug(f"Tried to archive {filename} but it does not exist.")
             raise FileNotFoundError
 
         # Get the archived filename
@@ -198,5 +205,5 @@ class Archiver(PanBase):
         # Make sure the archive directory exists
         os.makedirs(os.path.dirname(archive_filename), exist_ok=True)
         # Move the file to the archive directory
-        self.logger.trace(f"Moving {filename} to {archive_filename}.")
+        self.logger.debug(f"Moving {filename} to {archive_filename}.")
         shutil.move(filename, archive_filename)

@@ -5,17 +5,22 @@ from panoptes.utils import error
 from panoptes.pocs.mount.bisque import Mount as BisqueMount
 from panoptes.pocs.utils.location import create_location_from_config
 
+from huntsman.pocs.utils.logger import get_logger
 
-def create_mount():
+
+def create_mount(**kwargs):
     """ Placeholder until the normal function is working from POCS. """
     location = create_location_from_config()['earth_location']
-    return Mount(location=location)
+    return Mount(location=location, **kwargs)
 
 
 class Mount(BisqueMount):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+        logger = get_logger()
+
+        super().__init__(logger=logger, *args, **kwargs)
 
     def slew_to_target(self, *args, **kwargs):
         """

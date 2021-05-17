@@ -11,6 +11,7 @@ from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 from panoptes.pocs.observatory import Observatory
 from panoptes.pocs.scheduler.observation.bias import BiasObservation
 
+from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.scheduler.observation.dark import DarkObservation
@@ -19,24 +20,29 @@ from huntsman.pocs.utils.flats import FlatFieldSequence, make_flat_field_observa
 
 class HuntsmanObservatory(Observatory):
 
-    def __init__(self, with_autoguider=True, hdr_mode=False, take_flats=True, *args, **kwargs):
+    def __init__(self, with_autoguider=True, hdr_mode=False, take_flats=True, logger=None,
+                 *args, **kwargs):
         """Huntsman POCS Observatory
 
         Args:
             with_autoguider (bool, optional): If autoguider is attached, defaults to True.
             hdr_mode (bool, optional): If pics should be taken in HDR mode, defaults to False.
             take_flats (bool, optional): If flat field images should be taken, defaults to True.
-            *args: Description
-            **kwargs: Description
+            logger (logger, optional): The logger instance. If not provided, use default Huntsman
+                logger.
+            *args: Parsed to Observatory init function.
+            **kwargs: Parsed to Observatory init function.
         """
+        if not logger:
+            logger = get_logger()
+
         # Load the config file
         try:
             assert os.getenv('HUNTSMAN_POCS') is not None
         except AssertionError:
             raise RuntimeError("The HUNTSMAN_POCS environment variable is not set.")
 
-        # If we don't receive a config then load a local
-        super().__init__(*args, **kwargs)
+        super().__init__(logger=logger, *args, **kwargs)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
