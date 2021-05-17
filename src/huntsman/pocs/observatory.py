@@ -49,12 +49,13 @@ class HuntsmanObservatory(Observatory):
 
         self.flat_fields_required = take_flats
 
-        # Attributes for focusing
+        # Focusing
         self.last_coarse_focus_time = None
-        self.coarse_focus_config = self.get_config('focusing.coarse')
-        self._coarse_focus_frequency = self.coarse_focus_config['frequency'] \
-            * u.Unit(self.coarse_focus_config['frequency_unit'])
-        self._coarse_focus_filter = self.coarse_focus_config['filter_name']
+        self._coarse_focus_interval = self.get_config('focusing.coarse.interval')
+        self._coarse_focus_filter = self.get_config('focusing.coarse.filter_name')
+
+        self.last_fine_focus_time = None
+        self._fine_focus_interval = self.get_config('focusing.fine.interval')
 
         if self.has_autoguider:
             self.logger.info("Setting up autoguider")
@@ -63,6 +64,10 @@ class HuntsmanObservatory(Observatory):
             except Exception as e:
                 self._has_autoguider = False
                 self.logger.warning(f"Problem setting autoguider, continuing without: {e!r}")
+
+        # Hack solution to the observatory not knowing whether it is safe or not
+        # This can be overridden when creating the HuntsmanPOCS instance
+        self._safety_func = None
 
     # Properties
 
@@ -94,6 +99,17 @@ class HuntsmanObservatory(Observatory):
         if self.last_coarse_focus_time is None:
             return True
         if current_time() - self.last_coarse_focus_time > self._coarse_focus_frequency:
+            return True
+        return False
+
+    @property
+    def fine_focus_required(self):
+        """
+        Return True if we should do a fine focus.
+        """
+        if self.last_fine_focus_time is None:
+            return True
+        if current_time() - self.last_fine_focus_time > self._fine_focus_frequency:
             return True
         return False
 
@@ -138,7 +154,8 @@ class HuntsmanObservatory(Observatory):
 
         return self.current_offset_info
 
-    def autofocus_cameras(self, coarse=False, filter_name=None, *args, **kwargs):
+    def autofocus_cameras(self, coarse=False, filter_name=None, default_timeout=900,
+                          blocking=True, *args, **kwargs):
         """ Override autofocus_cameras to update the last focus time and move filterwheels.
         Args:
             coarse (bool, optional): Perform coarse focus? Default False.
@@ -148,6 +165,8 @@ class HuntsmanObservatory(Observatory):
         Returns:
             threading.Event: The autofocus event.
         """
+        focus_type = "coarse" if coarse else "fine"
+
         # Move to appropriate filter
         # TODO: Do this on a per-camera basis to allow for different filters simultaneously
         if filter_name is None:
@@ -161,15 +180,23 @@ class HuntsmanObservatory(Observatory):
                     self.logger.warning("Unable to retrieve filter name from current observation."
                                         f" Defaulting to coarse focus filter ({filter_name}).")
 
-        # Move all the filterwheels to the luminance position.
+        # Move all the filterwheels to the required position
         self._move_all_filterwheels_to(filter_name)
 
-        result = super().autofocus_cameras(coarse=coarse, *args, **kwargs)
+        # Start the autofocus sequences
+        self.logger.info(f"Starting {focus_type} autofocus sequence.")
+        events = super().autofocus_cameras(coarse=coarse, *args, **kwargs)
+
+        # Wait for sequences to finish
+        if blocking:
+            timeout = self.get_config(f"focusing.{focus_type}.timeout", default_timeout)
+            if not wait_for_events(events, timeout=timeout):
+                raise error.Timeout(f"Timeout of {timeout} reached while waiting for fine focus.")
 
         # Update last focus time
-        self.last_coarse_focus_time = current_time()
+        setattr(self, f"last_{focus_type}_focus_time", current_time())
 
-        return result
+        return events
 
     def cleanup_observations(self, *args, **kwargs):
         """ Override method to remove empty directories. Called in housekeeping state."""
@@ -332,6 +359,10 @@ class HuntsmanObservatory(Observatory):
             remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
                 raise a TimeoutError instead.
         """
+        # Do a fine focus to start the observation
+        if not skip_focus:
+            self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
+
         if not hasattr(observation, "seq_time"):
             observation.seq_time = current_time(flatten=True)
         elif observation.seq_time is None:
@@ -364,8 +395,8 @@ class HuntsmanObservatory(Observatory):
             self.assert_safe()
 
             # Focus the cameras if necessary
-            if not skip_focus:
-                self.fine_focus_if_required()
+            if not skip_focus and self.fine_focus_required:
+                self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
 
             # Check safety again
             self.assert_safe()
@@ -445,26 +476,6 @@ class HuntsmanObservatory(Observatory):
 
         self.mount.slew_to_target()
 
-    def fine_focus_if_required(self):
-        """ Perform a blocking fine focus if required. """
-
-        # timeout = ???
-
-        if self.fine_focus_required:
-
-            self.logger.info("Fine focus required.")
-
-            # Start the autofocus sequence
-            camera_events = self.observatory.autofocus_cameras(coarse=False)
-
-            # Wait for them to complete
-            if not wait_for_events(camera_events, timeout=timeout):
-                raise error.Timeout(f"Timeout of {timeout} reached while waiting for fine focus.")
-
-        else:
-            self.logger.debug("Fine focus not required.")
-
-
     # Private methods
 
     def _create_autoguider(self):
@@ -496,6 +507,7 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter.')
         wait_for_events(list(filterwheel_events.values()))
         self.logger.debug('Finished waiting for filterwheels.')
+
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
                         timeout=60, bias=32, safety_func=None, remove_on_error=False, **kwargs):
