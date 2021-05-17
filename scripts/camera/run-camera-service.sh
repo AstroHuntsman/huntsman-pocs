@@ -1,14 +1,14 @@
 #!/bin/bash
 # This script is run from the camera pi. It will start a new camera service if there is not
 # already one running. This involves:
-# - (re)mounting the SSHFS images directory
+# - (re)mounting the remote images directory
 # - Downloading the latest docker-compose file from github
 # - Updating the relevant docker images
 # - Starting the docker camera service
 set -eu
 
 REMOTE_HOST=${HUNTSMAN_REMOTE_HOST:-${PANOPTES_CONFIG_HOST}}
-REMOTE_IMAGES_DIR=${PANUSER}@${REMOTE_HOST}:${PANDIR}/images
+REMOTE_IMAGES_DIR=${REMOTE_HOST}:${PANDIR}/images
 LOCAL_IMAGES_DIR=${PANDIR}/images
 
 DC_FILE_URL=https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/docker/camera/docker-compose.yaml
@@ -26,11 +26,11 @@ clear
 echo "############### Huntsman Camera Service ###############"
 echo "Control computer hostname: ${REMOTE_HOST}"
 
-# Mount the SSHFS images directory
+# Mount the NFS images directory
 echo "Mounting remote images directory ${REMOTE_IMAGES_DIR} to ${LOCAL_IMAGES_DIR}"
 mkdir -p ${LOCAL_IMAGES_DIR}
 sudo umount ${LOCAL_IMAGES_DIR} || true
-sshfs -o allow_other,reconnect,ServerAliveInterval=20,ServerAliveCountMax=3,StrictHostKeyChecking=False ${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
+sudo mount -t nfs ${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
 
 # Get the docker-compose file
 DC_FILE="${PANDIR}/docker-compose.yaml"
