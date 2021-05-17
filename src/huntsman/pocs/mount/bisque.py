@@ -5,7 +5,7 @@ from panoptes.utils import error
 from panoptes.pocs.mount.bisque import Mount as BisqueMount
 from panoptes.pocs.utils.location import create_location_from_config
 
-from huntsman.pocs.utils.logging import get_logger
+from huntsman.pocs.utils.logger import get_logger
 
 
 def create_mount(**kwargs):

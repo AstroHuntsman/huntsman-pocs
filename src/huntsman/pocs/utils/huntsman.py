@@ -10,7 +10,7 @@ from panoptes.utils import horizon as horizon_utils
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler.constraint import Altitude
 
-from huntsman.pocs.utils.logging import get_logger
+from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory
 from huntsman.pocs.dome import create_dome_from_config
@@ -108,7 +108,7 @@ def create_huntsman_observatory(with_dome=False, cameras=None, mount=None, sched
 
     # Create and return the observatory
     observatory = HuntsmanObservatory(cameras=cameras, mount=mount, scheduler=scheduler,
-                                      dome=dome, config=config, logger=logger, **kwargs)
+                                      dome=dome, config=config, **kwargs)
     return observatory
 
 
