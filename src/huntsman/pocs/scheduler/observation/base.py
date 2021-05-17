@@ -63,6 +63,8 @@ class AbstractObservation(PanBase, ABC):
             directory = os.path.join(self._image_dir, "fields", self._field.field_name)
         self._directory = directory
 
+        self._current_exp_num = 0
+
     def __name__(self):
         return self.__class__.__name__
 
@@ -146,7 +148,7 @@ class AbstractObservation(PanBase, ABC):
 
     @property
     def current_exp_num(self):
-        return len(self.exposure_list)
+        return self._current_exp_num
 
     @property
     def first_exposure(self):
@@ -220,7 +222,7 @@ class AbstractObservation(PanBase, ABC):
 
     def mark_exposure_complete(self):
         """ Explicitly mark the current exposure as complete. """
-        pass
+        self._current_exp_num += 1
 
 
 class Observation(AbstractObservation):

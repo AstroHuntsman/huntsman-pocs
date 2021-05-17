@@ -81,12 +81,13 @@ state_machine: /huntsman/resources/state_table/huntsman.yaml
 
 focusing:
   coarse:
-    frequency: 2
-    frequency_unit: hour
+    interval_hours: 2
     timeout: 600
     filter_name: one
     alt: 70  # degrees
     az: 120  # degrees
+  fine:
+    interval_hours: 1
 
 calibs:
   bias:

@@ -10,7 +10,7 @@ def on_enter(event_data):
     If no observable targets are available, `park` the unit.
     """
     pocs = event_data.model
-    pocs.next_state = 'slewing'
+    pocs.next_state = 'observing'
 
     if pocs.run_once and len(pocs.observatory.scheduler.observed_list) > 0:
         pocs.say('Looks like we only wanted to run once, parking now.')
