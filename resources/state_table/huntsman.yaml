@@ -30,7 +30,6 @@ states:
     requires_open_dome: True
   ready:
     horizon: flat
-  preparing:
   slewing:
   observing:
     requires_open_dome: True
@@ -43,7 +42,6 @@ transitions:
             - ready
             - twilight_flat_fielding
             - scheduling
-            - preparing
             - slewing
             - focusing
             - coarse_focusing
@@ -114,16 +112,12 @@ transitions:
         trigger: autofocus_coarse
     -
         source: scheduling
-        dest: preparing
-        trigger: prepare_observations
+        dest: slewing
+        trigger: start_slewing
     -
         source: scheduling
         dest: ready
         trigger: get_ready
-    -
-        source: preparing
-        dest: slewing
-        trigger: start_slewing
     -
         source: slewing
         dest: focusing

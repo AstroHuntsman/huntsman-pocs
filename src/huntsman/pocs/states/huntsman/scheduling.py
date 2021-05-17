@@ -10,7 +10,7 @@ def on_enter(event_data):
     If no observable targets are available, `park` the unit.
     """
     pocs = event_data.model
-    pocs.next_state = 'preparing'
+    pocs.next_state = 'slewing'
 
     if pocs.run_once and len(pocs.observatory.scheduler.observed_list) > 0:
         pocs.say('Looks like we only wanted to run once, parking now.')
@@ -40,7 +40,3 @@ def on_enter(event_data):
 
         else:
             pocs.say(f"I'm going to check out: {observation.name}.")
-            if not pocs.observatory.mount.set_target_coordinates(observation.field):
-                pocs.logger.warning("Unable to set mount coordinates. Parking.")
-                pocs.next_state = "parking"
-                return

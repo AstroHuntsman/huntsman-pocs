@@ -10,6 +10,25 @@ def on_enter(event_data):
     pocs.say("I'm exploring the universe!")
     pocs.next_state = 'parking'
 
+    observation = pocs.observatory.current_observation
+
+    # If the observation is complete, break and go to scheduling
+    if observation.set_is_finished:
+        pocs.next_state = 'scheduling'
+        return
+
+    #
+
+
+
+
+
+
+
+
+
+
+
     try:
         # Start the observing
         camera_events = pocs.observatory.observe()

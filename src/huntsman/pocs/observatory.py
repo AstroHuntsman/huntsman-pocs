@@ -64,6 +64,8 @@ class HuntsmanObservatory(Observatory):
                 self._has_autoguider = False
                 self.logger.warning(f"Problem setting autoguider, continuing without: {e!r}")
 
+    # Properties
+
     @property
     def has_hdr_mode(self):
         """ Does camera support HDR mode
@@ -104,6 +106,8 @@ class HuntsmanObservatory(Observatory):
 
         # If the nearest midnight is in the past, it's the morning...
         return midnight < current_time()
+
+    # Methods
 
     def initialize(self):
         """Initialize the observatory and connected hardware """
@@ -233,34 +237,6 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def take_bias_observation(self, cameras=None, **kwargs):
-        """ Take a bias observation block on each camera (blocking).
-        Args:
-            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
-                the cameras.
-        """
-        if cameras is None:
-            cameras = self.cameras
-        # Create the observation
-        position = self.mount.get_current_coordinates()
-        observation = BiasObservation(position=position)
-        # Take the observation (blocking)
-        self._take_observation_block(observation, cameras=cameras, **kwargs)
-
-    def take_dark_observation(self, exptimes=None, cameras=None, **kwargs):
-        """ Take a dark observation block on each camera (blocking).
-        Args:
-            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
-                the cameras.
-        """
-        if cameras is None:
-            cameras = self.cameras
-        # Create the observation
-        position = self.mount.get_current_coordinates()
-        observation = DarkObservation(exptimes=exptimes, position=position)
-        # Take the observation (blocking)
-        self._take_observation_block(observation, cameras=cameras, **kwargs)
-
     def activate_camera_cooling(self):
         """
         Activate camera cooling for all cameras.
@@ -341,9 +317,14 @@ class HuntsmanObservatory(Observatory):
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
-    def _take_observation_block(self, observation, cameras, timeout=60 * u.second,
-                                remove_on_error=False):
-        """ Take an observation block (blocking).
+    def take_observation_block(self, observation, cameras, timeout=60 * u.second,
+                               remove_on_error=False, skip_focus=False):
+        """ Macro function to take an observation block.
+        This function will perform:
+            - slewing (when necessary)
+            - fine focusing (when necessary)
+            - observation exposures
+            - safety checking
         Args:
             observation (Observation): The observation object.
             cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
@@ -351,11 +332,46 @@ class HuntsmanObservatory(Observatory):
             remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
                 raise a TimeoutError instead.
         """
-        observation.seq_time = current_time(flatten=True)  # Normally handled by the scheduler
+        if not hasattr(observation, "seq_time"):
+            observation.seq_time = current_time(flatten=True)
+        elif observation.seq_time is None:
+            observation.seq_time = current_time(flatten=True)
+
         headers = self.get_standard_headers(observation=observation)
+
+        current_field = None
+
         # Take the observation block
         while not observation.set_is_finished:
+
+            # TODO: Check safety here
+            self.assert_safe()
+
+            # Check if we need to slew again
+            if current_field is None:
+                slew_to_target = True
+            elif current_field != observation.field:
+                slew_to_target = True
+            else:
+                slew_to_target = False
+
+            # Perform the slew if necessary
+            if slew_to_target:
+                self.slew_to_observation()
+                current_field = observation.field
+
+            # Check safety again
+            self.assert_safe()
+
+            # Focus the cameras if necessary
+            if not skip_focus:
+                self.fine_focus_if_required()
+
+            # Check safety again
+            self.assert_safe()
+
             headers['start_time'] = current_time(flatten=True)  # Normally handled elsewhere?
+
             # Start the exposures and get events
             # TODO: Replace with concurrent.futures
             events = {}
@@ -366,6 +382,7 @@ class HuntsmanObservatory(Observatory):
                     self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with observation block after error on"
                                         f" {cam_name}.")
+
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:
@@ -375,9 +392,80 @@ class HuntsmanObservatory(Observatory):
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
 
-            # There's probably a better way of doing this but we've got bigger problems right now
+            # Explicitly mark the observation as complete
             with suppress(AttributeError):
                 observation.mark_exposure_complete()
+
+    def take_bias_observation(self, cameras=None, **kwargs):
+        """ Take a bias observation block on each camera (blocking).
+        Args:
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                the cameras.
+        """
+        if cameras is None:
+            cameras = self.cameras
+
+        # Create the observation
+        position = self.mount.get_current_coordinates()
+        observation = BiasObservation(position=position)
+
+        # Take the observation (blocking)
+        self.take_observation_block(observation, cameras=cameras, skip_focus=True, **kwargs)
+
+    def take_dark_observation(self, exptimes=None, cameras=None, **kwargs):
+        """ Take a dark observation block on each camera (blocking).
+        Args:
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                the cameras.
+        """
+        if cameras is None:
+            cameras = self.cameras
+
+        # Create the observation
+        position = self.mount.get_current_coordinates()
+        observation = DarkObservation(exptimes=exptimes, position=position)
+
+        # Take the observation (blocking)
+        self.take_observation_block(observation, cameras=cameras, skip_focus=True, **kwargs)
+
+    def assert_safe(self):
+        """ Raise a RuntimeError if not safe to continue. """
+        if self._safety_func is None:
+            self.logger.warning("Safety function not set. Proceeding anyway.")
+
+        elif not self._safety_func():
+            raise RuntimeError("Safety check failed!")
+
+    def slew_to_observation(self, observation):
+        """ Slew to the observation field coordinates. """
+        self.logger.info(f"Slewing to target coordinates for {observation}.")
+
+        if not self.mount.set_target_coordinates(observation.field):
+            raise RuntimeError(f"Unable to set target coordinates for {observation.field}.")
+
+        self.mount.slew_to_target()
+
+    def fine_focus_if_required(self):
+        """ Perform a blocking fine focus if required. """
+
+        # timeout = ???
+
+        if self.fine_focus_required:
+
+            self.logger.info("Fine focus required.")
+
+            # Start the autofocus sequence
+            camera_events = self.observatory.autofocus_cameras(coarse=False)
+
+            # Wait for them to complete
+            if not wait_for_events(camera_events, timeout=timeout):
+                raise error.Timeout(f"Timeout of {timeout} reached while waiting for fine focus.")
+
+        else:
+            self.logger.debug("Fine focus not required.")
+
+
+    # Private methods
 
     def _create_autoguider(self):
         guider_config = self.get_config('guider')
@@ -407,7 +495,7 @@ class HuntsmanObservatory(Observatory):
         # Wait for move to complete
         self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter.')
         wait_for_events(list(filterwheel_events.values()))
-        self.logger.debug(f'Finished waiting for filterwheels.')
+        self.logger.debug('Finished waiting for filterwheels.')
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
                         timeout=60, bias=32, safety_func=None, remove_on_error=False, **kwargs):
@@ -555,11 +643,18 @@ class HuntsmanObservatory(Observatory):
             sleep (float): Sleep this long between event checks. Default 1s.
         """
         self.logger.debug(f'Waiting for {len(events)} events with timeout of {duration}.')
+
         timer = CountdownTimer(duration)
         while not timer.expired():
+
+            # Check safety here
+            self.assert_safe()
+
+            # Check if all cameras have finished
             if all([e.is_set() for e in events.values()]):
                 break
             time.sleep(sleep)
+
         # Make sure events are set
         for cam_name, event in events.items():
             if not event.is_set():
