@@ -48,6 +48,7 @@ function system_deps() {
    git openssh-server \
    git \
    jq httpie \
+   nfs-common \
    byobu | tee -a "${LOGFILE}" 2>&1
  # Add an SSH key if one doesn't exist.
  if [[ ! -f "${HOME}/.ssh/id_rsa" ]]; then
