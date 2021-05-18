@@ -339,7 +339,8 @@ class HuntsmanObservatory(Observatory):
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
     def take_observation_block(self, observation, cameras, timeout=60 * u.second,
-                               remove_on_error=False, skip_focus=False, safety_kwargs=None):
+                               remove_on_error=False, skip_focus=False, safety_kwargs=None,
+                               skip_slew=False):
         """ Macro function to take an observation block.
         This function will perform:
             - slewing (when necessary)
@@ -352,6 +353,8 @@ class HuntsmanObservatory(Observatory):
             timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
             remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
                 raise a TimeoutError instead.
+            skip_slew (bool, optional): If True, do not attempt to slew the telescope. Default
+                False.
             **safety_kwargs (dict, optional): Extra kwargs to be parsed to safety function.
         Raises:
             RuntimeError: If safety check fails.
@@ -387,7 +390,7 @@ class HuntsmanObservatory(Observatory):
                 slew_to_target = False
 
             # Perform the slew if necessary
-            if slew_to_target:
+            if slew_to_target and not skip_slew:
                 self.slew_to_observation(observation)
                 current_field = observation.field
 
@@ -439,6 +442,11 @@ class HuntsmanObservatory(Observatory):
         if cameras is None:
             cameras = self.cameras
 
+        # Move telescope to park position
+        if not self.mount.is_parked:
+            self.logger.info("Moving telescope to park position for dark observation.")
+            self.mount.park()
+
         # Create the observation
         # Keep the mount where it is since we are just taking darks
         position = self.mount.get_current_coordinates()
@@ -456,7 +464,7 @@ class HuntsmanObservatory(Observatory):
 
         # Take the observation (blocking)
         self.take_observation_block(observation, cameras=cameras, skip_focus=True,
-                                    safety_kwargs=safety_kwargs, **kwargs)
+                                    skip_slew=True, safety_kwargs=safety_kwargs, **kwargs)
 
     def assert_safe(self, *args, **kwargs):
         """ Raise a RuntimeError if not safe to continue.
