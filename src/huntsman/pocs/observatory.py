@@ -50,11 +50,15 @@ class HuntsmanObservatory(Observatory):
 
         # Focusing
         self.last_coarse_focus_time = None
+        self.last_coarse_focus_temp = None
         self._coarse_focus_interval = self.get_config('focusing.coarse.interval_hours', 1) * u.hour
         self._coarse_focus_filter = self.get_config('focusing.coarse.filter_name')
+        self._coarse_focus_temptol = self.get_config('focusing.coarse.temp_tol_deg', 5) * u.Celsius
 
         self.last_fine_focus_time = None
+        self.last_fine_focus_temp = None
         self._fine_focus_interval = self.get_config('focusing.fine.interval_hours', 1) * u.hour
+        self._fine_focus_temptol = self.get_config('focusing.fine.temp_tol_deg', 5) * u.Celsius
 
         if self.has_autoguider:
             self.logger.info("Setting up autoguider")
@@ -90,28 +94,13 @@ class HuntsmanObservatory(Observatory):
 
     @property
     def coarse_focus_required(self):
-        """
-        Return True if too much time has elapsed since the previous focus,
-        using the amount of time specified by `focusing.coarse.frequency` in the config,
-        else False.
-        """
-        if self.last_coarse_focus_time is None:
-            return True
-        if current_time() - self.last_coarse_focus_time > self._coarse_focus_interval:
-            return True
-        return False
+        """ Return True if we should do a coarse focus. """
+        return self._focus_required(coarse=True)
 
     @property
     def fine_focus_required(self):
-        """
-        Return True if we should do a fine focus.
-        TODO: Take temperature change since last focus into account.
-        """
-        if self.last_fine_focus_time is None:
-            return True
-        if current_time() - self.last_fine_focus_time > self._fine_focus_interval:
-            return True
-        return False
+        """ Return True if we should do a fine focus. """
+        return self._focus_required()
 
     @property
     def past_midnight(self):
@@ -122,6 +111,14 @@ class HuntsmanObservatory(Observatory):
 
         # If the nearest midnight is in the past, it's the morning...
         return midnight < current_time()
+
+    @property
+    def temperature(self):
+        """ Return the ambient temperature. """
+        temp = self.db.get_current("weather")["ambient_temp_C"]
+        if temp is None:
+            return
+        return get_quantity_value(temp, u.Celsius)
 
     # Methods
 
@@ -195,6 +192,9 @@ class HuntsmanObservatory(Observatory):
 
         # Update last focus time
         setattr(self, f"last_{focus_type}_focus_time", current_time())
+
+        # Update last focus temperature
+        setattr(self, f"last_{focus_type}_focus_temp", self.temperature)
 
         return events
 
@@ -673,3 +673,33 @@ class HuntsmanObservatory(Observatory):
                     self.remove_camera(cam_name)
                 else:
                     raise error.Timeout(f"Timeout while waiting for camera event on {cam_name}.")
+
+    def _focus_required(self, coarse=False):
+        """ Check if a focus is required based on current conditions.
+        Args:
+            coarse (bool): If True, check if we need to do a coarse focus. Default: False.
+        Returns:
+            bool: True if focus required, else False.
+        """
+        focus_type = "coarse" if coarse else "fine"
+
+        # If a long time period has passed then focus again
+        last_focus_time = getattr(self, f"last_{focus_type}_focus_time")
+        interval = getattr(self, f"_{focus_type}_focus_interval")
+
+        if self.last_coarse_focus_time is None:  # If we haven't focused yet
+            return True
+        if current_time() - last_focus_time > interval:
+            self.logger.info(f"{focus_type} focus required because of time difference.")
+            return True
+
+        # If there has been a large change in temperature then we need to focus again
+        last_focus_temp = getattr(self, f"last_{focus_type}_focus_temp")
+        temptol = getattr(self, f"_{focus_type}_focus_temptol")
+
+        if last_focus_temp and self.temperature:
+            if abs(last_focus_temp - self.temperature) > temptol:
+                self.logger.info(f"{focus_type} focus required because of temperature change.")
+                return True
+
+        return False
