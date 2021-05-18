@@ -46,7 +46,6 @@ def pocs(observatory):
 # ==============================================================================
 
 
-@pytest.mark.skip()
 def test_prepare_cameras_dropping(observatory):
     """Test that unready camera is dropped."""
     cameras = observatory.cameras
@@ -73,7 +72,7 @@ def test_prepare_cameras_dropping(observatory):
     finally:
         cam_not_ready._exposure_event.clear()  # Clear the exposure event
 
-@pytest.mark.skip()
+
 def test_bad_observatory():
     """Test the observatory raises a RuntimeError if HUNTSMAN_POCS is not set."""
     huntsman_pocs = os.environ['HUNTSMAN_POCS']
@@ -84,7 +83,7 @@ def test_bad_observatory():
     finally:
         os.environ['HUNTSMAN_POCS'] = huntsman_pocs
 
-@pytest.mark.skip()
+
 def test_take_flat_fields(pocs):
     """ TODO: Improve this test!
     """
