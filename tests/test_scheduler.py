@@ -70,29 +70,27 @@ def test_compound_observation(field_config_1, field_config_2):
     obs = obsbase.CompoundObservation(field=field, batch_size=1)
     assert isinstance(obs.field, Field)
     assert obs.field.name == field_config_1["name"]
-    obs.exposure_list["a"] = None
+    obs.mark_exposure_complete()
     assert obs.field.name == field_config_2["name"]
-    obs.exposure_list["b"] = None
+    obs.mark_exposure_complete()
     assert obs.field.name == field_config_1["name"]
 
     obs = obsbase.CompoundObservation(field=field, batch_size=2)
     assert isinstance(obs.field, Field)
     assert obs.field.name == field_config_1["name"]
-    obs.exposure_list["a"] = None
+    obs.mark_exposure_complete()
     assert obs.field.name == field_config_1["name"]
-    obs.exposure_list["b"] = None
+    obs.mark_exposure_complete()
     assert obs.field.name == field_config_2["name"]
 
     field = Field(**field_config_1)
     with pytest.raises(TypeError):
         obsbase.CompoundObservation(field=field)
 
-    i = 0
     expected_exp = 4  # len(field_configs) * batch_size
     while obs.current_exp_num < expected_exp:
         assert not obs.set_is_finished
-        obs.exposure_list[f"{i}"] = None
-        i += 1
+        obs.mark_exposure_complete()
     assert obs.set_is_finished
 
 
@@ -123,24 +121,19 @@ def test_compound_dithered_observation(field_config_1, field_config_2):
     obs = obsbase.CompoundObservation(field)
     assert isinstance(obs.field, Field)
     assert obs.field.name.startswith(field_config_1["name"])
-    assert obs.field.name.endswith("0")
+    obs.mark_exposure_complete()
 
-    obs.exposure_list["a"] = None
     assert isinstance(obs.field, Field)
     assert obs.field.name.startswith(field_config_2["name"])
-    assert obs.field.name.endswith("0")
+    obs.mark_exposure_complete()
 
-    obs.exposure_list["b"] = None
     assert isinstance(obs.field, Field)
     assert obs.field.name.startswith(field_config_1["name"])
-    assert obs.field.name.endswith("1")
 
-    i = 0
     expected_exp = 9 * 2  # max(n_positions) * len(field_configs)
     while obs.current_exp_num < expected_exp:
         assert not obs.set_is_finished
-        obs.exposure_list[f"{i}"] = None
-        i += 1
+        obs.mark_exposure_complete()
     assert obs.set_is_finished
 
 
@@ -160,24 +153,18 @@ def test_compound_dithered_observation_batch(field_config_1, field_config_2):
 
     for _ in ["a", "b"]:
         assert isinstance(obs.field, Field)
-        print(_, obs.field.name, field_config_1["name"])
         assert obs.field.name.startswith(field_config_1["name"])
-        assert obs.field.name.endswith("0")
-        obs.exposure_list[_] = None
+        obs.mark_exposure_complete()
 
     for _ in ["c", "d"]:
         assert isinstance(obs.field, Field)
         assert obs.field.name.startswith(field_config_2["name"])
-        assert obs.field.name.endswith("0")
-        obs.exposure_list[_] = None
+        obs.mark_exposure_complete()
 
     assert obs.field.name.startswith(field_config_1["name"])
-    assert obs.field.name.endswith("1")
 
-    i = 0
     expected_exp = 9 * 2 * 2  # max(n_positions) * len(field_configs) * batch_size
     while obs.current_exp_num < expected_exp:
         assert not obs.set_is_finished
-        obs.exposure_list[f"{i}"] = None
-        i += 1
+        obs.mark_exposure_complete()
     assert obs.set_is_finished

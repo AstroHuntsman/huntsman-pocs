@@ -9,6 +9,11 @@ class HuntsmanPOCS(POCS):
         self._dome_open_states = []
         super().__init__(*args, **kwargs)
 
+        # Hack solution to provide POCS.is_safe functionality to observatory
+        if not self.observatory._safety_func:
+            self.logger.debug(f"Setting safety func for {self.observatory}.")
+            self.observatory._safety_func = self.is_safe
+
     # Public methods
 
     def run(self, initial_next_state='starting', initial_focus=True, *args, **kwargs):

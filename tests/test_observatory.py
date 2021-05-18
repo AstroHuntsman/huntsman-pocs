@@ -2,7 +2,6 @@ import os
 import pytest
 
 from panoptes.utils import error
-from panoptes.utils.time import wait_for_events
 
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
@@ -40,7 +39,7 @@ def observatory(mount, cameras, images_dir):
 
 @pytest.fixture(scope='function')
 def pocs(observatory):
-    pocs = HuntsmanPOCS(observatory, run_once=True)
+    pocs = HuntsmanPOCS(observatory, run_once=True, simulators=["power", "weather"])
     yield pocs
     pocs.power_down()
 
@@ -94,13 +93,25 @@ def test_take_flat_fields(pocs):
     pocs.observatory.take_flat_fields(alt=60, az=90, required_exposures=1, tolerance=0.5)
 
 
-def test_autofocus_cameras(observatory):
+def test_autofocus_cameras_coarse(observatory):
     """
     """
     observatory.last_coarse_focus_time = None
     assert observatory.coarse_focus_required
-    events = observatory.autofocus_cameras()
-    wait_for_events(list(events.values()), timeout=60)
-    fname = observatory.coarse_focus_config['filter_name']
+    observatory.autofocus_cameras(coarse=True, blocking=True)
+
+    fname = observatory._coarse_focus_filter
     assert all([c.filterwheel.current_filter == fname for c in observatory.cameras.values()])
+    assert observatory.last_coarse_focus_time is not None
     assert not observatory.coarse_focus_required
+
+
+def test_autofocus_cameras_fine(observatory):
+    """
+    """
+    observatory.last_fine_focus_time = None
+    assert observatory.fine_focus_required
+    observatory.autofocus_cameras(coarse=False, blocking=True)
+
+    assert observatory.last_fine_focus_time is not None
+    assert not observatory.fine_focus_required

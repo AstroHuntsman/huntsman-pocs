@@ -1,6 +1,9 @@
 import os
 
+from panoptes.pocs.utils.logger import LOGGER_INFO
 from panoptes.pocs.utils.logger import get_logger as get_pocs_logger
+
+LOGGER_INFO.handlers = {}
 
 logger = get_pocs_logger(
     console_log_file='huntsman.log',

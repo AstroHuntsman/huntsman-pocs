@@ -63,6 +63,8 @@ class AbstractObservation(PanBase, ABC):
             directory = os.path.join(self._image_dir, "fields", self._field.field_name)
         self._directory = directory
 
+        self._current_exp_num = 0
+
     def __name__(self):
         return self.__class__.__name__
 
@@ -146,7 +148,7 @@ class AbstractObservation(PanBase, ABC):
 
     @property
     def current_exp_num(self):
-        return len(self.exposure_list)
+        return self._current_exp_num
 
     @property
     def first_exposure(self):
@@ -220,7 +222,7 @@ class AbstractObservation(PanBase, ABC):
 
     def mark_exposure_complete(self):
         """ Explicitly mark the current exposure as complete. """
-        pass
+        self._current_exp_num += 1
 
 
 class Observation(AbstractObservation):
@@ -296,7 +298,7 @@ class CompoundObservation(AbstractObservation):
         # Check if the field is nested (i.e. another Compound Field)
         if isinstance(field, CompoundField):
 
-            exposure_list = list(self.exposure_list.keys())
+            exposure_idxs = list(range(self.current_exp_num))
             exposure_step = self.batch_size * len(self._field)
 
             # Count the number of exposures for this subfield
@@ -304,7 +306,7 @@ class CompoundObservation(AbstractObservation):
             exposures_this_field = 0
             for i in range(self.batch_size):
                 exposure_offset = field_idx * self.batch_size + i
-                exposures_this_field += len(exposure_list[exposure_offset::exposure_step])
+                exposures_this_field += len(exposure_idxs[exposure_offset::exposure_step])
 
             # Get the corresponding nested field index
             nested_field_idx = int(exposures_this_field / self.batch_size) % len(field)

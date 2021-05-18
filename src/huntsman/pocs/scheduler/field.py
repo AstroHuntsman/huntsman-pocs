@@ -151,8 +151,7 @@ class DitheredField(CompoundField):
         # Make dithered field configs
         field_configs = []
         for i, coord in enumerate(coords):
-            dither_name = f"{name}_{i}"
-            field_configs.append(dict(position=coord, name=dither_name))
+            field_configs.append(dict(position=coord, name=name))
 
         # Initialise compound field
         super().__init__(name, field_configs, equinox=equinox, frame=frame, **kwargs)

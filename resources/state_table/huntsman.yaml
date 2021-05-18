@@ -25,17 +25,10 @@ states:
   coarse_focusing:
     horizon: focus
     requires_open_dome: True
-  focusing:
-    horizon: focus
-    requires_open_dome: True
   ready:
     horizon: flat
-  preparing:
-  slewing:
   observing:
     requires_open_dome: True
-  analyzing:
-  dithering:
 
 transitions:
     -
@@ -43,13 +36,8 @@ transitions:
             - ready
             - twilight_flat_fielding
             - scheduling
-            - preparing
-            - slewing
-            - focusing
             - coarse_focusing
             - observing
-            - analyzing
-            - dithering
             - starting
             - taking_darks
         dest: parking
@@ -114,41 +102,5 @@ transitions:
         trigger: autofocus_coarse
     -
         source: scheduling
-        dest: preparing
-        trigger: prepare_observations
-    -
-        source: scheduling
-        dest: ready
-        trigger: get_ready
-    -
-        source: preparing
-        dest: slewing
-        trigger: start_slewing
-    -
-        source: slewing
-        dest: focusing
-        trigger: adjust_focus
-        conditions: mount_is_tracking
-    -
-        source: focusing
         dest: observing
         trigger: observe
-        conditions: mount_is_tracking
-    -
-        source: observing
-        dest: analyzing
-        trigger: analyze
-    -
-        source: analyzing
-        dest: dithering
-        trigger: dither
-        conditions: mount_is_tracking
-    -
-        source: dithering
-        dest: observing
-        trigger: observe
-        conditions: mount_is_tracking
-    -
-        source: analyzing
-        dest: scheduling
-        trigger: schedule
