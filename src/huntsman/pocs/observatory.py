@@ -115,10 +115,12 @@ class HuntsmanObservatory(Observatory):
     @property
     def temperature(self):
         """ Return the ambient temperature. """
-        temp = self.db.get_current("weather")["ambient_temp_C"]
+        if self.db:
+            temp = self.db.get_current("weather")["data"]["ambient_temp_C"]
+            temp = get_quantity_value(temp, u.Celsius)
         if temp is None:
-            return
-        return get_quantity_value(temp, u.Celsius)
+            self.logger.warning("Unable to determine temperature.")
+        return temp
 
     # Methods
 
