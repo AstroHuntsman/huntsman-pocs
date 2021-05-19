@@ -338,8 +338,9 @@ class HuntsmanObservatory(Observatory):
         if num_cameras_ready == 0:
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
-    def take_observation_block(self, observation, cameras, timeout=60 * u.second,
-                               remove_on_error=False, skip_focus=False, safety_kwargs=None):
+    def take_observation_block(self, observation, cameras=None, timeout=60 * u.second,
+                               remove_on_error=False, skip_focus=False, safety_kwargs=None,
+                               skip_slew=False):
         """ Macro function to take an observation block.
         This function will perform:
             - slewing (when necessary)
@@ -348,14 +349,20 @@ class HuntsmanObservatory(Observatory):
             - safety checking
         Args:
             observation (Observation): The observation object.
-            cameras (dict): Dict of cam_name: camera pairs. If None (default), use all cameras.
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                cameras.
             timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
             remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
                 raise a TimeoutError instead.
+            skip_slew (bool, optional): If True, do not attempt to slew the telescope. Default
+                False.
             **safety_kwargs (dict, optional): Extra kwargs to be parsed to safety function.
         Raises:
             RuntimeError: If safety check fails.
         """
+        if cameras is None:
+            cameras = self.cameras
+
         safety_kwargs = {} if safety_kwargs is None else safety_kwargs
         self.assert_safe(**safety_kwargs)
 
@@ -387,7 +394,7 @@ class HuntsmanObservatory(Observatory):
                 slew_to_target = False
 
             # Perform the slew if necessary
-            if slew_to_target:
+            if slew_to_target and not skip_slew:
                 self.slew_to_observation(observation)
                 current_field = observation.field
 
@@ -428,16 +435,17 @@ class HuntsmanObservatory(Observatory):
             with suppress(AttributeError):
                 observation.mark_exposure_complete()
 
-    def take_dark_observation(self, bias=False, cameras=None, **kwargs):
+    def take_dark_observation(self, bias=False, **kwargs):
         """ Take a bias observation block on each camera (blocking).
         Args:
-            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
-                the cameras.
             bias (bool, optional): If True, take Bias observation instead of dark observation.
                 Default: False.
+            **kwargs: Parsed to `self.take_observation_block`.
         """
-        if cameras is None:
-            cameras = self.cameras
+        # Move telescope to park position
+        if not self.mount.is_parked:
+            self.logger.info("Moving telescope to park position for dark observation.")
+            self.mount.park()
 
         # Create the observation
         # Keep the mount where it is since we are just taking darks
@@ -455,7 +463,7 @@ class HuntsmanObservatory(Observatory):
                 safety_kwargs["ignore"].append("good_weather")
 
         # Take the observation (blocking)
-        self.take_observation_block(observation, cameras=cameras, skip_focus=True,
+        self.take_observation_block(observation, skip_focus=True, skip_slew=True,
                                     safety_kwargs=safety_kwargs, **kwargs)
 
     def assert_safe(self, *args, **kwargs):
