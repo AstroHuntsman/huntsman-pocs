@@ -115,11 +115,12 @@ class HuntsmanObservatory(Observatory):
     @property
     def temperature(self):
         """ Return the ambient temperature. """
-        if self.db:
-            temp = self.db.get_current("weather")["data"]["ambient_temp_C"]
-            temp = get_quantity_value(temp, u.Celsius)
-        if temp is None:
-            self.logger.warning("Unable to determine temperature.")
+        temp = None
+        try:
+            reading = self.db.get_current("weather")["data"]["ambient_temp_C"]
+            temp = get_quantity_value(reading, u.Celsius) * u.Celsius
+        except (KeyError, TypeError) as err:
+            self.logger.warning(f"Unable to determine temperature: {err!r}")
         return temp
 
     # Methods
@@ -697,7 +698,7 @@ class HuntsmanObservatory(Observatory):
         last_focus_time = getattr(self, f"last_{focus_type}_focus_time")
         interval = getattr(self, f"_{focus_type}_focus_interval")
 
-        if self.last_coarse_focus_time is None:  # If we haven't focused yet
+        if last_focus_time is None:  # If we haven't focused yet
             return True
         if current_time() - last_focus_time > interval:
             self.logger.info(f"{focus_type} focus required because of time difference.")
