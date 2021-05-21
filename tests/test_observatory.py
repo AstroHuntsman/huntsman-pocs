@@ -1,7 +1,10 @@
 import os
 import pytest
 
+from astropy import units as u
+
 from panoptes.utils import error
+from panoptes.utils.time import current_time
 
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
@@ -115,3 +118,49 @@ def test_autofocus_cameras_fine(observatory):
 
     assert observatory.last_fine_focus_time is not None
     assert not observatory.fine_focus_required
+
+
+def test_focus_conditions(pocs):
+    """
+    """
+    observatory = pocs.observatory
+
+    temp_tol = 5 * u.Celsius
+    focus_interval = 1 * u.hour
+
+    observatory._fine_focus_temptol = temp_tol
+    observatory._coarse_focus_temptol = temp_tol
+    observatory._fine_focus_interval = focus_interval
+    observatory._coarse_focus_interval = focus_interval
+
+    # Test focus timedelta condition
+    observatory.last_fine_focus_time = None
+    observatory.last_coarse_focus_time = None
+    assert observatory.fine_focus_required
+    assert observatory.coarse_focus_required
+
+    observatory.last_fine_focus_time = current_time()
+    observatory.last_coarse_focus_time = current_time()
+    assert not observatory.fine_focus_required
+    assert not observatory.coarse_focus_required
+
+    observatory.last_fine_focus_time = current_time() - 2 * focus_interval
+    observatory.last_coarse_focus_time = current_time() - 2 * focus_interval
+    assert observatory.fine_focus_required
+    assert observatory.coarse_focus_required
+
+    # Test focus temp condition
+    observatory.last_fine_focus_time = current_time()
+    observatory.last_coarse_focus_time = current_time()
+
+    observatory.db.insert_current('weather', {'ambient_temp_C': 0})
+    observatory.last_fine_focus_temp = 0 * u.Celsius
+    observatory.last_coarse_focus_temp = 0 * u.Celsius
+
+    assert not observatory.coarse_focus_required
+    assert not observatory.fine_focus_required
+
+    new_temp = temp_tol + 1 * u.Celsius
+    observatory.db.insert_current('weather', {'ambient_temp_C': new_temp.to_value(u.Celsius)})
+    assert observatory.coarse_focus_required
+    assert observatory.fine_focus_required
