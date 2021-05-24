@@ -500,7 +500,7 @@ class HuntsmanObservatory(Observatory):
             raise RuntimeError(f"Unable to set target coordinates for {observation.field}.")
 
         # Move FWs to dark pos if Sun too high to minimise damage potential
-        move_fws = self.solar_altaz.alt > min_solar_alt * u.deg
+        move_fws = self.solar_altaz.alt > get_quantity_value(min_solar_alt, u.deg) * u.deg
 
         if move_fws:
             self.logger.warning("Solar altitude above minimum for safe slew. Moving FWs to dark"
@@ -539,9 +539,12 @@ class HuntsmanObservatory(Observatory):
                 Default to `None`, which uses all cameras.
         """
         if camera_names is None:
-            cameras = {c: self.cameras[c] for c in self.cameras.keys() if c.has_filterwheel}
+            cameras = self.cameras
         else:
-            cameras = {c: self.cameras[c] for c in camera_names if c.has_filterwheel}
+            cameras = {c: self.cameras[c] for c in camera_names}
+
+        # We only care about cameras that have FWs here
+        cameras = {k: v for k, v in cameras.items() if v.has_filterwheel}
 
         filterwheel_events = dict()
 
