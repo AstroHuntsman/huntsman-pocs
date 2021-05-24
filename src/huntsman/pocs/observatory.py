@@ -296,6 +296,8 @@ class HuntsmanObservatory(Observatory):
                 If `True` and max_attempts is reached, a `PanError` will be raised. If `False`,
                 any camera that has failed to become ready will be dropped from the Observatory.
         """
+        self.logger.info(f"Preparing {len(self.cameras)} cameras.")
+
         # Make sure camera cooling is enabled
         self.activate_camera_cooling()
 
@@ -511,7 +513,7 @@ class HuntsmanObservatory(Observatory):
             current_fw_positions = {}
             for cam_name, cam in self.cameras.items():
                 if cam.has_filterwheel:
-                    current_fw_positions[cam_name] = cam.filterwheel.filter_name
+                    current_fw_positions[cam_name] = cam.filterwheel.current_filter
 
             self._move_all_filterwheels_to(dark_position=True)
 

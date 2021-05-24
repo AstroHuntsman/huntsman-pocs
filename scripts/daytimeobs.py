@@ -9,12 +9,15 @@ Script for observing something during the day.
 NOTE: This script will be superceeded by scheduler when we can impose arbitrary horizon ranges
 for a given target.
 """
+import time
 import argparse
 
 from astropy import units as u
 
 from panoptes.utils.time import current_time
 from huntsman.pocs.utils.huntsman import create_huntsman_scheduler, create_huntsman_pocs
+
+SLEEP_INTERVAL = 30  # Sleep this long in seconds between safety checks before starting up
 
 
 if __name__ == "__main__":
@@ -26,11 +29,14 @@ if __name__ == "__main__":
                              " priority.")
     parser.add_argument("--simulate_weather", action="store_true",
                         help="If provided, will run POCS with weather simulator.")
+    parser.add_argument("--no_dome", action="store_true",
+                        help="If provided, will run POCS with the dome closed e.g. for testing.")
 
     # Parse command line input
     args = parser.parse_args()
     field_name = args.field_name
     use_weather_simulator = args.simulate_weather
+    with_dome = not args.no_dome
 
     # Create scheduler and override targets list
     # This is a hack
@@ -46,7 +52,7 @@ if __name__ == "__main__":
         simulators.append("weather")
 
     # Create HuntsmanPOCS instance
-    huntsman = create_huntsman_pocs(simulators=simulators, scheduler=scheduler)
+    huntsman = create_huntsman_pocs(simulators=simulators, scheduler=scheduler, with_dome=with_dome)
 
     # NOTE: Avoid coarse focusing state because it slews to a fixed position on-sky
     # This position may be too close to the Sun and it is unlikely there will be any stars
@@ -56,11 +62,23 @@ if __name__ == "__main__":
     huntsman.observatory._coarse_focus_temptol = 100 * u.Celsius
     huntsman.observatory._coarse_focus_interval = 100 * u.hour
 
+    # Prepare cameras
+    huntsman.observatory.prepare_cameras()
+
+    # Wait for conditions to become safe
+    huntsman.logger.info("Waiting for safety...")
+    while not huntsman.is_safe(park_if_not_safe=False):
+        time.sleep(SLEEP_INTERVAL)
+
+    # Open the dome when safe
+    huntsman.observatory.dome.open()
+
     # Do a coarse focus at a convenient and safe position, e.g. first observation
     obs_name = scheduler.get_observation()[0]
     observation = scheduler.observations[obs_name]
     huntsman.observatory.slew_to_observation(observation)
-    huntsman.observatory.autofocus_cameras(coarse=True, filter_name=observation.filter_name)
+    huntsman.observatory.autofocus_cameras(coarse=True, filter_name=observation.filter_name,
+                                           seconds=observation.exptime)
 
     # Run the state machine
     # NOTE: We don't have to bypass darks, flats etc because using night simulator
