@@ -15,6 +15,7 @@ from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.scheduler.observation.dark import DarkObservation
 from huntsman.pocs.utils.flats import FlatFieldSequence, make_flat_field_observation
+from huntsman.pocs.utils.safety import get_solar_altaz
 
 
 class HuntsmanObservatory(Observatory):
@@ -122,6 +123,11 @@ class HuntsmanObservatory(Observatory):
         except (KeyError, TypeError) as err:
             self.logger.warning(f"Unable to determine temperature: {err!r}")
         return temp
+
+    @property
+    def solar_altaz(self):
+        """ Return the current solar alt az. """
+        return get_solar_altaz(location=self.location, time=current_time())
 
     # Methods
 
@@ -481,14 +487,39 @@ class HuntsmanObservatory(Observatory):
         elif not self._safety_func(*args, **kwargs):
             raise RuntimeError("Safety check failed!")
 
-    def slew_to_observation(self, observation):
-        """ Slew to the observation field coordinates. """
+    def slew_to_observation(self, observation, min_solar_alt=10 * u.deg):
+        """ Slew to the observation field coordinates.
+        Args:
+            observation (Observation): The observation object.
+            min_solar_alt (astropy.Quantity, optional): The minimum solar altitude above which the
+                FWs will be moved to their dark positions before slewing.
+        """
         self.logger.info(f"Slewing to target coordinates for {observation}.")
 
         if not self.mount.set_target_coordinates(observation.field.coord):
             raise RuntimeError(f"Unable to set target coordinates for {observation.field}.")
 
+        # Move FWs to dark pos if Sun too high to minimise damage potential
+        move_fws = self.solar_altaz.alt > min_solar_alt * u.deg
+
+        if move_fws:
+            self.logger.warning("Solar altitude above minimum for safe slew. Moving FWs to dark"
+                                " positions.")
+
+            # Record curent positions so we can put them back after slew
+            # NOTE: These positions could include the dark position so can't use last_light_position
+            current_fw_positions = {}
+            for cam_name, cam in self.cameras.items():
+                if cam.has_filterwheel:
+                    current_fw_positions[cam_name] = cam.filterwheel.filter_name
+
+            self._move_all_filterwheels_to(dark_position=True)
+
         self.mount.slew_to_target()
+
+        if move_fws:
+            self.logger.info("Moving FWs back to last positions.")
+            self._move_all_filterwheels_to(current_fw_positions)
 
     # Private methods
 
@@ -497,27 +528,43 @@ class HuntsmanObservatory(Observatory):
         guider = Guide(**guider_config)
         self.autoguider = guider
 
-    def _move_all_filterwheels_to(self, filter_name, camera_names=None):
+    def _move_all_filterwheels_to(self, filter_name=None, dark_position=False, camera_names=None):
         """Move all the filterwheels to a given filter
         Args:
-            filter_name (str): name of the filter where filterwheels will be moved to.
+            filter_name (str or dict, optional): Name of the filter where filterwheels will be
+                moved to. If a dict, should be specified in camera_name: filter_name pairs.
+            dark_position (bool, optional): If True, ignore filter_name arg and move all FWs to
+                their dark position. Default: False.
             camera_names (list, optional): List of camera names to be used.
                 Default to `None`, which uses all cameras.
         """
-        self.logger.debug(f'Moving all camera filterwheels to the {filter_name} filter.')
-
         if camera_names is None:
-            cameras_list = self.cameras
+            cameras = {c: self.cameras[c] for c in self.cameras.keys() if c.has_filterwheel}
         else:
-            cameras_list = {c: self.cameras[c] for c in camera_names}
+            cameras = {c: self.cameras[c] for c in camera_names if c.has_filterwheel}
 
-        # Move all the camera filterwheels to filter_name
         filterwheel_events = dict()
-        for camera in cameras_list.values():
-            filterwheel_events[camera] = camera.filterwheel.move_to(filter_name)
+
+        if dark_position:
+            self.logger.debug('Moving all filterwheels to dark position.')
+            for camera in cameras.values():
+                filterwheel_events[camera] = camera.filterwheel.move_to_dark_position()
+
+        elif filter_name is None:
+            raise ValueError("filter_name must not be None.")
+
+        else:
+            self.logger.debug(f'Moving filterwheels to {filter_name} filter.')
+            for cam_name, camera in cameras.items():
+
+                if isinstance(filter_name, dict):
+                    fn = filter_name[cam_name]
+                else:
+                    fn = filter_name
+
+                filterwheel_events[camera] = camera.filterwheel.move_to(fn)
 
         # Wait for move to complete
-        self.logger.debug(f'Waiting for all the filterwheels to move to the {filter_name} filter.')
         wait_for_events(list(filterwheel_events.values()))
         self.logger.debug('Finished waiting for filterwheels.')
 
