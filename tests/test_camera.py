@@ -141,6 +141,20 @@ def test_move_filterwheel(camera):
     assert camera.filterwheel.position == 2
 
 
+def test_fw_move_to_dark_position(camera):
+    if not camera.filterwheel:
+        pytest.skip("Camera does not have a filterwheel.")
+
+    assert camera.filterwheel._dark_position is not None
+
+    camera.filterwheel.move_to(1, blocking=True)
+    if camera.filterwheel.position == camera.filterwheel._dark_position:
+        camera.filterwheel.move_to(2, blocking=True)
+
+    camera.filterwheel.move_to_dark_position(blocking=True)
+    assert camera.filterwheel.position == camera.filterwheel._dark_position
+
+
 def test_exposure(camera, tmpdir):
     """ Tests basic take_exposure functionality """
     fits_path = str(tmpdir.join('test_exposure.fits'))
