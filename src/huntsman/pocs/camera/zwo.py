@@ -181,7 +181,8 @@ class Camera(AbstractSDKCamera):
         """ Reconnect to the camera. """
         Camera._driver.close_camera(self._handle)
         self._reset_usb()
-        return self.connect()
+        self.connect()
+        self.cooling_enabled = True
 
     def take_exposure(self, defocused=False, *args, **kwargs):
         """ Overrride class method to add defocusing offset. """
