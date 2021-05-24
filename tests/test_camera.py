@@ -147,11 +147,11 @@ def test_fw_move_to_dark_position(camera):
 
     assert camera.filterwheel._dark_position is not None
 
-    camera.filterwheel.move_to(0, blocking=True)
+    camera.filterwheel.move_to(1, blocking=True)
     if camera.filterwheel.filter_name == camera.filterwheel._dark_position:
-        camera.filterwheel.move_to(1, blocking=True)
+        camera.filterwheel.move_to(2, blocking=True)
 
-    camera.filterwheel.move_to_dark_position()
+    camera.filterwheel.move_to_dark_position(blocking=True)
     assert camera.filterwheel.filter_name == camera.filterwheel._dark_position
 
 
