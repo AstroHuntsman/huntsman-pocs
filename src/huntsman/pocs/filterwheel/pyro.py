@@ -69,6 +69,7 @@ class FilterWheel(AbstractFilterWheel):
         self._name = self._proxy.get("name", "filterwheel")
         self._model = self._proxy.get("model", "filterwheel")
         self._serial_number = self._proxy.get("uid", "filterwheel")
+        self._dark_position = self._proxy.get("_dark_position", "filterwheel")
 
         self.logger.debug(f"{self} connected.")
 
