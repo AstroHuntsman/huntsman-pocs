@@ -184,9 +184,16 @@ class Camera(AbstractSDKCamera):
         self.connect()
         self.cooling_enabled = True
 
-    def take_exposure(self, defocused=False, *args, **kwargs):
-        """ Overrride class method to add defocusing offset. """
-        if defocused:
+    def take_exposure(self, *args, **kwargs):
+        """ Overrride class method to add defocusing offset.
+        Args:
+            defocused (bool, optional): If True, apply the defocusing offset before the exposure.
+                Default: False.
+            *args, **kwargs: Parsed to super().take_exposure.
+        Returns:
+            threading.Thread: The readout thread, which joins when readout has finished.
+        """
+        if kwargs.pop("defocused", False):
             required_focus_offset = self._defocus_offset - self._current_defocus_offset
             self.logger.debug(f"Applying focus offset of {self._defocus_offset} for defocused "
                               "exposure.")
