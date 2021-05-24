@@ -127,7 +127,7 @@ class HuntsmanObservatory(Observatory):
     @property
     def solar_altaz(self):
         """ Return the current solar alt az. """
-        return get_solar_altaz(location=self.location, time=current_time())
+        return get_solar_altaz(location=self.earth_location, time=current_time())
 
     # Methods
 
