@@ -55,10 +55,12 @@ def check_solar_separation_safety(observation, location, min_separation, time=No
         time_check_interval (float, optional): Check safety at this interval in seconds.
             Default 60s.
     """
-    exp_duration = observation.minimum_duration
     coord = observation.field.coord
-
     min_separation = get_quantity_value(min_separation, u.deg) * u.deg
+
+    exp_duration = get_quantity_value(observation.minimum_duration, u.second)
+    overhead_time = get_quantity_value(overhead_time, u.second)
+    time_check_interval = get_quantity_value(time_check_interval, u.second)
 
     if time is None:
         time = Time(datetime.now())
@@ -70,4 +72,4 @@ def check_solar_separation_safety(observation, location, min_separation, time=No
     # Calculate solar separation at each time
     separations = get_solar_separation(coord, times, location)
 
-    return all([coord.separation(c) > min_separation for c in separations])
+    return all([c > min_separation for c in separations])

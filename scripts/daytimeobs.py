@@ -35,7 +35,9 @@ if __name__ == "__main__":
     # Create scheduler and override targets list
     # This is a hack
     scheduler = create_huntsman_scheduler()
-    scheduler._observations = {k: v for k, v in scheduler._observations if k == field_name}
+    scheduler._observations = {k: v for k, v in scheduler._observations.items() if k == field_name}
+    if not scheduler._observations:
+        raise ValueError(f"No observations matching '{field_name}' in targets file.")
 
     # Note we use "night" simulator so we can observe in the day
     # Weather simulator is optional because weather reading currently unreliable
@@ -49,12 +51,14 @@ if __name__ == "__main__":
     # NOTE: Avoid coarse focusing state because it slews to a fixed position on-sky
     # This position may be too close to the Sun and it is unlikely there will be any stars
     # This is a hack
-    huntsman.observatory.last_focus_time = current_time()
+    huntsman.observatory.last_coarse_focus_time = current_time()
+    huntsman.observatory.last_coarse_focus_temp = huntsman.observatory.temperature
     huntsman.observatory._coarse_focus_temptol = 100 * u.Celsius
     huntsman.observatory._coarse_focus_interval = 100 * u.hour
 
     # Do a coarse focus at a convenient and safe position, e.g. first observation
-    observation = huntsman.observatory.current_observation
+    obs_name = scheduler.get_observation()[0]
+    observation = scheduler.observations[obs_name]
     huntsman.observatory.slew_to_observation(observation)
     huntsman.observatory.autofocus_cameras(coarse=True, filter_name=observation.filter_name)
 

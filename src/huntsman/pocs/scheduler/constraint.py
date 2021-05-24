@@ -33,7 +33,7 @@ class SunAvoidance(BaseConstraint):
         score = self._score
 
         if check_solar_separation_safety(observation=observation, location=observer.location,
-                                         time=time, min_separation=self.min_separation, **kwargs):
+                                         time=time, min_separation=self.min_separation):
             score = 1
         else:
             veto = True

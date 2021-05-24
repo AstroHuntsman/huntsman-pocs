@@ -749,7 +749,9 @@ class HuntsmanObservatory(Observatory):
         interval = getattr(self, f"_{focus_type}_focus_interval")
 
         if last_focus_time is None:  # If we haven't focused yet
+            self.logger.info(f"{focus_type} focus required because we haven't focused yet.")
             return True
+
         if current_time() - last_focus_time > interval:
             self.logger.info(f"{focus_type} focus required because of time difference.")
             return True
@@ -758,7 +760,7 @@ class HuntsmanObservatory(Observatory):
         last_focus_temp = getattr(self, f"last_{focus_type}_focus_temp")
         temptol = getattr(self, f"_{focus_type}_focus_temptol")
 
-        if last_focus_temp and self.temperature:
+        if (last_focus_temp is not None) and (self.temperature is not None):
             if abs(last_focus_temp - self.temperature) > temptol:
                 self.logger.info(f"{focus_type} focus required because of temperature change.")
                 return True
