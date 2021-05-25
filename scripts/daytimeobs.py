@@ -37,6 +37,7 @@ if __name__ == "__main__":
     field_name = args.field_name
     use_weather_simulator = args.simulate_weather
     with_dome = not args.no_dome
+    with_autoguider = False
 
     # Create scheduler and override targets list
     # This is a hack
@@ -52,7 +53,8 @@ if __name__ == "__main__":
         simulators.append("weather")
 
     # Create HuntsmanPOCS instance
-    huntsman = create_huntsman_pocs(simulators=simulators, scheduler=scheduler, with_dome=with_dome)
+    huntsman = create_huntsman_pocs(simulators=simulators, scheduler=scheduler, with_dome=with_dome,
+                                    with_autoguider=with_autoguider)
 
     # NOTE: Avoid coarse focusing state because it slews to a fixed position on-sky
     # This position may be too close to the Sun and it is unlikely there will be any stars
@@ -76,6 +78,7 @@ if __name__ == "__main__":
     # Do a coarse focus at a convenient and safe position, e.g. first observation
     obs_name = scheduler.get_observation()[0]
     observation = scheduler.observations[obs_name]
+    huntsman.observatory.mount.unpark()
     huntsman.observatory.slew_to_observation(observation)
     huntsman.observatory.autofocus_cameras(coarse=True, filter_name=observation.filter_name,
                                            seconds=observation.exptime)
