@@ -26,7 +26,7 @@ class AutofocusSequence(PanBase):
             mask_threshold (float): The staturation masking threshold to apply to focus images.
                 Default: 0.9.
             dark_mask_threshold (float, optional): The staturation masking threshold to eliminate
-                hot pixels from initial dark frame.
+                hot pixels from initial dark frame. Default: 0.3.
             extra_focus_steps (int, optional): The number of extra focus steps to be measured if
                 the best focus is at the edge of the initial range. Default 2.
             mask_dilations (int, optional): The number of mask dilations to perform. Default 10.
