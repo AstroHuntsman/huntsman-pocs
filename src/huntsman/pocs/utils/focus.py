@@ -42,6 +42,7 @@ class AutofocusSequence(PanBase):
         self._position_max = int(position_max)
         self._position_step = int(position_step)
         self._bit_depth = bit_depth
+        self._mask_threshold = float(mask_threshold)
         self._dark_mask_threshold = float(dark_mask_threshold)
         self._extra_focus_steps = int(extra_focus_steps)
         self._mask_dilations = int(mask_dilations)
