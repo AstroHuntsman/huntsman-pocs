@@ -116,7 +116,7 @@ class AutofocusSequence(PanBase):
         Args:
             image (np.array): The dark image array.
         """
-        self._dark_image = image
+        self._dark_image = image.astype(self._image_dtype)
         self._dark_mask = self._mask_saturated(self._dark_image,
                                                threshold=self._dark_mask_threshold)
 
