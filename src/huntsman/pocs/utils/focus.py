@@ -16,13 +16,15 @@ class AutofocusSequence(PanBase):
     def __init__(self, position_min, position_max, position_step, bit_depth,
                  dark_mask_threshold=0.3, extra_focus_steps=5, mask_dilations=10,
                  merit_function_name="vollath_F4", merit_function_kwargs=None,
-                 image_dtype=np.float32, **kwargs):
+                 image_dtype=np.float32, mask_threshold=0.9, **kwargs):
         """
         Args:
             position_min (int): The minimal focus position.
             position_max (int): The maximal focus position.
             position_step (int): The step in focus position.
             bit_depth (astropy.units.Quantity): The bit depth of the images.
+            mask_threshold (float): The staturation masking threshold to apply to focus images.
+                Default: 0.9.
             dark_mask_threshold (float, optional): The staturation masking threshold to eliminate
                 hot pixels from initial dark frame.
             extra_focus_steps (int, optional): The number of extra focus steps to be measured if
@@ -216,14 +218,18 @@ class AutofocusSequence(PanBase):
 
     # Private methods
 
-    def _mask_saturated(self, image, **kwargs):
+    def _mask_saturated(self, image, threshold=None):
         """ Mask the saturated pixels in an image.
         Args:
             image (np.array): The image to mask.
+            threshold (float): The mask threshold, between 0 and 1. Defaults to
+                self._mask_threshold.
         Returns:
             np.array: The boolean mask, where values of True are masked.
         """
-        return mask_saturated(image, bit_depth=self._bit_depth, **kwargs).mask
+        if threshold is None:
+            threshold = self._mask_threshold
+        return mask_saturated(image, bit_depth=self._bit_depth, threshold=threshold).mask
 
     def _calculate_metrics(self):
         """ Calculate the focus metric for all the focus positions.
