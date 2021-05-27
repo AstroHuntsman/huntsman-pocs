@@ -184,6 +184,7 @@ class Camera(AbstractSDKCamera):
         """ Overrride class method to add defocusing offset.
         Note that the focus offset is checked at the exposure level so that we don't end up
         moving the focuser back and forth unnecessarily.
+        TODO: Move to AbstractCamera.
         Args:
             defocused (bool, optional): If True, apply the defocusing offset before the exposure.
                 Default: False.
@@ -210,7 +211,9 @@ class Camera(AbstractSDKCamera):
         return super().take_exposure(*args, **kwargs)
 
     def take_observation(self, observation, *args, **kwargs):
-        """ Overrride class method to add defocusing offset. """
+        """ Overrride class method to add defocusing offset.
+        TODO: Move to AbstractCamera.
+        """
         return super().take_observation(observation, focus_offset=observation.focus_offset,
                                         *args, **kwargs)
 
