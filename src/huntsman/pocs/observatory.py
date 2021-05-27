@@ -594,6 +594,9 @@ class HuntsmanObservatory(Observatory):
             except error.Timeout as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with flat observation after timeout error.")
+                
+            # Mark the current exposure as complete 
+            observation.mark_exposure_complete()
 
             # Update the flat field sequences with new data
             for cam_name in list(sequences.keys()):
