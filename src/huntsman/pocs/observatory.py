@@ -369,10 +369,6 @@ class HuntsmanObservatory(Observatory):
         safety_kwargs = {} if safety_kwargs is None else safety_kwargs
         self.assert_safe(**safety_kwargs)
 
-        # Do a fine focus to start the observation
-        if not skip_focus:
-            self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
-
         # Set the sequence time of the observation
         if not hasattr(observation, "seq_time"):
             observation.seq_time = current_time(flatten=True)
