@@ -25,7 +25,6 @@ class Camera(AbstractSDKCamera):
                  name='ZWO ASI Camera',
                  gain=None,
                  image_type=None,
-                 defocus_offset=0,
                  *args, **kwargs):
         """
         ZWO ASI Camera class
@@ -36,8 +35,6 @@ class Camera(AbstractSDKCamera):
             image_type (str, optional): image format to use (one of 'RAW8', 'RAW16', 'RGB24'
                 or 'Y8'). Default is to use 'RAW16' if supported by the camera, otherwise
                 the camera's own default will be used.
-            defocus_offset (int, optional): Apply this focus offset for defocused observations.
-                Default 0.
             *args, **kwargs: additional arguments to be passed to the parent classes.
         Notes:
             ZWO ASI cameras don't have a 'port', they only have a non-deterministic integer
@@ -193,23 +190,24 @@ class Camera(AbstractSDKCamera):
         Returns:
             threading.Thread: The readout thread, which joins when readout has finished.
         """
-        if kwargs.pop("defocused", False):
-            required_focus_offset = self._defocus_offset - self._current_defocus_offset
-            self.logger.debug(f"Applying focus offset of {self._defocus_offset} for defocused "
-                              "exposure.")
-        else:
-            self.logger.debug("Nullifying defocus offset.")
-            required_focus_offset = -self._current_defocus_offset
+        focus_offset = kwargs.pop("focus_offset", 0)
 
-        if required_focus_offset != 0:
-            self.focuser.move_by(required_focus_offset)
-            self._current_defocus_offset += required_focus_offset
+        if focus_offset != 0:
+            required_focus_move = focus_offset - self._current_defocus_offset
+        else:
+            required_focus_move = -self._current_defocus_offset
+
+        self.logger.debug(f"Setting focus offset to {focus_offset}.")
+
+        if required_focus_move != 0:
+            self.focuser.move_by(required_focus_move)
+            self._current_defocus_offset = focus_offset
 
         return super().take_exposure(*args, **kwargs)
 
     def take_observation(self, observation, *args, **kwargs):
         """ Overrride class method to add defocusing offset. """
-        return super().take_observation(observation, defocused=observation.is_defocused,
+        return super().take_observation(observation, focus_offset=observation.focus_offset,
                                         *args, **kwargs)
 
     def start_video(self, seconds, filename_root, max_frames, image_type=None):
