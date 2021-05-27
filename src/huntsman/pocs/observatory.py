@@ -434,7 +434,8 @@ class HuntsmanObservatory(Observatory):
                 self.logger.warning("Continuing with observation block after error.")
 
             # Explicitly mark the observation as complete
-            observation.mark_exposure_complete()
+            with suppress(AttributeError):
+                observation.mark_exposure_complete()
 
     def take_dark_observation(self, bias=False, **kwargs):
         """ Take a bias observation block on each camera (blocking).
