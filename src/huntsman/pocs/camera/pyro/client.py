@@ -234,7 +234,10 @@ class Camera(AbstractCamera):
         """ Overrride class method to add defocusing offset.
         TODO: Move to AbstractCamera.
         """
-        return super().take_observation(observation, focus_offset=observation.focus_offset,
+        focus_offset = 0
+        with suppress(AttributeError):
+            focus_offset = observation.focus_offset
+        return super().take_observation(observation, focus_offset=focus_offset,
                                         *args, **kwargs)
 
     def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
