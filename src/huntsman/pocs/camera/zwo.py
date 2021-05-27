@@ -66,8 +66,7 @@ class Camera(AbstractSDKCamera):
 
         self.logger.info(f'Initialised {self}.')
 
-        self._defocus_offset = int(defocus_offset)  # Get from config
-        self._current_defocus_offset = int(0)
+        self._current_focus_offset = int(0)
 
     def __del__(self):
         """ Attempt some clean up """
@@ -193,15 +192,15 @@ class Camera(AbstractSDKCamera):
         focus_offset = kwargs.pop("focus_offset", 0)
 
         if focus_offset != 0:
-            required_focus_move = focus_offset - self._current_defocus_offset
+            required_focus_move = focus_offset - self._current_focus_offset
         else:
-            required_focus_move = -self._current_defocus_offset
+            required_focus_move = -self._current_focus_offset
 
         self.logger.debug(f"Setting focus offset to {focus_offset}.")
 
         if required_focus_move != 0:
             self.focuser.move_by(required_focus_move)
-            self._current_defocus_offset = focus_offset
+            self._current_focus_offset = focus_offset
 
         return super().take_exposure(*args, **kwargs)
 
