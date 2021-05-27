@@ -198,24 +198,17 @@ class Camera(AbstractSDKCamera):
         if required_focus_move != 0:
             self.logger.debug(f"Setting focus offset for {self} to: {focus_offset}.")
 
-            original_pos = self.focuser.position
+            default_pos = self.focuser.position - self._current_focus_offset
 
-            new_pos = self.focuser.move_by(required_focus_move)
+            self.focuser.move_by(required_focus_move)
 
             # The actual offset may be different from the one we expected
-            actual_offset = new_pos - original_pos + self._current_focus_offset
+            actual_offset = self.focuser.position - default_pos
 
             # Update the current focus offset
             self._current_focus_offset = actual_offset
 
         return super().take_exposure(*args, **kwargs)
-
-    def take_observation(self, observation, *args, **kwargs):
-        """ Overrride class method to add defocusing offset.
-        TODO: Move to AbstractCamera.
-        """
-        return super().take_observation(observation, focus_offset=observation.focus_offset,
-                                        *args, **kwargs)
 
     def start_video(self, seconds, filename_root, max_frames, image_type=None):
         if not isinstance(seconds, u.Quantity):
