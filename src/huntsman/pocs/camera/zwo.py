@@ -66,7 +66,7 @@ class Camera(AbstractSDKCamera):
 
         self.logger.info(f'Initialised {self}.')
 
-        self._current_focus_offset = int(0)
+        self._current_focus_offset = 0
 
     def __del__(self):
         """ Attempt some clean up """
@@ -182,6 +182,8 @@ class Camera(AbstractSDKCamera):
 
     def take_exposure(self, *args, **kwargs):
         """ Overrride class method to add defocusing offset.
+        Note that the focus offset is checked at the exposure level so that we don't end up
+        moving the focuser back and forth unnecessarily.
         Args:
             defocused (bool, optional): If True, apply the defocusing offset before the exposure.
                 Default: False.
@@ -190,17 +192,20 @@ class Camera(AbstractSDKCamera):
             threading.Thread: The readout thread, which joins when readout has finished.
         """
         focus_offset = kwargs.pop("focus_offset", 0)
-
-        if focus_offset != 0:
-            required_focus_move = focus_offset - self._current_focus_offset
-        else:
-            required_focus_move = -self._current_focus_offset
-
-        self.logger.debug(f"Setting focus offset to {focus_offset}.")
+        required_focus_move = focus_offset - self._current_focus_offset
 
         if required_focus_move != 0:
-            self.focuser.move_by(required_focus_move)
-            self._current_focus_offset = focus_offset
+            self.logger.debug(f"Setting focus offset for {self} to: {focus_offset}.")
+
+            original_pos = self.focuser.position
+
+            new_pos = self.focuser.move_by(required_focus_move)
+
+            # The actual offset may be different from the one we expected
+            actual_offset = new_pos - original_pos + self._current_focus_offset
+
+            # Update the current focus offset
+            self._current_focus_offset = actual_offset
 
         return super().take_exposure(*args, **kwargs)
 
