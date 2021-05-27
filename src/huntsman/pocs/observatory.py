@@ -412,6 +412,9 @@ class HuntsmanObservatory(Observatory):
 
             # Start the exposures and get events
             # TODO: Replace with concurrent.futures
+            self.logger.info(f"Taking exposure {observation.current_exp_num}/{observation.min_nexp}"
+                             f" for {observation}.")
+
             events = {}
             for cam_name, camera in cameras.items():
                 try:
@@ -590,8 +593,8 @@ class HuntsmanObservatory(Observatory):
             except error.Timeout as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with flat observation after timeout error.")
-                
-            # Mark the current exposure as complete 
+
+            # Mark the current exposure as complete
             observation.mark_exposure_complete()
 
             # Update the flat field sequences with new data
