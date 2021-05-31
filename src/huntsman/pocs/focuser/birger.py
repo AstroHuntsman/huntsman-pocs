@@ -94,15 +94,21 @@ class Focuser(BirgerFocuser):
             sequence.dark_image = cutout
 
         # Move filterwheel to the correct position
-        if self.camera.has_filterwheel:
+        if self.camera is not None:
+            if self.camera.has_filterwheel:
 
-            if filter_name is None:
-                # NOTE: The camera will move the FW to the last light position automatically
-                self.logger.warning(f"Filter name not provided for autofocus on {self}. Using last"
-                                    " light position.")
-            else:
-                self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on {self}.")
-                self.camera.filterwheel.move_to(filter_name, blocking=True)
+                if filter_name is None:
+                    # NOTE: The camera will move the FW to the last light position automatically
+                    self.logger.warning(f"Filter name not provided for autofocus on {self}. Using"
+                                        " last light position.")
+                else:
+                    self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on"
+                                     f" {self}.")
+                    self.camera.filterwheel.move_to(filter_name, blocking=True)
+
+            elif filter_name is None:
+                self.logger.warning(f"Filter {filter_name} requiested for autofocus but"
+                                    f" {self.camera} has no filterwheel.")
 
         # Take the focusing exposures
         exposure_retries = 0
