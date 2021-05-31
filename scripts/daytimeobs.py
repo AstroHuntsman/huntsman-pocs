@@ -16,8 +16,6 @@ from astropy import units as u
 from panoptes.utils.time import current_time
 from huntsman.pocs.utils.huntsman import create_huntsman_scheduler, create_huntsman_pocs
 
-SLEEP_INTERVAL = 30  # Sleep this long in seconds between safety checks before starting up
-
 
 if __name__ == "__main__":
 
@@ -66,7 +64,7 @@ if __name__ == "__main__":
     obs_name = scheduler.get_observation()[0]
     observation = scheduler.observations[obs_name]
 
-    # Override the fine focus settings to make it mimic coarse focus
+    # Override the fine focus settings to mimic coarse focus
     # TODO: Set this automatically based on time of day and alt / az?
     for camera in huntsman.observatory.cameras.values():
 
@@ -81,6 +79,10 @@ if __name__ == "__main__":
         # Also override the focusing exposure time
         # TODO: Set this automatically based on time of day and alt / az
         camera._proxy.set("autofocus_seconds", observation.exptime, "focuser")
+
+        # Override the default focusing window size
+        # TODO: Remove when Jetsons are on
+        camera._proxy.set("autofocus_size", 1000, "focuser")
 
     # Run the state machine
     # NOTE: We don't have to bypass darks, flats etc because using night simulator
