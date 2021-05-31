@@ -9,7 +9,6 @@ Script for observing something during the day.
 NOTE: This script will be superceeded by scheduler when we can impose arbitrary horizon ranges
 for a given target.
 """
-import time
 import argparse
 
 from astropy import units as u
@@ -40,7 +39,6 @@ if __name__ == "__main__":
     with_autoguider = False
 
     # Create scheduler and override targets list
-    # This is a hack
     scheduler = create_huntsman_scheduler()
     scheduler._observations = {k: v for k, v in scheduler._observations.items() if k == field_name}
     if not scheduler._observations:
@@ -58,32 +56,33 @@ if __name__ == "__main__":
 
     # NOTE: Avoid coarse focusing state because it slews to a fixed position on-sky
     # This position may be too close to the Sun and it is unlikely there will be any stars
-    # This is a hack
     huntsman.observatory.last_coarse_focus_time = current_time()
     huntsman.observatory.last_coarse_focus_temp = huntsman.observatory.temperature
     huntsman.observatory._coarse_focus_temptol = 100 * u.Celsius
     huntsman.observatory._coarse_focus_interval = 100 * u.hour
 
-    # Prepare cameras
-    huntsman.observatory.prepare_cameras()
-
-    # Wait for conditions to become safe
-    huntsman.logger.info("Waiting for safety...")
-    while not huntsman.is_safe(park_if_not_safe=False):
-        time.sleep(SLEEP_INTERVAL)
-
-    # Open the dome when safe
-    huntsman.observatory.dome.open()
-
-    # Do a coarse focus at a convenient and safe position, e.g. first observation
-    # Ideally this should be integrated into the state machine
+    # Select the observation and use it to configure focusing exposure times
+    # TODO: Do this automatically
     obs_name = scheduler.get_observation()[0]
     observation = scheduler.observations[obs_name]
-    huntsman.observatory.mount.unpark()
-    huntsman.observatory.slew_to_observation(observation)
-    huntsman.observatory.autofocus_cameras(coarse=True, filter_name=observation.filter_name,
-                                           seconds=observation.exptime)
+
+    # Override the fine focus settings to make it mimic coarse focus
+    # TODO: Set this automatically based on time of day and alt / az?
+    for camera in huntsman.observatory.cameras.values():
+
+        autofocus_range = list(camera._proxy.get("autofocus_range", "focuser"))
+        autofocus_range[0] = autofocus_range[1]
+        camera._proxy.set("autofocus_range", autofocus_range, "focuser")
+
+        autofocus_step = list(camera._proxy.get("autofocus_step", "focuser"))
+        autofocus_step[0] = autofocus_step[1]
+        camera._proxy.set("autofocus_step", autofocus_step, "focuser")
+
+        # Also override the focusing exposure time
+        # TODO: Set this automatically based on time of day and alt / az
+        camera._proxy.set("autofocus_seconds", observation.exptime, "focuser")
 
     # Run the state machine
     # NOTE: We don't have to bypass darks, flats etc because using night simulator
+    # NOTE: Bypass initial coarse focus in favour of coarser fine focus
     huntsman.run(initial_focus=False)
