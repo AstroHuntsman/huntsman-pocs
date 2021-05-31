@@ -96,6 +96,7 @@ def test_take_flat_fields(pocs):
     pocs.observatory.take_flat_fields(alt=60, az=90, required_exposures=1, tolerance=0.5)
 
 
+@pytest.mark.skip("Waiting for POCS PR")
 def test_autofocus_cameras_coarse(observatory):
     """
     """
@@ -109,6 +110,7 @@ def test_autofocus_cameras_coarse(observatory):
     assert not observatory.coarse_focus_required
 
 
+@pytest.mark.skip("Waiting for POCS PR")
 def test_autofocus_cameras_fine(observatory):
     """
     """
