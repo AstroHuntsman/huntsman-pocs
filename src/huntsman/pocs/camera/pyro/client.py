@@ -230,6 +230,16 @@ class Camera(AbstractCamera):
 
         return self._exposure_future
 
+    def take_observation(self, observation, *args, **kwargs):
+        """ Overrride class method to add defocusing offset.
+        TODO: Move to AbstractCamera.
+        """
+        focus_offset = 0
+        with suppress(AttributeError):
+            focus_offset = observation.focus_offset
+        return super().take_observation(observation, focus_offset=focus_offset,
+                                        *args, **kwargs)
+
     def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
         """
         Focuses the camera using the specified merit function. Optionally performs

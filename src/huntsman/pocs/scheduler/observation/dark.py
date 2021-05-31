@@ -31,7 +31,7 @@ class DarkObservation(Observation):
 
         # Create the observation
         field = Field('Dark', position=position)
-        super().__init__(field=field, exptime=exptimes, exp_set_size=exp_set_size, **kwargs)
+        super().__init__(field=field, exptime=exptimes, exp_set_size=exp_set_size, dark=True, **kwargs)
 
         self._directory = os.path.join(self._image_dir, "dark")
 

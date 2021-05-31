@@ -14,17 +14,19 @@ class AutofocusSequence(PanBase):
     """
 
     def __init__(self, position_min, position_max, position_step, bit_depth,
-                 mask_dark_threshold=0.3, extra_focus_steps=5, mask_dilations=10,
+                 hot_pixel_threshold=0.3, extra_focus_steps=5, mask_dilations=10,
                  merit_function_name="vollath_F4", merit_function_kwargs=None,
-                 image_dtype=np.float32, **kwargs):
+                 image_dtype=np.float32, saturation_mask_threshold=0.9, **kwargs):
         """
         Args:
             position_min (int): The minimal focus position.
             position_max (int): The maximal focus position.
             position_step (int): The step in focus position.
             bit_depth (astropy.units.Quantity): The bit depth of the images.
-            mask_dark_threshold (float, optional): The staturation masking threshold to eliminate
-                hot pixels from initial dark frame.
+            saturation_mask_threshold (float): The staturation masking threshold to apply to focus
+                images. Default: 0.9.
+            hot_pixel_threshold (float, optional): The staturation masking threshold to eliminate
+                hot pixels from initial dark frame. Default: 0.3.
             extra_focus_steps (int, optional): The number of extra focus steps to be measured if
                 the best focus is at the edge of the initial range. Default 2.
             mask_dilations (int, optional): The number of mask dilations to perform. Default 10.
@@ -40,7 +42,8 @@ class AutofocusSequence(PanBase):
         self._position_max = int(position_max)
         self._position_step = int(position_step)
         self._bit_depth = bit_depth
-        self._mask_dark_threshold = float(mask_dark_threshold)
+        self._saturation_mask_threshold = float(saturation_mask_threshold)
+        self._hot_pixel_threshold = float(hot_pixel_threshold)
         self._extra_focus_steps = int(extra_focus_steps)
         self._mask_dilations = int(mask_dilations)
         self._image_dtype = image_dtype
@@ -54,6 +57,7 @@ class AutofocusSequence(PanBase):
         self._exposure_idx = 0
         self._best_index = None
         self._dark_image = None
+        self._dark_mask = None
         self._image_shape = None
         self._mask = None
         self._metrics = None
@@ -111,16 +115,13 @@ class AutofocusSequence(PanBase):
 
     @dark_image.setter
     def dark_image(self, image):
-        """ Set the dark image.
+        """ Set the dark image and update the dark mask.
         Args:
             image (np.array): The dark image array.
         """
-        if self._mask is None:
-            self._mask = np.zeros(shape=image.shape, dtype="bool")
-
         self._dark_image = image.astype(self._image_dtype)
-        self._mask = np.logical_or(
-            self._mask, self._mask_saturated(self._dark_image, threshold=self._mask_dark_threshold))
+        self._dark_mask = self._mask_saturated(self._dark_image,
+                                               threshold=self._hot_pixel_threshold)
 
     @property
     def positions(self):
@@ -218,14 +219,18 @@ class AutofocusSequence(PanBase):
 
     # Private methods
 
-    def _mask_saturated(self, image, **kwargs):
+    def _mask_saturated(self, image, threshold=None):
         """ Mask the saturated pixels in an image.
         Args:
             image (np.array): The image to mask.
+            threshold (float): The mask threshold, between 0 and 1. Defaults to
+                self._saturation_mask_threshold.
         Returns:
             np.array: The boolean mask, where values of True are masked.
         """
-        return mask_saturated(image, bit_depth=self._bit_depth, **kwargs).mask
+        if threshold is None:
+            threshold = self._saturation_mask_threshold
+        return mask_saturated(image, bit_depth=self._bit_depth, threshold=threshold).mask
 
     def _calculate_metrics(self):
         """ Calculate the focus metric for all the focus positions.
@@ -233,10 +238,17 @@ class AutofocusSequence(PanBase):
             np.array: A 1D array of the focus metrics.
         """
         mask = binary_dilation(self._mask, iterations=self._mask_dilations)
+
+        # Update the mask with the dark mask
+        # NOTE: The dark mask should not be dilated since it should be masking hot pixels
+        if self._dark_image is not None:
+            mask = np.logical_or(mask, self._dark_mask)
+
         metrics = []
         for image in self.images:
             im = np.ma.array(image, mask=mask)
             metrics.append(self._merit_function(im))
+
         return np.array(metrics)
 
     def _expand_focus_range(self, best_index):
