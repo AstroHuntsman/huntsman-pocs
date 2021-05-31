@@ -49,7 +49,7 @@ def create_huntsman_scheduler(observer=None, logger=None, *args, **kwargs):
 
         try:
             # Load the required module
-            module = load_module(f'panoptes.pocs.scheduler.{scheduler_type}')
+            module = load_module(f'{scheduler_type}')
 
             obstruction_list = get_config('location.obstructions', default=[])
             default_horizon = get_config('location.horizon', default=30 * u.degree)

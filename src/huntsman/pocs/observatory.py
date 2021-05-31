@@ -155,7 +155,7 @@ class HuntsmanObservatory(Observatory):
         return self.current_offset_info
 
     def autofocus_cameras(self, coarse=False, filter_name=None, default_timeout=900,
-                          blocking=True, *args, **kwargs):
+                          blocking=True, **kwargs):
         """ Override autofocus_cameras to update the last focus time and move filterwheels.
         Args:
             coarse (bool, optional): Perform coarse focus? Default False.
@@ -167,8 +167,8 @@ class HuntsmanObservatory(Observatory):
         """
         focus_type = "coarse" if coarse else "fine"
 
-        # Move to appropriate filter
-        # TODO: Do this on a per-camera basis to allow for different filters simultaneously
+        # Choose the filter to focus with
+        # TODO: Move this logic to the camera level
         if filter_name is None:
             if coarse:
                 filter_name = self._coarse_focus_filter
@@ -180,12 +180,10 @@ class HuntsmanObservatory(Observatory):
                     self.logger.warning("Unable to retrieve filter name from current observation."
                                         f" Defaulting to coarse focus filter ({filter_name}).")
 
-        # Move all the filterwheels to the required position
-        self._move_all_filterwheels_to(filter_name)
-
         # Start the autofocus sequences
+        # NOTE: The FW move is handled implicitly
         self.logger.info(f"Starting {focus_type} autofocus sequence.")
-        events = super().autofocus_cameras(coarse=coarse, *args, **kwargs)
+        events = super().autofocus_cameras(coarse=coarse, filter_name=filter_name, **kwargs)
 
         # Wait for sequences to finish
         if blocking:
