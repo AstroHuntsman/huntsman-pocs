@@ -21,6 +21,30 @@ class Focuser(BirgerFocuser):
         self.__del__()
         self.connect(port=self.port)
 
+    def autofocus(self, *args, **kwargs):
+        """ Override method to move FWs. """
+
+        filter_name = kwargs.pop("filter_name", None)
+
+        # Move filterwheel to the correct position
+        if self.camera is not None:
+            if self.camera.has_filterwheel:
+
+                if filter_name is None:
+                    # NOTE: The camera will move the FW to the last light position automatically
+                    self.logger.warning(f"Filter name not provided for autofocus on {self}. Using"
+                                        " last light position.")
+                else:
+                    self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on"
+                                     f" {self}.")
+                    self.camera.filterwheel.move_to(filter_name, blocking=True)
+
+            elif filter_name is None:
+                self.logger.warning(f"Filter {filter_name} requiested for autofocus but"
+                                    f" {self.camera} has no filterwheel.")
+
+        return super().autofocus(*args, **kwargs)
+
     def _send_command(self, *args, **kwargs):
         """ Try command, attempt to reconnect on error and send command again. """
         try:
@@ -40,8 +64,8 @@ class Focuser(BirgerFocuser):
                 focus_event.set()
 
     def _run_autofocus(self, seconds, focus_range, focus_step, cutout_size, keep_files=False,
-                       take_dark=True, coarse=False, make_plots=False, filter_name=None,
-                       max_exposure_retries=3, **kwargs):
+                       take_dark=True, coarse=False, make_plots=False, max_exposure_retries=3,
+                       **kwargs):
         """
         Focuses the camera using the specified merit function. Optionally performs
         a coarse focus to find the approximate position of infinity focus, which
@@ -66,8 +90,6 @@ class Focuser(BirgerFocuser):
             make_plots (bool, optional): Whether to write focus plots to images folder. If not
                 given will fall back on value of `autofocus_make_plots` set on initialisation,
                 and if it wasn't set then will default to False.
-            filter_name (str): The filter to use for focusing. If None, will use last light
-                position.
             blocking (bool, optional): Whether to block until autofocus complete, default False.
         """
         start_time = start_time = current_time(flatten=True)
@@ -92,23 +114,6 @@ class Focuser(BirgerFocuser):
             cutout = self.camera.get_cutout(seconds, filename, cutout_size, keep_file=keep_files,
                                             dark=True)
             sequence.dark_image = cutout
-
-        # Move filterwheel to the correct position
-        if self.camera is not None:
-            if self.camera.has_filterwheel:
-
-                if filter_name is None:
-                    # NOTE: The camera will move the FW to the last light position automatically
-                    self.logger.warning(f"Filter name not provided for autofocus on {self}. Using"
-                                        " last light position.")
-                else:
-                    self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on"
-                                     f" {self}.")
-                    self.camera.filterwheel.move_to(filter_name, blocking=True)
-
-            elif filter_name is None:
-                self.logger.warning(f"Filter {filter_name} requiested for autofocus but"
-                                    f" {self.camera} has no filterwheel.")
 
         # Take the focusing exposures
         exposure_retries = 0
