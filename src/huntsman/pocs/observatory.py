@@ -168,6 +168,7 @@ class HuntsmanObservatory(Observatory):
         focus_type = "coarse" if coarse else "fine"
 
         # Choose the filter to focus with
+        # TODO: Move this logic to the camera level
         if filter_name is None:
             if coarse:
                 filter_name = self._coarse_focus_filter
