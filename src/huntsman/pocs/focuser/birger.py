@@ -151,7 +151,7 @@ class Focuser(BirgerFocuser):
         # Get the best position and move to it
         best_position = sequence.best_position
         best_position_actual = self.move_to(best_position)
-        self.logger.info(f"Best focus position for {self} in {filter_name} filter: {best_position}")
+        self.logger.info(f"Best focus position for {self}: {best_position}")
 
         if make_plots:
             focus_type = "coarse" if coarse else "fine"
