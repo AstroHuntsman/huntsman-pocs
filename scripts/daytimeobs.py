@@ -76,6 +76,7 @@ if __name__ == "__main__":
     huntsman.observatory.dome.open()
 
     # Do a coarse focus at a convenient and safe position, e.g. first observation
+    # Ideally this should be integrated into the state machine
     obs_name = scheduler.get_observation()[0]
     observation = scheduler.observations[obs_name]
     huntsman.observatory.mount.unpark()
