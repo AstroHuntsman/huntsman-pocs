@@ -28,13 +28,17 @@ if __name__ == "__main__":
                         help="If provided, will run POCS with weather simulator.")
     parser.add_argument("--no_dome", action="store_true",
                         help="If provided, will run POCS with the dome closed e.g. for testing.")
+    parser.add_argument("--autofocus_size", type=int, default=1000,
+                        help="The autofocus cutout size.")
+    parser.add_argument("--with_autoguider", action="store_true", help="Use autoguider?")
 
     # Parse command line input
     args = parser.parse_args()
     field_name = args.field_name
     use_weather_simulator = args.simulate_weather
     with_dome = not args.no_dome
-    with_autoguider = False
+    autofocus_size = args.autofocus_size
+    with_autoguider = args.with_autoguider
 
     # Create scheduler and override targets list
     scheduler = create_huntsman_scheduler()
@@ -82,7 +86,7 @@ if __name__ == "__main__":
 
         # Override the default focusing window size
         # TODO: Remove when Jetsons are on
-        camera._proxy.set("autofocus_size", 1000, "focuser")
+        camera._proxy.set("autofocus_size", autofocus_size, "focuser")
 
     # Run the state machine
     # NOTE: We don't have to bypass darks, flats etc because using night simulator
