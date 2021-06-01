@@ -14,16 +14,12 @@ import argparse
 from astropy import units as u
 
 from panoptes.utils.time import current_time
-from huntsman.pocs.utils.huntsman import create_huntsman_scheduler, create_huntsman_pocs
+from huntsman.pocs.utils.huntsman import create_huntsman_pocs
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("field_name", type=str,
-                        help="The name of the field to observe. If more than one match in the"
-                             " fields file, they will be observed in turn according to their"
-                             " priority.")
     parser.add_argument("--simulate_weather", action="store_true",
                         help="If provided, will run POCS with weather simulator.")
     parser.add_argument("--no_dome", action="store_true",
@@ -34,17 +30,10 @@ if __name__ == "__main__":
 
     # Parse command line input
     args = parser.parse_args()
-    field_name = args.field_name
     use_weather_simulator = args.simulate_weather
     with_dome = not args.no_dome
     autofocus_size = args.autofocus_size
     with_autoguider = args.with_autoguider
-
-    # Create scheduler and override targets list
-    scheduler = create_huntsman_scheduler()
-    scheduler._observations = {k: v for k, v in scheduler._observations.items() if k == field_name}
-    if not scheduler._observations:
-        raise ValueError(f"No observations matching '{field_name}' in targets file.")
 
     # Note we use "night" simulator so we can observe in the day
     # Weather simulator is optional because weather reading currently unreliable
@@ -53,7 +42,7 @@ if __name__ == "__main__":
         simulators.append("weather")
 
     # Create HuntsmanPOCS instance
-    huntsman = create_huntsman_pocs(simulators=simulators, scheduler=scheduler, with_dome=with_dome,
+    huntsman = create_huntsman_pocs(simulators=simulators, with_dome=with_dome,
                                     with_autoguider=with_autoguider)
 
     # NOTE: Avoid coarse focusing state because it slews to a fixed position on-sky
@@ -65,8 +54,8 @@ if __name__ == "__main__":
 
     # Select the observation and use it to configure focusing exposure times
     # TODO: Do this automatically
-    obs_name = scheduler.get_observation()[0]
-    observation = scheduler.observations[obs_name]
+    obs_name = huntsman.observatory.scheduler.get_observation()[0]
+    observation = huntsman.observatory.scheduler.observations[obs_name]
 
     # Override the fine focus settings to mimic coarse focus
     # TODO: Set this automatically based on time of day and alt / az?
