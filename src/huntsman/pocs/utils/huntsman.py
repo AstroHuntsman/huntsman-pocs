@@ -15,6 +15,7 @@ from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory
 from huntsman.pocs.dome import create_dome_from_config
 from huntsman.pocs.core import HuntsmanPOCS
+from huntsman.pocs.scheduler.constraint import SunAvoidance
 from huntsman.pocs.scheduler.constraint import MoonAvoidance as HuntsmanMoonAvoidance
 from huntsman.pocs.mount.bisque import create_mount
 
@@ -59,7 +60,8 @@ def create_huntsman_scheduler(observer=None, logger=None, *args, **kwargs):
 
             # Simple constraint for now
             constraints = [Altitude(horizon=horizon_line),
-                           HuntsmanMoonAvoidance()]
+                           HuntsmanMoonAvoidance(),
+                           SunAvoidance()]
 
             # Create the Scheduler instance
             scheduler = module.Scheduler(observer, fields_file=fields_path, constraints=constraints,
