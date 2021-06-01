@@ -21,30 +21,6 @@ class Focuser(BirgerFocuser):
         self.__del__()
         self.connect(port=self.port)
 
-    def autofocus(self, *args, **kwargs):
-        """ Override method to move FWs. """
-
-        filter_name = kwargs.pop("filter_name", None)
-
-        # Move filterwheel to the correct position
-        if self.camera is not None:
-            if self.camera.has_filterwheel:
-
-                if filter_name is None:
-                    # NOTE: The camera will move the FW to the last light position automatically
-                    self.logger.warning(f"Filter name not provided for autofocus on {self}. Using"
-                                        " last light position.")
-                else:
-                    self.logger.info(f"Moving filterwheel to {filter_name} for autofocusing on"
-                                     f" {self}.")
-                    self.camera.filterwheel.move_to(filter_name, blocking=True)
-
-            elif filter_name is None:
-                self.logger.warning(f"Filter {filter_name} requiested for autofocus but"
-                                    f" {self.camera} has no filterwheel.")
-
-        return super().autofocus(*args, **kwargs)
-
     def _send_command(self, *args, **kwargs):
         """ Try command, attempt to reconnect on error and send command again. """
         try:
