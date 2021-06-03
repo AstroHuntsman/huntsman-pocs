@@ -100,19 +100,21 @@ def check_solar_separation_safety(observation, location, min_separation, time=No
     return all([c > min_separation for c in separations])
 
 
-def get_aat_weather(aat_url=AAT_URL, query_columns=AAT_COLUMNS):
+def get_aat_weather(aat_url=AAT_URL, response_columns=AAT_COLUMNS):
     """Fetch met weather data from AAO weather station.
 
     Args:
         aat_url (string, optional): URL to query for weather reading. Defaults to AAT_URL.
-        query_columns (list, optional): List of column names that map onto the values contained
-        in a succesful query. Defaults to AAT_COLUMNS.
+        response_columns (list, optional): List of column names that map onto the values contained
+        in a succesful reponse. Defaults to AAT_COLUMNS.
     """
-    query = requests.get(aat_url)
+    response = requests.get(aat_url)
+    # raise an exception if response was not successful
+    response.raise_for_status()
 
-    if query.ok:
-        date, raw_data, _ = query.content.decode().split('\n')
-        data = {name: value for name, value in zip(query_columns, raw_data.split('\t'))}
+    if response.ok:
+        date, raw_data, _ = response.content.decode().split('\n')
+        data = {name: value for name, value in zip(response_columns, raw_data.split('\t'))}
         data['date'] = date
     else:
         data = None

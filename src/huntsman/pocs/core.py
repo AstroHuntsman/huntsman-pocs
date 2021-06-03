@@ -40,7 +40,7 @@ class HuntsmanPOCS(POCS):
             self.park()
             self.set_park()
         except Exception as err:
-            self.logger.error(f"Unable to park after stopping states: {err}")
+            self.logger.error(f"Unable to park after stopping states: {err!r}")
         super().stop_states()
 
     def before_state(self, event_data):
@@ -60,16 +60,24 @@ class HuntsmanPOCS(POCS):
         """
         self.say(f"Finished with the {self.state} state. The next state is {self.next_state}.")
 
-    def is_weather_safe(self, stale=180):
+    def is_weather_safe(self, **kwargs):
         """Determines whether current weather conditions are safe or not.
         Args:
             stale (int, optional): Number of seconds before record is stale, defaults to 180
         Returns:
             bool: Conditions are safe (True) or unsafe (False)
         """
-        is_safe = super().is_weather_safe(self, stale=stale)
+        if self._in_simulator('weather'):
+            return True
+        # if not in simulator mode, determine safety from huntsman weather data
+        is_safe = super().is_weather_safe(**kwargs)
 
-        aat_weather_data = get_aat_weather()
+        # now determine safety according to AAT weather data
+        try:
+            aat_weather_data = get_aat_weather()
+        except Exception as err:
+            self.logger.debug(f'Request for AAT weather data failed: {err!r}')
+            return is_safe
 
         if aat_weather_data is None:
             return is_safe
