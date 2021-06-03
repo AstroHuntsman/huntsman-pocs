@@ -8,6 +8,31 @@ from astropy.coordinates import get_sun, AltAz
 
 from panoptes.utils.utils import get_quantity_value
 
+import requests
+
+AAT_URL = 'http://aat-ops.anu.edu.au/met/metdata.dat'
+AAT_COLUMNS = ['time',
+               'ambient_temp',
+               'dome_temp',
+               'mirror_temp',
+               'outside_dewpoint',
+               'outside_humidity',
+               'pressure',
+               'wind_speed_avg',
+               'wind_gust_max',
+               'wind_direction_avg',
+               'unknown_3',
+               'unknown_4',
+               'unknown_5',
+               'sky_ambient_diff_C',
+               'sky_ambient_diff_error',
+               'boltwood_wetness_meter_maybe',
+               'unknown_7',
+               'unknown_8',
+               'rain_since_9am',
+               'sqm_brightness',
+               ]
+
 
 def get_solar_altaz(time, location):
     """ Return the altaz of the Sun at a given time and location.
@@ -73,3 +98,23 @@ def check_solar_separation_safety(observation, location, min_separation, time=No
     separations = get_solar_separation(coord, times, location)
 
     return all([c > min_separation for c in separations])
+
+
+def get_aat_weather(aat_url=AAT_URL, query_columns=AAT_COLUMNS):
+    """Fetch met weather data from AAO weather station.
+
+    Args:
+        aat_url (string, optional): URL to query for weather reading. Defaults to AAT_URL.
+        query_columns (list, optional): List of column names that map onto the values contained
+        in a succesful query. Defaults to AAT_COLUMNS.
+    """
+    query = requests.get(aat_url)
+
+    if query.ok:
+        date, raw_data, _ = query.content.decode().split('\n')
+        data = {name: value for name, value in zip(query_columns, raw_data.split('\t'))}
+        data['date'] = date
+    else:
+        data = None
+
+    return data

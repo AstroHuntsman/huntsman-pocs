@@ -1,5 +1,6 @@
 from panoptes.utils.time import current_time
 from panoptes.pocs.core import POCS
+from huntsman.pocs.utils.safety import get_aat_weather
 
 
 class HuntsmanPOCS(POCS):
@@ -58,6 +59,19 @@ class HuntsmanPOCS(POCS):
             event_data(transitions.EventData):  Contains information about the event
         """
         self.say(f"Finished with the {self.state} state. The next state is {self.next_state}.")
+
+    def is_weather_safe(self, stale=180):
+        """Determines whether current weather conditions are safe or not.
+        Args:
+            stale (int, optional): Number of seconds before record is stale, defaults to 180
+        Returns:
+            bool: Conditions are safe (True) or unsafe (False)
+        """
+        is_safe = super().is_weather_safe(self, stale=stale)
+
+        aat_weather_data = get_aat_weather()
+
+        return is_safe
 
     # Private methods
 
