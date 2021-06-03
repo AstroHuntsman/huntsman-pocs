@@ -71,7 +71,11 @@ class HuntsmanPOCS(POCS):
 
         aat_weather_data = get_aat_weather()
 
-        return is_safe
+        if aat_weather_data is None:
+            return is_safe
+        else:
+            # AAT rain flag returns 0 for no rain and 1 for rain
+            return is_safe and not bool(aat_weather_data['is_raining'])
 
     # Private methods
 
