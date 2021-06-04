@@ -16,6 +16,7 @@ from huntsman.pocs.observatory import HuntsmanObservatory
 from huntsman.pocs.dome import create_dome_from_config
 from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.scheduler.constraint import SunAvoidance
+from huntsman.pocs.scheduler.constraint import AlreadyVisited
 from huntsman.pocs.scheduler.constraint import MoonAvoidance as HuntsmanMoonAvoidance
 from huntsman.pocs.mount.bisque import create_mount
 
@@ -62,6 +63,10 @@ def create_huntsman_scheduler(observer=None, logger=None, *args, **kwargs):
             constraints = [Altitude(horizon=horizon_line),
                            HuntsmanMoonAvoidance(),
                            SunAvoidance()]
+
+            # add global observe each target once constraint
+            if get_config('constraints.observe_once', default=False):
+                constraints.append(AlreadyVisited())
 
             # Create the Scheduler instance
             scheduler = module.Scheduler(observer, fields_file=fields_path, constraints=constraints,
