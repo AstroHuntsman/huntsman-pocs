@@ -16,7 +16,7 @@ from huntsman.pocs.observatory import HuntsmanObservatory
 from huntsman.pocs.dome import create_dome_from_config
 from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.scheduler.constraint import SunAvoidance
-from huntsman.pocs.scheduler.constraint import AlreadyVisited
+from panoptes.pocs.scheduler.constraint import AlreadyVisited
 from huntsman.pocs.scheduler.constraint import MoonAvoidance as HuntsmanMoonAvoidance
 from huntsman.pocs.mount.bisque import create_mount
 
