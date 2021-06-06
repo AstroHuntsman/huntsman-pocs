@@ -66,7 +66,7 @@ def create_huntsman_scheduler(observer=None, logger=None, *args, **kwargs):
 
             # add global observe each target once constraint
             if get_config('constraints.observe_once', default=False):
-                constraints.append(AlreadyVisited())
+                constraints.insert(0, AlreadyVisited())
 
             # Create the Scheduler instance
             scheduler = module.Scheduler(observer, fields_file=fields_path, constraints=constraints,
