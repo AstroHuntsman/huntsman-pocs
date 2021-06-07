@@ -4,6 +4,11 @@ from huntsman.pocs.scheduler.field import Field, CompoundField, DitheredField
 from huntsman.pocs.scheduler.observation import base as obsbase
 from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
 
+from huntsman.pocs.utils.huntsman import create_scheduler_from_config
+
+from panoptes.utils.config.client import get_config, set_config
+from panoptes.pocs.scheduler.constraint import AlreadyVisited
+
 
 @pytest.fixture(scope="function")
 def field_config_1():
@@ -13,6 +18,24 @@ def field_config_1():
 @pytest.fixture(scope="function")
 def field_config_2():
     return {"name": "Fake target", "position": "03h26m52.0582s +35d33m01.733s"}
+
+
+def test_observe_once_global():
+    prev_observe_once_status = get_config('scheduler.constraints.observe_once',
+                                          default=False)
+    set_config('scheduler.constraints.observe_once', True)
+    scheduler = create_scheduler_from_config()
+
+    is_set = False
+    for constraint in scheduler.constraints:
+        if isinstance(constraint, AlreadyVisited):
+            is_set = True
+            break
+
+    try:
+        assert is_set
+    finally:
+        set_config('scheduler.constraints.observe_once', prev_observe_once_status)
 
 
 def test_field(field_config_1, field_config_2):
