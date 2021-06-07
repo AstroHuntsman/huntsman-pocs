@@ -4,7 +4,7 @@ from huntsman.pocs.scheduler.field import Field, CompoundField, DitheredField
 from huntsman.pocs.scheduler.observation import base as obsbase
 from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
 
-from huntsman.pocs.utils.huntsman import create_scheduler_from_config
+from panoptes.pocs.scheduler import create_scheduler_from_config
 
 from panoptes.utils.config.client import get_config, set_config
 from panoptes.pocs.scheduler.constraint import AlreadyVisited
