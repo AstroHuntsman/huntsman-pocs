@@ -1,15 +1,21 @@
 """
 """
 import time
+from copy import deepcopy
 from datetime import datetime
+from pytz import timezone
+from dateutil import parser as date_parser
 
-from panoptes.utils.time import current_time
+from panoptes.utils.library import load_module
+from panoptes.utils.time import current_time, wait_for_events
 from panoptes.utils.utils import altaz_to_radec
 
-from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.utils.huntsman import create_huntsman_pocs
+from huntsman.pocs.observatory import HuntsmanObservatory
 
 SLEEP_INTERVAL = 10
+FOCUS_TIMEOUT = 600
+TIMEZONE = timezone('Australia/Sydney')
 
 FILTER_NAMES = {"huntsmanpi005": "g_band",
                 "huntsmanpi007": "g_band",
@@ -18,6 +24,74 @@ FILTER_NAMES = {"huntsmanpi005": "g_band",
                 "huntsmanpi011": "r_band"}
 
 OBSERVATION_CONFIG = []
+
+
+OBSERVATION_CONFIG = [{"observation":
+                      {"name": "spica",
+                       "type": "huntsman.pocs.scheduler.observation.base.Observation"},
+                       "field": {"name": "spica",
+                                 "type": "huntsman.pocs.scheduler.field.Field",
+                                 "position": "13h26m20s -11d16m21s"},
+                       "time_start": "2021-06-07 16:05",
+                       "time_end": "2021-06-07 16:25"}
+                      ]
+
+
+class DwfScheduler():
+    """ Class to return valid observations based on local time. """
+
+    def __init__(self, observations, times_start, times_end):
+        self._observations = observations
+        self._times_start = times_start
+        self._times_end = times_end
+
+    def get_observation(self):
+        """ Get an observation to observe now! """
+        time_now = datetime.now(TIMEZONE)
+
+        valid_obs = None
+        for i in range(len(self._observations)):
+
+            obs = self._observations[i]
+
+            if (time_now > self._times_start[i]) and (time_now < self._times_end[i]):
+                valid_obs = obs
+
+        if valid_obs:
+            # Remove the observation so we don't accidentally observe it again
+            del self._observations[i]
+
+        return valid_obs
+
+
+def create_scheduler():
+    """ Create the DWF scheduler object. """
+
+    observations = []
+    times_start = []
+    times_end = []
+
+    for config in deepcopy(OBSERVATION_CONFIG):
+
+        time_start = date_parser.parse(config.pop("time_start"))
+        time_end = date_parser.parse(config.pop("time_end"))
+
+        times_start.append(time_start)
+        times_end.append(time_end)
+
+        field_config = config["field"]
+        FieldClass = load_module(field_config.pop("type"))
+        field = FieldClass(**field_config)
+
+        obs_config = config["observation"]
+        ObsClass = load_module(obs_config.pop("type"))
+        obs = ObsClass(filter_names_per_camera=FILTER_NAMES, field=field, **obs_config)
+        observations.append(obs)
+
+    scheduler = DwfScheduler(observations=observations, times_start=times_start,
+                             times_end=times_end)
+
+    return scheduler
 
 
 def get_focus_coords(huntsman):
@@ -36,47 +110,10 @@ def get_focus_coords(huntsman):
     return coarse_focus_coords
 
 
-class DwfScheduler():
-    """ Hardcode the field configs here for simplicity. """
-
-    def __init__(self, observations, times_start, times_end):
-        self._observations = observations
-        self._times_start = times_start
-        self._times_end = times_end
-
-    def get_observation(self):
-        """ Get an observation to observe now! """
-        time_now = datetime.now()
-
-        valid_obs = None
-        for i in range(len(self._observations)):
-
-            obs = self._observations[i]
-
-            if (time_now > self._times_start[i]) and (time_now < self._times_end[i]):
-                valid_obs = obs
-
-        if valid_obs:
-            # Remove the observation so we don't accidentally observe it again
-            del self._observations[i]
-
-        return valid_obs
-
-
 if __name__ == "__main__":
 
-    huntsman = create_huntsman_pocs()
-
-    observations = []
-    times_start = []
-    times_end = []
-    for obs_config in OBSERVATION_CONFIG:
-        times_start.append(obs_config.pop("time_start"))
-        times_end.append(obs_config.pop("time_end"))
-        observations.append(Observation(filter_names_per_camera=FILTER_NAMES, **obs_config))
-
-    scheduler = DwfScheduler(observations=observations, times_start=times_start,
-                             times_end=times_end)
+    huntsman = create_huntsman_pocs(with_dome=True, simulators=["weather", "power"])
+    scheduler = create_scheduler()
 
     # Open the dome
     huntsman.observatory.dome.open()
@@ -86,19 +123,21 @@ if __name__ == "__main__":
 
     # Move FWs to their separate positions
     for cam_name, filter_name in FILTER_NAMES.items():
-        huntsman.cameras[cam_name].filterwheel.move_to(filter_name, blocking=True)
+        huntsman.observatory.cameras[cam_name].filterwheel.move_to(filter_name, blocking=True)
 
     # Slew to focus
     huntsman.observatory.mount.set_target_coordinates(get_focus_coords(huntsman))
     huntsman.observatory.mount.slew_to_target()
 
     # Do coarse focus
-    # Use a bad filter name (not None) to make the code use the current filter in each camera
-    huntsman.observatory.autofocus_cameras(filter_name="notafiltername", coarse=True)
+    # Use super method to override filter wheel move
+    events = super(HuntsmanObservatory, huntsman.observatory).autofocus_cameras(coarse=True)
+    wait_for_events(list(events.values()), timeout=FOCUS_TIMEOUT)
 
     # Do fine focus
     # We may have to do this several times per night, so monitor the FITS images as they come in
-    huntsman.observatory.autofocus_cameras(filter_name="notafiltername")
+    events = super(HuntsmanObservatory, huntsman.observatory).autofocus_cameras()
+    wait_for_events(list(events.values()), timeout=FOCUS_TIMEOUT)
 
     # Start the observation loop
     while True:
