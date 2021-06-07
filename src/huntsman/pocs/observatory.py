@@ -426,8 +426,9 @@ class HuntsmanObservatory(Observatory):
 
                 # This is a temporary solution for having different filters on different cameras
                 # TODO: Refactor and remove
-                obs = observation.copy()
+                obs = observation  # Don't copy here because of AttributeError from BiasObservation
                 if obs.filter_names_per_camera is not None:
+                    obs = observation.copy()
                     obs.filter_name = obs.filter_names_per_camera[cam_name]
 
                 try:

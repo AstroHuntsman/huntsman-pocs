@@ -191,3 +191,18 @@ def test_compound_dithered_observation_batch(field_config_1, field_config_2):
         assert not obs.set_is_finished
         obs.mark_exposure_complete()
     assert obs.set_is_finished
+
+
+def test_filter_names_per_camera(field_config_1):
+
+    cam_name = "dslr.00"
+    filter_names_per_camera = {cam_name: "deux"}
+
+    field = Field(**field_config_1)
+    obs = obsbase.Observation(field=field, filter_names_per_camera=filter_names_per_camera,
+                              filter_name="one")
+
+    obsc = obs.copy()
+    obsc.filter_name = obsc.filter_names_per_camera[cam_name]
+    assert obsc.filter_name == "deux"
+    assert obs.filter_name == "one"
