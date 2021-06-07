@@ -1,10 +1,10 @@
 """
 """
+import yaml
 import time
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
-from dateutil import parser as date_parser
 
 from panoptes.utils.library import load_module
 from panoptes.utils.time import current_time, wait_for_events
@@ -16,6 +16,8 @@ from huntsman.pocs.observatory import HuntsmanObservatory
 SLEEP_INTERVAL = 10
 FOCUS_TIMEOUT = 600
 TIMEZONE = timezone('Australia/Sydney')
+DATE_BEGIN = datetime(2021, 6, 7, tzinfo=TIMEZONE)  # Change as needed
+FIELDS_FILE = "/huntsman/conf_files/fields.yaml"
 
 FILTER_NAMES = {"huntsmanpi005": "g_band",
                 "huntsmanpi007": "g_band",
@@ -23,18 +25,16 @@ FILTER_NAMES = {"huntsmanpi005": "g_band",
                 "huntsmanpi009": "r_band",
                 "huntsmanpi011": "r_band"}
 
-OBSERVATION_CONFIG = []
 
-
-OBSERVATION_CONFIG = [{"observation":
-                      {"name": "spica",
-                       "type": "huntsman.pocs.scheduler.observation.base.Observation"},
-                       "field": {"name": "spica",
-                                 "type": "huntsman.pocs.scheduler.field.Field",
-                                 "position": "13h26m20s -11d16m21s"},
-                       "time_start": "2021-06-07 16:05",
-                       "time_end": "2021-06-07 16:25"}
-                      ]
+TEST_OBSERVATION_CONFIGS = [{"observation":
+                            {"name": "spica",
+                             "type": "huntsman.pocs.scheduler.observation.base.Observation"},
+                             "field": {"name": "spica",
+                                       "type": "huntsman.pocs.scheduler.field.Field",
+                                       "position": "13h26m20s -11d16m21s"},
+                             "time_start": "16:05:00",
+                             "time_end": "18:25:00"}
+                            ]
 
 
 class DwfScheduler():
@@ -47,7 +47,7 @@ class DwfScheduler():
 
     def get_observation(self):
         """ Get an observation to observe now! """
-        time_now = datetime.now(TIMEZONE)
+        time_now = datetime.now(TIMEZONE).replace(tzinfo=TIMEZONE)
 
         valid_obs = None
         for i in range(len(self._observations)):
@@ -56,6 +56,7 @@ class DwfScheduler():
 
             if (time_now > self._times_start[i]) and (time_now < self._times_end[i]):
                 valid_obs = obs
+                break
 
         if valid_obs:
             # Remove the observation so we don't accidentally observe it again
@@ -64,17 +65,35 @@ class DwfScheduler():
         return valid_obs
 
 
-def create_scheduler():
+def parse_date(date):
+    """ Parse the date from the fields config file. """
+
+    hour, minute, sec = [int(_) for _ in date.split(":")]
+
+    td = timedelta(hours=hour, minutes=minute, seconds=sec)
+    if hour < 12:
+        td += timedelta(days=1)
+
+    return DATE_BEGIN + td
+
+
+def create_scheduler(observation_configs=None):
     """ Create the DWF scheduler object. """
 
     observations = []
     times_start = []
     times_end = []
 
-    for config in deepcopy(OBSERVATION_CONFIG):
+    if observation_configs is None:
+        with open(FIELDS_FILE, 'r') as f:
+            observation_configs = yaml.safe_load(f)
+    else:
+        observation_configs = deepcopy(observation_configs)
 
-        time_start = date_parser.parse(config.pop("time_start"))
-        time_end = date_parser.parse(config.pop("time_end"))
+    for config in observation_configs:
+
+        time_start = parse_date(config.pop("time_start"))
+        time_end = parse_date(config.pop("time_end"))
 
         times_start.append(time_start)
         times_end.append(time_end)
@@ -112,7 +131,7 @@ def get_focus_coords(huntsman):
 
 if __name__ == "__main__":
 
-    huntsman = create_huntsman_pocs(with_dome=True, simulators=["weather", "power"])
+    huntsman = create_huntsman_pocs(with_dome=True, simulators=["weather", "power", "night"])
     scheduler = create_scheduler()
 
     # Open the dome
