@@ -202,7 +202,5 @@ def test_filter_names_per_camera(field_config_1):
     obs = obsbase.Observation(field=field, filter_names_per_camera=filter_names_per_camera,
                               filter_name="one")
 
-    obsc = obs.copy()
-    obsc.filter_name = obsc.filter_names_per_camera[cam_name]
-    assert obsc.filter_name == "deux"
-    assert obs.filter_name == "one"
+    obs.filter_name = obs.filter_names_per_camera[cam_name]
+    assert obs.filter_name == "deux"

@@ -426,13 +426,11 @@ class HuntsmanObservatory(Observatory):
 
                 # This is a temporary solution for having different filters on different cameras
                 # TODO: Refactor and remove
-                obs = observation  # Don't copy here because of AttributeError from BiasObservation
-                if obs.filter_names_per_camera is not None:
-                    obs = observation.copy()
-                    obs.filter_name = obs.filter_names_per_camera[cam_name]
+                if observation.filter_names_per_camera is not None:
+                    observation.filter_name = observation.filter_names_per_camera[cam_name]
 
                 try:
-                    events[cam_name] = camera.take_observation(obs, headers=headers)
+                    events[cam_name] = camera.take_observation(observation, headers=headers)
                 except error.PanError as err:
                     self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with observation block after error on"

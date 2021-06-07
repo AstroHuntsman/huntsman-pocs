@@ -230,9 +230,6 @@ class AbstractObservation(PanBase, ABC):
         """ Explicitly mark the current exposure as complete. """
         self._current_exp_num += 1
 
-    def copy(self):
-        return deepcopy(self)
-
 
 class Observation(AbstractObservation):
 
