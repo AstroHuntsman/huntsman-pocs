@@ -13,8 +13,8 @@ from panoptes.utils.utils import altaz_to_radec
 from huntsman.pocs.utils.huntsman import create_huntsman_pocs
 from huntsman.pocs.observatory import HuntsmanObservatory
 
-SLEEP_INTERVAL = 10
-FOCUS_TIMEOUT = 600
+SLEEP_INTERVAL = 60
+FOCUS_TIMEOUT = 900
 TIMEZONE = timezone('Australia/Sydney')
 DATE_BEGIN = datetime(2021, 6, 7, tzinfo=TIMEZONE)  # Change as needed
 FIELDS_FILE = "/huntsman/conf_files/fields.yaml"
@@ -61,6 +61,8 @@ class DwfScheduler():
         if valid_obs:
             # Remove the observation so we don't accidentally observe it again
             del self._observations[i]
+            del self._times_start[i]
+            del self._times_end[i]
 
         return valid_obs
 
