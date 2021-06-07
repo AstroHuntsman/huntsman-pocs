@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from astropy import units as u
@@ -12,7 +13,8 @@ class AbstractObservation(PanBase, ABC):
     """ Abstract base class for Observation objects. """
 
     def __init__(self, field, exptime=120 * u.second, min_nexp=1, exp_set_size=1, priority=1,
-                 dark=False, filter_name=None, directory=None, focus_offset=0,  **kwargs):
+                 dark=False, filter_name=None, directory=None, focus_offset=0,
+                 filter_names_per_camera=None, **kwargs):
         """ An observation of a given `panoptes.pocs.scheduler.field.Field`.
 
         An observation consists of a minimum number of exposures (`min_nexp`) that
@@ -29,6 +31,8 @@ class AbstractObservation(PanBase, ABC):
             exp_set_size (int): Number of exposures to take per set, default: 1.
             focus_offset (int, optional): Apply this focus offset for defocused observations.
                 Default 0.
+            filter_names_per_camera (dict, optional): If provided, this should be a dictionary
+                of camera_name: filter_name. If will take priority over filter_name.
         """
         super().__init__(**kwargs)
 
@@ -56,7 +60,12 @@ class AbstractObservation(PanBase, ABC):
 
         self.dark = bool(dark)
         self.priority = float(priority)
+
         self.filter_name = filter_name
+
+        # This is a temporary solution for having different filters on different cameras
+        # TODO: Refactor and remove
+        self.filter_names_per_camera = filter_names_per_camera
 
         self.focus_offset = focus_offset
 
@@ -220,6 +229,9 @@ class AbstractObservation(PanBase, ABC):
     def mark_exposure_complete(self):
         """ Explicitly mark the current exposure as complete. """
         self._current_exp_num += 1
+
+    def copy(self):
+        return deepcopy(self)
 
 
 class Observation(AbstractObservation):
