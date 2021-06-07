@@ -65,7 +65,7 @@ def create_huntsman_scheduler(observer=None, logger=None, *args, **kwargs):
                            SunAvoidance()]
 
             # add global observe each target once constraint
-            if get_config('constraints.observe_once', default=False):
+            if get_config('scheduler.constraints.observe_once', default=False):
                 constraints.insert(0, AlreadyVisited())
 
             # Create the Scheduler instance
