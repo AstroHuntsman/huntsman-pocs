@@ -145,6 +145,7 @@ if __name__ == "__main__":
         huntsman.observatory.cameras[cam_name].filterwheel.move_to(filter_name, blocking=True)
 
     # Slew to focus
+    huntsman.observatory.mount.unpark()
     huntsman.observatory.mount.set_target_coordinates(get_focus_coords(huntsman))
     huntsman.observatory.mount.slew_to_target()
 
