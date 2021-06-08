@@ -69,7 +69,7 @@ def main(read_delay=60,
             db.insert_current(storage_name, data, store_permanently=store_result)
             time.sleep(read_delay)
         except KeyboardInterrupt:
-            print(f'Cancelled by user, shutting down AAG.')
+            print(f'Cancelled by user, shutting down AAT monitor.')
             break
 
 
