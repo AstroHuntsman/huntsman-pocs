@@ -1,10 +1,55 @@
 import sys
 import time
+import requests
 
 from panoptes.utils.database.file import PanFileDB
 from panoptes.utils.serializers import from_yaml
 
-from huntsman.pocs.utils.safety import get_aat_weather
+
+AAT_URL = 'http://aat-ops.anu.edu.au/met/metdata.dat'
+AAT_COLUMNS = ['time',
+               'outside_temp',
+               'inside_temp',
+               'mirror_temp',
+               'outside_dewpoint',
+               'outside_humidity',
+               'pressure',
+               'wind_speed_avg',
+               'wind_gust_max',
+               'wind_direction_avg',
+               'dome_state',
+               'is_raining',
+               'inside_dewpoint',
+               'sky_ambient_diff_C',
+               'sky_ambient_diff_error',
+               'daytime_brightness',
+               'rain_detections_past_10minutes',
+               'wetness_detections_past_10minutes',
+               'rain_since_9am',
+               'sqm_brightness',
+               ]
+
+
+def get_aat_weather(aat_url=AAT_URL, response_columns=AAT_COLUMNS):
+    """Fetch met weather data from AAO weather station.
+
+    Args:
+        aat_url (string, optional): URL to query for weather reading. Defaults to AAT_URL.
+        response_columns (list, optional): List of column names that map onto the values contained
+        in a succesful reponse. Defaults to AAT_COLUMNS.
+    """
+    response = requests.get(aat_url)
+    # raise an exception if response was not successful
+    response.raise_for_status()
+
+    if response.ok:
+        date, raw_data, _ = response.content.decode().split('\n')
+        data = {name: value for name, value in zip(response_columns, raw_data.split('\t'))}
+        data['date'] = date
+    else:
+        data = None
+
+    return data
 
 
 def main(read_delay=60,
