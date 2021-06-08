@@ -48,7 +48,7 @@ def dome():
 @pytest.fixture(scope='function')
 def pocs(observatory, dome):
     os.environ['POCSTIME'] = '2020-01-01 08:00:00'
-    pocs = HuntsmanPOCS(observatory, run_once=True, testing=True)
+    pocs = HuntsmanPOCS(observatory, run_once=True)
     pocs.observatory.set_dome(dome)
     pocs.observatory.close_dome()
     yield pocs

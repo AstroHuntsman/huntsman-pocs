@@ -1,12 +1,11 @@
 from panoptes.utils.time import current_time
 from panoptes.pocs.core import POCS
-from huntsman.pocs.utils.safety import get_aat_weather
 
 
 class HuntsmanPOCS(POCS):
     """ Minimal overrides to the POCS class """
 
-    def __init__(self, *args, testing=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         self._dome_open_states = []
         super().__init__(*args, **kwargs)
 
@@ -14,8 +13,6 @@ class HuntsmanPOCS(POCS):
         if not self.observatory._safety_func:
             self.logger.debug(f"Setting safety func for {self.observatory}.")
             self.observatory._safety_func = self.is_safe
-        # This attribute is used to ignore AAT weather readings during tests
-        self.testing = testing
 
     # Public methods
 
@@ -62,36 +59,7 @@ class HuntsmanPOCS(POCS):
         """
         self.say(f"Finished with the {self.state} state. The next state is {self.next_state}.")
 
-    def is_weather_safe(self, **kwargs):
-        """Determines whether current weather conditions are safe or not.
-        Args:
-            stale (int, optional): Number of seconds before record is stale, defaults to 180
-        Returns:
-            bool: Conditions are safe (True) or unsafe (False)
-        """
-        if self._in_simulator('weather'):
-            return True
-        # if not in simulator mode, determine safety from huntsman weather data
-        is_safe = super().is_weather_safe(**kwargs)
-
-        # during tests do not check AAT weather status
-        if self.testing:
-            return is_safe
-
-        # now determine safety according to AAT weather data
-        try:
-            aat_weather_data = get_aat_weather()
-        except Exception as err:
-            self.logger.debug(f'Request for AAT weather data failed: {err!r}')
-            return is_safe
-
-        if aat_weather_data is None:
-            return is_safe
-        else:
-            # AAT rain flag returns 0 for no rain and 1 for rain
-            return is_safe and not bool(aat_weather_data['is_raining'])
-
-    # Private methods
+    # private methods
 
     def _load_state(self, state, state_info=None):
         """ Override method to add dome logic. """
