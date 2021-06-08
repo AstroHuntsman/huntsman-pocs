@@ -6,7 +6,7 @@ from huntsman.pocs.utils.safety import get_aat_weather
 class HuntsmanPOCS(POCS):
     """ Minimal overrides to the POCS class """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, testing=False, **kwargs):
         self._dome_open_states = []
         super().__init__(*args, **kwargs)
 
@@ -14,6 +14,8 @@ class HuntsmanPOCS(POCS):
         if not self.observatory._safety_func:
             self.logger.debug(f"Setting safety func for {self.observatory}.")
             self.observatory._safety_func = self.is_safe
+        # This attribute is used to ignore AAT weather readings during tests
+        self.testing = testing
 
     # Public methods
 
@@ -71,6 +73,10 @@ class HuntsmanPOCS(POCS):
             return True
         # if not in simulator mode, determine safety from huntsman weather data
         is_safe = super().is_weather_safe(**kwargs)
+
+        # during tests do not check AAT weather status
+        if self.testing:
+            return is_safe
 
         # now determine safety according to AAT weather data
         try:
