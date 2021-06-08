@@ -423,6 +423,13 @@ class HuntsmanObservatory(Observatory):
 
             events = {}
             for cam_name, camera in cameras.items():
+
+                # This is a temporary solution for having different filters on different cameras
+                # TODO: Refactor and remove
+                with suppress(AttributeError):
+                    if observation.filter_names_per_camera is not None:
+                        observation.filter_name = observation.filter_names_per_camera[cam_name]
+
                 try:
                     events[cam_name] = camera.take_observation(observation, headers=headers)
                 except error.PanError as err:

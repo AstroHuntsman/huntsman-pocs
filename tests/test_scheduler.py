@@ -4,6 +4,11 @@ from huntsman.pocs.scheduler.field import Field, CompoundField, DitheredField
 from huntsman.pocs.scheduler.observation import base as obsbase
 from huntsman.pocs.scheduler.observation.dithered import DitheredObservation
 
+from huntsman.pocs.utils.huntsman import create_huntsman_scheduler
+
+from panoptes.utils.config.client import get_config, set_config
+from panoptes.pocs.scheduler.constraint import AlreadyVisited
+
 
 @pytest.fixture(scope="function")
 def field_config_1():
@@ -13,6 +18,24 @@ def field_config_1():
 @pytest.fixture(scope="function")
 def field_config_2():
     return {"name": "Fake target", "position": "03h26m52.0582s +35d33m01.733s"}
+
+
+def test_observe_once_global():
+    prev_observe_once_status = get_config('scheduler.constraints.observe_once',
+                                          default=False)
+    set_config('scheduler.constraints.observe_once', True)
+    scheduler = create_huntsman_scheduler()
+
+    is_set = False
+    for constraint in scheduler.constraints:
+        if isinstance(constraint, AlreadyVisited):
+            is_set = True
+            break
+
+    try:
+        assert is_set
+    finally:
+        set_config('scheduler.constraints.observe_once', prev_observe_once_status)
 
 
 def test_field(field_config_1, field_config_2):
@@ -168,3 +191,16 @@ def test_compound_dithered_observation_batch(field_config_1, field_config_2):
         assert not obs.set_is_finished
         obs.mark_exposure_complete()
     assert obs.set_is_finished
+
+
+def test_filter_names_per_camera(field_config_1):
+
+    cam_name = "dslr.00"
+    filter_names_per_camera = {cam_name: "deux"}
+
+    field = Field(**field_config_1)
+    obs = obsbase.Observation(field=field, filter_names_per_camera=filter_names_per_camera,
+                              filter_name="one")
+
+    obs.filter_name = obs.filter_names_per_camera[cam_name]
+    assert obs.filter_name == "deux"
