@@ -15,10 +15,12 @@ class Focuser(AstromechFocuser):
         """Initialize an AbstractSerialMount for the port defined in the config.
             Opens a connection to the serial device, if it is valid.
         """
-
-        self.position = self.initial_position
-
         super().__init__(*args, **kwargs)
+
+        initial_position = kwargs.get("initial_position", None)
+        self.logger.debug(f"Initial position for {self}: {initial_position}")
+        if initial_position is not None:
+            self.position = initial_position
 
     def _autofocus(self, *args, **kwargs):
         focus_event = kwargs.pop("focus_event")
