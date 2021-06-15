@@ -4,7 +4,7 @@ import numpy as np
 from panoptes.utils import error
 from panoptes.utils.time import current_time
 
-from panoptes.pocs.focuser.birger import Focuser as AstromechFocuser
+from panoptes.pocs.focuser.astromechanics import Focuser as AstromechFocuser
 from panoptes.pocs.utils.plotting import make_autofocus_plot
 
 from huntsman.pocs.utils.focus import AutofocusSequence
