@@ -67,8 +67,8 @@ class Focuser(AstromechFocuser):
         # Get focus range
         idx = 1 if coarse else 0
         position_step = focus_step[idx]
-        position_min = max(self.min_position, initial_position - focus_range[idx] / 2)
-        position_max = min(self.max_position, initial_position + focus_range[idx] / 2)
+        position_min = initial_position - focus_range[idx] / 2
+        position_max = initial_position + focus_range[idx] / 2
 
         # Make sequence object
         sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
