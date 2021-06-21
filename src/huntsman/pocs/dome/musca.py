@@ -69,12 +69,10 @@ class HuntsmanDome(AbstractSerialDome):
     # V, so we don't open if less than this or CLose immediately if we go less than this
     MIN_OPERATING_VOLTAGE = 12.
 
-    def __init__(self, command_delay=1, max_status_attempts=10, shutter_timeout=100, sleep=60,
+    def __init__(self, max_status_attempts=10, shutter_timeout=100, sleep=60,
                  logger=None, *args, **kwargs):
         """
         Args:
-            command_delay (float, optional): Wait this long in seconds before allowing next command
-                due to slow musca CPU. Default 1s.
             max_status_attempts (int, optional): If status fails, retry this many times before
                 raising a PanError. Default: 10.
             shutter_timeout (u.Quantity, optional): The dome shutter movement timeout. Default 80s.
@@ -88,27 +86,32 @@ class HuntsmanDome(AbstractSerialDome):
 
         super().__init__(logger=logger, *args, **kwargs)
 
+        # Explicitly reconnect to the musca device
+        # This avoids clashes in the case of multiple dome instances
+        self.disconnect()
+        time.sleep(5)
+        self.connect()
+
         self._command_lock = Lock()  # Use a lock to make class thread-safe
 
         self.serial.ser.timeout = HuntsmanDome.LISTEN_TIMEOUT
 
-        self._command_delay = get_quantity_value(command_delay, u.second)
         self._shutter_timeout = get_quantity_value(shutter_timeout, u.second)
         self._max_status_attempts = int(max_status_attempts)
         self._sleep = get_quantity_value(sleep, u.second)
 
         self._status = {}
-        self._status_updated = {d: False for d in Protocol.VALID_DEVICE}
         self._keep_open = None
         self._stop_dome_thread = False
         self._stop_status_thread = False
 
-        self._status_thread = Thread(target=self._async_status_loop)
-        self._dome_thread = Thread(target=self._async_dome_loop)
+        self._status_thread = Thread(target=self._async_status_loop, daemon=True)
+        self._dome_thread = Thread(target=self._async_dome_loop, daemon=True)
 
         # Start the status thread running and wait until we have a complete status reading
         self._status_thread.start()
         self._wait_for_status()
+        self.logger.info(f"Got initial dome status: {self.status}")
 
         # Start the main dome control loop
         self._dome_thread.start()
@@ -176,7 +179,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._keep_open = True
 
     def close(self):
-        """Close the shutter using musca.
+        """ Close the shutter using musca.
         Returns:
             bool: True if Closed, False if it did not Close.
         """
@@ -253,15 +256,15 @@ class HuntsmanDome(AbstractSerialDome):
                 value = Protocol.STATUS_TYPES[key](value)
 
             if key in Protocol.VALID_DEVICE:
+                self.logger.debug(f"Updating dome status: {key}={value}.")
                 self._status[key] = value
-                self._status_updated[key] = True
 
     def _write_musca(self, cmd):
         """Wait for the command lock then write command to serial bluetooth device musca."""
+        self.logger.debug(f"Writing musca command: {cmd}")
         with self._command_lock:
             self.serial.reset_input_buffer()
             self.serial.write(f'{cmd}\n')
-            time.sleep(self._command_delay)
 
     def _wait_for_status(self, timeout=60, sleep=0.1):
         """ Wait for a complete status.
@@ -271,7 +274,7 @@ class HuntsmanDome(AbstractSerialDome):
         """
         timer = CountdownTimer(duration=timeout)
         while not timer.expired():
-            if all(self._status_updated.values()):
+            if all([k in self._status for k in Protocol.VALID_DEVICE]):
                 return
             time.sleep(sleep)
         raise error.Timeout("Timeout while waiting for dome shutter status.")
