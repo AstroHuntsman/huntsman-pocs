@@ -87,7 +87,7 @@ class HuntsmanSerialFocuser(AbstractSerialFocuser):
         if self.max_position is not None:
             position_max = min(position_max, self.max_position)
         if self.min_position is not None:
-            position_max = max(position_min, self.min_position)
+            position_min = max(position_min, self.min_position)
 
         # Make sequence object
         sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
