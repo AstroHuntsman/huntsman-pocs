@@ -1,5 +1,6 @@
 from panoptes.utils.time import current_time
 from panoptes.pocs.core import POCS
+from huntsman.pocs.utils.safety import get_aat_weather
 
 
 class HuntsmanPOCS(POCS):
@@ -59,7 +60,33 @@ class HuntsmanPOCS(POCS):
         """
         self.say(f"Finished with the {self.state} state. The next state is {self.next_state}.")
 
-    # private methods
+    def is_weather_safe(self, **kwargs):
+        """Determines whether current weather conditions are safe or not.
+        Args:
+            stale (int, optional): Number of seconds before record is stale, defaults to 180
+        Returns:
+            bool: Conditions are safe (True) or unsafe (False)
+        """
+        if self._in_simulator('weather'):
+            return True
+        # if not in simulator mode, determine safety from huntsman weather data
+        is_safe = super().is_weather_safe(**kwargs)
+
+        # check config to see if we want to use an AAT weather reading (e.g. during tests)
+        if not self.get_config("use_aat_weather"):
+            return is_safe
+
+        # now determine safety according to AAT weather data
+        try:
+            aat_weather_data = get_aat_weather()
+        except Exception as err:
+            self.logger.debug(f'Request for AAT weather data failed: {err!r}')
+            return is_safe
+
+        # AAT rain flag returns 0 for no rain and 1 for rain
+        return is_safe and not bool(aat_weather_data['is_raining'])
+
+    # Private methods
 
     def _load_state(self, state, state_info=None):
         """ Override method to add dome logic. """

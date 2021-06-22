@@ -129,3 +129,5 @@ pyro:
 archiver:
   sleep_interval: 1 s
   delay_interval: 5 s
+
+use_aat_weather: false
