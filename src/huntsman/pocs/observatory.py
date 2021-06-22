@@ -677,18 +677,14 @@ class HuntsmanObservatory(Observatory):
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
             # Check if we need to terminate the sequence early
-            if self.past_midnight:  # Sky getting brighter
-                if all([s.is_too_bright and s.min_exptime_reached for s in sequences.values()]):
-                    self.logger.info("Terminating flat field sequence for the "
-                                     f"{observation.filter_name} filter because all exposures are"
-                                     " too bright at the minimum exposure time.")
-                    return
-            else:  # Sky getting fainter
-                if all([s.is_too_faint and s.max_exptime_reached for s in sequences.values()]):
-                    self.logger.info("Terminating flat field sequence for the "
-                                     f"{observation.filter_name} filter because all exposures are"
-                                     " too faint at the maximum exposure time.")
-                    return
+            if self.past_midnight and all([s.min_exptime_reached for s in sequences.values()]):
+                self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
+                                 f" filter because min exposure time reached.")
+                return
+            elif all([s.max_exptime_reached for s in sequences.values()]):
+                self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
+                                 f" filter because max exposure time reached.")
+                return
 
     def _autoflat_target_counts(self, cam_name, target_scaling, scaling_tolerance):
         """ Get the target counts and tolerance for each camera.
