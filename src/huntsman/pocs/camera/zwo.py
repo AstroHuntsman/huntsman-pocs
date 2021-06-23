@@ -200,10 +200,10 @@ class Camera(AbstractSDKCamera):
 
             default_pos = self.focuser.position - self._current_focus_offset
 
-            self.focuser.move_by(required_focus_move)
+            new_pos = self.focuser.move_by(required_focus_move)
 
             # The actual offset may be different from the one we expected
-            actual_offset = self.focuser.position - default_pos
+            actual_offset = new_pos - default_pos
 
             # Update the current focus offset
             self._current_focus_offset = actual_offset
