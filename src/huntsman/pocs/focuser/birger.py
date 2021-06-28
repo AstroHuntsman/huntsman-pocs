@@ -4,9 +4,74 @@ from huntsman.pocs.focuser.serial import HuntsmanSerialFocuser
 from panoptes.pocs.focuser.birger import Focuser as BirgerFocuser, error_pattern, error_messages
 
 
+import re
+import serial
+import glob
+from warnings import warn
+serial_number_pattern = re.compile(r'^\d{5}$')
+
+
 class Focuser(BirgerFocuser, HuntsmanSerialFocuser):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+
+    def __init__(self,
+                 name='Birger Focuser',
+                 model='Canon EF-232',
+                 initial_position=None,
+                 port='/dev/tty.USA49*.?',
+                 max_command_retries=5,
+                 *args, **kwargs):
+
+        self._max_command_retries = max_command_retries
+
+        HuntsmanSerialFocuser.__init__(self, name=name, model=model, port=port, *args, **kwargs)
+        self.logger.debug('Initialising Birger focuser')
+
+        if serial_number_pattern.match(self.port):
+            # Have been given a serial number
+            self.logger.debug('Looking for {} ({})...'.format(self.name, self.port))
+
+            if Focuser._adaptor_nodes is None:
+                # No cached device nodes scanning results, need to scan.
+                self.logger.debug('Getting serial numbers for all connected Birger focusers')
+                Focuser._adaptor_nodes = {}
+                # Find nodes matching pattern
+                device_nodes = glob.glob(port)
+
+                # Open each device node and see if a Birger focuser answers
+                for device_node in device_nodes:
+                    try:
+                        serial_number = self.connect(device_node)
+                        Focuser._adaptor_nodes[serial_number] = device_node
+                    except (serial.SerialException, serial.SerialTimeoutException, AssertionError):
+                        # No Birger focuser on this node.
+                        pass
+                    finally:
+                        self._serial_port.close()
+
+                if not Focuser._adaptor_nodes:
+                    message = 'No Birger focuser devices found!'
+                    self.logger.error(message)
+                    warn(message)
+                    return
+                else:
+                    self.logger.debug(f'Connected Birger focusers: {Focuser._adaptor_nodes}')
+
+            # Search in cached device node scanning results for serial number
+            try:
+                device_node = Focuser._adaptor_nodes[self.port]
+            except KeyError:
+                message = 'Could not find {} ({})!'.format(self.name, self.port)
+                self.logger.error(message)
+                warn(message)
+                return
+            self.logger.debug('Found {} ({}) on {}'.format(self.name, self.port, device_node))
+            self.port = device_node
+
+        if initial_position is not None:
+            self.position = initial_position
 
     def reconnect(self):
         """ Close and open serial port and reconnect to focuser. """
