@@ -1,6 +1,6 @@
 import os
 import time
-from contextlib import suppress
+from contextlib import suppress, contextmanager
 from astropy import units as u
 
 from panoptes.utils import error
@@ -128,6 +128,25 @@ class HuntsmanObservatory(Observatory):
     def solar_altaz(self):
         """ Return the current solar alt az. """
         return get_solar_altaz(location=self.earth_location, time=current_time())
+
+    # Context managers
+
+    @contextmanager
+    def safety_checking(self, *args, **kwargs):
+        """ Check safety before and after the code block.
+        To be used with a "with" statement, e.g.:
+            with self.safety_checking():
+                print(x)
+        Args:
+            *args, **kwargs: Parsed to self.assert_safe
+        Raises:
+            RuntimeError: If not safe.
+        """
+        self.assert_safe(*args, **kwargs)
+        try:
+            yield None
+        finally:
+            self.assert_safe(*args, **kwargs)
 
     # Methods
 
@@ -348,8 +367,8 @@ class HuntsmanObservatory(Observatory):
             raise error.PanError('No cameras ready after maximum attempts reached.')
 
     def take_observation_block(self, observation, cameras=None, timeout=60 * u.second,
-                               remove_on_error=False, skip_focus=False, safety_kwargs=None,
-                               skip_slew=False):
+                               remove_on_error=False, do_focus=True, safety_kwargs=None,
+                               do_slew=True):
         """ Macro function to take an observation block.
         This function will perform:
             - slewing (when necessary)
@@ -363,7 +382,7 @@ class HuntsmanObservatory(Observatory):
             timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
             remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
                 raise a TimeoutError instead.
-            skip_slew (bool, optional): If True, do not attempt to slew the telescope. Default
+            do_slew (bool, optional): If True, do not attempt to slew the telescope. Default
                 False.
             **safety_kwargs (dict, optional): Extra kwargs to be parsed to safety function.
         Raises:
@@ -376,51 +395,45 @@ class HuntsmanObservatory(Observatory):
         self.assert_safe(**safety_kwargs)
 
         # Set the sequence time of the observation
-        if not hasattr(observation, "seq_time"):
-            observation.seq_time = current_time(flatten=True)
-        elif observation.seq_time is None:
+        if observation.seq_time is None:
             observation.seq_time = current_time(flatten=True)
 
         headers = self.get_standard_headers(observation=observation)
 
         # Take the observation block
+        self.logger.info(f"Starting observation block for {observation}")
+
+        # The start new set flag is True before we enter the loop and is set to False
+        # immediately inside the loop. This allows the loop to start a new set in case
+        # the set_is_finished condition is already satisfied.
+        start_new_set = True
+
         current_field = None
-        while not observation.set_is_finished:
+        while not (observation.set_is_finished or start_new_set):
+
+            start_new_set = False  # We don't want to start another set after this one
 
             # Check safety
             self.assert_safe(**safety_kwargs)
 
-            # Check if we need to slew again
-            if current_field is None:
-                slew_to_target = True
-            elif current_field != observation.field:
-                slew_to_target = True
-            else:
-                slew_to_target = False
+            # Check if we need to slew to the field
+            slew_required = current_field != observation.field
 
             # Perform the slew if necessary
-            if slew_to_target and not skip_slew:
-                self.slew_to_observation(observation)
+            if slew_required and do_slew:
+                with self.safety_checking(**safety_kwargs):
+                    self.slew_to_observation(observation)
                 current_field = observation.field
 
-            # Check safety again
-            self.assert_safe(**safety_kwargs)
-
             # Focus the cameras if necessary
-            if not skip_focus and (self.fine_focus_required or observation.current_exp_num == 0):
-                self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
-
-            # Check safety again
-            self.assert_safe(**safety_kwargs)
+            if do_focus and (self.fine_focus_required or observation.current_exp_num == 0):
+                with self.safety_checking(**safety_kwargs):
+                    self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
 
             # Set the start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
             # Start the exposures and get events
-            # TODO: Replace with concurrent.futures
-            self.logger.info(f"Taking exposure {observation.current_exp_num}/{observation.min_nexp}"
-                             f" for {observation}.")
-
             events = {}
             for cam_name, camera in cameras.items():
 
@@ -450,6 +463,8 @@ class HuntsmanObservatory(Observatory):
             with suppress(AttributeError):
                 observation.mark_exposure_complete()
 
+            self.logger.info(f"Observation status: {observation.status}")
+
     def take_dark_observation(self, bias=False, **kwargs):
         """ Take a bias observation block on each camera (blocking).
         Args:
@@ -478,7 +493,7 @@ class HuntsmanObservatory(Observatory):
                 safety_kwargs["ignore"].append("good_weather")
 
         # Take the observation (blocking)
-        self.take_observation_block(observation, skip_focus=True, skip_slew=True,
+        self.take_observation_block(observation, do_focus=False, do_slew=False,
                                     safety_kwargs=safety_kwargs, **kwargs)
 
     def assert_safe(self, *args, **kwargs):
