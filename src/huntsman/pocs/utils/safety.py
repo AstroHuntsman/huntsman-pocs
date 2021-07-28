@@ -123,4 +123,8 @@ def get_aat_weather(aat_url=AAT_URL, response_columns=AAT_COLUMNS):
         with suppress(ValueError):
             data[k] = float(v)
 
+    # Explicitly parse is_raining to bool
+    # At the time of writing this is the only boolean quantity coming from AAT
+    data["is_raining"] = bool(data["is_raining"])
+
     return data
