@@ -36,7 +36,14 @@ def get_cameras_with_filter(cameras, filter_name):
 
 
 def make_flat_field_sequences(cameras, target_scaling, scaling_tolerance, bias, **kwargs):
-    """
+    """ Create flat field sequence for each camera.
+    Args:
+        cameras (dict): dict of cam_name: camera pairs.
+        target_scaling (float): The target scaling as a fraction of well fullness.
+        scaling_tolerance (float): The scaling tolerance as a fraction of well fullness.
+        bias (float): The bias to be subtracted from each image.
+    Returns:
+        dict: dict of cam_name: FlatFieldSequence.
     """
     sequences = {}
     for cam_name, camera in cameras.items():
