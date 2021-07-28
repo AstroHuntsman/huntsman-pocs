@@ -501,13 +501,12 @@ class HuntsmanObservatory(Observatory):
         ObsClass = BiasObservation if bias else DarkObservation
         observation = ObsClass(position=position)
 
-        # Dark observations don't care if it's dark or not, or if bad weather
-        safety_kwargs = {"ignore": ["is_dark", "good_weather"]}
+        # Dark observations don't care if it's dark or not
+        safety_kwargs = {"ignore": ["is_dark"]}
 
-        # Most of the time we will take darks with the dome shut so can ignore weather safety
+        # Can ignore weather safety if dome is closed
         with suppress(AttributeError):
             if self.dome.is_closed:
-                self.logger.warning(f"Ignoring weather safety for {observation}.")
                 safety_kwargs["ignore"].append("good_weather")
 
         # Take the observation (blocking)
