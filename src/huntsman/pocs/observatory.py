@@ -422,9 +422,6 @@ class HuntsmanObservatory(Observatory):
 
             start_new_set = False  # We don't want to start another set after this one
 
-            # Check safety
-            self._assert_safe(**safety_kwargs)
-
             # Check if we need to slew to the field
             slew_required = current_field != observation.field
 
@@ -434,8 +431,11 @@ class HuntsmanObservatory(Observatory):
                     self.slew_to_observation(observation)
                 current_field = observation.field
 
+            # Check if we need to focus the cameras
+            focus_required = self.fine_focus_required or observation.current_exp_num == 0
+
             # Focus the cameras if necessary
-            if do_focus and (self.fine_focus_required or observation.current_exp_num == 0):
+            if do_focus and focus_required:
                 with self.safety_checking(**safety_kwargs):
                     self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
 
@@ -463,9 +463,10 @@ class HuntsmanObservatory(Observatory):
                 return event
 
             # Start the exposures and get events
-            cam_names = list(self.cameras.keys())
-            events_list = dispatch_parallel(func, cam_names)
-            events = {c: e for c, e in zip(cam_names, events_list) if e is not None}
+            with self.safety_checking(**safety_kwargs):
+                cam_names = list(self.cameras.keys())
+                events_list = dispatch_parallel(func, cam_names)
+                events = {c: e for c, e in zip(cam_names, events_list) if e is not None}
 
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
