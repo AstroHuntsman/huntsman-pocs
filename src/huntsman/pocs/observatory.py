@@ -1,5 +1,7 @@
 import os
 import time
+from functools import partial
+from multiprocessing.pool import ThreadPool
 from contextlib import suppress, contextmanager
 from astropy import units as u
 
@@ -14,8 +16,24 @@ from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.scheduler.observation.dark import DarkObservation
-from huntsman.pocs.utils.flats import FlatFieldSequence, make_flat_field_observation
+from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field_observation
+from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
+
+
+def dispatch_parallel(function, arg_list, **kwargs):
+    """ Run a function in parallel using a thread pool.
+    Args:
+        function (Function): The function to run.
+        arg_list (list): The list of arguments, one per thread.
+        **kwargs: Parsed to function.
+    Returns:
+        list: The list of results to the function calls.
+    """
+    func = partial(function, **kwargs)
+    with ThreadPool(len(arg_list)) as pool:
+        results = pool.map(func, arg_list)
+    return results
 
 
 class HuntsmanObservatory(Observatory):
@@ -138,15 +156,15 @@ class HuntsmanObservatory(Observatory):
             with self.safety_checking():
                 print(x)
         Args:
-            *args, **kwargs: Parsed to self.assert_safe
+            *args, **kwargs: Parsed to self._assert_safe
         Raises:
             RuntimeError: If not safe.
         """
-        self.assert_safe(*args, **kwargs)
+        self._assert_safe(*args, **kwargs)
         try:
             yield None
         finally:
-            self.assert_safe(*args, **kwargs)
+            self._assert_safe(*args, **kwargs)
 
     # Methods
 
@@ -205,10 +223,13 @@ class HuntsmanObservatory(Observatory):
                     self.logger.warning("Unable to retrieve filter name from current observation."
                                         f" Defaulting to coarse focus filter ({filter_name}).")
 
-        # Start the autofocus sequences
-        # NOTE: The FW move is handled implicitly
-        self.logger.info(f"Starting {focus_type} autofocus sequence.")
-        events = super().autofocus_cameras(coarse=coarse, filter_name=filter_name, **kwargs)
+        # Define a function to asyncronously dispatch autofocus calls
+        def func(camera):
+            return camera.autofocus(**kwargs)
+
+        # Asyncronously dispatch autofocus calls
+        cameras_with_focuser = [c for c in self.cameras.values() if c.has_focuser]
+        events = dispatch_parallel(func, cameras_with_focuser)
 
         # Wait for sequences to finish
         if blocking:
@@ -257,16 +278,10 @@ class HuntsmanObservatory(Observatory):
         # Take flat fields in each filter
         for filter_name in filter_order:
 
-            self.assert_safe(horizon="flat")
+            self._assert_safe(horizon="flat")
 
             # Get a dict of cameras that have this filter
-            cameras_with_filter = {}
-            for cam_name, cam in cameras.items():
-                if cam.filterwheel is None:
-                    if cam.filter_type == filter_name:
-                        cameras_with_filter[cam_name] = cam
-                elif filter_name in cam.filterwheel.filter_names:
-                    cameras_with_filter[cam_name] = cam
+            cameras_with_filter = get_cameras_with_filter(cameras, filter_name)
 
             # Go to next filter if there are no cameras with this one
             if not cameras_with_filter:
@@ -285,27 +300,21 @@ class HuntsmanObservatory(Observatory):
         self.logger.info('Finished flat-fielding.')
 
     def activate_camera_cooling(self):
-        """
-        Activate camera cooling for all cameras.
-        """
+        """ Activate camera cooling for all cameras. """
         self.logger.debug('Activating camera cooling for all cameras.')
         for cam in self.cameras.values():
             if cam.is_cooled_camera:
                 cam.cooling_enabled = True
 
     def deactivate_camera_cooling(self):
-        """
-        Deactivate camera cooling for all cameras.
-        """
+        """ Deactivate camera cooling for all cameras. """
         self.logger.debug('Deactivating camera cooling for all cameras.')
         for cam in self.cameras.values():
             if cam.is_cooled_camera:
                 cam.cooling_enabled = False
 
     def prepare_cameras(self, sleep=60, max_attempts=5, require_all_cameras=False):
-        """
-        Make sure cameras are all cooled and ready.
-
+        """ Make sure cameras are all cooled and ready.
         Arguments:
             sleep (float): Time in seconds to sleep between checking readiness. Default 60.
             max_attempts (int): Maximum number of ready checks. See `require_all_cameras`.
@@ -392,7 +401,7 @@ class HuntsmanObservatory(Observatory):
             cameras = self.cameras
 
         safety_kwargs = {} if safety_kwargs is None else safety_kwargs
-        self.assert_safe(**safety_kwargs)
+        self._assert_safe(**safety_kwargs)
 
         # Set the sequence time of the observation
         if observation.seq_time is None:
@@ -414,7 +423,7 @@ class HuntsmanObservatory(Observatory):
             start_new_set = False  # We don't want to start another set after this one
 
             # Check safety
-            self.assert_safe(**safety_kwargs)
+            self._assert_safe(**safety_kwargs)
 
             # Check if we need to slew to the field
             slew_required = current_field != observation.field
@@ -433,9 +442,9 @@ class HuntsmanObservatory(Observatory):
             # Set the start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
-            # Start the exposures and get events
-            events = {}
-            for cam_name, camera in cameras.items():
+            # Define function to start exposures in parallel
+            def func(cam_name):
+                camera = self.cameras[cam_name]
 
                 # This is a temporary solution for having different filters on different cameras
                 # TODO: Refactor and remove
@@ -444,11 +453,19 @@ class HuntsmanObservatory(Observatory):
                         observation.filter_name = observation.filter_names_per_camera[cam_name]
 
                 try:
-                    events[cam_name] = camera.take_observation(observation, headers=headers)
+                    event = camera.take_observation(observation, headers=headers)
                 except error.PanError as err:
                     self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with observation block after error on"
                                         f" {cam_name}.")
+                    return None
+
+                return event
+
+            # Start the exposures and get events
+            cam_names = list(self.cameras.keys())
+            events_list = dispatch_parallel(func, cam_names)
+            events = {c: e for c, e in zip(cam_names, events_list) if e is not None}
 
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
@@ -495,18 +512,6 @@ class HuntsmanObservatory(Observatory):
         # Take the observation (blocking)
         self.take_observation_block(observation, do_focus=False, do_slew=False,
                                     safety_kwargs=safety_kwargs, **kwargs)
-
-    def assert_safe(self, *args, **kwargs):
-        """ Raise a RuntimeError if not safe to continue.
-        TODO: Raise a custom error type indicating lack of safety.
-        Args:
-            *args, **kwargs: Parsed to self._safety_func.
-        """
-        if self._safety_func is None:
-            self.logger.warning("Safety function not set. Proceeding anyway.")
-
-        elif not self._safety_func(*args, **kwargs):
-            raise RuntimeError("Safety check failed!")
 
     def slew_to_observation(self, observation, min_solar_alt=10 * u.deg):
         """ Slew to the observation field coordinates.
@@ -610,44 +615,36 @@ class HuntsmanObservatory(Observatory):
                 raise a TimeoutError instead.
             **kwargs: Parsed to FlatFieldSequence.
         """
-        cam_names = list(self.cameras.keys())
-
         # Create a flat field sequence for each camera
-        sequences = {}
-        for cam_name in cam_names:
-            target_counts, counts_tolerance = self._autoflat_target_counts(
-                cam_name, target_scaling, scaling_tolerance)
-            sequences[cam_name] = FlatFieldSequence(
-                target_counts=target_counts, counts_tolerance=counts_tolerance, bias=bias,
-                **kwargs)
+        sequences = make_flat_field_sequences(cameras, target_scaling, scaling_tolerance, bias,
+                                              **kwargs)
 
         # Loop until sequence has finished
-        self.logger.info(f"Starting flat field sequence for {len(cam_names)} cameras.")
+        self.logger.info(f"Starting flat field sequence for {len(self.cameras)} cameras.")
         while not all([s.is_finished for s in sequences.values()]):
 
-            self.assert_safe(horizon="flat")
-
             # Slew to field
-            self.slew_to_observation(observation)
+            with self.safety_checking(horizon="flat"):
+                self.slew_to_observation(observation)
 
             # Get standard fits headers
             headers = self.get_standard_headers(observation=observation)
 
-            # Start the exposures on each camera
             events = {}
             exptimes = {}
             filenames = {}
             start_times = {}
-            for cam_name, seq in sequences.items():
-                camera = self.cameras[cam_name]
+
+            # Define function to start the exposures
+            def func(cam_name):
+                seq = sequences[cam_name]
+                camera = cameras[cam_name]
 
                 # Get exposure time, filename and current time
                 exptimes[cam_name] = seq.get_next_exptime(past_midnight=self.past_midnight)
                 filenames[cam_name] = observation.get_exposure_filename(camera)
                 start_times[cam_name] = current_time()
 
-                # Start the exposure and get event
-                # TODO: Replace with concurrent.futures
                 try:
                     events[cam_name] = camera.take_observation(
                         observation, headers=headers, filename=filenames[cam_name],
@@ -655,6 +652,9 @@ class HuntsmanObservatory(Observatory):
                 except error.PanError as err:
                     self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with flat observation after error.")
+
+            # Start the exposures in parallel
+            dispatch_parallel(func, list(cameras.keys()))
 
             # Wait for the exposures
             self.logger.info('Waiting for flat field exposures to complete.')
@@ -696,31 +696,11 @@ class HuntsmanObservatory(Observatory):
                 self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
                                  f" filter because min exposure time reached.")
                 return
+
             elif all([s.max_exptime_reached for s in sequences.values()]):
                 self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
                                  f" filter because max exposure time reached.")
                 return
-
-    def _autoflat_target_counts(self, cam_name, target_scaling, scaling_tolerance):
-        """ Get the target counts and tolerance for each camera.
-        Args:
-            cam_name (str): The camera name.
-            target_scaling (float):
-            scaling_tolerance (float):
-        """
-        camera = self.cameras[cam_name]
-        try:
-            bit_depth = camera.bit_depth.to_value(u.bit)
-        except NotImplementedError:
-            self.logger.debug(f'No bit_depth property for {cam_name}. Using 16.')
-            bit_depth = 16
-
-        target_counts = int(target_scaling * 2 ** bit_depth)
-        counts_tolerance = int(scaling_tolerance * 2 ** bit_depth)
-
-        self.logger.debug(f"Target counts for {cam_name}: {target_counts}"
-                          f" ± {counts_tolerance}")
-        return target_counts, counts_tolerance
 
     def _wait_for_camera_events(self, events, duration, remove_on_error=False, sleep=1, **kwargs):
         """ Wait for camera events to be set.
@@ -730,7 +710,7 @@ class HuntsmanObservatory(Observatory):
             remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
                 raise a TimeoutError instead.
             sleep (float): Sleep this long between event checks. Default 1s.
-            **kwargs: Parsed to self.assert_safe.
+            **kwargs: Parsed to self._assert_safe.
         """
         self.logger.debug(f'Waiting for {len(events)} events with timeout of {duration}.')
 
@@ -738,7 +718,7 @@ class HuntsmanObservatory(Observatory):
         while not timer.expired():
 
             # Check safety here
-            self.assert_safe(**kwargs)
+            self._assert_safe(**kwargs)
 
             # Check if all cameras have finished
             if all([e.is_set() for e in events.values()]):
@@ -786,3 +766,15 @@ class HuntsmanObservatory(Observatory):
                 return True
 
         return False
+
+    def _assert_safe(self, *args, **kwargs):
+        """ Raise a RuntimeError if not safe to continue.
+        TODO: Raise a custom error type indicating lack of safety.
+        Args:
+            *args, **kwargs: Parsed to self._safety_func.
+        """
+        if self._safety_func is None:
+            self.logger.warning("Safety function not set. Proceeding anyway.")
+
+        elif not self._safety_func(*args, **kwargs):
+            raise RuntimeError("Safety check failed!")

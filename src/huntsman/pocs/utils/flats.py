@@ -16,6 +16,59 @@ from huntsman.pocs.scheduler.field import DitheredField
 from huntsman.pocs.scheduler.observation.flat import FlatFieldObservation
 
 
+def get_cameras_with_filter(cameras, filter_name):
+    """ Get a dict of cameras wit the required filter.
+    Args:
+        cameras (dict): Dict of cam_name: camera pairs.
+        filter_name (str): The filter name.
+    """
+    cameras_with_filter = {}
+    for cam_name, cam in cameras.items():
+
+        if cam.filterwheel is None:
+            if cam.filter_type == filter_name:
+                cameras_with_filter[cam_name] = cam
+
+        elif filter_name in cam.filterwheel.filter_names:
+            cameras_with_filter[cam_name] = cam
+
+    return cameras_with_filter
+
+
+def make_flat_field_sequences(cameras, target_scaling, scaling_tolerance, bias, **kwargs):
+    """
+    """
+    sequences = {}
+    for cam_name, camera in cameras.items():
+
+        target_counts, counts_tolerance = get_target_counts(
+                                camera, target_scaling, scaling_tolerance)
+
+        sequences[cam_name] = FlatFieldSequence(target_counts=target_counts,
+                                                counts_tolerance=counts_tolerance,
+                                                bias=bias,
+                                                **kwargs)
+    return sequences
+
+
+def get_target_counts(camera, target_scaling, scaling_tolerance):
+    """ Get the target counts and tolerance for each camera.
+    Args:
+        cam_name (str): The camera name.
+        target_scaling (float):
+        scaling_tolerance (float):
+    """
+    try:
+        bit_depth = camera.bit_depth.to_value(u.bit)
+    except NotImplementedError:
+        bit_depth = 16
+
+    target_counts = int(target_scaling * 2 ** bit_depth)
+    counts_tolerance = int(scaling_tolerance * 2 ** bit_depth)
+
+    return target_counts, counts_tolerance
+
+
 def get_flat_field_altaz(location):
     """ Return the optimal flat field position given an earth location.
     Args:
