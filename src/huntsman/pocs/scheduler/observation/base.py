@@ -1,5 +1,4 @@
 import os
-from copy import deepcopy
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from astropy import units as u

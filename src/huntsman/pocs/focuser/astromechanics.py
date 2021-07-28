@@ -8,6 +8,11 @@ class Focuser(AstromechanicsFocuser, HuntsmanFocuser):
     def __init__(self, *args, **kwargs):
         super().__init__(zero_position=-32768, *args, **kwargs)
 
+    @AstromechanicsFocuser.position.getter
+    def position(self):
+        """ Override to return an int, rather than e.g. a np.int64 which breaks Pyro. """
+        return int(self._position)
+
     def move_to(self, position):
         """ Moves focuser to a new position.
         Does not do any checking of the requested position but will warn if the lens reports
