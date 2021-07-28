@@ -7,4 +7,7 @@ def on_enter(event_data):
 
     observation = pocs.observatory.current_observation
 
-    pocs.observatory.take_observation_block(observation)
+    try:
+        pocs.observatory.take_observation_block(observation)
+    except Exception as err:
+        pocs.logger.error(f"Exception while taking observation block for {observation}: {err!r}")
