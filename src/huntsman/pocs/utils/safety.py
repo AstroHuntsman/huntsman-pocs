@@ -1,3 +1,4 @@
+from contextlib import suppress
 from datetime import datetime
 
 import requests
@@ -116,5 +117,10 @@ def get_aat_weather(aat_url=AAT_URL, response_columns=AAT_COLUMNS):
     date, raw_data, _ = response.content.decode().split('\n')
     data = {name: value for name, value in zip(response_columns, raw_data.split('\t'))}
     data['date'] = date
+
+    # Try and parse values to float
+    for k, v in data.items():
+        with suppress(ValueError):
+            data[k] = float(v)
 
     return data
