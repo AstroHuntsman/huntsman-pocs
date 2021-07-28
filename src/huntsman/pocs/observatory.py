@@ -507,6 +507,7 @@ class HuntsmanObservatory(Observatory):
         # Can ignore weather safety if dome is closed
         with suppress(AttributeError):
             if self.dome.is_closed:
+                self.logger.warning(f"Ignoring weather safety for {observation}.")
                 safety_kwargs["ignore"].append("good_weather")
 
         # Take the observation (blocking)
