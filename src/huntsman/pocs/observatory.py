@@ -504,7 +504,7 @@ class HuntsmanObservatory(Observatory):
         # Dark observations don't care if it's dark or not
         safety_kwargs = {"ignore": ["is_dark"]}
 
-        # Most of the time we will take darks with the dome shut so can ignore weather safety
+        # Can ignore weather safety if dome is closed
         with suppress(AttributeError):
             if self.dome.is_closed:
                 self.logger.warning(f"Ignoring weather safety for {observation}.")
