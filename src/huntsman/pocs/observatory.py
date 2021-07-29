@@ -418,7 +418,7 @@ class HuntsmanObservatory(Observatory):
         start_new_set = True
 
         current_field = None
-        while not (observation.set_is_finished or start_new_set):
+        while (start_new_set or not observation.set_is_finished):
 
             start_new_set = False  # We don't want to start another set after this one
 
