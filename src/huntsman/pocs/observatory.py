@@ -225,7 +225,7 @@ class HuntsmanObservatory(Observatory):
 
         # Define a function to asyncronously dispatch autofocus calls
         def func(camera):
-            return camera.autofocus(**kwargs)
+            return camera.autofocus(coarse=coarse, filter_name=filter_name, **kwargs)
 
         # Asyncronously dispatch autofocus calls
         with self.safety_checking(horizon="focus"):
