@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
+set -u
+
+source ~/.bash_profile
 
 # Sleep while the system initialises
-sleep 30s
+sleep 20s
 
 # Start the camera service and logs in a Byobu session
 if byobu new-session -d -s huntsman -n camera-service; then
@@ -10,6 +13,6 @@ if byobu new-session -d -s huntsman -n camera-service; then
     byobu send-keys Enter
     byobu new-window -n camera-logs
     byobu select-window -t camera-logs
-    byobu send-keys "sleep 60 && bash -l -c 'tail -F -n 10000 ${PANDIR}/logs/huntsman.log'"
+    byobu send-keys "sleep 30 && bash -l -c 'tail -F -n 10000 ${PANLOG}/huntsman.log'"
     byobu send-keys Enter
 fi

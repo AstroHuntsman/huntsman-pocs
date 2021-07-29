@@ -28,7 +28,7 @@ function make_directories() {
 function setup_env_vars() {
 echo "Writing environment variables to bash_profile"
 cat >>"${HOME}/.bash_profile" <<EOF
-#### Added by install-camera-pi script ####
+#### Added by install-camera script ####
 export PANUSER=${PANUSER}
 export PANDIR=${PANDIR}
 export POCS=${PANDIR}/POCS
@@ -79,8 +79,6 @@ function install_camera_libs() {
   wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
   # Install the libs and rules
   bash ${PANDIR}/scripts/install-camera-libs.sh
-  # We also need to change the default usbfs_memory_mb from 200M to 60M
-  sed -i 's/200/60/g' /etc/udev/rules.d/asi.rules
 }
 
 function get_docker() {
@@ -134,6 +132,9 @@ function do_install() {
  echo "Downloading run-camera-service.sh script to ${PANDIR}/scripts"
  wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/run-camera-service.sh -O ${PANDIR}/scripts/run-camera-service.sh
  chmod +x ${PANDIR}/scripts/run-camera-service.sh
+
+ echo "Adding camera service as reboot cronjob"
+ runuser -l ${PANUSER} -c "(crontab -l ; echo '@reboot . /var/huntsman/scripts/start-byobu.sh') | crontab -"
 
  echo "Rebooting in 10s."
  sleep 10
