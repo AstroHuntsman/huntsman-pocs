@@ -104,26 +104,10 @@ class AbstractObservation(PanBase, ABC):
     def status(self):
         """ Return the observation status.
         Returns:
-            dict: Dictionary containing current status of observation
+            dict: Dictionary containing current status of observation.
         """
-        status = {
-            'current_exp': self.current_exp_num,
-            'dec_mnt': self.field.coord.dec.value,
-            'equinox': self.field.equinox,
-            'exp_set_size': self.exp_set_size,
-            'exptime': self.exptime.value,
-            'field_dec': self.field.coord.dec.value,
-            'field_name': self.name,
-            'field_ra': self.field.coord.ra.value,
-            'merit': self.merit,
-            'min_nexp': self.min_nexp,
-            'minimum_duration': self.minimum_duration.value,
-            'priority': self.priority,
-            'ra_mnt': self.field.coord.ra.value,
-            'seq_time': self.seq_time,
-            'set_duration': self.set_duration.value,
-            'dark': self.dark
-        }
+        status = {'current_exp': self.current_exp_num,
+                  'exp_set_size': self.exp_set_size}
         return status
 
     @property
