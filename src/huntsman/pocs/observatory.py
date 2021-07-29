@@ -228,8 +228,11 @@ class HuntsmanObservatory(Observatory):
             return camera.autofocus(**kwargs)
 
         # Asyncronously dispatch autofocus calls
-        cameras_with_focuser = [c for c in self.cameras.values() if c.has_focuser]
-        events = dispatch_parallel(func, cameras_with_focuser)
+        with self.safety_checking(horizon="focus"):
+            cameras_with_focuser = {n: c for n, c in self.cameras.items() if c.has_focuser}
+            events_list = dispatch_parallel(func, list(cameras_with_focuser.values()))
+            cam_names = list(cameras_with_focuser.keys())
+            events = {c: e for c, e in zip(cam_names, events_list) if e is not None}
 
         # Wait for sequences to finish
         if blocking:
