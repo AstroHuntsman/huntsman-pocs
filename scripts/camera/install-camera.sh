@@ -2,11 +2,16 @@
 # This script should be run as root.
 set -eu
 
+# Make sure we are root user
+if [[ $EUID > 0 ]]
+  then echo "Please run as root"
+  exit
+fi
+
 PANUSER=${PANUSER:-huntsman}
 PANDIR=${PANDIR:-/var/huntsman}
-HOME=${HOME:-/home/${PANUSER}}
-LOGFILE="${PANDIR}/install-camera-pi.log"
-ENV_FILE="${PANDIR}/env"
+HOME=/home/${PANUSER}
+LOGFILE="${PANDIR}/install-camera.log"
 
 function command_exists() {
   # https://gist.github.com/gubatron/1eb077a1c5fcf510e8e5
@@ -27,18 +32,31 @@ function make_directories() {
 }
 
 function setup_env_vars() {
- if [[ ! -f "${ENV_FILE}" ]]; then
-   echo "Writing environment variables to ${ENV_FILE}"
-   cat >>"${ENV_FILE}" <<EOF
-#### Added by install-camera-pi script ####
-export PANUSER=${PANUSER}
-export PANDIR=${PANDIR}
+echo "Writing environment variables to bash_profile"
+cat >>"${HOME}/.bash_profile" <<EOF
+#### Added by install-camera script ####
+
+export PANUSER=huntsman
+export PANDIR=/var/huntsman
 export POCS=${PANDIR}/POCS
 export PANLOG=${PANDIR}/logs
+
+# Define PANOPTES_CONFIG_HOST here
+export PANOPTES_CONFIG_HOST=192.168.80.100
+
+# Source profiles
+if [ -f ~/.profile ]; then . ~/.profile; fi
+if [ -f ~/.bashrc ]; then . ~/.bashrc; fi
+
 #### End install-pocs script ####
 EOF
-  fi
-  echo ". ${ENV_FILE}" >> "${HOME}/.bashrc"
+
+# Append some statements to .bashrc
+cat <<EOF >>"${HOME}/.bashrc"
+
+#### Added by install-camera script ####
+export LANG="en_US.UTF-8"
+EOF
 }
 
 function system_deps() {
@@ -55,24 +73,6 @@ function system_deps() {
    echo "Adding ssh key"
    ssh-keygen -t rsa -N "" -f "${HOME}/.ssh/id_rsa"
  fi
-
- # Append some statements to .bashrc
- cat <<EOF >>/home/${PANUSER}/.bashrc
-export LANG="en_US.UTF-8"
-
-# POCS
-export PANDIR=/var/huntsman
-EOF
-}
-
-# Make a swap file and set swappiness to 1
-# https://www.digitalocean.com/community/tutorials/how-to-add-swap-space-on-ubuntu-20-04
-function setup_swap() {
-  fallocate -l 320M /swapfile
-  chmod 600 /swapfile
-  mkswap /swapfile
-  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-  echo 'vm.swappiness=1' >> /etc/sysctl.conf
 }
 
 function enable_auto_login() {
@@ -83,17 +83,6 @@ function enable_auto_login() {
   sed -i "s/Type=idle/Type=simple/g" /lib/systemd/system/getty@.service
 }
 
-# This function is responsible for setting up the byobu session / windows
-# This is where we make the camera service run on login as ${PANUSER}
-function setup_byobu() {
-  echo -e "\n# Added by setup-byobu in install-camera-pi script" >> ${HOME}/.profile
-  echo "if byobu new-session -d -s ${PANUSER} -n camera-service; then" >> ${HOME}/.profile
-  echo "    byobu select-window -t camera-service" >> ${HOME}/.profile
-  echo "    byobu send-keys 'bash ${PANDIR}/scripts/run-camera-service.sh'" >> ${HOME}/.profile
-  echo "    byobu send-keys Enter" >> ${HOME}/.profile
-  echo "fi" >> ${HOME}/.profile
-}
-
 # For some reason the ZWO camera/FW libraries and/or rules need to be installed outside of docker
 # Otherwise we seem to be experiencing CAMERA REMOVED errors
 function install_camera_libs() {
@@ -101,8 +90,6 @@ function install_camera_libs() {
   wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/install-camera-libs.sh -O ${PANDIR}/scripts/install-camera-libs.sh
   # Install the libs and rules
   bash ${PANDIR}/scripts/install-camera-libs.sh
-  # We also need to change the default usbfs_memory_mb from 200M to 60M
-  sed -i 's/200/60/g' /etc/udev/rules.d/asi.rules
 }
 
 function get_docker() {
@@ -131,20 +118,18 @@ function do_install() {
  echo "Creating directories in ${PANDIR}"
  make_directories
 
- echo "Setting up environment variables in ${ENV_FILE}"
+ echo "Setting up environment"
  setup_env_vars
 
  echo "Installing system dependencies..."
  system_deps
 
- echo "Setting up swap..."
- setup_swap
-
  echo "Setting up auto-login..."
  enable_auto_login
 
  echo "Setting up byobu..."
- setup_byobu
+ wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/start-byobu.sh -O ${PANDIR}/scripts/start-byobu.sh
+ chmod +x ${PANDIR}/scripts/start-byobu.sh
 
  echo "Installing camera libs..."
  install_camera_libs
@@ -157,6 +142,10 @@ function do_install() {
 
  echo "Downloading run-camera-service.sh script to ${PANDIR}/scripts"
  wget https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/scripts/camera/run-camera-service.sh -O ${PANDIR}/scripts/run-camera-service.sh
+ chmod +x ${PANDIR}/scripts/run-camera-service.sh
+
+ echo "Adding camera service as reboot cronjob"
+ runuser -l ${PANUSER} -c "(crontab -l ; echo '@reboot /bin/bash /var/huntsman/scripts/start-byobu.sh') | crontab -"
 
  echo "Rebooting in 10s."
  sleep 10
