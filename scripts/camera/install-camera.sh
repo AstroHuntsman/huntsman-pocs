@@ -38,7 +38,7 @@ export PANLOG=${PANDIR}/logs
 #### End install-pocs script ####
 EOF
   fi
-  echo ". ${ENV_FILE}" >> "${HOME}/.bashrc"
+  echo ". ${ENV_FILE}" >> "${HOME}/.bash_profile"
 }
 
 function system_deps() {
@@ -58,10 +58,8 @@ function system_deps() {
 
  # Append some statements to .bashrc
  cat <<EOF >>/home/${PANUSER}/.bashrc
-export LANG="en_US.UTF-8"
 
-# POCS
-export PANDIR=/var/huntsman
+export LANG="en_US.UTF-8"
 EOF
 }
 
