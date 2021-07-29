@@ -2,10 +2,16 @@
 # This script should be run as root.
 set -eu
 
+# Make sure we are root user
+if [[ $EUID > 0 ]]
+  then echo "Please run as root"
+  exit
+fi
+
 PANUSER=${PANUSER:-huntsman}
 PANDIR=${PANDIR:-/var/huntsman}
 HOME=/home/${PANUSER}
-LOGFILE="${PANDIR}/install-camera-pi.log"
+LOGFILE="${PANDIR}/install-camera.log"
 
 function command_exists() {
   # https://gist.github.com/gubatron/1eb077a1c5fcf510e8e5
@@ -29,16 +35,27 @@ function setup_env_vars() {
 echo "Writing environment variables to bash_profile"
 cat >>"${HOME}/.bash_profile" <<EOF
 #### Added by install-camera script ####
-export PANUSER=${PANUSER}
-export PANDIR=${PANDIR}
+
+export PANUSER=huntsman
+export PANDIR=/var/huntsman
 export POCS=${PANDIR}/POCS
 export PANLOG=${PANDIR}/logs
 
-source ~/.profile
-source ~/.bashrc
-#### End install-pocs script ####
-
 # Define PANOPTES_CONFIG_HOST here
+export PANOPTES_CONFIG_HOST=192.168.80.100
+
+# Source profiles
+if [ -f ~/.profile ]; then . ~/.profile; fi
+if [ -f ~/.bashrc ]; then . ~/.bashrc; fi
+
+#### End install-pocs script ####
+EOF
+
+# Append some statements to .bashrc
+cat <<EOF >>"${HOME}/.bashrc"
+
+#### Added by install-camera script ####
+export LANG="en_US.UTF-8"
 EOF
 }
 
@@ -56,12 +73,6 @@ function system_deps() {
    echo "Adding ssh key"
    ssh-keygen -t rsa -N "" -f "${HOME}/.ssh/id_rsa"
  fi
-
- # Append some statements to .bashrc
- cat <<EOF >>/home/${PANUSER}/.bashrc
-
-export LANG="en_US.UTF-8"
-EOF
 }
 
 function enable_auto_login() {
@@ -134,7 +145,7 @@ function do_install() {
  chmod +x ${PANDIR}/scripts/run-camera-service.sh
 
  echo "Adding camera service as reboot cronjob"
- runuser -l ${PANUSER} -c "(crontab -l ; echo '@reboot . /var/huntsman/scripts/start-byobu.sh') | crontab -"
+ runuser -l ${PANUSER} -c "(crontab -l ; echo '@reboot /bin/bash /var/huntsman/scripts/start-byobu.sh') | crontab -"
 
  echo "Rebooting in 10s."
  sleep 10
