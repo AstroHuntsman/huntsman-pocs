@@ -14,7 +14,7 @@ class AutofocusSequence(PanBase):
     """
 
     def __init__(self, position_min, position_max, position_step, bit_depth,
-                 hot_pixel_threshold=0.3, extra_focus_steps=5, mask_dilations=10,
+                 hot_pixel_threshold=0.3, extra_focus_steps=5, mask_dilations=15,
                  merit_function_name="vollath_F4", merit_function_kwargs=None,
                  image_dtype=np.float32, saturation_mask_threshold=0.9, **kwargs):
         """
