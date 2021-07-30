@@ -41,9 +41,6 @@ logger.add(log_file_path,
            level='TRACE')
 logger.log('testing', '*' * 25 + startup_message + '*' * 25)
 
-# Make the log file world readable.
-os.chmod(log_file_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-
 
 def pytest_configure(config):
     """Set up the testing."""
