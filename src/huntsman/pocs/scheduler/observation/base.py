@@ -13,7 +13,8 @@ class AbstractObservation(PanBase, ABC):
 
     def __init__(self, field, exptime=120 * u.second, min_nexp=1, exp_set_size=1, priority=1,
                  dark=False, filter_name=None, directory=None, focus_offset=0,
-                 filter_names_per_camera=None, **kwargs):
+                 filter_names_per_camera=None, target_exposure_scaling=None,
+                 tune_exptime_kwargs=None, **kwargs):
         """ An observation of a given `panoptes.pocs.scheduler.field.Field`.
 
         An observation consists of a minimum number of exposures (`min_nexp`) that
@@ -40,6 +41,17 @@ class AbstractObservation(PanBase, ABC):
 
         self.exp_set_size = int(exp_set_size)
         self.min_nexp = max(int(min_nexp), self.exp_set_size)
+        self.merit = 0.0
+        self.exposure_list = OrderedDict()
+        self.pointing_images = OrderedDict()
+        self.dark = bool(dark)
+        self.priority = float(priority)
+        self.filter_name = filter_name
+        self.focus_offset = focus_offset
+
+        # This is a temporary solution for having different filters on different cameras
+        # TODO: Refactor and remove
+        self.filter_names_per_camera = filter_names_per_camera
 
         if self.min_nexp % self.exp_set_size != 0:
             raise ValueError(f"Minimum number of exposures (min_nexp={min_nexp}) must be "
@@ -48,31 +60,20 @@ class AbstractObservation(PanBase, ABC):
         if not isinstance(field, AbstractField):
             raise ValueError("field must be an instance of AbstractField.")
 
+        # Private attributes
         self._image_dir = self.get_config('directories.images')
         self._field = field
         self._exptime = get_quantity_value(exptime, u.second) * u.second
-
-        self.merit = 0.0
         self._seq_time = None
-        self.exposure_list = OrderedDict()
-        self.pointing_images = OrderedDict()
-
-        self.dark = bool(dark)
-        self.priority = float(priority)
-
-        self.filter_name = filter_name
-
-        # This is a temporary solution for having different filters on different cameras
-        # TODO: Refactor and remove
-        self.filter_names_per_camera = filter_names_per_camera
-
-        self.focus_offset = focus_offset
+        self._current_exp_num = 0
 
         if directory is None:
             directory = os.path.join(self._image_dir, "fields", self._field.field_name)
         self._directory = directory
 
-        self._current_exp_num = 0
+        # Attributes for auto exposure time tuning
+        self.target_exposure_scaling = target_exposure_scaling
+        self.tune_exptime_kwargs = {} if tune_exptime_kwargs is None else {}
 
     def __name__(self):
         return self.__class__.__name__
