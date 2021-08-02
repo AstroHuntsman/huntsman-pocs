@@ -58,14 +58,11 @@ class CameraGroup(PanBase):
             if cam.is_cooled_camera:
                 cam.cooling_enabled = False
 
-    def wait_until_ready(self, sleep=60, max_attempts=5, require_all_cameras=False):
+    def wait_until_ready(self, sleep=60, max_attempts=5):
         """ Make sure cameras are all cooled and ready.
         Arguments:
             sleep (float): Time in seconds to sleep between checking readiness. Default 60.
             max_attempts (int): Maximum number of ready checks. See `require_all_cameras`.
-            require_all_cameras (bool): `True` if all cameras are required to be ready.
-                If `True` and max_attempts is reached, a `PanError` will be raised. If `False`,
-                any camera that has failed to become ready will be dropped from the Observatory.
         """
         self.logger.info(f"Preparing {len(self.cameras)} cameras.")
 
@@ -75,7 +72,8 @@ class CameraGroup(PanBase):
         # Wait for cameras to be ready
         n_cameras = len(self.cameras)
         num_cameras_ready = 0
-        cameras_to_drop = []
+        failed_cameras = []
+
         self.logger.debug('Waiting for cameras to be ready.')
         for i in range(1, max_attempts + 1):
 
@@ -88,16 +86,8 @@ class CameraGroup(PanBase):
 
                 # If max attempts have been reached...
                 if i == max_attempts:
-                    msg = f'Max attempts reached while waiting for {cam_name} to be ready.'
-
-                    # Raise PanError if we need all cameras
-                    if require_all_cameras:
-                        raise error.PanError(msg)
-
-                    # Drop the camera if we don't need all cameras
-                    else:
-                        self.logger.error(msg)
-                        cameras_to_drop.append(cam_name)
+                    self.logger.error(f'Max attempts reached while waiting for {cam_name}.')
+                    failed_cameras.append(cam_name)
 
             # Terminate loop if all cameras are ready
             self.logger.debug(f'Number of ready cameras after {i} of {max_attempts} checks:'
@@ -113,6 +103,8 @@ class CameraGroup(PanBase):
 
         if not all([c.is_ready for c in self.cameras.values()]):
             self.logger.warning("Not all cameras are ready. Continuing anyway.")
+
+        return failed_cameras
 
     def tune_exposure_time(self, *args, **kwargs):
         """ Tune exposure times in parallel for each camera.
@@ -132,8 +124,13 @@ class CameraGroup(PanBase):
 
         return exptimes
 
-    def take_observation(self, observation, headers):
-        """
+    def take_observation(self, observation, headers=None):
+        """ Take observation on all cameras in group.
+        Args:
+            observation (Observation): The observation object.
+            headers (dict, optional): Header items.
+        Returns:
+            dict: Dict of cam_name: threading.Event.
         """
         self.logger.info(f"Taking observation {observation} for {self}.")
 
@@ -148,8 +145,12 @@ class CameraGroup(PanBase):
                 if observation.filter_names_per_camera is not None:
                     observation.filter_name = observation.filter_names_per_camera[cam_name]
 
-            # Do this here so we can properly tune the exposure time
-            camera.filterwheel.move_to(observation.filter_name)
+            # Move the filterwheel now so we can tune the exptime properly
+            if camera.has_filterwheel:
+                if observation.filter_name is not None:
+                    camera.filterwheel.move_to(observation.filter_name)
+                else:
+                    camera.filterwheel.move_to_light_position()
 
             # Check if we need to tune the exposure time
             with suppress(AttributeError):

@@ -1,4 +1,3 @@
-import os
 import time
 from contextlib import suppress, contextmanager
 from astropy import units as u
@@ -156,26 +155,14 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
 
-    def analyze_recent(self):
-        """Analyze the most recent exposure.
-
-        This is a small wrapper around the POCS version which just ensures that
-        there is a "pointing" image to use as a reference for solving.
-
-        Returns:
-            dict: Offset information
+    def remove_camera(self, cam_name):
+        """ Remove a camera from the observatory.
+        Args:
+            cam_name (str): The name of the camera to remove.
         """
-        # Set the first image as our pointing image.
-        if self.current_observation.pointing_image is None:
-            image_id, file_path = self.current_observation.first_exposure
-            self.current_observation.pointing_images[image_id] = file_path
-            self.logger.debug(f'Pointing image set to {self.current_observation.pointing_image}')
-
-        # Now call the main analyze
-        if self.get_config('observations.analyze_recent_offset', default=True):
-            super().analyze_recent()
-
-        return self.current_offset_info
+        super().remove_camera(cam_name)
+        with suppress(KeyError):
+            del self.camera_group.cameras[cam_name]
 
     def autofocus_cameras(self, coarse=False, filter_name=None, default_timeout=900,
                           blocking=True, **kwargs):
@@ -275,19 +262,21 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def prepare_cameras(self, *args, **kwargs):
+    def prepare_cameras(self, drop=True, *args, **kwargs):
         """ Make sure cameras are all cooled and ready.
         Args:
+            drop (bool): If True, drop cameras that do not become ready in time. Default: True.
             *args, **kwargs: Parsed to self.camera_group.wait_until_ready.
         """
         self.logger.info(f"Preparing {len(self.cameras)} cameras.")
 
-        cameras_to_drop = self.camera_group.wait_until_ready(*args, **kwargs)
+        failed_cameras = self.camera_group.wait_until_ready(*args, **kwargs)
 
         # Remove cameras that didn't become ready in time
-        for cam_name in cameras_to_drop:
-            self.logger.debug(f'Removing {cam_name} from {self} for not being ready.')
-            self.remove_camera(cam_name)
+        if drop:
+            for cam_name in failed_cameras:
+                self.logger.debug(f'Removing {cam_name} from {self} for not being ready.')
+                self.remove_camera(cam_name)
 
     def take_observation_block(self, observation, cameras=None, timeout=60 * u.second,
                                remove_on_error=False, do_focus=True, safety_kwargs=None,
