@@ -150,7 +150,10 @@ class CameraGroup(PanBase):
                 if observation.filter_name is not None:
                     camera.filterwheel.move_to(observation.filter_name)
                 else:
-                    camera.filterwheel.move_to_light_position()
+                    try:
+                        camera.filterwheel.move_to_light_position()
+                    except error.NotFound as err:
+                        self.logger.warning(f"{err!r}")
 
             # Check if we need to tune the exposure time
             with suppress(AttributeError):
@@ -158,7 +161,7 @@ class CameraGroup(PanBase):
                     exptime = self.tune_exposure_time(target=observation.target_exposure_scaling,
                                                       initial_exptime=observation.exptime,
                                                       **observation.tune_exptime_kwargs)
-                obs_kwargs["exptime"] = exptime
+                    obs_kwargs["exptime"] = exptime
 
             # Take the exposure and catch errors
             try:
