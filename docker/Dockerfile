@@ -12,7 +12,7 @@ LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-ENV POCS="/huntsman"
+ENV POCS="/var/huntsman"
 
 ARG userid=1000
 ENV USERID=$userid
