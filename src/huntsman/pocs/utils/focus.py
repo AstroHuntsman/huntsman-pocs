@@ -1,10 +1,41 @@
 from functools import partial
+
 import numpy as np
 from scipy.ndimage import binary_dilation
 
-from panoptes.pocs.base import PanBase
 from panoptes.utils.images import mask_saturated
-from panoptes.utils.images.focus import focus_metric
+from panoptes.utils.library import load_module
+from panoptes.utils.config.client import get_config
+
+from panoptes.pocs.base import PanBase
+
+from huntsman.pocs.utils.logger import get_logger
+
+
+DEFAULT_METRIC = "panoptes.utils.images.focus.vollath_F4"
+
+
+def create_autofocus_sequence(config=None, logger=None, *args, **kwargs):
+    """ Create an AutofocusSequence from config.
+    Args:
+        config (dict, optional): The config dict. Use default config if None.
+        logger (logger, optional): The logger. Use default logger if None.
+        *args, **kwargs: Parsed to AutofocusSequence init function. Overrides default config values.
+    Returns:
+        AutofocusSequence: The configured autofocus sequence.
+    """
+    if config is None:
+        config = get_config()
+
+    if logger is None:
+        logger = get_logger()
+
+    sequence_kwargs = config.get("AutofocusSequence", {})
+    sequence_kwargs.update(kwargs)
+
+    logger.debug(f"Creating AutofocusSequence with kwargs: {sequence_kwargs}")
+
+    return AutofocusSequence(config=config, logger=logger, *args, **sequence_kwargs)
 
 
 class AutofocusSequence(PanBase):
@@ -15,8 +46,9 @@ class AutofocusSequence(PanBase):
 
     def __init__(self, position_min, position_max, position_step, bit_depth,
                  hot_pixel_threshold=0.3, extra_focus_steps=5, mask_dilations=15,
-                 merit_function_name="vollath_F4", merit_function_kwargs=None,
-                 image_dtype=np.float32, saturation_mask_threshold=0.9, **kwargs):
+                 merit_function_name=DEFAULT_METRIC, merit_function_kwargs=None,
+                 image_dtype=np.float32, saturation_mask_threshold=0.9, apply_mask=True,
+                 **kwargs):
         """
         Args:
             position_min (int): The minimal focus position.
@@ -47,13 +79,15 @@ class AutofocusSequence(PanBase):
         self._extra_focus_steps = int(extra_focus_steps)
         self._mask_dilations = int(mask_dilations)
         self._image_dtype = image_dtype
+        self._apply_mask = bool(apply_mask)
 
-        if merit_function_kwargs is None:
-            merit_function_kwargs = {}
-        self._merit_function = partial(focus_metric, merit_function=merit_function_name,
-                                       **merit_function_kwargs)
+        # Create the merit function
+        merit_function_kwargs = {} if merit_function_kwargs is None else merit_function_kwargs
+        merit_function = load_module(merit_function_name)
         self.merit_function_name = merit_function_name
+        self._merit_function = partial(merit_function, **merit_function_kwargs)
 
+        # Define initial values
         self._exposure_idx = 0
         self._best_index = None
         self._dark_image = None
@@ -244,9 +278,12 @@ class AutofocusSequence(PanBase):
         if self._dark_image is not None:
             mask = np.logical_or(mask, self._dark_mask)
 
+        if self._apply_mask:
+            self.logger.debug(f"Autofocus masked fraction: {mask.mean():.2f}")
+
         metrics = []
         for image in self.images:
-            im = np.ma.array(image, mask=mask)
+            im = np.ma.array(image, mask=mask) if self._apply_mask else image
             metrics.append(self._merit_function(im))
 
         return np.array(metrics)

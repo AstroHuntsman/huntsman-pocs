@@ -8,7 +8,7 @@ from panoptes.utils.time import current_time
 from panoptes.pocs.focuser.focuser import AbstractFocuser
 from panoptes.pocs.utils.plotting import make_autofocus_plot
 
-from huntsman.pocs.utils.focus import AutofocusSequence
+from huntsman.pocs.utils.focus import create_autofocus_sequence
 
 __all__ = ("HuntsmanFocuser",)
 
@@ -73,10 +73,11 @@ class HuntsmanFocuser(AbstractFocuser):
         if self.min_position is not None:
             position_min = max(position_min, self.min_position)
 
-        # Make sequence object
-        sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
-                                     position_step=position_step, bit_depth=self.camera.bit_depth,
-                                     **kwargs)
+        # Make autofocus sequence
+        sequence = create_autofocus_sequence(
+            position_min=position_min, position_max=position_max, position_step=position_step,
+            bit_depth=self.camera.bit_depth, config=self.config, logger=self.logger, **kwargs)
+
         # Add a dark exposure
         if take_dark:
             self.logger.info(f"Taking dark frame before autofocus on {self}.")
