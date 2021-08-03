@@ -15,6 +15,52 @@ from huntsman.pocs.utils.logger import get_logger
 DEFAULT_METRIC = "panoptes.utils.images.focus.vollath_F4"
 
 
+def fourier_focus_metric(image, crop=1):
+    """ Focus metric based on gradient of fourier power spectrum.
+    When very defocused, most of the power will be in either white noise or concentrated at low
+    spatial frequencies. In this case, a linear fit to the full spectrum will have a shallow
+    gradient. When there is significant power at higher spatial frequencies (i.e. as the focus
+    improves), the gradient will increase. It is therefore a suitable focus metric.
+    Args:
+        image (np.array): The image array.
+        crop (float, optional): The number of low spatial frequency pixels in the FFT image to
+            exclude from the fit. The default is 1, in order to remove the DC component from the
+            FFT. This is typically very large compared to the rest of the spectrum because of the
+            background level.
+    Returns:
+        float ()
+    """
+    from scipy import fftpack
+    from scipy.optimize import curve_fit
+
+    size = image.shape[1]
+    halfsize = size / 2
+
+    # Calculate FT of image
+    fft = np.abs(fftpack.fft2(image))
+
+    yy, xx = np.meshgrid(np.arange(size), np.arange(size))
+    rr = np.sqrt((xx - halfsize) ** 2 + (yy - halfsize) ** 2)
+
+    # Get 1D data to fit
+    x = rr.reshape(-1)
+    y = fft.reshape(-1)
+    if crop:
+        cond = rr < rr.max() - crop
+        x = x[cond]
+        y = y[cond]
+
+    # Fit line to 1D power spectrum
+    try:
+        popt = curve_fit(lambda x, m, c: m * x + c, xdata=x, ydata=y)[0]
+        result = popt[0]
+    except Exception:
+        result = 0
+
+    # Use gradient of line as metric
+    return result
+
+
 def create_autofocus_sequence(config=None, logger=None, *args, **kwargs):
     """ Create an AutofocusSequence from config.
     Args:
