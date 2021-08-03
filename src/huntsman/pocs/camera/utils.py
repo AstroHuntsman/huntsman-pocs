@@ -3,9 +3,11 @@ from collections import OrderedDict
 from contextlib import suppress
 
 import numpy as np
+from astropy import units as u
 
 from panoptes.utils.config.client import get_config
 from panoptes.utils import error
+from panoptes.utils.utils import get_quantity_value
 
 from huntsman.pocs.camera.pyro.client import Camera
 from huntsman.pocs.utils.logger import logger
@@ -164,6 +166,16 @@ def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_expti
     """ Tune the exposure time to within certain tolerance of the desired counts.
     TODO: Add as camera method.
     """
+    camera.logger.info(f"Tuning exposure time for {camera}.")
+
+    # Parse quantities
+    initial_exptime = get_quantity_value(initial_exptime, "second") * u.second
+
+    if min_exptime is not None:
+        min_exptime = get_quantity_value(min_exptime, "second") * u.second
+    if max_exptime is not None:
+        max_exptime = get_quantity_value(max_exptime, "second") * u.second
+
     try:
         bit_depth = camera.bit_depth.to_value("bit")
     except NotImplementedError:
@@ -171,22 +183,20 @@ def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_expti
 
     saturated_counts = 2 ** bit_depth
 
-    with tempfile.NamedTemporaryFile() as tf:
+    with tempfile.NamedTemporaryFile(suffix=".fits", delete=False) as tf:
 
         exptime = initial_exptime
 
         for step in range(max_steps):
 
             # Check if exposure time is within valid range
-            if exptime == max_exptime:
-                break
-            elif exptime == min_exptime:
+            if (exptime == max_exptime) or (exptime == min_exptime):
                 break
 
             # Get an image
             cutout = camera.get_cutout(exptime, tf.name, cutout_size, keep_file=False, **kwargs)
             cutout = cutout.astype("float32")
-            if bias is None:
+            if bias is not None:
                 cutout -= bias
 
             # Measure average counts
@@ -203,5 +213,7 @@ def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_expti
                 exptime = min(exptime, max_exptime)
             if min_exptime is not None:
                 exptime = max(exptime, min_exptime)
+
+    camera.logger.info(f"Tuned exposure time for {camera}: {exptime}")
 
     return exptime
