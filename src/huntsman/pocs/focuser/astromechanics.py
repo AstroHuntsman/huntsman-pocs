@@ -29,12 +29,6 @@ class Focuser(AstromechanicsFocuser, HuntsmanFocuser):
         Returns:
             int: focuser position following the move, in encoder units.
         """
-        # Check the requested position is within the allowable range
-        if position > self._max_move:
-            raise error.PanError(f"Requested position {position} greater than max for {self}.")
-        elif position < -self._max_move - 1:
-            raise error.PanError(f"Requested position {position} less than min for {self}.")
-
         for i in range(max_steps):
 
             # Calculate the actual move, respecting maximum allowable move
@@ -58,9 +52,19 @@ class Focuser(AstromechanicsFocuser, HuntsmanFocuser):
         Returns:
             int: focuser position following the move, in encoder units.
         """
+        actual_position = int(position + self._zero_position)
+
+        # Check the requested position is within the allowable range
+        if actual_position - self._zero_position > self._max_move:
+            raise error.PanError(f"Requested position {actual_position} greater than max for"
+                                 f"{self}.")
+        elif actual_position < -self._max_move - 1:
+            raise error.PanError(f"Requested position {actual_position} less than min for"
+                                 f"{self}.")
+
         self._is_moving = True
         try:
-            self._send_command(f'M{int(position + self._zero_position):d}')
+            self._send_command(f'M{actual_position:d}')
             self._position = position
         finally:
             # Focuser move commands block until the move is finished, so if the command has
