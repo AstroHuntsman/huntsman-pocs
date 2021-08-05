@@ -29,7 +29,8 @@ class Focuser(AstromechanicsFocuser, HuntsmanFocuser):
         """
         if position != self.position:
             device_position = int(position + self._zero_position)
-            return self._move_to_device_position(device_position, **kwargs)
+            self._move_to_device_position(device_position, **kwargs)
+        return self.position
 
     def _move_to_device_position(self, device_position, max_steps=2):
         """ Moves focuser to a new position in device units.
