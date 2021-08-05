@@ -71,5 +71,5 @@ class Focuser(AstromechanicsFocuser, HuntsmanFocuser):
             # returned then the focuser is no longer moving.
             self._is_moving = False
 
-        self.logger.debug(f"Moved to encoder position {self.position}")
+        self.logger.debug(f"Moved to encoder position {self.position} ({actual_position})")
         return self.position
