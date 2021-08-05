@@ -11,9 +11,14 @@ class Focuser(AstromechanicsFocuser, HuntsmanFocuser):
     # The max move is a limitation caused by signed 16-bit integers used by the device
     _max_move = 32767
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, zero_position=None, *args, **kwargs):
+
         self._device_position = None  # Gets initialised in self._move_zero
-        super().__init__(zero_position=-32768, *args, **kwargs)
+
+        if zero_position is None:
+            zero_position = -self._max_move
+
+        super().__init__(zero_position=zero_position, *args, **kwargs)
 
     @AstromechanicsFocuser.position.getter
     def position(self):
