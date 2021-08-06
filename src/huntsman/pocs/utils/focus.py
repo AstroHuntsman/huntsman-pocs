@@ -143,9 +143,12 @@ class AutofocusSequence(PanBase):
         self._metrics = None
 
         # Setup focus positions
-        self._positions = np.arange(self._position_min, self._position_max + self._position_step,
-                                    self._position_step)
-        self._positions_actual = []
+        # These are only intended positions because focus moves are not always accurate
+        self._intended_positions = np.arange(self._position_min,
+                                             self._position_max + self._position_step,
+                                             self._position_step)
+        # Create container for the actual positions
+        self._actual_positions = []
         self.images = []
 
     # Properties
@@ -165,7 +168,7 @@ class AutofocusSequence(PanBase):
         Returns:
             int: The number of focus positions.
         """
-        return self._positions.size
+        return self._intended_positions.size
 
     @property
     def is_finished(self):
@@ -204,7 +207,7 @@ class AutofocusSequence(PanBase):
                                                threshold=self._hot_pixel_threshold)
 
     @property
-    def positions(self):
+    def actual_positions(self):
         """ Return the actual focus positions (i.e. not the requested ones).
         This can only be obtained after the sequence has finished.
         Returns:
@@ -212,10 +215,10 @@ class AutofocusSequence(PanBase):
         """
         if not self.is_finished:
             raise AttributeError("The focus sequence is not complete.")
-        return np.array(self._positions_actual)
+        return np.array(self._actual_positions)
 
     @property
-    def best_position(self):
+    def best_actual_position(self):
         """ Get the best focus position.
         This can only be obtained after the sequence has finished.
         Returns:
@@ -223,7 +226,7 @@ class AutofocusSequence(PanBase):
         """
         if not self.is_finished:
             raise AttributeError("The focus sequence is not complete.")
-        return self.positions[self._best_index]
+        return self.actual_positions[self._best_index]
 
     @property
     def metrics(self):
@@ -252,7 +255,7 @@ class AutofocusSequence(PanBase):
         if self._mask is None:
             self._mask = np.zeros(shape=image.shape, dtype="bool")
 
-        self._positions_actual.append(position)
+        self._actual_positions.append(position)
         self.images.append(image.astype(self._image_dtype))
 
         # Subtract dark image
@@ -295,7 +298,7 @@ class AutofocusSequence(PanBase):
         Returns:
             int: The next focus position.
         """
-        return self._positions[self.exposure_idx]
+        return self._intended_positions[self.exposure_idx]
 
     # Private methods
 
@@ -351,7 +354,7 @@ class AutofocusSequence(PanBase):
 
         # Update positions
         extra_positions = np.arange(min_position, max_position, self._position_step)
-        self._positions = np.hstack([self._positions, extra_positions])
+        self._intended_positions = np.hstack([self._intended_positions, extra_positions])
 
         # Setting this to zero stops the positions being expanded again
         self._extra_focus_steps = 0
