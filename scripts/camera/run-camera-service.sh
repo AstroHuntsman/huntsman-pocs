@@ -43,7 +43,7 @@ wget ${DC_FILE_URL} -O ${DC_FILE}
 
 # Prune docker
 echo "Pruning docker system..."
-docker system prune -f
+docker system prune -f --volumes
 
 # Start the docker service
 echo "Downloading latest docker image(s)..."
