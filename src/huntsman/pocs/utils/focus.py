@@ -1,6 +1,8 @@
 from functools import partial
 
 import numpy as np
+from scipy import fftpack
+from scipy.optimize import curve_fit
 from scipy.ndimage import binary_dilation
 
 from panoptes.utils.images import mask_saturated
@@ -30,9 +32,6 @@ def fourier_focus_metric(image, crop=1):
     Returns:
         float ()
     """
-    from scipy import fftpack
-    from scipy.optimize import curve_fit
-
     # Calculate FT of image
     fft = np.abs(fftpack.fft2(image))
 
@@ -55,7 +54,7 @@ def fourier_focus_metric(image, crop=1):
         popt = curve_fit(lambda x, m, c: m * x + c, xdata=xdata, ydata=ydata)[0]
         result = popt[0]
     except Exception:
-        result = 0
+        result = 0  # TODO: Log a warning
 
     # Use gradient of line as metric
     return result
