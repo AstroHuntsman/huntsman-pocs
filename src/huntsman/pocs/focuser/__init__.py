@@ -8,7 +8,7 @@ from panoptes.utils.time import current_time
 from panoptes.pocs.focuser.focuser import AbstractFocuser
 from panoptes.pocs.utils.plotting import make_autofocus_plot
 
-from huntsman.pocs.utils.focus import AutofocusSequence
+from huntsman.pocs.utils.focus import create_autofocus_sequence
 
 __all__ = ("HuntsmanFocuser",)
 
@@ -73,10 +73,11 @@ class HuntsmanFocuser(AbstractFocuser):
         if self.min_position is not None:
             position_min = max(position_min, self.min_position)
 
-        # Make sequence object
-        sequence = AutofocusSequence(position_min=position_min, position_max=position_max,
-                                     position_step=position_step, bit_depth=self.camera.bit_depth,
-                                     **kwargs)
+        # Make autofocus sequence
+        sequence = create_autofocus_sequence(
+            position_min=position_min, position_max=position_max, position_step=position_step,
+            bit_depth=self.camera.bit_depth, **kwargs)
+
         # Add a dark exposure
         if take_dark:
             self.logger.info(f"Taking dark frame before autofocus on {self}.")
@@ -118,10 +119,13 @@ class HuntsmanFocuser(AbstractFocuser):
             # Update the sequence
             sequence.update(cutout, position=self.position)
 
-        # Get the best position and move to it
-        best_position = sequence.best_position
-        best_position_actual = self.move_to(best_position)
+        # Get the best position
+        best_position = sequence.best_actual_position
         self.logger.info(f"Best focus position for {self}: {best_position}")
+
+        # Move to the best position
+        final_position = self.move_to(best_position)
+        self.logger.debug(f"Moved to best position: {final_position}")
 
         if make_plots:
             focus_type = "coarse" if coarse else "fine"
@@ -129,7 +133,7 @@ class HuntsmanFocuser(AbstractFocuser):
             plot_title = f'{self} {focus_type} focus at {start_time}'
 
             metrics = sequence.metrics
-            focus_positions = sequence.positions
+            focus_positions = sequence.actual_positions
             merit_function = sequence.merit_function_name
 
             initial_idx = np.argmin(abs(focus_positions - initial_position))
@@ -140,7 +144,7 @@ class HuntsmanFocuser(AbstractFocuser):
 
             self.logger.info(f"Writing focus plot for {self} to {plot_filename}.")
             make_autofocus_plot(plot_filename, initial_cutout, final_cutout, initial_position,
-                                best_position_actual, focus_positions, metrics, merit_function,
+                                best_position, focus_positions, metrics, merit_function,
                                 plot_title=plot_title)
 
         return initial_position, best_position
