@@ -335,9 +335,6 @@ class AutofocusSequence(PanBase):
         metrics = []
         for image in self.images:
             im = np.ma.array(image, mask=mask) if self._apply_mask else image
-
-            self.logger.info(f"D {im.shape}")
-
             metrics.append(self._merit_function(im))
 
         return np.array(metrics)
