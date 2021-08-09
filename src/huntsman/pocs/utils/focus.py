@@ -33,26 +33,26 @@ def fourier_focus_metric(image, crop=1):
     from scipy import fftpack
     from scipy.optimize import curve_fit
 
-    size = image.shape[1]
-    halfsize = size / 2
-
     # Calculate FT of image
     fft = np.abs(fftpack.fft2(image))
 
-    yy, xx = np.meshgrid(np.arange(size), np.arange(size))
-    rr = np.sqrt((xx - halfsize) ** 2 + (yy - halfsize) ** 2)
+    # Extract azimuth-averaged power spectrum
+    # NOTE: Low spatial frequencies are at large radii
+    sizey, sizex = image.shape
+    yy, xx = np.meshgrid(np.arange(sizey), np.arange(sizex))
+    rr = np.sqrt((xx - sizex / 2) ** 2 + (yy - sizey / 2) ** 2)
 
     # Get 1D data to fit
-    x = rr.reshape(-1)
-    y = fft.reshape(-1)
+    xdata = rr.reshape(-1)
+    ydata = fft.reshape(-1)
     if crop:
-        cond = rr < rr.max() - crop
-        x = x[cond]
-        y = y[cond]
+        cond = xdata < xdata.max() - crop
+        xdata = xdata[cond]
+        ydata = ydata[cond]
 
     # Fit line to 1D power spectrum
     try:
-        popt = curve_fit(lambda x, m, c: m * x + c, xdata=x, ydata=y)[0]
+        popt = curve_fit(lambda x, m, c: m * x + c, xdata=xdata, ydata=ydata)[0]
         result = popt[0]
     except Exception:
         result = 0
@@ -265,7 +265,7 @@ class AutofocusSequence(PanBase):
             self.logger.warning("Updating autofocus sequence but dark image not set.")
 
         # Update the mask
-        self._mask = np.logical_or(self._mask, self._mask_saturated(self.images[self.exposure_idx]))
+        self._mask = np.logical_or(self._mask, self._mask_saturated(self.images[-1]))
 
         # Update the exposure index
         self._exposure_idx += 1
@@ -320,6 +320,8 @@ class AutofocusSequence(PanBase):
         Returns:
             np.array: A 1D array of the focus metrics.
         """
+        self.logger.info(f"Calculating focus metrics for {self}.")
+
         mask = binary_dilation(self._mask, iterations=self._mask_dilations)
 
         # Update the mask with the dark mask
@@ -333,6 +335,9 @@ class AutofocusSequence(PanBase):
         metrics = []
         for image in self.images:
             im = np.ma.array(image, mask=mask) if self._apply_mask else image
+
+            self.logger.info(f"D {im.shape}")
+
             metrics.append(self._merit_function(im))
 
         return np.array(metrics)

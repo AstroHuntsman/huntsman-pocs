@@ -42,7 +42,7 @@ cameras:
       port: /dev/fake/dslr.focuser.00
       is_distributed: True
       focuser:
-        model: panoptes.pocs.focuser.simulator.Focuser
+        model: huntsman.pocs.focuser.simulator.Focuser
         focus_port: /dev/fake/focuser.00
         initial_position: 20000
         autofocus_range: [ 40, 80 ]
@@ -134,4 +134,4 @@ use_aat_weather: false
 
 AutofocusSequence:
   merit_function_name: "huntsman.pocs.utils.focus.fourier_focus_metric"
-  apply_mask: False
+  apply_mask: false

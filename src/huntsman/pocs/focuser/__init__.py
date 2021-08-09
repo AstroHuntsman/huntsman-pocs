@@ -76,7 +76,7 @@ class HuntsmanFocuser(AbstractFocuser):
         # Make autofocus sequence
         sequence = create_autofocus_sequence(
             position_min=position_min, position_max=position_max, position_step=position_step,
-            bit_depth=self.camera.bit_depth, config=self.config, logger=self.logger, **kwargs)
+            bit_depth=self.camera.bit_depth, **kwargs)
 
         # Add a dark exposure
         if take_dark:
