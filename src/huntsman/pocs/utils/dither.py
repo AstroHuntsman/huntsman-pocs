@@ -21,7 +21,7 @@ dice5 = ((0, 0),
          (-1, 1))
 
 
-def get_dither_positions(base_position, n_positions=9, pattern=dice9, pattern_offset=20 * u.arcmin,
+def get_dither_positions(base_position, n_positions=9, pattern=dice9, pattern_offset=10 * u.arcmin,
                          random_offset=None):
     """
     Given a base position creates a SkyCoord list of dithered sky positions, applying a dither
@@ -49,7 +49,7 @@ def get_dither_positions(base_position, n_positions=9, pattern=dice9, pattern_of
         except ValueError:
             raise ValueError(f"Base position {base_position} could not be converted to SkyCoord")
 
-    if pattern:
+    if pattern is not None:
         if pattern_offset is None:
             raise ValueError("`pattern` specified but no `pattern_offset` given!")
 
