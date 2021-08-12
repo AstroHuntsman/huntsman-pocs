@@ -202,8 +202,15 @@ class Archiver(PanBase):
 
         # Get the archived filename
         archive_filename = self._get_archive_filename(filename)
+
         # Make sure the archive directory exists
         os.makedirs(os.path.dirname(archive_filename), exist_ok=True)
+
         # Move the file to the archive directory
+        # NOTE: Use copy rather than move so the timestamp gets updated
+        # This is required for Nifi to pick up the file
         self.logger.debug(f"Moving {filename} to {archive_filename}.")
-        shutil.move(filename, archive_filename)
+        shutil.copy(filename, archive_filename)
+
+        # Finally, delete the original
+        os.remove(filename)
