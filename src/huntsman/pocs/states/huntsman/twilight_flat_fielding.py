@@ -12,9 +12,12 @@ def wait_for_twilight(pocs):
     Twilight when Sun between flat and focus horizons.
     """
     pocs.logger.debug('Waiting for twilight...')
+    
+    delay = pocs.get_config("wait_delay", 60)
+
     while pocs.is_safe(horizon='flat'):
         if pocs.is_dark(horizon='focus'):
-            time.sleep(pocs._safe_delay)
+            time.sleep(delay)
         else:
             return True
     return False
