@@ -1,9 +1,6 @@
 import numpy as np
 import astropy.units as u
 from astropy.coordinates import SkyCoord, SkyOffsetFrame, ICRS
-from astropy.wcs import WCS
-
-import matplotlib.pyplot as plt
 
 # Pattern for dice 9 3x3 grid (sequence of (RA offset, dec offset) pairs)
 dice9 = ((0, 0),
@@ -24,8 +21,8 @@ dice5 = ((0, 0),
          (-1, 1))
 
 
-def get_dither_positions(base_position, n_positions=9, pattern=None, pattern_offset=None,
-                         random_offset=None, plot=False):
+def get_dither_positions(base_position, n_positions=9, pattern=dice9, pattern_offset=10 * u.arcmin,
+                         random_offset=None):
     """
     Given a base position creates a SkyCoord list of dithered sky positions, applying a dither
     pattern and/or random dither offsets.
@@ -43,8 +40,6 @@ def get_dither_positions(base_position, n_positions=9, pattern=None, pattern_off
          random_offset (Quantity, optional): scale of the random offset to apply to both RA and dec.
             Should be a Quantity with angular units, if numeric type passed instead it will be
             assumed to be in arcseconds.
-         plots (optional, default False): If False no plots will be created, otherwise plots will
-            be generated and written to filename `plots`.
     Returns:
         SkyCoord: list of n_positions dithered sky positions
     """
@@ -52,10 +47,9 @@ def get_dither_positions(base_position, n_positions=9, pattern=None, pattern_off
         try:
             base_position = SkyCoord(base_position)
         except ValueError:
-            raise ValueError(
-                "Base position '{}' could not be converted to a SkyCoord object!".format(base_position))
+            raise ValueError(f"Base position {base_position} could not be converted to SkyCoord")
 
-    if pattern:
+    if pattern is not None:
         if pattern_offset is None:
             raise ValueError("`pattern` specified but no `pattern_offset` given!")
 
@@ -82,28 +76,5 @@ def get_dither_positions(base_position, n_positions=9, pattern=None, pattern_off
 
     offsets = SkyOffsetFrame(lon=RA_offsets, lat=dec_offsets, origin=base_position)
     positions = offsets.transform_to(ICRS)
-
-    if plot:
-        dummy_wcs = WCS(naxis=2)
-        dummy_wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-        dummy_wcs.wcs.crval = [base_position.ra.value, base_position.dec.value]
-
-        ax = plt.subplot(projection=dummy_wcs)
-        ax.plot(positions.ra, positions.dec, 'b*-', transform=ax.get_transform('world'))
-        ax.plot([base_position.ra.value], [base_position.dec.value],
-                'rx', transform=ax.get_transform('world'))
-        ax.set_aspect('equal', adjustable='datalim')
-        ax.coords[0].set_axislabel('Right Ascension')
-        ax.coords[0].set_major_formatter('hh:mm')
-        ax.coords[1].set_axislabel('declination')
-        ax.coords[1].set_major_formatter('dd:mm')
-        ax.grid()
-        plt.title('base position: {},\nnumber of positions: {}\npattern offset: {},\nrandom offset: {}'.format(
-            base_position.to_string('hmsdms'),
-            n_positions,
-            pattern_offset,
-            random_offset))
-        plt.gcf().set_size_inches(8, 8.5)
-        plt.savefig(plot)
 
     return SkyCoord(positions)

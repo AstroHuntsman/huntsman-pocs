@@ -28,12 +28,10 @@ def patterns(camera, images_dir):
     # However, problems with rmtree and SSHFS causes the autofocus code to hang.
 
     patterns = {'base': os.path.join(images_dir, 'focus', camera.uid),
-                'final': os.path.join(images_dir, 'focus', camera.uid, '*',
-                                      ('*-final.' + camera.file_extension)),
                 'fine_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
-                                          'fine-focus.png'),
+                                          'fine-focus*.png'),
                 'coarse_plot': os.path.join(images_dir, 'focus', camera.uid, '*',
-                                            'coarse-focus.png')}
+                                            'coarse-focus*.png')}
     return patterns
 
 
@@ -389,45 +387,11 @@ def test_observation_nofilter(camera, images_dir):
         os.remove(_)
 
 
-def test_autofocus_coarse(camera, patterns):
-    if not camera.focuser:
-        pytest.skip("Camera does not have a focuser")
-    try:
-        autofocus_event = camera.autofocus(coarse=True)
-        autofocus_event.wait()
-        assert len(glob.glob(patterns['final'])) == 1
-    finally:
-        shutil.rmtree(patterns['base'])
-
-
-def test_autofocus_fine(camera, patterns):
-    if not camera.focuser:
-        pytest.skip("Camera does not have a focuser")
-    try:
-        autofocus_event = camera.autofocus()
-        autofocus_event.wait()
-        assert len(glob.glob(patterns['final'])) == 1
-    finally:
-        shutil.rmtree(patterns['base'])
-
-
-def test_autofocus_fine_blocking(camera, patterns):
-    if not camera.focuser:
-        pytest.skip("Camera does not have a focuser")
-    try:
-        autofocus_event = camera.autofocus(blocking=True)
-        assert autofocus_event.is_set()
-        assert len(glob.glob(patterns['final'])) == 1
-    finally:
-        shutil.rmtree(patterns['base'])
-
-
 def test_autofocus_with_plots(camera, patterns):
     if not camera.focuser:
         pytest.skip("Camera does not have a focuser")
     try:
         camera.autofocus(make_plots=True, blocking=True)
-        assert len(glob.glob(patterns['final'])) == 1
         assert len(glob.glob(patterns['fine_plot'])) == 1
     finally:
         shutil.rmtree(patterns['base'])
@@ -438,116 +402,9 @@ def test_autofocus_coarse_with_plots(camera, patterns):
         pytest.skip("Camera does not have a focuser")
     try:
         camera.autofocus(coarse=True, make_plots=True, blocking=True)
-        assert len(glob.glob(patterns['final'])) == 1
         assert len(glob.glob(patterns['coarse_plot'])) == 1
     finally:
         shutil.rmtree(patterns['base'])
-
-
-def test_autofocus_keep_files(camera, patterns):
-    if not camera.focuser:
-        pytest.skip("Camera does not have a focuser")
-    try:
-        camera.autofocus(keep_files=True, blocking=True)
-        assert len(glob.glob(patterns['final'])) == 1
-    finally:
-        shutil.rmtree(patterns['base'])
-
-
-def test_autofocus_no_size(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    thumbnail_size = camera.focuser.autofocus_size
-    camera.focuser.autofocus_size = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
-    camera.focuser.autofocus_size = thumbnail_size
-    assert camera.focuser.position == initial_focus
-
-
-def test_autofocus_no_seconds(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    seconds = camera.focuser.autofocus_seconds
-    camera.focuser.autofocus_seconds = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
-    camera.focuser.autofocus_seconds = seconds
-    assert camera.focuser.position == initial_focus
-
-
-def test_autofocus_no_step(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    autofocus_step = camera.focuser.autofocus_step
-    camera.focuser.autofocus_step = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
-    camera.focuser.autofocus_step = autofocus_step
-    assert camera.focuser.position == initial_focus
-
-
-def test_autofocus_no_range(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    autofocus_range = camera.focuser.autofocus_range
-    camera.focuser.autofocus_range = None
-    with pytest.raises(ValueError):
-        camera.autofocus()
-    camera.focuser.autofocus_range = autofocus_range
-    assert camera.focuser.position == initial_focus
-
-
-def test_autofocus_camera_disconnected(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    camera._proxy.set("_connected", False)
-    with pytest.raises(AssertionError):
-        camera.autofocus()
-    camera._proxy.set("_connected", True)
-    assert camera.focuser.position == initial_focus
-
-
-def test_autofocus_focuser_disconnected(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    camera._proxy.set("_connected", False, subcomponent="focuser")
-    with pytest.raises(AssertionError):
-        camera.autofocus()
-    camera._proxy.set("_connected", True, subcomponent="focuser")
-    assert camera.focuser.position == initial_focus
-
-
-def test_autofocus_no_focuser(camera):
-    try:
-        initial_focus = camera.focuser.position
-    except AttributeError:
-        pytest.skip("Camera does not have an exposed focuser attribute")
-    initial_focus = camera.focuser.position
-    focuser = camera.focuser
-    camera.focuser = None
-    with pytest.raises(AttributeError):
-        camera.autofocus()
-    camera.focuser = focuser
-    assert camera.focuser.position == initial_focus
 
 
 @pytest.mark.skip("Defocusing logic has not been built into testing cameras!")

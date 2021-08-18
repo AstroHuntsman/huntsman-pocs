@@ -1,10 +1,86 @@
 from functools import partial
+
 import numpy as np
+from scipy import fftpack
+from scipy.optimize import curve_fit
 from scipy.ndimage import binary_dilation
 
-from panoptes.pocs.base import PanBase
 from panoptes.utils.images import mask_saturated
-from panoptes.utils.images.focus import focus_metric
+from panoptes.utils.library import load_module
+from panoptes.utils.config.client import get_config
+
+from panoptes.pocs.base import PanBase
+
+from huntsman.pocs.utils.logger import get_logger
+
+
+DEFAULT_METRIC = "panoptes.utils.images.focus.vollath_F4"
+
+
+def fourier_focus_metric(image, crop=1):
+    """ Focus metric based on gradient of fourier power spectrum.
+    When very defocused, most of the power will be in either white noise or concentrated at low
+    spatial frequencies. In this case, a linear fit to the full spectrum will have a shallow
+    gradient. When there is significant power at higher spatial frequencies (i.e. as the focus
+    improves), the gradient will increase. It is therefore a suitable focus metric.
+    Args:
+        image (np.array): The image array.
+        crop (float, optional): The number of low spatial frequency pixels in the FFT image to
+            exclude from the fit. The default is 1, in order to remove the DC component from the
+            FFT. This is typically very large compared to the rest of the spectrum because of the
+            background level.
+    Returns:
+        float ()
+    """
+    # Calculate FT of image
+    fft = np.abs(fftpack.fft2(image))
+
+    # Extract azimuth-averaged power spectrum
+    # NOTE: Low spatial frequencies are at large radii
+    sizey, sizex = image.shape
+    yy, xx = np.meshgrid(np.arange(sizey), np.arange(sizex))
+    rr = np.sqrt((xx - sizex / 2) ** 2 + (yy - sizey / 2) ** 2)
+
+    # Get 1D data to fit
+    xdata = rr.reshape(-1)
+    ydata = fft.reshape(-1)
+    if crop:
+        cond = xdata < xdata.max() - crop
+        xdata = xdata[cond]
+        ydata = ydata[cond]
+
+    # Fit line to 1D power spectrum
+    try:
+        popt = curve_fit(lambda x, m, c: m * x + c, xdata=xdata, ydata=ydata)[0]
+        result = popt[0]
+    except Exception:
+        result = 0  # TODO: Log a warning
+
+    # Use gradient of line as metric
+    return result
+
+
+def create_autofocus_sequence(config=None, logger=None, *args, **kwargs):
+    """ Create an AutofocusSequence from config.
+    Args:
+        config (dict, optional): The config dict. Use default config if None.
+        logger (logger, optional): The logger. Use default logger if None.
+        *args, **kwargs: Parsed to AutofocusSequence init function. Overrides default config values.
+    Returns:
+        AutofocusSequence: The configured autofocus sequence.
+    """
+    if config is None:
+        config = get_config()
+
+    if logger is None:
+        logger = get_logger()
+
+    sequence_kwargs = config.get("AutofocusSequence", {})
+    sequence_kwargs.update(kwargs)
+
+    logger.debug(f"Creating AutofocusSequence with kwargs: {sequence_kwargs}")
+
+    return AutofocusSequence(config=config, logger=logger, *args, **sequence_kwargs)
 
 
 class AutofocusSequence(PanBase):
@@ -15,8 +91,9 @@ class AutofocusSequence(PanBase):
 
     def __init__(self, position_min, position_max, position_step, bit_depth,
                  hot_pixel_threshold=0.3, extra_focus_steps=5, mask_dilations=15,
-                 merit_function_name="vollath_F4", merit_function_kwargs=None,
-                 image_dtype=np.float32, saturation_mask_threshold=0.9, **kwargs):
+                 merit_function_name=DEFAULT_METRIC, merit_function_kwargs=None,
+                 image_dtype=np.float32, saturation_mask_threshold=0.9, apply_mask=True,
+                 **kwargs):
         """
         Args:
             position_min (int): The minimal focus position.
@@ -47,13 +124,15 @@ class AutofocusSequence(PanBase):
         self._extra_focus_steps = int(extra_focus_steps)
         self._mask_dilations = int(mask_dilations)
         self._image_dtype = image_dtype
+        self._apply_mask = bool(apply_mask)
 
-        if merit_function_kwargs is None:
-            merit_function_kwargs = {}
-        self._merit_function = partial(focus_metric, merit_function=merit_function_name,
-                                       **merit_function_kwargs)
+        # Create the merit function
+        merit_function_kwargs = {} if merit_function_kwargs is None else merit_function_kwargs
+        merit_function = load_module(merit_function_name)
         self.merit_function_name = merit_function_name
+        self._merit_function = partial(merit_function, **merit_function_kwargs)
 
+        # Define initial values
         self._exposure_idx = 0
         self._best_index = None
         self._dark_image = None
@@ -63,9 +142,12 @@ class AutofocusSequence(PanBase):
         self._metrics = None
 
         # Setup focus positions
-        self._positions = np.arange(self._position_min, self._position_max + self._position_step,
-                                    self._position_step)
-        self._positions_actual = []
+        # These are only intended positions because focus moves are not always accurate
+        self._intended_positions = np.arange(self._position_min,
+                                             self._position_max + self._position_step,
+                                             self._position_step)
+        # Create container for the actual positions
+        self._actual_positions = []
         self.images = []
 
     # Properties
@@ -85,7 +167,7 @@ class AutofocusSequence(PanBase):
         Returns:
             int: The number of focus positions.
         """
-        return self._positions.size
+        return self._intended_positions.size
 
     @property
     def is_finished(self):
@@ -124,7 +206,7 @@ class AutofocusSequence(PanBase):
                                                threshold=self._hot_pixel_threshold)
 
     @property
-    def positions(self):
+    def actual_positions(self):
         """ Return the actual focus positions (i.e. not the requested ones).
         This can only be obtained after the sequence has finished.
         Returns:
@@ -132,10 +214,10 @@ class AutofocusSequence(PanBase):
         """
         if not self.is_finished:
             raise AttributeError("The focus sequence is not complete.")
-        return np.array(self._positions_actual)
+        return np.array(self._actual_positions)
 
     @property
-    def best_position(self):
+    def best_actual_position(self):
         """ Get the best focus position.
         This can only be obtained after the sequence has finished.
         Returns:
@@ -143,7 +225,7 @@ class AutofocusSequence(PanBase):
         """
         if not self.is_finished:
             raise AttributeError("The focus sequence is not complete.")
-        return self.positions[self._best_index]
+        return self.actual_positions[self._best_index]
 
     @property
     def metrics(self):
@@ -172,7 +254,7 @@ class AutofocusSequence(PanBase):
         if self._mask is None:
             self._mask = np.zeros(shape=image.shape, dtype="bool")
 
-        self._positions_actual.append(position)
+        self._actual_positions.append(position)
         self.images.append(image.astype(self._image_dtype))
 
         # Subtract dark image
@@ -182,7 +264,7 @@ class AutofocusSequence(PanBase):
             self.logger.warning("Updating autofocus sequence but dark image not set.")
 
         # Update the mask
-        self._mask = np.logical_or(self._mask, self._mask_saturated(self.images[self.exposure_idx]))
+        self._mask = np.logical_or(self._mask, self._mask_saturated(self.images[-1]))
 
         # Update the exposure index
         self._exposure_idx += 1
@@ -215,7 +297,7 @@ class AutofocusSequence(PanBase):
         Returns:
             int: The next focus position.
         """
-        return self._positions[self.exposure_idx]
+        return self._intended_positions[self.exposure_idx]
 
     # Private methods
 
@@ -237,6 +319,8 @@ class AutofocusSequence(PanBase):
         Returns:
             np.array: A 1D array of the focus metrics.
         """
+        self.logger.info(f"Calculating focus metrics for {self}.")
+
         mask = binary_dilation(self._mask, iterations=self._mask_dilations)
 
         # Update the mask with the dark mask
@@ -244,9 +328,12 @@ class AutofocusSequence(PanBase):
         if self._dark_image is not None:
             mask = np.logical_or(mask, self._dark_mask)
 
+        if self._apply_mask:
+            self.logger.debug(f"Autofocus masked fraction: {mask.mean():.2f}")
+
         metrics = []
         for image in self.images:
-            im = np.ma.array(image, mask=mask)
+            im = np.ma.array(image, mask=mask) if self._apply_mask else image
             metrics.append(self._merit_function(im))
 
         return np.array(metrics)
@@ -268,7 +355,7 @@ class AutofocusSequence(PanBase):
 
         # Update positions
         extra_positions = np.arange(min_position, max_position, self._position_step)
-        self._positions = np.hstack([self._positions, extra_positions])
+        self._intended_positions = np.hstack([self._intended_positions, extra_positions])
 
         # Setting this to zero stops the positions being expanded again
         self._extra_focus_steps = 0

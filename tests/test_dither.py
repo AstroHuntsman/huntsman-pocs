@@ -69,7 +69,8 @@ def test_dice9_bad():
     with pytest.raises(ValueError):
         dither.get_dither_positions(base_position="16h52m42.2s -38d37m12s",
                                     n_positions=42,
-                                    pattern=dither.dice9)
+                                    pattern=dither.dice9,
+                                    pattern_offset=None)
 
 
 def test_dice9_random():
@@ -102,7 +103,8 @@ def test_random():
 
     positions = dither.get_dither_positions(base_position=base,
                                             n_positions=12,
-                                            random_offset=30 * u.arcsecond)
+                                            random_offset=30 * u.arcsecond,
+                                            pattern=None)
     assert isinstance(positions, SkyCoord)
     assert len(positions) == 12
 
@@ -172,15 +174,3 @@ def test_custom_pattern():
         Angle(-0.5 * u.degree).radian)
     assert base.spherical_offsets_to(
         positions[4])[1].radian == pytest.approx(Angle(0 * u.degree).radian)
-
-
-def test_plot(tmpdir):
-    base = SkyCoord("16h52m42.2s -38d37m12s")
-    plot_path = tmpdir.join('dither_test.png')
-
-    dither.get_dither_positions(base_position=base,
-                                n_positions=12,
-                                pattern=dither.dice9,
-                                pattern_offset=30 * u.arcminute,
-                                plot=plot_path.strpath)
-    assert plot_path.check()
