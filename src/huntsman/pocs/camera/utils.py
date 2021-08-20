@@ -1,3 +1,4 @@
+import os
 import tempfile
 from collections import OrderedDict
 from contextlib import suppress
@@ -168,6 +169,11 @@ def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_expti
     """
     camera.logger.info(f"Tuning exposure time for {camera}.")
 
+    images_dir = camera.get_config("directories.images", None)
+    if images_dir:
+        images_dir = os.path.join(images_dir, "temp")
+        os.makedirs(images_dir, exist_ok=True)
+
     # Parse quantities
     initial_exptime = get_quantity_value(initial_exptime, "second") * u.second
 
@@ -183,7 +189,8 @@ def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_expti
 
     saturated_counts = 2 ** bit_depth
 
-    with tempfile.NamedTemporaryFile(suffix=".fits", delete=False) as tf:
+    prefix = images_dir if images_dir is None else images_dir + "/"
+    with tempfile.NamedTemporaryFile(suffix=".fits", prefix=prefix, delete=False) as tf:
 
         exptime = initial_exptime
 
@@ -201,6 +208,9 @@ def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_expti
 
             # Measure average counts
             normalised_counts = np.median(cutout) / saturated_counts
+
+            camera.logger.debug(f"Normalised counts for {exptime} exposure on {camera}:"
+                                f" {normalised_counts}")
 
             # Check if tolerance condition is met
             if tolerance:
