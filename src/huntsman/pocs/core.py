@@ -1,3 +1,5 @@
+import time
+
 from panoptes.utils.time import current_time
 from panoptes.pocs.core import POCS
 from huntsman.pocs.utils.safety import get_aat_weather
@@ -11,9 +13,19 @@ class HuntsmanPOCS(POCS):
         super().__init__(*args, **kwargs)
 
         # Hack solution to provide POCS.is_safe functionality to observatory
-        if not self.observatory._safety_func:
-            self.logger.debug(f"Setting safety func for {self.observatory}.")
-            self.observatory._safety_func = self.is_safe
+        self.logger.debug(f"Setting _is_safe for {self.observatory}.")
+        self.observatory._is_safe = self.is_safe
+
+    # Properties
+
+    @property
+    def repeat_flats(self):
+        """ Return True if flat state should be repeated until safety fails.
+        Uses calibs.flat.repeat_calib config item. Default: True.
+        Returns:
+            bool: True if flat state should be repeated, else False.
+        """
+        return self.get_config("calibs.flat.repeat_flats", True)
 
     # Public methods
 
@@ -85,6 +97,27 @@ class HuntsmanPOCS(POCS):
 
         # AAT rain flag returns 0 for no rain and 1 for rain
         return is_safe and not bool(aat_weather_data['is_raining'])
+
+    def wait_for_twilight(self):
+        """ Wait for twilight.
+        Twilight is currently defined as when the Sun is between the flat and focus horizons.
+        Returns:
+            bool: True if we safely waited for twilight, False if it is not safe to continue.
+        """
+        self.logger.info('Waiting for twilight.')
+
+        delay = self.get_config("wait_delay", 60)
+
+        while not self.observatory.is_twilight:
+            if self.is_safe(ignore=["is_dark"]):
+                time.sleep(delay)
+            else:
+                # Not safe, so stop waiting and return False
+                self.logger.warning('Safety check failed while for twilight. Aborting.')
+                return False
+
+        # We have safely reached twilight, so return True
+        return True
 
     # Private methods
 

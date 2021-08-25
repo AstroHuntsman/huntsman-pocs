@@ -37,6 +37,12 @@ def observatory(mount, cameras, images_dir):
     for cam_name, cam in cameras.items():
         obs.add_camera(cam_name, cam)
 
+    # Add dummy safety function
+    # Note this gets overridden when initialising HuntsmanPOCS
+    def func(*args, **kwargs):
+        return True
+    obs._safety_func = func
+
     return obs
 
 
@@ -90,8 +96,10 @@ def test_bad_observatory():
 def test_take_flat_fields(pocs):
     """ TODO: Improve this test!
     """
-    os.environ['POCSTIME'] = '2020-10-09 12:00:00'
-    assert pocs.observatory.is_dark(horizon='flat') is True
+    os.environ['POCSTIME'] = '2020-10-09 09:00:00'
+    assert pocs.is_safe(horizon="flat")
+    assert not pocs.observatory.is_past_midnight
+    assert pocs.observatory.is_twilight
     pocs.initialize()
     pocs.observatory.take_flat_fields(alt=60, az=90, required_exposures=1, tolerance=0.5)
 
