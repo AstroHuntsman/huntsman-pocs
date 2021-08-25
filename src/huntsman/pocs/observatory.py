@@ -807,7 +807,7 @@ class HuntsmanObservatory(Observatory):
         """ Raise a RuntimeError if not safe to continue.
         TODO: Raise a custom error type indicating lack of safety.
         Args:
-            *args, **kwargs: Parsed to self.is_sage.
+            *args, **kwargs: Parsed to self.is_safe.
         """
         if not self.is_safe(*args, **kwargs):
             raise RuntimeError("Safety check failed!")
