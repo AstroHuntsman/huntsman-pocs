@@ -616,7 +616,7 @@ class HuntsmanObservatory(Observatory):
         self.logger.debug('Finished waiting for filterwheels.')
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
-                        timeout=60, bias=32, remove_on_error=False, **kwargs):
+                        timeout=60, bias=32, remove_on_error=False, sleep_time=300, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
@@ -712,16 +712,31 @@ class HuntsmanObservatory(Observatory):
                 status["filter_name"] = observation.filter_name
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
-            # Check if we need to terminate the sequence early
-            if self.is_past_midnight and all([s.min_exptime_reached for s in sequences.values()]):
-                self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
-                                 f" filter because min exposure time reached.")
-                return
+            # Check if counts are ok
+            if self.is_past_midnight:
 
-            elif all([s.max_exptime_reached for s in sequences.values()]):
-                self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
-                                 f" filter because max exposure time reached.")
-                return
+                # Terminate if Sun is coming up and all exposures are too bright
+                if all([s.min_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"Terminating flat sequence for {observation.filter_name}"
+                                     f" filter because min exposure time reached.")
+                    return
+
+                # Wait if Sun is coming up and all exposures are too faint
+                elif all([s.max_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"All exposures are too faint. Waiting for {sleep_time}s")
+                    self._safe_sleep(sleep_time, horizon="flat")
+
+            else:
+                # Terminate if Sun is going down and all exposures are too faint
+                if all([s.max_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"Terminating flat sequence for {observation.filter_name}"
+                                     f" filter because max exposure time reached.")
+                    return
+
+                # Wait if Sun is going down and all exposures are too bright
+                elif all([s.max_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"All exposures are too bright. Waiting for {sleep_time}s")
+                    self._safe_sleep(sleep_time, horizon="flat")
 
     def _wait_for_camera_events(self, events, duration, remove_on_error=False, sleep=1, **kwargs):
         """ Wait for camera events to be set.
@@ -796,3 +811,19 @@ class HuntsmanObservatory(Observatory):
         """
         if not self.is_safe(*args, **kwargs):
             raise RuntimeError("Safety check failed!")
+
+    def _safe_sleep(self, duration, interval=1, *args, **kwargs):
+        """ Sleep for a specified amount of time while ensuring safety.
+        A RuntimeError is raised if safety fails while waiting.
+        Args:
+            duration (float or Quantity): The time to wait.
+            interval (float): The time in between safety checks.
+            *args, **kwargs: Parsed to is_safe.
+        Raises:
+            RuntimeError: If safety fails while waiting.
+        """
+        self.logger.debug(f"Safe sleeping for {duration}")
+        timer = CountdownTimer(duration)
+        while not timer.expired():
+            self._assert_safe(*args, **kwargs)
+            time.sleep(interval)
