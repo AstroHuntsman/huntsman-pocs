@@ -1,16 +1,28 @@
 import time
+from collections import deque
 
+from astropy import units as u
+from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.time import current_time
+
 from panoptes.pocs.core import POCS
+
 from huntsman.pocs.utils.safety import get_aat_weather
 
 
 class HuntsmanPOCS(POCS):
-    """ Minimal overrides to the POCS class """
+    """ Minimal overrides to the POCS class to control Huntsman state machine behaviour """
 
     def __init__(self, *args, **kwargs):
         self._dome_open_states = []
         super().__init__(*args, **kwargs)
+
+        # Record the latest times of the dark_state here
+        max_dark_per_interval = self.get_config("calibs.dark.max_blocks_per_interval", 3)
+        self._dark_state_times = deque(maxlen=max_dark_per_interval)
+
+        dark_interval = self.get_config("calibs.dark_interval_hours", 6)
+        self._dark_interval = get_quantity_value(dark_interval, u.hour) * u.hour
 
         # Hack solution to provide POCS.is_safe functionality to observatory
         self.logger.debug(f"Setting _is_safe for {self.observatory}.")
@@ -26,6 +38,35 @@ class HuntsmanPOCS(POCS):
             bool: True if flat state should be repeated, else False.
         """
         return self.get_config("calibs.flat.repeat_flats", True)
+
+    @property
+    def should_take_darks(self):
+        """ Check if we should enter the darks state.
+        Returns:
+            bool: True if we should enter the darks state, else False.
+        """
+        veto = False
+
+        # We do not want to take darks when it is dark and the weather is safe
+        if self.is_weather_safe() and self.is_dark(horizon="flat"):
+            self.logger.debug("Vetoing darks because we can observe.")
+            veto = True
+
+        # We do not want to take darks if we have already taken too many recently
+        elif len(self._dark_state_times) == self._dark_state_times.maxlen:
+            timediff = current_time() - self._dark_state_times[0]
+            if timediff < self._dark_interval:
+                self.logger.debug("Vetoing darks because we have taken too many recently.")
+                veto = True
+
+        # We do not want to take darks if the dome is open
+        # If we are in this position, log a warning as it should not happen normally
+        elif self.observatory.dome.is_open:
+            self.logger.debug("Vetoing darks because dome is open.")
+            self.logger.warning("Tried to enter darks state while dome is open.")
+            veto = True
+
+        return not veto
 
     # Public methods
 
@@ -118,6 +159,12 @@ class HuntsmanPOCS(POCS):
 
         # We have safely reached twilight, so return True
         return True
+
+    def register_dark_state_completion(self):
+        """ Register the completion of the taking_darks state.
+        This is used to limit the number of times the darks state will be entered.
+        """
+        self._dark_state_times.append(current_time())
 
     # Private methods
 

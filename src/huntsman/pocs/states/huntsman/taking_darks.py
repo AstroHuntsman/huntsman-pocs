@@ -10,3 +10,6 @@ def on_enter(event_data):
     # Take dark frames
     pocs.say("Taking dark frames.")
     pocs.observatory.take_dark_observation()
+
+    # Register the completion of the dark state
+    pocs.register_dark_state_completion()
