@@ -12,7 +12,7 @@ def on_enter(event_data):
     pocs.observatory.prepare_cameras()
     pocs.observatory.mount.unpark()
 
-    if not pocs.is_weather_safe() or not pocs.is_dark(horizon="flat"):  # TODO: Use scheduler?
+    if pocs.should_take_darks:
         pocs.next_state = "taking_darks"
     else:
         pocs.next_state = "ready"  # If not safe, the state machine goes to park automatically
