@@ -68,14 +68,13 @@ class HuntsmanObservatory(Observatory):
 
         # Hack solution to the observatory not knowing whether it is safe or not
         # This can be overridden when creating the HuntsmanPOCS instance
-        self._safety_func = None
+        self._is_safe = None
 
     # Properties
 
     @property
     def has_hdr_mode(self):
         """ Does camera support HDR mode
-
         Returns:
             bool: HDR enabled, default False
         """
@@ -84,7 +83,6 @@ class HuntsmanObservatory(Observatory):
     @property
     def has_autoguider(self):
         """ Does camera have attached autoguider
-
         Returns:
             bool: True if has autoguider
         """
@@ -101,14 +99,17 @@ class HuntsmanObservatory(Observatory):
         return self._focus_required()
 
     @property
-    def past_midnight(self):
+    def is_past_midnight(self):
         """Check if it's morning, useful for going into either morning or evening flats."""
-
         # Get the time of the nearest midnight to now
+        # If the nearest midnight is in the past, it's the morning
         midnight = self.observer.midnight(current_time(), which='nearest')
-
-        # If the nearest midnight is in the past, it's the morning...
         return midnight < current_time()
+
+    @property
+    def is_twilight(self):
+        """ Return True if it is twilight, else False. """
+        return self.is_dark(horizon="flat") and not self.is_dark(horizon="focus")
 
     @property
     def temperature(self):
@@ -154,6 +155,18 @@ class HuntsmanObservatory(Observatory):
         if self.has_autoguider:
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
+
+    def is_safe(self, *args, **kwargs):
+        """ Return True if it is safe, else False.
+        Args:
+            *args, **kwargs: Parsed to self._is_safe. See panoptes.pocs.core.POCS.is_safe.
+        Returns:
+            bool: True if safe, else False.
+        """
+        if self._is_safe is not None:
+            return self._is_safe(*args, **kwargs)
+        self.logger.warning("Safety function not set. Returning False")
+        return False
 
     def remove_camera(self, cam_name):
         """ Remove a camera from the observatory.
@@ -235,13 +248,14 @@ class HuntsmanObservatory(Observatory):
 
         # Specify filter order
         filter_order = flat_config['filter_order'].copy()
-        if self.past_midnight:  # If it's the morning, order is reversed
+        if self.is_past_midnight:  # If it's the morning, order is reversed
             filter_order.reverse()
 
         # Take flat fields in each filter
         for filter_name in filter_order:
 
-            self._assert_safe(horizon="flat")
+            if not (self.is_safe(horizon="flat") and self.is_twilight):
+                raise RuntimeError("Not safe for twilight flats. Aborting.")
 
             # Get a dict of cameras that have this filter
             cameras_with_filter = get_cameras_with_filter(cameras, filter_name)
@@ -433,7 +447,7 @@ class HuntsmanObservatory(Observatory):
         self.autoguider = guider
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
-                        timeout=60, bias=32, remove_on_error=False, **kwargs):
+                        timeout=60, bias=32, remove_on_error=False, sleep_time=300, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
@@ -458,6 +472,9 @@ class HuntsmanObservatory(Observatory):
         self.logger.info(f"Starting flat field sequence for {len(self.cameras)} cameras.")
         while not all([s.is_finished for s in sequences.values()]):
 
+            if not self.is_twilight:
+                raise RuntimeError("No longer twilight. Aborting flat fields.")
+
             # Slew to field
             with self.safety_checking(horizon="flat"):
                 self.slew_to_observation(observation)
@@ -476,7 +493,7 @@ class HuntsmanObservatory(Observatory):
                 camera = cameras[cam_name]
 
                 # Get exposure time, filename and current time
-                exptimes[cam_name] = seq.get_next_exptime(past_midnight=self.past_midnight)
+                exptimes[cam_name] = seq.get_next_exptime(past_midnight=self.is_past_midnight)
                 filenames[cam_name] = observation.get_exposure_filename(camera)
                 start_times[cam_name] = current_time()
 
@@ -526,16 +543,31 @@ class HuntsmanObservatory(Observatory):
                 status["filter_name"] = observation.filter_name
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
-            # Check if we need to terminate the sequence early
-            if self.past_midnight and all([s.min_exptime_reached for s in sequences.values()]):
-                self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
-                                 f" filter because min exposure time reached.")
-                return
+            # Check if counts are ok
+            if self.is_past_midnight:
 
-            elif all([s.max_exptime_reached for s in sequences.values()]):
-                self.logger.info(f"Terminating flat field sequence for {observation.filter_name}"
-                                 f" filter because max exposure time reached.")
-                return
+                # Terminate if Sun is coming up and all exposures are too bright
+                if all([s.min_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"Terminating flat sequence for {observation.filter_name}"
+                                     f" filter because min exposure time reached.")
+                    return
+
+                # Wait if Sun is coming up and all exposures are too faint
+                elif all([s.max_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"All exposures are too faint. Waiting for {sleep_time}s")
+                    self._safe_sleep(sleep_time, horizon="flat")
+
+            else:
+                # Terminate if Sun is going down and all exposures are too faint
+                if all([s.max_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"Terminating flat sequence for {observation.filter_name}"
+                                     f" filter because max exposure time reached.")
+                    return
+
+                # Wait if Sun is going down and all exposures are too bright
+                elif all([s.max_exptime_reached for s in sequences.values()]):
+                    self.logger.info(f"All exposures are too bright. Waiting for {sleep_time}s")
+                    self._safe_sleep(sleep_time, horizon="flat")
 
     def _wait_for_camera_events(self, events, duration, remove_on_error=False, sleep=1, **kwargs):
         """ Wait for camera events to be set.
@@ -606,10 +638,23 @@ class HuntsmanObservatory(Observatory):
         """ Raise a RuntimeError if not safe to continue.
         TODO: Raise a custom error type indicating lack of safety.
         Args:
-            *args, **kwargs: Parsed to self._safety_func.
+            *args, **kwargs: Parsed to self.is_safe.
         """
-        if self._safety_func is None:
-            self.logger.warning("Safety function not set. Proceeding anyway.")
-
-        elif not self._safety_func(*args, **kwargs):
+        if not self.is_safe(*args, **kwargs):
             raise RuntimeError("Safety check failed!")
+
+    def _safe_sleep(self, duration, interval=1, *args, **kwargs):
+        """ Sleep for a specified amount of time while ensuring safety.
+        A RuntimeError is raised if safety fails while waiting.
+        Args:
+            duration (float or Quantity): The time to wait.
+            interval (float): The time in between safety checks.
+            *args, **kwargs: Parsed to is_safe.
+        Raises:
+            RuntimeError: If safety fails while waiting.
+        """
+        self.logger.debug(f"Safe sleeping for {duration}")
+        timer = CountdownTimer(duration)
+        while not timer.expired():
+            self._assert_safe(*args, **kwargs)
+            time.sleep(interval)

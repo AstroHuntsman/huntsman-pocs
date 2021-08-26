@@ -24,7 +24,7 @@ def on_enter(event_data):
 
     # Don't need to focus, not dark enough to observe
     else:
-        if pocs.observatory.past_midnight:
+        if pocs.observatory.is_past_midnight:
             if pocs.is_dark(horizon='flat'):
                 pocs.say("Going to take morning flats.")
                 pocs.next_state = 'twilight_flat_fielding'

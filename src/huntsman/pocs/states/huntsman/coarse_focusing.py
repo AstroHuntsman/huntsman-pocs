@@ -66,7 +66,7 @@ def on_enter(event_data):
     # If we have removed all the cameras because of incomplete focus, go to park.
     if pocs.observatory.has_cameras:
         # Morning and not dark enough for observing...
-        if pocs.observatory.past_midnight and not pocs.is_dark(horizon='observe'):
+        if pocs.observatory.is_past_midnight and not pocs.is_dark(horizon='observe'):
             pocs.next_state = 'twilight_flat_fielding'
         else:
             pocs.next_state = 'scheduling'

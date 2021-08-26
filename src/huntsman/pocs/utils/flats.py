@@ -119,7 +119,7 @@ class FlatFieldSequence():
     """ Class to facilitate flat fields with automatic exposure time updates.
     """
 
-    def __init__(self, target_counts, counts_tolerance, initial_exposure_time=1 * u.second,
+    def __init__(self, target_counts, counts_tolerance, initial_exposure_time=0.1 * u.second,
                  min_exptime=0.0001 * u.second, max_exptime=60 * u.second, max_exposures=10,
                  required_exposures=5, cutout_size=300, bias=0, logger=None, ):
         """
