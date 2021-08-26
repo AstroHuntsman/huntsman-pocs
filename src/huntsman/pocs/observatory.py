@@ -1,7 +1,4 @@
-import os
 import time
-from functools import partial
-from multiprocessing.pool import ThreadPool
 from contextlib import suppress, contextmanager
 from astropy import units as u
 
@@ -19,21 +16,7 @@ from huntsman.pocs.scheduler.observation.dark import DarkObservation
 from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field_observation
 from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
-
-
-def dispatch_parallel(function, arg_list, **kwargs):
-    """ Run a function in parallel using a thread pool.
-    Args:
-        function (Function): The function to run.
-        arg_list (list): The list of arguments, one per thread.
-        **kwargs: Parsed to function.
-    Returns:
-        list: The list of results to the function calls.
-    """
-    func = partial(function, **kwargs)
-    with ThreadPool(len(arg_list)) as pool:
-        results = pool.map(func, arg_list)
-    return results
+from huntsman.pocs.camera.group import CameraGroup, dispatch_parallel
 
 
 class HuntsmanObservatory(Observatory):
@@ -53,14 +36,10 @@ class HuntsmanObservatory(Observatory):
         """
         if not logger:
             logger = get_logger()
-
-        # Load the config file
-        try:
-            assert os.getenv('HUNTSMAN_POCS') is not None
-        except AssertionError:
-            raise RuntimeError("The HUNTSMAN_POCS environment variable is not set.")
-
         super().__init__(logger=logger, *args, **kwargs)
+
+        # Make a camera group
+        self.camera_group = CameraGroup(self.cameras)
 
         self._has_hdr_mode = hdr_mode
         self._has_autoguider = with_autoguider
@@ -189,26 +168,14 @@ class HuntsmanObservatory(Observatory):
         self.logger.warning("Safety function not set. Returning False")
         return False
 
-    def analyze_recent(self):
-        """Analyze the most recent exposure.
-
-        This is a small wrapper around the POCS version which just ensures that
-        there is a "pointing" image to use as a reference for solving.
-
-        Returns:
-            dict: Offset information
+    def remove_camera(self, cam_name):
+        """ Remove a camera from the observatory.
+        Args:
+            cam_name (str): The name of the camera to remove.
         """
-        # Set the first image as our pointing image.
-        if self.current_observation.pointing_image is None:
-            image_id, file_path = self.current_observation.first_exposure
-            self.current_observation.pointing_images[image_id] = file_path
-            self.logger.debug(f'Pointing image set to {self.current_observation.pointing_image}')
-
-        # Now call the main analyze
-        if self.get_config('observations.analyze_recent_offset', default=True):
-            super().analyze_recent()
-
-        return self.current_offset_info
+        super().remove_camera(cam_name)
+        with suppress(KeyError):
+            del self.camera_group.cameras[cam_name]
 
     def autofocus_cameras(self, coarse=False, filter_name=None, default_timeout=900,
                           blocking=True, **kwargs):
@@ -236,16 +203,9 @@ class HuntsmanObservatory(Observatory):
                     self.logger.warning("Unable to retrieve filter name from current observation."
                                         f" Defaulting to coarse focus filter ({filter_name}).")
 
-        # Define a function to asyncronously dispatch autofocus calls
-        def func(camera):
-            return camera.autofocus(coarse=coarse, filter_name=filter_name, **kwargs)
-
         # Asyncronously dispatch autofocus calls
         with self.safety_checking(horizon="focus"):
-            cameras_with_focuser = {n: c for n, c in self.cameras.items() if c.has_focuser}
-            events_list = dispatch_parallel(func, list(cameras_with_focuser.values()))
-            cam_names = list(cameras_with_focuser.keys())
-            events = {c: e for c, e in zip(cam_names, events_list) if e is not None}
+            events = self.camera_group.autofocus(coarse=coarse, filter_name=filter_name, **kwargs)
 
         # Wait for sequences to finish
         if blocking:
@@ -316,81 +276,21 @@ class HuntsmanObservatory(Observatory):
 
         self.logger.info('Finished flat-fielding.')
 
-    def activate_camera_cooling(self):
-        """ Activate camera cooling for all cameras. """
-        self.logger.debug('Activating camera cooling for all cameras.')
-        for cam in self.cameras.values():
-            if cam.is_cooled_camera:
-                cam.cooling_enabled = True
-
-    def deactivate_camera_cooling(self):
-        """ Deactivate camera cooling for all cameras. """
-        self.logger.debug('Deactivating camera cooling for all cameras.')
-        for cam in self.cameras.values():
-            if cam.is_cooled_camera:
-                cam.cooling_enabled = False
-
-    def prepare_cameras(self, sleep=60, max_attempts=5, require_all_cameras=False):
+    def prepare_cameras(self, drop=True, *args, **kwargs):
         """ Make sure cameras are all cooled and ready.
-        Arguments:
-            sleep (float): Time in seconds to sleep between checking readiness. Default 60.
-            max_attempts (int): Maximum number of ready checks. See `require_all_cameras`.
-            require_all_cameras (bool): `True` if all cameras are required to be ready.
-                If `True` and max_attempts is reached, a `PanError` will be raised. If `False`,
-                any camera that has failed to become ready will be dropped from the Observatory.
+        Args:
+            drop (bool): If True, drop cameras that do not become ready in time. Default: True.
+            *args, **kwargs: Parsed to self.camera_group.wait_until_ready.
         """
         self.logger.info(f"Preparing {len(self.cameras)} cameras.")
 
-        # Make sure camera cooling is enabled
-        self.activate_camera_cooling()
-
-        # Wait for cameras to be ready
-        n_cameras = len(self.cameras)
-        num_cameras_ready = 0
-        cameras_to_drop = []
-        self.logger.debug('Waiting for cameras to be ready.')
-        for i in range(1, max_attempts + 1):
-
-            num_cameras_ready = 0
-            for cam_name, cam in self.cameras.items():
-
-                if cam.is_ready:
-                    num_cameras_ready += 1
-                    continue
-
-                # If max attempts have been reached...
-                if i == max_attempts:
-                    msg = f'Max attempts reached while waiting for {cam_name} to be ready.'
-
-                    # Raise PanError if we need all cameras
-                    if require_all_cameras:
-                        raise error.PanError(msg)
-
-                    # Drop the camera if we don't need all cameras
-                    else:
-                        self.logger.error(msg)
-                        cameras_to_drop.append(cam_name)
-
-            # Terminate loop if all cameras are ready
-            self.logger.debug(f'Number of ready cameras after {i} of {max_attempts} checks:'
-                              f' {num_cameras_ready} of {n_cameras}.')
-            if num_cameras_ready == n_cameras:
-                self.logger.debug('All cameras are ready.')
-                break
-            elif i < max_attempts:
-                self.logger.debug('Not all cameras are ready yet, '
-                                  f'waiting another {sleep} seconds before checking again.')
-                time.sleep(sleep)
+        failed_cameras = self.camera_group.wait_until_ready(*args, **kwargs)
 
         # Remove cameras that didn't become ready in time
-        # This must be done outside of the main loop to avoid a RuntimeError
-        for cam_name in cameras_to_drop:
-            self.logger.debug(f'Removing {cam_name} from {self} for not being ready.')
-            self.remove_camera(cam_name)
-
-        # Raise a `PanError` if no cameras are ready.
-        if num_cameras_ready == 0:
-            raise error.PanError('No cameras ready after maximum attempts reached.')
+        if drop:
+            for cam_name in failed_cameras:
+                self.logger.debug(f'Removing {cam_name} from {self} for not being ready.')
+                self.remove_camera(cam_name)
 
     def take_observation_block(self, observation, cameras=None, timeout=60 * u.second,
                                remove_on_error=False, do_focus=True, safety_kwargs=None,
@@ -439,51 +339,25 @@ class HuntsmanObservatory(Observatory):
 
             start_new_set = False  # We don't want to start another set after this one
 
-            # Check if we need to slew to the field
-            slew_required = current_field != observation.field
-
             # Perform the slew if necessary
-            if slew_required and do_slew:
+            slew_required = (current_field != observation.field) and do_slew
+            if slew_required:
                 with self.safety_checking(**safety_kwargs):
                     self.slew_to_observation(observation)
                 current_field = observation.field
 
-            # Check if we need to focus the cameras
+            # Fine focus the cameras if necessary
             focus_required = self.fine_focus_required or observation.current_exp_num == 0
-
-            # Focus the cameras if necessary
             if do_focus and focus_required:
                 with self.safety_checking(**safety_kwargs):
                     self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
 
-            # Set the start time for this batch of exposures
+            # Set a common start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
-
-            # Define function to start exposures in parallel
-            def func(cam_name):
-                camera = self.cameras[cam_name]
-
-                # This is a temporary solution for having different filters on different cameras
-                # TODO: Refactor and remove
-                with suppress(AttributeError):
-                    if observation.filter_names_per_camera is not None:
-                        observation.filter_name = observation.filter_names_per_camera[cam_name]
-
-                try:
-                    event = camera.take_observation(observation, headers=headers)
-                except error.PanError as err:
-                    self.logger.error(f"{err!r}")
-                    self.logger.warning("Continuing with observation block after error on"
-                                        f" {cam_name}.")
-                    return None
-
-                return event
 
             # Start the exposures and get events
             with self.safety_checking(**safety_kwargs):
-                cam_names = list(self.cameras.keys())
-                events_list = dispatch_parallel(func, cam_names)
-                events = {c: e for c, e in zip(cam_names, events_list) if e is not None}
+                events = self.camera_group.take_observation(observation, headers=headers)
 
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
@@ -557,13 +431,13 @@ class HuntsmanObservatory(Observatory):
                 if cam.has_filterwheel:
                     current_fw_positions[cam_name] = cam.filterwheel.current_filter
 
-            self._move_all_filterwheels_to(dark_position=True)
+            self.camera_group.filterwheel_move_to(current_fw_positions)
 
         self.mount.slew_to_target()
 
         if move_fws:
             self.logger.info("Moving FWs back to last positions.")
-            self._move_all_filterwheels_to(current_fw_positions)
+            self.camera_group.filterwheel_move_to(current_fw_positions)
 
     # Private methods
 
@@ -571,49 +445,6 @@ class HuntsmanObservatory(Observatory):
         guider_config = self.get_config('guider')
         guider = Guide(**guider_config)
         self.autoguider = guider
-
-    def _move_all_filterwheels_to(self, filter_name=None, dark_position=False, camera_names=None):
-        """Move all the filterwheels to a given filter
-        Args:
-            filter_name (str or dict, optional): Name of the filter where filterwheels will be
-                moved to. If a dict, should be specified in camera_name: filter_name pairs.
-            dark_position (bool, optional): If True, ignore filter_name arg and move all FWs to
-                their dark position. Default: False.
-            camera_names (list, optional): List of camera names to be used.
-                Default to `None`, which uses all cameras.
-        """
-        if camera_names is None:
-            cameras = self.cameras
-        else:
-            cameras = {c: self.cameras[c] for c in camera_names}
-
-        # We only care about cameras that have FWs here
-        cameras = {k: v for k, v in cameras.items() if v.has_filterwheel}
-
-        filterwheel_events = dict()
-
-        if dark_position:
-            self.logger.debug('Moving all filterwheels to dark position.')
-            for camera in cameras.values():
-                filterwheel_events[camera] = camera.filterwheel.move_to_dark_position()
-
-        elif filter_name is None:
-            raise ValueError("filter_name must not be None.")
-
-        else:
-            self.logger.debug(f'Moving filterwheels to {filter_name} filter.')
-            for cam_name, camera in cameras.items():
-
-                if isinstance(filter_name, dict):
-                    fn = filter_name[cam_name]
-                else:
-                    fn = filter_name
-
-                filterwheel_events[camera] = camera.filterwheel.move_to(fn)
-
-        # Wait for move to complete
-        wait_for_events(list(filterwheel_events.values()))
-        self.logger.debug('Finished waiting for filterwheels.')
 
     def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
                         timeout=60, bias=32, remove_on_error=False, sleep_time=300, **kwargs):

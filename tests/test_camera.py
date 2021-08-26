@@ -19,6 +19,7 @@ from huntsman.pocs.scheduler.field import Field
 from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
+from huntsman.pocs.camera.utils import tune_exposure_time
 
 
 @pytest.fixture(scope='function')
@@ -38,7 +39,31 @@ def patterns(camera, images_dir):
 def camera(camera_service_name):
     nameserver = get_running_nameserver()
     camera_client = Camera(uri=nameserver.lookup(camera_service_name))
+
+    # Seems to be a bug somewhere with missing camera._exposure_error attribute
+    # TODO: Remove
+    camera_client._exposure_error = None
+
     return camera_client
+
+
+def test_tune_exptime(camera):
+    """ Test exposure time tuning. """
+    initial_exptime = 1 * u.second
+
+    target = 1
+    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1)
+    assert exptime > initial_exptime
+    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1,
+                                 max_exptime=initial_exptime)
+    assert initial_exptime == exptime
+
+    target = 0
+    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1)
+    assert exptime < initial_exptime
+    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1,
+                                 min_exptime=initial_exptime)
+    assert initial_exptime == exptime
 
 
 def test_camera_detection(camera):

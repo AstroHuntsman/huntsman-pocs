@@ -3,7 +3,6 @@ import pytest
 
 from astropy import units as u
 
-from panoptes.utils import error
 from panoptes.utils.time import current_time
 
 from panoptes.pocs.utils.location import create_location_from_config
@@ -39,9 +38,10 @@ def observatory(mount, cameras, images_dir):
 
     # Add dummy safety function
     # Note this gets overridden when initialising HuntsmanPOCS
-    def func(*args, **kwargs):
+    # Add a dummy safety function
+    def safety_func(*args, **kwargs):
         return True
-    obs._safety_func = func
+    obs._is_safe = safety_func
 
     return obs
 
@@ -51,8 +51,6 @@ def pocs(observatory):
     pocs = HuntsmanPOCS(observatory, run_once=True, simulators=["power", "weather"])
     yield pocs
     pocs.power_down()
-
-# ==============================================================================
 
 
 def test_prepare_cameras_dropping(observatory):
@@ -71,26 +69,10 @@ def test_prepare_cameras_dropping(observatory):
             if not camera.is_ready:
                 n_not_ready += 1
         assert n_not_ready != 0
-        # TODO: Split into two tests
-        if n_not_ready == n_cameras:
-            with pytest.raises(error.PanError):
-                observatory.prepare_cameras(max_attempts=1, sleep=1)
-        else:
-            observatory.prepare_cameras(max_attempts=1, sleep=1)
-            assert len(observatory.cameras) == n_cameras - n_not_ready
+        observatory.prepare_cameras(max_attempts=1, sleep=1)
+        assert len(observatory.cameras) == n_cameras - n_not_ready
     finally:
         cam_not_ready._exposure_event.clear()  # Clear the exposure event
-
-
-def test_bad_observatory():
-    """Test the observatory raises a RuntimeError if HUNTSMAN_POCS is not set."""
-    huntsman_pocs = os.environ['HUNTSMAN_POCS']
-    try:
-        del os.environ['HUNTSMAN_POCS']
-        with pytest.raises(RuntimeError):
-            Observatory()
-    finally:
-        os.environ['HUNTSMAN_POCS'] = huntsman_pocs
 
 
 def test_take_flat_fields(pocs):
@@ -104,7 +86,6 @@ def test_take_flat_fields(pocs):
     pocs.observatory.take_flat_fields(alt=60, az=90, required_exposures=1, tolerance=0.5)
 
 
-@pytest.mark.skip("Waiting for POCS PR")
 def test_autofocus_cameras_coarse(observatory):
     """
     """
@@ -118,7 +99,6 @@ def test_autofocus_cameras_coarse(observatory):
     assert not observatory.coarse_focus_required
 
 
-@pytest.mark.skip("Waiting for POCS PR")
 def test_autofocus_cameras_fine(observatory):
     """
     """
