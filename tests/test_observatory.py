@@ -38,9 +38,10 @@ def observatory(mount, cameras, images_dir):
 
     # Add dummy safety function
     # Note this gets overridden when initialising HuntsmanPOCS
-    def func(*args, **kwargs):
+    # Add a dummy safety function
+    def safety_func(*args, **kwargs):
         return True
-    obs._safety_func = func
+    obs._is_safe = safety_func
 
     return obs
 
