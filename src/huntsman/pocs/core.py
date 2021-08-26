@@ -21,7 +21,7 @@ class HuntsmanPOCS(POCS):
         max_dark_per_interval = self.get_config("calibs.dark.max_blocks_per_interval", 3)
         self._dark_state_times = deque(maxlen=max_dark_per_interval)
 
-        dark_interval = self.get_config("calibs.dark_interval_hours", 6)
+        dark_interval = self.get_config("calibs.dark.dark_interval_hours", 6)
         self._dark_interval = get_quantity_value(dark_interval, u.hour) * u.hour
 
         # Hack solution to provide POCS.is_safe functionality to observatory
