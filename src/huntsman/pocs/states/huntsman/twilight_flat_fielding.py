@@ -1,31 +1,4 @@
-"""
-State to handle the taking of calibration frames (evening and morning).
-"""
-import time
-from functools import partial
-
-
-def wait_for_twilight(pocs):
-    """
-    Wait for twilight. Temporary solution until something better is found.
-
-    Twilight when Sun between flat and focus horizons.
-    """
-    pocs.logger.debug('Waiting for twilight...')
-    
-    delay = pocs.get_config("wait_delay", 60)
-
-    while pocs.is_safe(horizon='flat'):
-        if pocs.is_dark(horizon='focus'):
-            time.sleep(delay)
-        else:
-            return True
-    return False
-
-
-def safety_func(pocs):
-    """ Return True only if safe for flats to continue. """
-    return pocs.is_safe(horizon='flat') and not pocs.is_dark(horizon='focus')
+""" Twilight flat fielding state """
 
 
 def on_enter(event_data):
@@ -39,17 +12,24 @@ def on_enter(event_data):
     pocs.next_state = 'parking'
 
     # Make sure it's safe, dark and light enough for flats
-    if not wait_for_twilight(pocs):
+    is_safe = pocs.wait_for_twilight()
+    if not is_safe:
         return
 
     if pocs.observatory.flat_fields_required:
-        sf = partial(safety_func, pocs=pocs)
-        pocs.observatory.take_flat_fields(safety_func=sf)
+        pocs.observatory.take_flat_fields()
     else:
         pocs.logger.debug('Skipping twilight flat fields.')
 
-    # Specify the next state
-    if pocs.observatory.past_midnight:
+    # Check if we should keep taking flats
+    if pocs.observatory.is_twilight and pocs.repeat_flats:
+        pocs.logger.info("Taking another round of twilight flat fields")
+        pocs.next_state = "twilight_flat_fielding"
+
+    # Check if the Sun is coming up and we need to park
+    elif pocs.observatory.is_past_midnight:
         pocs.next_state = 'parking'
+
+    # Check if we need to focus
     else:
         pocs.next_state = 'coarse_focusing'
