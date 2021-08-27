@@ -81,6 +81,10 @@ transitions:
         dest: twilight_flat_fielding
         trigger: take_twilight_flats
     -
+        source: twilight_flat_fielding
+        dest: twilight_flat_fielding
+        trigger: take_twilight_flats
+    -
         source: ready
         dest: scheduling
         trigger: schedule
