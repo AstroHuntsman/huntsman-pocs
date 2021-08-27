@@ -448,7 +448,7 @@ class HuntsmanObservatory(Observatory):
 
     def _take_autoflats(
             self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05, timeout=60,
-            bias=32, remove_on_error=False, sleep_time=300, evening_initial_exptime=0.01,
+            bias=32, remove_on_error=False, sleep_time=300, evening_initial_flat_exptime=0.01,
             morning_initial_flat_exptime=1, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
@@ -468,7 +468,7 @@ class HuntsmanObservatory(Observatory):
         """
         # set the initial exposure time
         if self.is_past_midnight:
-            initial_exptime = evening_initial_exptime
+            initial_exptime = evening_initial_flat_exptime
         else:
             initial_exptime = morning_initial_flat_exptime
 
