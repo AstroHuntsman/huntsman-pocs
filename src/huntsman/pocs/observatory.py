@@ -446,8 +446,10 @@ class HuntsmanObservatory(Observatory):
         guider = Guide(**guider_config)
         self.autoguider = guider
 
-    def _take_autoflats(self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05,
-                        timeout=60, bias=32, remove_on_error=False, sleep_time=300, **kwargs):
+    def _take_autoflats(
+            self, cameras, observation, target_scaling=0.17, scaling_tolerance=0.05, timeout=60,
+            bias=32, remove_on_error=False, sleep_time=300, evening_initial_exptime=0.01,
+            morning_initial_flat_exptime=1, **kwargs):
         """ Take flat fields using automatic updates for exposure times.
         Args:
             cameras (dict): Dict of camera name: Camera pairs.
@@ -464,9 +466,15 @@ class HuntsmanObservatory(Observatory):
                 raise a TimeoutError instead.
             **kwargs: Parsed to FlatFieldSequence.
         """
+        # set the initial exposure time
+        if self.is_past_midnight:
+            initial_exptime = evening_initial_exptime
+        else:
+            initial_exptime = morning_initial_flat_exptime
+
         # Create a flat field sequence for each camera
-        sequences = make_flat_field_sequences(cameras, target_scaling, scaling_tolerance, bias,
-                                              **kwargs)
+        sequences = make_flat_field_sequences(
+            cameras, target_scaling, scaling_tolerance, bias, initial_exposure_time=initial_exptime, **kwargs)
 
         # Loop until sequence has finished
         self.logger.info(f"Starting flat field sequence for {len(self.cameras)} cameras.")
