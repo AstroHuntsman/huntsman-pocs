@@ -40,6 +40,10 @@ transitions:
             - observing
             - starting
             - taking_darks
+            # We should be parked already when in housekeeping state
+            # If there is an error inside housekeeping, POCS will automatically try and park again
+            # This may or may not be a problem...
+            - housekeeping
         dest: parking
         trigger: park
     -
