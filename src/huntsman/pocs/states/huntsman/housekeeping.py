@@ -15,6 +15,6 @@ def on_enter(event_data):
 
     # Turn-off camera cooling
     pocs.say('Shutting down for the night, going to turn off the camera cooling')
-    pocs.observatory.deactivate_camera_cooling()
+    pocs.observatory.camera_group.deactivate_camera_cooling()
 
     pocs.say("Ok, looks like I'm done for the day. Time to get some sleep!")
