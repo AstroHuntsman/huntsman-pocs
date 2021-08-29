@@ -468,9 +468,9 @@ class HuntsmanObservatory(Observatory):
         """
         # set the initial exposure time
         if self.is_past_midnight:
-            initial_exptime = evening_initial_flat_exptime
-        else:
             initial_exptime = morning_initial_flat_exptime
+        else:
+            initial_exptime = evening_initial_flat_exptime
 
         # Create a flat field sequence for each camera
         sequences = make_flat_field_sequences(
