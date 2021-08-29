@@ -17,6 +17,7 @@ from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field
 from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
 from huntsman.pocs.camera.group import CameraGroup, dispatch_parallel
+from huntsman.pocs.error import NotTwilightError
 
 
 class HuntsmanObservatory(Observatory):
@@ -109,7 +110,7 @@ class HuntsmanObservatory(Observatory):
     @property
     def is_twilight(self):
         """ Return True if it is twilight, else False. """
-        return self.is_dark(horizon="flat") and not self.is_dark(horizon="focus")
+        return self.is_dark(horizon="twilight_max") and not self.is_dark(horizon="twilight_min")
 
     @property
     def temperature(self):
@@ -156,15 +157,16 @@ class HuntsmanObservatory(Observatory):
             self.logger.debug("Connecting to autoguider")
             self.autoguider.connect()
 
-    def is_safe(self, *args, **kwargs):
+    def is_safe(self, park_if_not_safe=False, *args, **kwargs):
         """ Return True if it is safe, else False.
         Args:
             *args, **kwargs: Parsed to self._is_safe. See panoptes.pocs.core.POCS.is_safe.
+            park_if_not_safe (bool): If True, park if safety fails. Default: False.
         Returns:
             bool: True if safe, else False.
         """
         if self._is_safe is not None:
-            return self._is_safe(*args, **kwargs)
+            return self._is_safe(park_if_not_safe=park_if_not_safe, *args, **kwargs)
         self.logger.warning("Safety function not set. Returning False")
         return False
 
@@ -254,7 +256,7 @@ class HuntsmanObservatory(Observatory):
         # Take flat fields in each filter
         for filter_name in filter_order:
 
-            if not (self.is_safe(horizon="flat") and self.is_twilight):
+            if not (self.is_safe(horizon="twilight_max") and self.is_twilight):
                 raise RuntimeError("Not safe for twilight flats. Aborting.")
 
             # Get a dict of cameras that have this filter
@@ -272,7 +274,14 @@ class HuntsmanObservatory(Observatory):
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
             autoflat_config = flat_config.get("autoflats", {})
-            self._take_autoflats(cameras_with_filter, observation, **autoflat_config)
+
+            try:
+                self._take_autoflats(cameras_with_filter, observation, **autoflat_config)
+            # Break out of loop if no longer twilight
+            # Catch the error so the state machine keeps running
+            except NotTwilightError as err:
+                self.logger.warning(f"{err!r}")
+                break
 
         self.logger.info('Finished flat-fielding.')
 
@@ -473,18 +482,18 @@ class HuntsmanObservatory(Observatory):
             initial_exptime = evening_initial_flat_exptime
 
         # Create a flat field sequence for each camera
-        sequences = make_flat_field_sequences(
-            cameras, target_scaling, scaling_tolerance, bias, initial_exposure_time=initial_exptime, **kwargs)
+        sequences = make_flat_field_sequences(cameras, target_scaling, scaling_tolerance,
+                                              bias, initial_exposure_time=initial_exptime, **kwargs)
 
         # Loop until sequence has finished
         self.logger.info(f"Starting flat field sequence for {len(self.cameras)} cameras.")
         while not all([s.is_finished for s in sequences.values()]):
 
             if not self.is_twilight:
-                raise RuntimeError("No longer twilight. Aborting flat fields.")
+                raise NotTwilightError("No longer twilight. Aborting flat fields.")
 
             # Slew to field
-            with self.safety_checking(horizon="flat"):
+            with self.safety_checking(horizon="twilight_max"):
                 self.slew_to_observation(observation)
 
             # Get standard fits headers
@@ -521,7 +530,7 @@ class HuntsmanObservatory(Observatory):
             duration = get_quantity_value(max(exptimes.values()), u.second) + timeout
             try:
                 self._wait_for_camera_events(events, duration, remove_on_error=remove_on_error,
-                                             horizon="flat")
+                                             horizon="twilight_max")
             except error.Timeout as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with flat observation after timeout error.")
@@ -563,7 +572,7 @@ class HuntsmanObservatory(Observatory):
                 # Wait if Sun is coming up and all exposures are too faint
                 elif all([s.max_exptime_reached for s in sequences.values()]):
                     self.logger.info(f"All exposures are too faint. Waiting for {sleep_time}s")
-                    self._safe_sleep(sleep_time, horizon="flat")
+                    self._safe_sleep(sleep_time, horizon="twilight_max")
 
             else:
                 # Terminate if Sun is going down and all exposures are too faint
@@ -575,7 +584,7 @@ class HuntsmanObservatory(Observatory):
                 # Wait if Sun is going down and all exposures are too bright
                 elif all([s.max_exptime_reached for s in sequences.values()]):
                     self.logger.info(f"All exposures are too bright. Waiting for {sleep_time}s")
-                    self._safe_sleep(sleep_time, horizon="flat")
+                    self._safe_sleep(sleep_time, horizon="twilight_max")
 
     def _wait_for_camera_events(self, events, duration, remove_on_error=False, sleep=1, **kwargs):
         """ Wait for camera events to be set.

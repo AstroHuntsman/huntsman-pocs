@@ -18,15 +18,15 @@ states:
     tags: always_safe
   starting:
     tags: always_safe
-    horizon: flat  # TODO: Start up slightly before flat horizon
+    horizon: twilight_max  # TODO: Start up slightly before flat horizon
   twilight_flat_fielding:
-    horizon: flat
+    horizon: twilight_max
     requires_open_dome: True
   coarse_focusing:
     horizon: focus
     requires_open_dome: True
   ready:
-    horizon: flat
+    horizon: twilight_max
   observing:
     requires_open_dome: True
 
@@ -112,7 +112,7 @@ transitions:
         source: scheduling
         dest: observing
         trigger: observe
-    -   
+    -
         source: observing
         dest: scheduling
         trigger: schedule
