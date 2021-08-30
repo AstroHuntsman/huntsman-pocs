@@ -487,7 +487,7 @@ class HuntsmanObservatory(Observatory):
 
         # Loop until sequence has finished
         self.logger.info(f"Starting flat field sequence for {len(self.cameras)} cameras.")
-        while not all([s.is_finished for s in sequences.values()]):
+        while True:
 
             if not self.is_twilight:
                 raise NotTwilightError("No longer twilight. Aborting flat fields.")
@@ -560,6 +560,11 @@ class HuntsmanObservatory(Observatory):
                 status["filter_name"] = observation.filter_name
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
+            # Check if sequences are complete
+            if all([s.is_finished for s in sequences.values()]):
+                self.logger.info("All flat field sequences finished.")
+                break
+
             # Check if counts are ok
             if self.is_past_midnight:
 
@@ -567,7 +572,7 @@ class HuntsmanObservatory(Observatory):
                 if all([s.min_exptime_reached for s in sequences.values()]):
                     self.logger.info(f"Terminating flat sequence for {observation.filter_name}"
                                      f" filter because min exposure time reached.")
-                    return
+                    break
 
                 # Wait if Sun is coming up and all exposures are too faint
                 elif all([s.max_exptime_reached for s in sequences.values()]):
@@ -579,7 +584,7 @@ class HuntsmanObservatory(Observatory):
                 if all([s.max_exptime_reached for s in sequences.values()]):
                     self.logger.info(f"Terminating flat sequence for {observation.filter_name}"
                                      f" filter because max exposure time reached.")
-                    return
+                    break
 
                 # Wait if Sun is going down and all exposures are too bright
                 elif all([s.max_exptime_reached for s in sequences.values()]):
