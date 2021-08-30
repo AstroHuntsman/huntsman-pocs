@@ -77,7 +77,7 @@ def test_starting_darks(pocs, pocstime_flat):
     assert not pocs.observatory.dome.is_open
 
     os.environ['POCSTIME'] = pocstime_flat
-    assert pocs.is_dark(horizon='flat')
+    assert pocs.is_dark(horizon="twilight_max")
     pocs.db.insert_current('weather', {'safe': False})
     assert not pocs.is_weather_safe()
     assert not pocs.observatory.dome.is_open
@@ -102,7 +102,7 @@ def test_starting_ready_flats_focus(pocs, pocstime_flat):
     assert not pocs.observatory.dome.is_open
 
     os.environ['POCSTIME'] = pocstime_flat
-    assert pocs.is_dark(horizon='flat')
+    assert pocs.is_dark(horizon="twilight_max")
     assert not pocs.is_dark(horizon="focus")
     assert pocs.observatory.is_twilight
     assert not pocs.observatory.dome.is_open
@@ -133,7 +133,7 @@ def test_starting_ready_park(pocs, pocstime_flat):
 
     os.environ['POCSTIME'] = pocstime_flat
     pocs.db.insert_current('weather', {'safe': True})
-    assert pocs.is_dark(horizon='flat')
+    assert pocs.is_dark(horizon="twilight_max")
     assert not pocs.is_dark(horizon="focus")
     assert pocs.is_weather_safe()
 
@@ -222,7 +222,7 @@ def test_evening_setup(pocs):
     assert not pocs.observatory.is_past_midnight
     assert not pocs.is_dark(horizon='observe')
     assert not pocs.is_dark(horizon='focus')
-    assert pocs.is_dark(horizon='flat')
+    assert pocs.is_dark(horizon="twilight_max")
     # Run state machine from ready
     pocs.initialize()
     for state in ["initialising", "ready"]:
@@ -234,7 +234,7 @@ def test_evening_setup(pocs):
         assert pocs.next_state == state
         if state == 'twilight_flat_fielding':
             assert not pocs.is_dark(horizon='focus')
-            assert pocs.is_dark(horizon='flat')
+            assert pocs.is_dark(horizon="twilight_max")
         elif state == 'coarse_focusing':
             os.environ['POCSTIME'] = '2020-04-29 08:40:00'
             assert pocs.is_dark(horizon='focus')
@@ -290,6 +290,6 @@ def test_morning_coarse_focusing_parking(pocs):
         assert pocs.next_state == state
         if state == 'twilight_flat_fielding':
             os.environ['POCSTIME'] = '2020-04-29 20:00:00'
-            assert pocs.is_dark(horizon='flat')
+            assert pocs.is_dark(horizon="twilight_max")
         pocs.goto_next_state()
         assert pocs.state == state

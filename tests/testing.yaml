@@ -9,7 +9,8 @@ location:
   longitude: 149.13 deg
   elevation: 1160.0 m
   horizon: 30 deg # Degrees - Targets above this limit
-  flat_horizon: -6 deg # Degrees - Flats between this and focus_horizon
+  twilight_max_horizon: -6 deg # Degrees - Flats between this and flat_max_horizon
+  twilight_min_horizon: -12 deg # Degrees - Flats between this and flat_min_horizon
   focus_horizon: -12 deg # Degrees - Focus between this and observe_horizon
   observe_horizon: -18 deg # Degrees - Sun below this limit to observe
   obstructions:
@@ -103,8 +104,8 @@ calibs:
       - drei
       - quattro
     autoflats:
-      required_exposures: 2  # Per filter per camera
-      max_exposures: 2  # Per filter per camera
+      required_exposures: 1  # Per filter per camera
+      max_exposures: 1  # Per filter per camera
       max_exptime: 1 s
       min_exptime: 0.0001 s
     # If True, will repeat flat state unitl it is no longer appropriate to do so

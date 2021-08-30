@@ -48,7 +48,7 @@ class HuntsmanPOCS(POCS):
         veto = False
 
         # We do not want to take darks when it is dark and the weather is safe
-        if self.is_weather_safe() and self.is_dark(horizon="flat"):
+        if self.is_weather_safe() and self.is_dark(horizon="twilight_max"):
             self.logger.debug("Vetoing darks because we can observe.")
             veto = True
 
