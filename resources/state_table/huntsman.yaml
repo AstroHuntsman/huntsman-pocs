@@ -15,7 +15,7 @@ states:
   housekeeping:
     tags: always_safe
   scheduling:
-    tags: always_safe
+    horizon: twilight_max  # Use twilght horizon so we don't park in between observing and flats
   starting:
     tags: always_safe
     horizon: twilight_max  # TODO: Start up slightly before flat horizon
