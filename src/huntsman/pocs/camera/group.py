@@ -140,16 +140,16 @@ class CameraGroup(PanBase):
 
             obs_kwargs = {"headers": headers}
 
-            # Temporary solution for having different filters on different cameras
+            # Get camera-specific filter name
             with suppress(AttributeError):
-                if observation.filter_names_per_camera is not None:
-                    observation.filter_name = observation.filter_names_per_camera[cam_name]
+                filter_name = observation.get_filter_name(cam_name)
 
             # Move the filterwheel now so we can tune the exptime properly
             if camera.has_filterwheel:
-                if observation.filter_name is not None:
-                    camera.filterwheel.move_to(observation.filter_name)
+                if filter_name is not None:
+                    camera.filterwheel.move_to(filter_name)
                 else:
+                    self.logger.warning(f"No filter name specified for {observation}")
                     try:
                         camera.filterwheel.move_to_light_position()
                     except error.NotFound as err:
@@ -227,3 +227,19 @@ class CameraGroup(PanBase):
             return cameras[cam_name].autofocus(*args, **kwargs)
 
         return dispatch_parallel(func, cameras.keys())
+
+    # Private methods
+
+    def _get_focus_filter_name(self, camera_name, filter_name=None):
+        """
+        """
+        if filter_name is None:
+            if coarse:
+                filter_name = self._coarse_focus_filter
+            else:
+                try:
+                    filter_name = self.current_observation.get_filter_name(camera_name)
+                except AttributeError:
+                    filter_name = self._coarse_focus_filter
+                    self.logger.warning("Unable to retrieve filter name from current observation."
+                                        f" Defaulting to coarse focus filter ({filter_name}).")
