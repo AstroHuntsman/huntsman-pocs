@@ -17,7 +17,7 @@ from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field
 from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
 from huntsman.pocs.camera.group import CameraGroup, dispatch_parallel
-from huntsman.pocs.error import NotTwilightError
+from huntsman.pocs.error import NotTwilightError, NotSafeError
 
 
 class HuntsmanObservatory(Observatory):
@@ -139,7 +139,7 @@ class HuntsmanObservatory(Observatory):
         Args:
             *args, **kwargs: Parsed to self._assert_safe
         Raises:
-            RuntimeError: If not safe.
+            NotSafeError: If not safe.
         """
         self._assert_safe(*args, **kwargs)
         try:
@@ -256,8 +256,12 @@ class HuntsmanObservatory(Observatory):
         # Take flat fields in each filter
         for filter_name in filter_order:
 
-            if not (self.is_safe(horizon="twilight_max") and self.is_twilight):
-                raise RuntimeError("Not safe for twilight flats. Aborting.")
+            # Check if it is appropriate to continue with flats
+            if not self.is_twilight:
+                raise NotTwilightError("No longer twilight. Aborting flat fields.")
+
+            if not self.is_safe(horizon="twilight_max"):
+                raise NotSafeError("Not safe to continue with flat fields. Aborting.")
 
             # Get a dict of cameras that have this filter
             cameras_with_filter = get_cameras_with_filter(cameras, filter_name)
@@ -274,14 +278,7 @@ class HuntsmanObservatory(Observatory):
             # Take the flats for each camera in this filter
             self.logger.info(f'Taking flat fields in {filter_name} filter.')
             autoflat_config = flat_config.get("autoflats", {})
-
-            try:
-                self._take_autoflats(cameras_with_filter, observation, **autoflat_config)
-            # Break out of loop if no longer twilight
-            # Catch the error so the state machine keeps running
-            except NotTwilightError as err:
-                self.logger.warning(f"{err!r}")
-                break
+            self._take_autoflats(cameras_with_filter, observation, **autoflat_config)
 
         self.logger.info('Finished flat-fielding.')
 
@@ -321,7 +318,7 @@ class HuntsmanObservatory(Observatory):
                 False.
             **safety_kwargs (dict, optional): Extra kwargs to be parsed to safety function.
         Raises:
-            RuntimeError: If safety check fails.
+            NotSafeError: If safety check fails.
         """
         if cameras is None:
             cameras = self.cameras
@@ -657,23 +654,23 @@ class HuntsmanObservatory(Observatory):
         return False
 
     def _assert_safe(self, *args, **kwargs):
-        """ Raise a RuntimeError if not safe to continue.
+        """ Raise a NotSafeError if not safe to continue.
         TODO: Raise a custom error type indicating lack of safety.
         Args:
             *args, **kwargs: Parsed to self.is_safe.
         """
         if not self.is_safe(*args, **kwargs):
-            raise RuntimeError("Safety check failed!")
+            raise NotSafeError("Safety check failed!")
 
     def _safe_sleep(self, duration, interval=1, *args, **kwargs):
         """ Sleep for a specified amount of time while ensuring safety.
-        A RuntimeError is raised if safety fails while waiting.
+        A NotSafeError is raised if safety fails while waiting.
         Args:
             duration (float or Quantity): The time to wait.
             interval (float): The time in between safety checks.
             *args, **kwargs: Parsed to is_safe.
         Raises:
-            RuntimeError: If safety fails while waiting.
+            NotSafeError: If safety fails while waiting.
         """
         self.logger.debug(f"Safe sleeping for {duration}")
         timer = CountdownTimer(duration)
