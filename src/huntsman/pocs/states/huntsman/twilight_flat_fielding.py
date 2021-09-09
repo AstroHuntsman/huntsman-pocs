@@ -1,5 +1,7 @@
 """ Twilight flat fielding state """
 
+from huntsman.pocs.error import NotTwilightError, NotSafeError
+
 
 def on_enter(event_data):
     """
@@ -17,7 +19,22 @@ def on_enter(event_data):
         return
 
     if pocs.observatory.flat_fields_required:
-        pocs.observatory.take_flat_fields()
+        try:
+            pocs.observatory.take_flat_fields()
+
+        # Continue with state if NotTwilightError is raised
+        except NotTwilightError:
+            pass
+
+        # If not safe, go to parking
+        except NotSafeError:
+            pocs.next_state = 'parking'
+            return
+
+        # Catch and log otherwise unhandled errors
+        except Exception as err:
+            pocs.logger.error(f"Error taking flat fields: {err!r}")
+
     else:
         pocs.logger.debug('Skipping twilight flat fields.')
 
