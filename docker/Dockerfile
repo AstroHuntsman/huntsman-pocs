@@ -55,5 +55,8 @@ RUN conda env update -n base -f environment.yaml && \
 COPY --chown="${userid}:${userid}" resources resources
 COPY --chown="${userid}:${userid}" scripts scripts
 
+# Copy Huntsman resources into main panoptes resources directory
+RUN rsync -a /huntsman/resources /panoptes-pocs/resources
+
 ENTRYPOINT [ "/usr/bin/env", "bash", "-ic" ]
 CMD [ "ipython" ]

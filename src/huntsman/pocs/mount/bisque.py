@@ -1,7 +1,8 @@
-""" Minimal overrides to the bisque mount. """
 import time
 
 from panoptes.utils import error
+from panoptes.utils.time import CountdownTimer
+
 from panoptes.pocs.mount.bisque import Mount as BisqueMount
 from panoptes.pocs.utils.location import create_location_from_config
 
@@ -15,6 +16,8 @@ def create_mount(**kwargs):
 
 
 class Mount(BisqueMount):
+
+    """ Minimal overrides to the Bisque Mount class. """
 
     def __init__(self, *args, **kwargs):
 
@@ -36,4 +39,55 @@ class Mount(BisqueMount):
         self.query('stop_tracking')
         time.sleep(10)
 
-        return super().slew_to_target(*args, **kwargs)
+        return self._slew_to_target(*args, **kwargs)
+
+    # Private methods
+
+    def _slew_to_target(self, blocking=False, timeout=180, block_time=3):
+        """ Override method to use closed loop slew if necessary. Also improve error handling
+        compared to base class.
+        """
+        if self.is_parked:
+            raise RuntimeError("Mount is parked. Cannot slew.")
+
+        if not self.has_target:
+            raise RuntimeError("Target Coordinates not set. Cannot slew.")
+
+        self.logger.info("Slewing to target")
+
+        # Check whether we should do a closed loop slew
+        # Note that a dynamic config item is used here so it can be changed on the fly
+        if self.get_config("mount.closed_loop_slew", False):
+            command = "closed_loop_slew_to_target"
+        else:
+            command = "slew_to_target"
+        self.logger.debug(f"Slew command: {command}")
+
+        # Issue the command
+        response = self.query(command)
+        success = response.get("success", False)
+
+        if not success:
+            raise RuntimeError(f"Exception while slewing. Mount response: {response}.")
+
+        if blocking:
+
+            # Set up the timeout timer
+            self.logger.debug(f'Setting slew timeout timer for {timeout} sec')
+            timeout_timer = CountdownTimer(timeout)
+
+            while self.is_tracking is False:
+
+                # Check if timer is expired
+                if timeout_timer.expired():
+                    self.logger.warning(f'{command} timout: {timeout} seconds')
+                    raise error.Timeout('Timeout while slewing to target.')
+
+                # Sleep
+                self.logger.debug(f'Slewing to target, sleeping for {block_time} seconds')
+                timeout_timer.sleep(max_sleep=block_time)
+
+            self.logger.info("Finished slewing to target. Now tracking.")
+
+        # Shouldn't need to return this, but instead rely on Exceptions
+        return success
