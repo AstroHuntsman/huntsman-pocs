@@ -23,7 +23,7 @@ USER "${userid}"
 RUN echo "Building from ${image_url}:${image_tag}" && \
     sudo apt-get update && \
     sudo apt-get install -y --no-install-recommends \
-        gcc git udev nano vim-nox && \
+        gcc git udev nano vim-nox rsync && \
     sudo mkdir -p "${POCS}/images"  && \
     sudo mkdir -p "${POCS}/logs"  && \
     sudo mkdir -p "${POCS}/archive"  && \
@@ -56,7 +56,7 @@ COPY --chown="${userid}:${userid}" resources resources
 COPY --chown="${userid}:${userid}" scripts scripts
 
 # Copy Huntsman resources into main panoptes resources directory
-RUN rsync -a /huntsman/resources /panoptes-pocs/resources
+RUN rsync -a /huntsman/resources/** /panoptes-pocs/resources
 
 ENTRYPOINT [ "/usr/bin/env", "bash", "-ic" ]
 CMD [ "ipython" ]
