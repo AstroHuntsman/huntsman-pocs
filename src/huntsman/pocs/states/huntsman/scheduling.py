@@ -1,45 +1,33 @@
-from panoptes.utils import error
-
 
 def on_enter(event_data):
-    """
-    In the `scheduling` state we attempt to find a field using our scheduler. If field is found,
-    make sure that the field is up right now (the scheduler should have taken care of this). If
-    observable, set the mount to the field and calls `start_slewing` to begin slew.
+    """ Determine what to schedule next. """
 
-    If no observable targets are available, `park` the unit.
-    """
     pocs = event_data.model
-    pocs.next_state = 'observing'
+    pocs.next_state = 'parking'
 
-    # If it is not dark enough to observe, go back to ready state
-    # The ready state will then decide whether to park, focus, take flats etc
-    if not pocs.is_dark(horizon='observe'):
-        pocs.say('Not dark enough to continue scheduling. Going back to the ready state.')
-        pocs.next_state = "ready"
+    # First check if a coarse focus is required
+    if pocs.is_safe(horizon="focus") and pocs.observatory.coarse_focus_required:
+        pocs.say("Scheduled coarse focusing")
+        pocs.next_state = "coarse_focusing"
         return
 
-    pocs.say("Selecting the next target to observe...")
-    existing_observation = pocs.observatory.current_observation
+    # Next, check if we should observe
+    elif pocs.is_safe(horizon="observe"):
 
-    # Get the next observation
-    try:
-        observation = pocs.observatory.get_observation()
-        pocs.logger.info(f"Observation: {observation}")
+        try:
+            observation = pocs.observatory.get_observation()
+            pocs.logger.info(f"Observation: {observation}")
 
-    except error.NoObservation:
-        pocs.say("No valid observations found. Going back to the ready state.")
-        pocs.next_state = 'ready'
+        except Exception as err:
+            pocs.logger.warning(f"Error getting observation: {err!r}")
+            return
+
+        pocs.say(f"Scheduled observation: {observation.name}")
+        pocs.next_state = "observing"
         return
 
-    except Exception as e:
-        pocs.logger.warning(f"Error in scheduling: {e!r}. Going back to the ready state.")
-        pocs.next_state = 'ready'
+    # FInally, check if we should be flat fielding
+    elif pocs.is_safe(horizon="twilight_max") and pocs.observatory.take_twilight_flats:
+        pocs.say("Scheduled twilight flat fielding")
+        pocs.next_state = "twilight_flat_fielding"
         return
-
-    if existing_observation and observation.name == existing_observation.name:
-        pocs.say(f"I'm sticking with {observation.name}.")
-        pocs.observatory.current_observation = existing_observation
-
-    else:
-        pocs.say(f"I'm going to check out: {observation.name}.")
