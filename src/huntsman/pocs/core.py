@@ -31,15 +31,6 @@ class HuntsmanPOCS(POCS):
     # Properties
 
     @property
-    def repeat_flats(self):
-        """ Return True if flat state should be repeated until safety fails.
-        Uses calibs.flat.repeat_calib config item. Default: True.
-        Returns:
-            bool: True if flat state should be repeated, else False.
-        """
-        return self.get_config("calibs.flat.repeat_flats", True)
-
-    @property
     def should_take_darks(self):
         """ Check if we should enter the darks state.
         Returns:
