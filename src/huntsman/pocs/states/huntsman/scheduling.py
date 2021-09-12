@@ -15,7 +15,7 @@ def on_enter(event_data):
     elif pocs.is_safe(horizon="observe"):
 
         try:
-            observation = pocs.observatory.get_observation()
+            observation = pocs.observatory.get_observation()  # Sets current observation
             pocs.logger.info(f"Observation: {observation}")
 
         except Exception as err:
@@ -26,8 +26,8 @@ def on_enter(event_data):
         pocs.next_state = "observing"
         return
 
-    # FInally, check if we should be flat fielding
-    elif pocs.is_safe(horizon="twilight_max") and pocs.observatory.take_twilight_flats:
+    # Finally, check if we should be flat fielding
+    elif pocs.observatory.is_twilight and pocs.observatory.flat_fields_required:
         pocs.say("Scheduled twilight flat fielding")
         pocs.next_state = "twilight_flat_fielding"
         return

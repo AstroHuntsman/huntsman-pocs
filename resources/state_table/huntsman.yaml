@@ -4,36 +4,38 @@ initial: sleeping
 location: huntsman.pocs.states
 
 states:
+  # Always safe states
   parking:
     tags: always_safe
   parked:
-    tags: always_safe
-  taking_darks:
     tags: always_safe
   sleeping:
     tags: always_safe
   housekeeping:
     tags: always_safe
-  scheduling:
-    horizon: observe
+  # Startup horizon states
+  # NOTE: These are tagged as always safe. Rely on the sleeping state to wait for startup horizon.
   starting:
     tags: always_safe
-    horizon: twilight_max  # TODO: Start up slightly before flat horizon
+  taking_darks:
+    tags: always_safe
+  # Open dome states
+  scheduling:
+    horizon: startup  # Use startup horizon so dome gets opened early and temperatures equalise
+    requires_open_dome: True
   twilight_flat_fielding:
     horizon: twilight_max
     requires_open_dome: True
   coarse_focusing:
     horizon: focus
     requires_open_dome: True
-  ready:
-    horizon: twilight_max
   observing:
+    horizon: observe
     requires_open_dome: True
 
 transitions:
     -
         source:
-            - ready
             - twilight_flat_fielding
             - scheduling
             - coarse_focusing
@@ -46,6 +48,7 @@ transitions:
             - housekeeping
         dest: parking
         trigger: park
+    # Parking - sleeping transition states
     -
         source: parking
         dest: parked
@@ -55,6 +58,16 @@ transitions:
         dest: housekeeping
         trigger: clean_up
     -
+        source: housekeeping
+        dest: sleeping
+        trigger: goto_sleep
+    -
+        source: sleeping
+        dest: starting
+        trigger: startup
+        conditions: mount_is_initialized
+    # Starting up states
+    -
         source: starting
         dest: taking_darks
         trigger: take_darks
@@ -63,53 +76,12 @@ transitions:
         dest: starting
         trigger: startup
     -
-        source: housekeeping
-        dest: sleeping
-        trigger: goto_sleep
-    -
-        source: housekeeping
-        dest: ready
-        trigger: get_ready
-        conditions: mount_is_initialized
-    -
-        source: sleeping
-        dest: starting
-        trigger: startup
-        conditions: mount_is_initialized
-    -
         source: starting
-        dest: ready
-        trigger: get_ready
+        dest: scheduling
+        trigger: schedule
+    # Transitons from scheduling state to observing states
     -
         source: scheduling
-        dest: ready
-        trigger: get_ready
-    -
-        source: ready
-        dest: twilight_flat_fielding
-        trigger: take_twilight_flats
-    -
-        source: twilight_flat_fielding
-        dest: twilight_flat_fielding
-        trigger: take_twilight_flats
-    -
-        source: ready
-        dest: scheduling
-        trigger: schedule
-    -
-        source: ready
-        dest: coarse_focusing
-        trigger: autofocus_coarse
-    -
-        source: coarse_focusing
-        dest: scheduling
-        trigger: schedule
-    -
-        source: coarse_focusing
-        dest: twilight_flat_fielding
-        trigger: take_twilight_flats
-    -
-        source: twilight_flat_fielding
         dest: coarse_focusing
         trigger: autofocus_coarse
     -
@@ -117,6 +89,19 @@ transitions:
         dest: observing
         trigger: observe
     -
+        source: scheduling
+        dest: twilight_flat_fielding
+        trigger: take_twilight_flats
+    # Transitons from observing states to scheduling state
+    -
+        source: coarse_focusing
+        dest: scheduling
+        trigger: schedule
+    -
         source: observing
+        dest: scheduling
+        trigger: schedule
+    -
+        source: twilight_flat_fielding
         dest: scheduling
         trigger: schedule
