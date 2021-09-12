@@ -139,3 +139,34 @@ def test_starting_scheduling_focus(pocs, pocstime_focus):
     pocs.goto_next_state()
     assert pocs.state == "scheduling"
     assert pocs.next_state == "coarse_focusing"
+
+
+def test_shutdown(pocs, pocstime_focus):
+    """ Test that we can shutdown properly after going to parking """
+
+    pocs.initialize()
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
+
+    os.environ['POCSTIME'] = pocstime_focus
+    assert pocs.is_dark(horizon="focus")
+    assert not pocs.is_dark(horizon="observe")
+    assert not pocs.observatory.dome.is_open
+
+    # Enter the scheduling state
+    pocs.startup()
+    assert pocs.state == "starting"
+    assert pocs.next_state == "scheduling"
+    assert not pocs.observatory.dome.is_open
+    pocs.goto_next_state()
+    assert pocs.observatory.dome.is_open
+
+    # Force the parking state
+    pocs.next_state = "parking"
+
+    # Loop through shutdown sequence and make sure everything is shutdown properly
+    for state in ("parking", "parked", "housekeeping", "sleeping"):
+        assert pocs.next_state == state
+        pocs.goto_next_state()
+        assert pocs.state == state
+        assert pocs.observatory.mount.is_parked
+        assert pocs.observatory.dome.is_closed
