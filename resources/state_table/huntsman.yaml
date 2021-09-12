@@ -65,7 +65,6 @@ transitions:
         source: sleeping
         dest: starting
         trigger: startup
-        conditions: mount_is_initialized
     # Starting up states
     -
         source: starting

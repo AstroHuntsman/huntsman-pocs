@@ -6,13 +6,13 @@ def on_enter(event_data):
     pocs.next_state = 'parking'
 
     # First check if a coarse focus is required
-    if pocs.is_safe(horizon="focus") and pocs.observatory.coarse_focus_required:
+    if pocs.is_dark(horizon="focus") and pocs.observatory.coarse_focus_required:
         pocs.say("Scheduled coarse focusing")
         pocs.next_state = "coarse_focusing"
         return
 
     # Next, check if we should observe
-    elif pocs.is_safe(horizon="observe"):
+    elif pocs.is_dark(horizon="observe"):
 
         try:
             observation = pocs.observatory.get_observation()  # Sets current observation
@@ -31,3 +31,8 @@ def on_enter(event_data):
         pocs.say("Scheduled twilight flat fielding")
         pocs.next_state = "twilight_flat_fielding"
         return
+
+    # If we've got this far, nothing to schedule so park
+    else:
+        pocs.next_state = 'parking'
+        pocs.say(f"Nothing to schedule. Going to {pocs.next_state}.")

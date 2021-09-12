@@ -1,10 +1,7 @@
-""" The goal of the initialising state is to prepare Huntsman for observing, including unparking
-the mount and cooling the cameras. Note that it is the responsibility of the state machine to
-check it is safe before entering this (and all other) states. """
-
 
 def on_enter(event_data):
-    """
+    """ State logic for starting up.
+    This state should only be entered from either the sleeping or taking darks states.
     """
     pocs = event_data.model
     pocs.next_state = 'parking'
