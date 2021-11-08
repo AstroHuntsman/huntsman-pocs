@@ -132,7 +132,11 @@ archiver:
   sleep_interval: 1 s
   delay_interval: 5 s
 
-use_aat_weather: false
+alt_weather_sources:
+  aat_weather:
+    use: True
+  skymapper_weather:
+    use: True
 
 AutofocusSequence:
   merit_function_name: "huntsman.pocs.utils.focus.fourier_focus_metric"
