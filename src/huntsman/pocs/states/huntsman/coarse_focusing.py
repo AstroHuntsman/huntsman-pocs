@@ -50,7 +50,7 @@ def on_enter(event_data):
         # If overall timer has expired, check which cameras have not finished
         # and remove them from the observatory.
         if timer.expired():
-            pocs.logger.info(f'Autofocus timer expired, checking which cameras were successful')
+            pocs.logger.info('Autofocus timer expired, checking which cameras were successful')
             for cam_name, focus_event in autofocus_events.items():
                 if not focus_event.is_set():
                     pocs.logger.warning(f'Incomplete focus event on {cam_name}, removing')
@@ -65,8 +65,4 @@ def on_enter(event_data):
 
     # If we have removed all the cameras because of incomplete focus, go to park.
     if pocs.observatory.has_cameras:
-        # Morning and not dark enough for observing...
-        if pocs.observatory.is_past_midnight and not pocs.is_dark(horizon='observe'):
-            pocs.next_state = 'twilight_flat_fielding'
-        else:
-            pocs.next_state = 'scheduling'
+        pocs.next_state = 'scheduling'
