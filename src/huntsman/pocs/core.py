@@ -114,10 +114,9 @@ class HuntsmanPOCS(POCS):
         # if not in simulator mode, determine safety from huntsman weather data
         is_safe_list = [super().is_weather_safe(**kwargs)]
 
-        # check alternate sources
         alt_weather_config = self.get_config("alt_weather_sources", default=None)
-        sources_to_check = [s for s in alt_weather_config.keys()
-                            if alt_weather_config[s]['use'] is True]
+        # determine which sources are marked for use in config
+        sources_to_check = [k for k, v in alt_weather_config.items() if v['use']]
 
         for source in sources_to_check:
             is_safe_list.append(self.is_alt_weather_safe(source))
