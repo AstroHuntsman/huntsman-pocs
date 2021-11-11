@@ -7,8 +7,6 @@ from panoptes.utils.time import current_time
 
 from panoptes.pocs.core import POCS
 
-from huntsman.pocs.utils.safety import get_aat_weather
-
 
 class HuntsmanPOCS(POCS):
     """ Minimal overrides to the POCS class to control Huntsman state machine behaviour """
@@ -114,21 +112,50 @@ class HuntsmanPOCS(POCS):
         if self._in_simulator('weather'):
             return True
         # if not in simulator mode, determine safety from huntsman weather data
-        is_safe = super().is_weather_safe(**kwargs)
+        is_safe_list = [super().is_weather_safe(**kwargs)]
 
-        # check config to see if we want to use an AAT weather reading (e.g. during tests)
-        if not self.get_config("use_aat_weather"):
-            return is_safe
+        alt_weather_config = self.get_config("alt_weather_sources", default=None)
+        # determine which sources are marked for use in config
+        sources_to_check = [k for k, v in alt_weather_config.items() if v['use']]
 
-        # now determine safety according to AAT weather data
+        for source in sources_to_check:
+            is_safe_list.append(self.is_alt_weather_safe(source))
+
+        return all(is_safe_list)
+
+    def is_alt_weather_safe(self, source, stale=180):
+        """Checks alternative weather source readings to determine safety.
+        Args:
+            source (str): Name of alternate weather source collection to examine.
+            stale (int, optional): Number of seconds before record is stale, defaults to 180
+        Returns:
+            bool: Conditions are safe (True) or unsafe (False)
+        """
+        self.logger.debug(f"Checking {source} safety")
+
+        # Get current weather readings from database
+        is_safe = False
         try:
-            aat_weather_data = get_aat_weather()
-        except Exception as err:
-            self.logger.debug(f'Request for AAT weather data failed: {err!r}')
-            return is_safe
+            record = self.db.get_current(source)
+            if record is None:
+                return False
 
-        # AAT rain flag returns 0 for no rain and 1 for rain
-        return is_safe and not bool(aat_weather_data['is_raining'])
+            is_safe = record['data'].get('safe', False)
+
+            timestamp = record['date'].replace(tzinfo=None)  # current_time is timezone naive
+            age = (current_time().datetime - timestamp).total_seconds()
+
+            self.logger.debug(
+                f"Weather Safety: {is_safe} [{age:.0f} sec old - {timestamp:%Y-%m-%d %H:%M:%S}]")
+
+        except Exception as e:  # pragma: no cover
+            self.logger.error(f"No {source} record in database: {e!r}")
+        else:
+            if age >= stale:
+                self.logger.warning(f"{source} record looks stale, marking unsafe.")
+                is_safe = False
+
+        return is_safe
 
     def wait_for_twilight(self):
         """ Wait for twilight.
