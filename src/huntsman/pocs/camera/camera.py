@@ -46,21 +46,8 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # pop exptime from kwarg as its now in exptime
         exptime = kwargs.pop('exptime', observation.exptime.value)
 
-        # Move the filterwheel now so we can tune the exptime properly
-        if self.has_filterwheel:
-            if filter_name is not None:
-                self.filterwheel.move_to(filter_name)
-            else:
-                self.logger.warning(f"No filter name specified for {observation}")
-                try:
-                    self.filterwheel.move_to_light_position()
-                except error.NotFound as err:
-                    self.logger.warning(f"{err!r}")
-
-        # pop exptime from kwarg as its now in exptime
-        exptime = kwargs.pop('exptime', observation.exptime.value)
-
         # Check if we need to tune the exposure time
+        # (should this go in setup_observation?)
         with suppress(AttributeError):
             if observation.target_exposure_scaling is not None:
                 exptime = tune_exposure_time(target=observation.target_exposure_scaling,
