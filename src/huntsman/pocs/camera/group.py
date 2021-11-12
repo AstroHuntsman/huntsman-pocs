@@ -9,8 +9,6 @@ from panoptes.utils.time import wait_for_events
 
 from panoptes.pocs.base import PanBase
 
-from huntsman.pocs.camera.utils import tune_exposure_time
-
 
 def dispatch_parallel(function, camera_names, **kwargs):
     """ Run a function in parallel using a thread pool.
@@ -106,24 +104,6 @@ class CameraGroup(PanBase):
 
         return failed_cameras
 
-    def tune_exposure_time(self, *args, **kwargs):
-        """ Tune exposure times in parallel for each camera.
-        Args:
-            *args, **kwargs: Parsed to camera.tune_exposure_time
-        Returns:
-            dict: Dict of cam_name: exposure_time pairs.
-        """
-        def tune_etc(cam_name):
-            return tune_exposure_time(self.cameras[cam_name], *args, **kwargs)
-
-        self.logger.info(f"Tuning exposures times for {self}.")
-
-        exptimes = dispatch_parallel(tune_etc, self.camera_names)
-
-        self.logger.info(f"Finished tuning exposures times for {self}.")
-
-        return exptimes
-
     def take_observation(self, observation, headers=None):
         """ Take observation on all cameras in group.
         Args:
@@ -139,29 +119,6 @@ class CameraGroup(PanBase):
             camera = self.cameras[cam_name]
 
             obs_kwargs = {"headers": headers}
-
-            # Get camera-specific filter name
-            with suppress(AttributeError):
-                filter_name = observation.get_filter_name(cam_name)
-
-            # Move the filterwheel now so we can tune the exptime properly
-            if camera.has_filterwheel:
-                if filter_name is not None:
-                    camera.filterwheel.move_to(filter_name)
-                else:
-                    self.logger.warning(f"No filter name specified for {observation}")
-                    try:
-                        camera.filterwheel.move_to_light_position()
-                    except error.NotFound as err:
-                        self.logger.warning(f"{err!r}")
-
-            # Check if we need to tune the exposure time
-            with suppress(AttributeError):
-                if observation.target_exposure_scaling is not None:
-                    exptime = self.tune_exposure_time(target=observation.target_exposure_scaling,
-                                                      initial_exptime=observation.exptime,
-                                                      **observation.tune_exptime_kwargs)
-                    obs_kwargs["exptime"] = exptime
 
             # Take the exposure and catch errors
             try:
@@ -230,7 +187,7 @@ class CameraGroup(PanBase):
 
     # Private methods
 
-    def _get_focus_filter_name(self, camera_name, filter_name=None):
+    def _get_focus_filter_name(self, camera_name, filter_name=None, coarse=False):
         """
         """
         if filter_name is None:
