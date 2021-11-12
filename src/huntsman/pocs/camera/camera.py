@@ -3,7 +3,6 @@ import threading
 import time
 from contextlib import suppress
 from panoptes.utils.time import current_time
-from panoptes.utils import error
 from panoptes.pocs.camera.camera import AbstractCamera
 
 from huntsman.pocs.camera.utils import tune_exposure_time
@@ -38,10 +37,6 @@ class AbstractHuntsmanCamera(AbstractCamera):
                                                                          headers,
                                                                          filename,
                                                                          **kwargs)
-
-        # Get camera-specific filter name
-        with suppress(AttributeError):
-            filter_name = observation.get_filter_name(self.name)
 
         # pop exptime from kwarg as its now in exptime
         exptime = kwargs.pop('exptime', observation.exptime.value)

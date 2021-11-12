@@ -1,6 +1,5 @@
 import time
 
-from contextlib import suppress
 from functools import partial
 from multiprocessing.pool import ThreadPool
 
@@ -181,13 +180,14 @@ class CameraGroup(PanBase):
         cameras = {n: c for n, c in self.cameras.items() if c.has_focuser}
 
         def func(cam_name):
-            return cameras[cam_name].autofocus(*args, **kwargs)
+            filter_name = self._get_focus_filter_name(cam_name, **kwargs)
+            return cameras[cam_name].autofocus(filter_name=filter_name, *args, **kwargs)
 
         return dispatch_parallel(func, cameras.keys())
 
     # Private methods
 
-    def _get_focus_filter_name(self, camera_name, filter_name=None, coarse=False):
+    def _get_focus_filter_name(self, camera_name, filter_name=None, coarse=False, *args, **kwargs):
         """
         """
         if filter_name is None:
