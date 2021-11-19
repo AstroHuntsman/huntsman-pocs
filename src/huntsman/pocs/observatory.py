@@ -192,18 +192,14 @@ class HuntsmanObservatory(Observatory):
         """
         focus_type = "coarse" if coarse else "fine"
 
-        # Choose the filter to focus with
-        # TODO: Move this logic to the camera level
+        # Check current observation filter if there is one
         if filter_name is None:
-            if coarse:
-                filter_name = self._coarse_focus_filter
-            else:
-                try:
-                    filter_name = self.current_observation.filter_name
-                except AttributeError:
-                    filter_name = self._coarse_focus_filter
-                    self.logger.warning("Unable to retrieve filter name from current observation."
-                                        f" Defaulting to coarse focus filter ({filter_name}).")
+            try:
+                filter_name = self.current_observation.filter_name
+            except AttributeError:
+                filter_name = None
+                self.logger.warning("Unable to retrieve filter name from current observation. Focus"
+                                    " filter will be set to camera default coarse focus filter.")
 
         # Asyncronously dispatch autofocus calls
         with self.safety_checking(horizon="focus"):

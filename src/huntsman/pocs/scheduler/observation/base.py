@@ -30,8 +30,8 @@ class AbstractObservation(PanBase, ABC):
             exp_set_size (int): Number of exposures to take per set, default: 1.
             focus_offset (int, optional): Apply this focus offset for defocused observations.
                 Default 0.
-            filter_names_per_camera (dict, optional): If provided, this should be a dictionary
-                of camera_name: filter_name. If will take priority over filter_name.
+            filter_name (dict or str, optional): If provided, this should be a dictionary
+                of form `{camera_name: filter_name}` or a string of just `filter_name`.
         """
         super().__init__(**kwargs)
 
@@ -210,7 +210,9 @@ class AbstractObservation(PanBase, ABC):
         self._current_exp_num += 1
 
     def get_filter_name(self, camera_name):
-        """ Get the filter name for a specific camera.
+        """ Determine filter name based on camera if `filter_name` is dict,
+        otherwise just return `filter_name`.
+
         Args:
             camera_name (str): The name of the camera.
         Returns:

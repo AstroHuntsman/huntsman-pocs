@@ -1,6 +1,7 @@
 import time
 
 from functools import partial
+from collections import abc
 from multiprocessing.pool import ThreadPool
 
 from panoptes.utils import error
@@ -180,7 +181,10 @@ class CameraGroup(PanBase):
         cameras = {n: c for n, c in self.cameras.items() if c.has_focuser}
 
         def func(cam_name):
-            filter_name = self._get_focus_filter_name(cam_name, **kwargs)
+            # need to remove `filter_name` from kwargs so it only gets passed once
+            # to `cameras[cam_name].autofocus()`
+            filter_name = kwargs.pop('filter_name')
+            filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)
             return cameras[cam_name].autofocus(filter_name=filter_name, *args, **kwargs)
 
         return dispatch_parallel(func, cameras.keys())
@@ -190,13 +194,10 @@ class CameraGroup(PanBase):
     def _get_focus_filter_name(self, camera_name, filter_name=None, coarse=False, *args, **kwargs):
         """
         """
-        if filter_name is None:
-            if coarse:
-                filter_name = self._coarse_focus_filter
-            else:
-                try:
-                    filter_name = self.current_observation.get_filter_name(camera_name)
-                except AttributeError:
-                    filter_name = self._coarse_focus_filter
-                    self.logger.warning("Unable to retrieve filter name from current observation."
-                                        f" Defaulting to coarse focus filter ({filter_name}).")
+        if coarse or filter_name is None:
+            filter_name = self.get_config('focusing.coarse.filter_name')
+            return filter_name
+        elif isinstance(filter_name, abc.Mapping):
+            return filter_name[camera_name]
+        else:
+            return filter_name
