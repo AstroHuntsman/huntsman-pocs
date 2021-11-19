@@ -78,7 +78,7 @@ def test_prepare_cameras_dropping(observatory):
 def test_take_flat_fields(pocs):
     """ TODO: Improve this test!
     """
-    os.environ['POCSTIME'] = '2020-10-09 09:00:00'
+    os.environ['POCSTIME'] = '2020-10-09 08:45:00'
     assert pocs.is_safe(horizon="twilight_max")
     assert not pocs.observatory.is_past_midnight
     assert pocs.observatory.is_twilight
