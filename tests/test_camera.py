@@ -19,7 +19,6 @@ from huntsman.pocs.scheduler.field import Field
 from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
-from huntsman.pocs.camera.utils import tune_exposure_time
 
 
 @pytest.fixture(scope='function')
@@ -52,17 +51,17 @@ def test_tune_exptime(camera):
     initial_exptime = 1 * u.second
 
     target = 1
-    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1)
+    exptime = camera.tune_exposure_time(target, initial_exptime, max_steps=1)
     assert exptime > initial_exptime
-    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1,
-                                 max_exptime=initial_exptime)
+    exptime = camera.tune_exposure_time(target, initial_exptime, max_steps=1,
+                                        max_exptime=initial_exptime)
     assert initial_exptime == exptime
 
     target = 0
-    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1)
+    exptime = camera.tune_exposure_time(target, initial_exptime, max_steps=1)
     assert exptime < initial_exptime
-    exptime = tune_exposure_time(camera, target, initial_exptime, max_steps=1,
-                                 min_exptime=initial_exptime)
+    exptime = camera.tune_exposure_time(target, initial_exptime, max_steps=1,
+                                        min_exptime=initial_exptime)
     assert initial_exptime == exptime
 
 
