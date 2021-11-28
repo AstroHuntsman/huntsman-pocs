@@ -7,12 +7,12 @@ from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
-from panoptes.pocs.scheduler.observation.bias import BiasObservation
 
 from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.scheduler.observation.bias import BiasObservation
 from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field_observation
 from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
