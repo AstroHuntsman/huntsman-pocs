@@ -5,7 +5,10 @@ from contextlib import suppress
 from panoptes.utils.time import current_time
 from panoptes.pocs.camera.camera import AbstractCamera
 
-from huntsman.pocs.camera.utils import tune_exposure_time
+from panoptes.utils.utils import get_quantity_value
+import tempfile
+import numpy as np
+from astropy import units as u
 
 
 class AbstractHuntsmanCamera(AbstractCamera):
@@ -45,9 +48,9 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # (should this go in setup_observation?)
         with suppress(AttributeError):
             if observation.target_exposure_scaling is not None:
-                exptime = tune_exposure_time(target=observation.target_exposure_scaling,
-                                             initial_exptime=observation.exptime,
-                                             **observation.tune_exptime_kwargs)
+                exptime = self.tune_exposure_time(target=observation.target_exposure_scaling,
+                                                  initial_exptime=observation.exptime,
+                                                  **observation.tune_exptime_kwargs)
 
         # start the exposure
         self.take_exposure(seconds=exptime, filename=file_path, blocking=blocking,
@@ -75,6 +78,72 @@ class AbstractHuntsmanCamera(AbstractCamera):
                 time.sleep(0.5)
 
         return observation_event
+
+    def tune_exposure_time(self, target, initial_exptime, min_exptime=0, max_exptime=None,
+                           max_steps=5, tolerance=0.1, cutout_size=256, bias=None, **kwargs):
+        """ Tune the exposure time to within certain tolerance of the desired counts.
+        TODO: Add as camera method.
+        """
+        self.logger.info(f"Tuning exposure time for {self}.")
+
+        images_dir = self.get_config("directories.images", None)
+        if images_dir:
+            images_dir = os.path.join(images_dir, "temp")
+            os.makedirs(images_dir, exist_ok=True)
+
+        # Parse quantities
+        initial_exptime = get_quantity_value(initial_exptime, "second") * u.second
+
+        if min_exptime is not None:
+            min_exptime = get_quantity_value(min_exptime, "second") * u.second
+        if max_exptime is not None:
+            max_exptime = get_quantity_value(max_exptime, "second") * u.second
+
+        try:
+            bit_depth = self.bit_depth.to_value("bit")
+        except NotImplementedError:
+            bit_depth = 16
+
+        saturated_counts = 2 ** bit_depth
+
+        prefix = images_dir if images_dir is None else images_dir + "/"
+        with tempfile.NamedTemporaryFile(suffix=".fits", prefix=prefix, delete=False) as tf:
+
+            exptime = initial_exptime
+
+            for step in range(max_steps):
+
+                # Check if exposure time is within valid range
+                if (exptime == max_exptime) or (exptime == min_exptime):
+                    break
+
+                # Get an image
+                cutout = self.get_cutout(exptime, tf.name, cutout_size, keep_file=False, **kwargs)
+                cutout = cutout.astype("float32")
+                if bias is not None:
+                    cutout -= bias
+
+                # Measure average counts
+                normalised_counts = np.median(cutout) / saturated_counts
+
+                self.logger.debug(f"Normalised counts for {exptime} exposure on {self}:"
+                                  f" {normalised_counts}")
+
+                # Check if tolerance condition is met
+                if tolerance:
+                    if abs(normalised_counts - target) < tolerance:
+                        break
+
+                # Update exposure time
+                exptime = exptime * target / normalised_counts
+                if max_exptime is not None:
+                    exptime = min(exptime, max_exptime)
+                if min_exptime is not None:
+                    exptime = max(exptime, min_exptime)
+
+        self.logger.info(f"Tuned exposure time for {self}: {exptime}")
+
+        return exptime
 
     def _setup_observation(self, observation, headers, filename, **kwargs):
         """Override of `panoptes.pocs.camera.camera._setup_observation()`  to use the
@@ -106,11 +175,11 @@ class AbstractHuntsmanCamera(AbstractCamera):
                     self.filterwheel.move_to(filter_name, blocking=True)
                 except Exception as e:
                     self.logger.error(f'Error moving filterwheel on {self} to'
-                                      f' {observation.filter_name}: {e!r}')
+                                      f' {filter_name}: {e!r}')
                     raise (e)
 
             elif not observation.dark:
-                self.logger.warning(f'Filter {observation.filter_name} requested by'
+                self.logger.warning(f'Filter {filter_name} requested by'
                                     f' observation but {self.filterwheel} is missing that filter, '
                                     f'using {self.filter_type}.')
 

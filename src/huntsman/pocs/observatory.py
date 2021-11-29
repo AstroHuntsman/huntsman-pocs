@@ -550,7 +550,7 @@ class HuntsmanObservatory(Observatory):
                                         f" {err!r}")
                 # Log sequence status
                 status = sequences[cam_name].status
-                status["filter_name"] = observation.filter_name
+                status["filter_name"] = observation.get_filter_name(cam_name)
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
             # Check if sequences are complete
