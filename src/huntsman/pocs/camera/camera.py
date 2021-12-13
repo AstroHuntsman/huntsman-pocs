@@ -75,7 +75,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
         if blocking:
             while not observation_event.is_set():
                 self.logger.trace('Waiting for observation event')
-                time.sleep(0.5)
+                time.sleep(0.1)
 
         return observation_event
 

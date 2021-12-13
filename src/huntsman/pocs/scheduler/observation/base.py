@@ -4,6 +4,7 @@ from collections import OrderedDict, abc
 from astropy import units as u
 
 from panoptes.utils.utils import get_quantity_value
+from panoptes.utils import error
 from panoptes.pocs.base import PanBase
 from huntsman.pocs.scheduler.field import AbstractField, CompoundField
 
@@ -218,11 +219,19 @@ class AbstractObservation(PanBase, ABC):
         Returns:
             str: The filter name.
         """
+        self.filter_name
         # If filter names is a dict, use camera name as key
         if isinstance(self.filter_name, abc.Mapping):
-            return self.filter_name[camera_name]
-        # If it is not a dict, return the filter name attribute
-        return self.filter_name
+            try:
+                filter_name = self.filter_name[camera_name]
+            except KeyError as err:
+                msg = f"No filter_name specified for camera {camera_name}: {err!r}"
+                self.logger.warning(msg)
+                raise error.PanError(msg)
+            return filter_name
+        else:
+            # If it is not a dict, return the filter name attribute
+            return self.filter_name
 
 
 class Observation(AbstractObservation):

@@ -180,14 +180,15 @@ class CameraGroup(PanBase):
         """
         cameras = {n: c for n, c in self.cameras.items() if c.has_focuser}
 
-        def func(cam_name):
-            # need to remove `filter_name` from kwargs so it only gets passed once
-            # to `cameras[cam_name].autofocus()`
-            filter_name = kwargs.pop('filter_name')
-            filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)
-            return cameras[cam_name].autofocus(filter_name=filter_name, *args, **kwargs)
+        # need to remove `filter_name` from kwargs so it only gets passed once
+        # to `cameras[cam_name].autofocus()`
+        filter_name = kwargs.pop('filter_name')
 
-        return dispatch_parallel(func, cameras.keys())
+        def func(cam_name, filter_name=None, **kwargs):
+            filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)
+            return cameras[cam_name].autofocus(filter_name=filter_name, **kwargs)
+
+        return dispatch_parallel(func, cameras.keys(), filter_name=filter_name, **kwargs)
 
     # Private methods
 
@@ -195,9 +196,14 @@ class CameraGroup(PanBase):
         """
         """
         if coarse or filter_name is None:
-            filter_name = self.get_config('focusing.coarse.filter_name')
-            return filter_name
+            return self.get_config('focusing.coarse.filter_name')
         elif isinstance(filter_name, abc.Mapping):
-            return filter_name[camera_name]
+            try:
+                return filter_name[camera_name]
+            except KeyError as err:
+                self.logger.warning(
+                    f"No filter_name specified for camera {camera_name}, \
+                    defaulting to coarse filter: {err!r}")
+                return self.get_config('focusing.coarse.filter_name')
         else:
             return filter_name
