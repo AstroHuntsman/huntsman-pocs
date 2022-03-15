@@ -1,15 +1,13 @@
 import time
 
-from contextlib import suppress
 from functools import partial
+from collections import abc
 from multiprocessing.pool import ThreadPool
 
 from panoptes.utils import error
 from panoptes.utils.time import wait_for_events
 
 from panoptes.pocs.base import PanBase
-
-from huntsman.pocs.camera.utils import tune_exposure_time
 
 
 def dispatch_parallel(function, camera_names, **kwargs):
@@ -106,24 +104,6 @@ class CameraGroup(PanBase):
 
         return failed_cameras
 
-    def tune_exposure_time(self, *args, **kwargs):
-        """ Tune exposure times in parallel for each camera.
-        Args:
-            *args, **kwargs: Parsed to camera.tune_exposure_time
-        Returns:
-            dict: Dict of cam_name: exposure_time pairs.
-        """
-        def tune_etc(cam_name):
-            return tune_exposure_time(self.cameras[cam_name], *args, **kwargs)
-
-        self.logger.info(f"Tuning exposures times for {self}.")
-
-        exptimes = dispatch_parallel(tune_etc, self.camera_names)
-
-        self.logger.info(f"Finished tuning exposures times for {self}.")
-
-        return exptimes
-
     def take_observation(self, observation, headers=None):
         """ Take observation on all cameras in group.
         Args:
@@ -139,29 +119,6 @@ class CameraGroup(PanBase):
             camera = self.cameras[cam_name]
 
             obs_kwargs = {"headers": headers}
-
-            # Temporary solution for having different filters on different cameras
-            with suppress(AttributeError):
-                if observation.filter_names_per_camera is not None:
-                    observation.filter_name = observation.filter_names_per_camera[cam_name]
-
-            # Move the filterwheel now so we can tune the exptime properly
-            if camera.has_filterwheel:
-                if observation.filter_name is not None:
-                    camera.filterwheel.move_to(observation.filter_name)
-                else:
-                    try:
-                        camera.filterwheel.move_to_light_position()
-                    except error.NotFound as err:
-                        self.logger.warning(f"{err!r}")
-
-            # Check if we need to tune the exposure time
-            with suppress(AttributeError):
-                if observation.target_exposure_scaling is not None:
-                    exptime = self.tune_exposure_time(target=observation.target_exposure_scaling,
-                                                      initial_exptime=observation.exptime,
-                                                      **observation.tune_exptime_kwargs)
-                    obs_kwargs["exptime"] = exptime
 
             # Take the exposure and catch errors
             try:
@@ -223,7 +180,30 @@ class CameraGroup(PanBase):
         """
         cameras = {n: c for n, c in self.cameras.items() if c.has_focuser}
 
-        def func(cam_name):
-            return cameras[cam_name].autofocus(*args, **kwargs)
+        # need to remove `filter_name` from kwargs so it only gets passed once
+        # to `cameras[cam_name].autofocus()`
+        filter_name = kwargs.pop('filter_name')
 
-        return dispatch_parallel(func, cameras.keys())
+        def func(cam_name, filter_name=None, **kwargs):
+            filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)
+            return cameras[cam_name].autofocus(filter_name=filter_name, **kwargs)
+
+        return dispatch_parallel(func, cameras.keys(), filter_name=filter_name, **kwargs)
+
+    # Private methods
+
+    def _get_focus_filter_name(self, camera_name, filter_name=None, coarse=False, *args, **kwargs):
+        """
+        """
+        if coarse or filter_name is None:
+            return self.get_config('focusing.coarse.filter_name')
+        elif isinstance(filter_name, abc.Mapping):
+            try:
+                return filter_name[camera_name]
+            except KeyError as err:
+                self.logger.warning(
+                    f"No filter_name specified for camera {camera_name}, \
+                    defaulting to coarse filter: {err!r}")
+                return self.get_config('focusing.coarse.filter_name')
+        else:
+            return filter_name

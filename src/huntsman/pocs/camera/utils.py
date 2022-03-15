@@ -1,14 +1,11 @@
-import os
-import tempfile
+
 from collections import OrderedDict
 from contextlib import suppress
 
-import numpy as np
-from astropy import units as u
 
 from panoptes.utils.config.client import get_config
 from panoptes.utils import error
-from panoptes.utils.utils import get_quantity_value
+
 
 from huntsman.pocs.camera.pyro.client import Camera
 from huntsman.pocs.utils.logger import logger
@@ -160,70 +157,3 @@ def list_distributed_cameras(ns_host=None, metadata=None):
         camera_uris = {k: v[0] for k, v in camera_uris.items()}
         logger.debug(f"Found {len(camera_uris)} cameras on name server.")
     return camera_uris
-
-
-def tune_exposure_time(camera, target, initial_exptime, min_exptime=0, max_exptime=None,
-                       max_steps=5, tolerance=0.1, cutout_size=256, bias=None, **kwargs):
-    """ Tune the exposure time to within certain tolerance of the desired counts.
-    TODO: Add as camera method.
-    """
-    camera.logger.info(f"Tuning exposure time for {camera}.")
-
-    images_dir = camera.get_config("directories.images", None)
-    if images_dir:
-        images_dir = os.path.join(images_dir, "temp")
-        os.makedirs(images_dir, exist_ok=True)
-
-    # Parse quantities
-    initial_exptime = get_quantity_value(initial_exptime, "second") * u.second
-
-    if min_exptime is not None:
-        min_exptime = get_quantity_value(min_exptime, "second") * u.second
-    if max_exptime is not None:
-        max_exptime = get_quantity_value(max_exptime, "second") * u.second
-
-    try:
-        bit_depth = camera.bit_depth.to_value("bit")
-    except NotImplementedError:
-        bit_depth = 16
-
-    saturated_counts = 2 ** bit_depth
-
-    prefix = images_dir if images_dir is None else images_dir + "/"
-    with tempfile.NamedTemporaryFile(suffix=".fits", prefix=prefix, delete=False) as tf:
-
-        exptime = initial_exptime
-
-        for step in range(max_steps):
-
-            # Check if exposure time is within valid range
-            if (exptime == max_exptime) or (exptime == min_exptime):
-                break
-
-            # Get an image
-            cutout = camera.get_cutout(exptime, tf.name, cutout_size, keep_file=False, **kwargs)
-            cutout = cutout.astype("float32")
-            if bias is not None:
-                cutout -= bias
-
-            # Measure average counts
-            normalised_counts = np.median(cutout) / saturated_counts
-
-            camera.logger.debug(f"Normalised counts for {exptime} exposure on {camera}:"
-                                f" {normalised_counts}")
-
-            # Check if tolerance condition is met
-            if tolerance:
-                if abs(normalised_counts - target) < tolerance:
-                    break
-
-            # Update exposure time
-            exptime = exptime * target / normalised_counts
-            if max_exptime is not None:
-                exptime = min(exptime, max_exptime)
-            if min_exptime is not None:
-                exptime = max(exptime, min_exptime)
-
-    camera.logger.info(f"Tuned exposure time for {camera}: {exptime}")
-
-    return exptime

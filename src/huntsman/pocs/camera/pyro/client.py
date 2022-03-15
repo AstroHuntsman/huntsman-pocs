@@ -9,7 +9,7 @@ from Pyro5.api import Proxy
 from panoptes.utils import error
 from panoptes.utils.time import CountdownTimer
 from panoptes.utils.utils import get_quantity_value
-from panoptes.pocs.camera import AbstractCamera
+from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils.logger import logger
@@ -18,7 +18,7 @@ from huntsman.pocs.utils.pyro.event import RemoteEvent
 from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
 
 
-class Camera(AbstractCamera):
+class Camera(AbstractHuntsmanCamera):
     """A python remote object (pyro) camera client.
 
     This class should be instantiated on the main control computer that is

@@ -39,7 +39,7 @@ directories:
 
 cameras:
   devices:
-    - model: panoptes.pocs.camera.simulator.dslr
+    - model: huntsman.pocs.camera.simulator.camera
       name: dslr.00
       port: /dev/fake/dslr.focuser.00
       is_distributed: True

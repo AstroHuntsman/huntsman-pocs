@@ -14,8 +14,10 @@ from panoptes.utils.utils import get_quantity_value
 from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 
+from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 
-class Camera(AbstractSDKCamera):
+
+class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     _driver = None  # Class variable to store the ASI driver interface
     _cameras = []  # Cache of camera string IDs
     _assigned_cameras = set()  # Camera string IDs already in use.

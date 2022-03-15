@@ -1,9 +1,10 @@
 import os
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+from collections import OrderedDict, abc
 from astropy import units as u
 
 from panoptes.utils.utils import get_quantity_value
+from panoptes.utils import error
 from panoptes.pocs.base import PanBase
 from huntsman.pocs.scheduler.field import AbstractField, CompoundField
 
@@ -13,8 +14,7 @@ class AbstractObservation(PanBase, ABC):
 
     def __init__(self, field, exptime=120 * u.second, min_nexp=1, exp_set_size=1, priority=1,
                  dark=False, filter_name=None, directory=None, focus_offset=0,
-                 filter_names_per_camera=None, target_exposure_scaling=None,
-                 tune_exptime_kwargs=None, **kwargs):
+                 target_exposure_scaling=None, tune_exptime_kwargs=None, **kwargs):
         """ An observation of a given `panoptes.pocs.scheduler.field.Field`.
 
         An observation consists of a minimum number of exposures (`min_nexp`) that
@@ -31,8 +31,8 @@ class AbstractObservation(PanBase, ABC):
             exp_set_size (int): Number of exposures to take per set, default: 1.
             focus_offset (int, optional): Apply this focus offset for defocused observations.
                 Default 0.
-            filter_names_per_camera (dict, optional): If provided, this should be a dictionary
-                of camera_name: filter_name. If will take priority over filter_name.
+            filter_name (dict or str, optional): If provided, this should be a dictionary
+                of form `{camera_name: filter_name}` or a string of just `filter_name`.
         """
         super().__init__(**kwargs)
 
@@ -48,10 +48,6 @@ class AbstractObservation(PanBase, ABC):
         self.priority = float(priority)
         self.filter_name = filter_name
         self.focus_offset = focus_offset
-
-        # This is a temporary solution for having different filters on different cameras
-        # TODO: Refactor and remove
-        self.filter_names_per_camera = filter_names_per_camera
 
         if self.min_nexp % self.exp_set_size != 0:
             raise ValueError(f"Minimum number of exposures (min_nexp={min_nexp}) must be "
@@ -213,6 +209,29 @@ class AbstractObservation(PanBase, ABC):
     def mark_exposure_complete(self):
         """ Explicitly mark the current exposure as complete. """
         self._current_exp_num += 1
+
+    def get_filter_name(self, camera_name):
+        """ Determine filter name based on camera if `filter_name` is dict,
+        otherwise just return `filter_name`.
+
+        Args:
+            camera_name (str): The name of the camera.
+        Returns:
+            str: The filter name.
+        """
+        self.filter_name
+        # If filter names is a dict, use camera name as key
+        if isinstance(self.filter_name, abc.Mapping):
+            try:
+                filter_name = self.filter_name[camera_name]
+            except KeyError as err:
+                msg = f"No filter_name specified for camera {camera_name}: {err!r}"
+                self.logger.warning(msg)
+                raise error.PanError(msg)
+            return filter_name
+        else:
+            # If it is not a dict, return the filter name attribute
+            return self.filter_name
 
 
 class Observation(AbstractObservation):

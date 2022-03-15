@@ -7,12 +7,12 @@ from panoptes.utils.utils import get_quantity_value
 from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
 
 from panoptes.pocs.observatory import Observatory
-from panoptes.pocs.scheduler.observation.bias import BiasObservation
 
 from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.archive.utils import remove_empty_directories
 from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.scheduler.observation.bias import BiasObservation
 from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field_observation
 from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
@@ -192,18 +192,14 @@ class HuntsmanObservatory(Observatory):
         """
         focus_type = "coarse" if coarse else "fine"
 
-        # Choose the filter to focus with
-        # TODO: Move this logic to the camera level
+        # Check current observation filter if there is one
         if filter_name is None:
-            if coarse:
-                filter_name = self._coarse_focus_filter
-            else:
-                try:
-                    filter_name = self.current_observation.filter_name
-                except AttributeError:
-                    filter_name = self._coarse_focus_filter
-                    self.logger.warning("Unable to retrieve filter name from current observation."
-                                        f" Defaulting to coarse focus filter ({filter_name}).")
+            try:
+                filter_name = self.current_observation.filter_name
+            except AttributeError:
+                filter_name = None
+                self.logger.warning("Unable to retrieve filter name from current observation. Focus"
+                                    " filter will be set to camera default coarse focus filter.")
 
         # Asyncronously dispatch autofocus calls
         with self.safety_checking(horizon="focus"):
@@ -554,7 +550,7 @@ class HuntsmanObservatory(Observatory):
                                         f" {err!r}")
                 # Log sequence status
                 status = sequences[cam_name].status
-                status["filter_name"] = observation.filter_name
+                status["filter_name"] = observation.get_filter_name(cam_name)
                 self.logger.info(f"Flat field status for {cam_name}: {status}")
 
             # Check if sequences are complete
