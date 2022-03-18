@@ -27,6 +27,10 @@ scheduler:
   type: panoptes.pocs.scheduler.dispatch
   fields_file: simulator.yaml
   check_file: True
+  constraints:
+    - name: panoptes.pocs.scheduler.constraint.MoonAvoidance
+      options:
+        separation: 15
 
 directories:
   base: /huntsman
