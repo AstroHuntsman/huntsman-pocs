@@ -28,9 +28,11 @@ scheduler:
   fields_file: simulator.yaml
   check_file: True
   constraints:
+    - name: panoptes.pocs.scheduler.constraint.Altitude
     - name: panoptes.pocs.scheduler.constraint.MoonAvoidance
       options:
         separation: 15
+    - name: panoptes.pocs.scheduler.constraint.Duration
 
 directories:
   base: /huntsman
