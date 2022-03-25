@@ -21,9 +21,10 @@ def field_config_2():
 
 
 def test_observe_once_global():
-    prev_observe_once_status = get_config('scheduler.constraints.observe_once',
+    prev_observe_once_status = get_config('scheduler.observe_once',
                                           default=False)
-    set_config('scheduler.constraints.observe_once', True)
+    assert not prev_observe_once_status
+    set_config('scheduler.observe_once', True)
     scheduler = create_huntsman_scheduler()
 
     is_set = False
@@ -35,7 +36,7 @@ def test_observe_once_global():
     try:
         assert is_set
     finally:
-        set_config('scheduler.constraints.observe_once', prev_observe_once_status)
+        set_config('scheduler.observe_once', prev_observe_once_status)
 
 
 def test_field(field_config_1, field_config_2):
