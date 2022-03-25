@@ -171,7 +171,7 @@ class Camera(AbstractHuntsmanCamera):
         self._file_extension = self._proxy.get("file_extension")
         self._is_cooled_camera = self._proxy.get("is_cooled_camera")
         self._filter_type = self._proxy.get("filter_type")
-        self._timeout = self._proxy.get("_timeout")
+        self._timeout = self._proxy.get("timeout")
 
         # Set up proxies for remote camera's events required by base class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
