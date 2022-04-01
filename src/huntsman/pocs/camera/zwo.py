@@ -354,8 +354,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             raise error.PanError("Unexpected exposure status on {}: '{}'".format(
                 self, exposure_status))
 
-    def _create_fits_header(self, seconds, dark):
-        header = super()._create_fits_header(seconds, dark)
+    def _create_fits_header(self, seconds, dark=None, metadata=None):
+        header = super()._create_fits_header(seconds, dark, metadata)
         header.set('CAM-GAIN', self.gain, 'Internal units')
         header.set('XPIXSZ', get_quantity_value(self.properties['pixel_size'], u.um), 'Microns')
         header.set('YPIXSZ', get_quantity_value(self.properties['pixel_size'], u.um), 'Microns')
