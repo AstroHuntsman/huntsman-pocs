@@ -3,13 +3,14 @@ from Pyro5.api import Proxy
 
 event_types = {"camera",
                "focuser",
-               "filterwheel"}
+               "filterwheel",
+               "observation"}
 
 
 class RemoteEvent(Event):
     """Interface for threading.Events of a remote camera or its subcomponents.
 
-    Current supported types are: `camera`, `focuser`, `filterwheel`.
+    Current supported types are: `camera`, `focuser`, `filterwheel`, `observation`.
     """
 
     def __init__(self, uri, event_type):

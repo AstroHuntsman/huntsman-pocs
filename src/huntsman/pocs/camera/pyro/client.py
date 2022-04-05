@@ -140,6 +140,18 @@ class Camera(AbstractHuntsmanCamera):
             self._exposure_event.clear()
 
     @property
+    def is_observing(self):
+        return self._proxy.get("is_observing")
+
+    @is_observing.setter
+    def is_observing(self, is_observing):
+        """Set or clear the remote exposure event."""
+        if is_observing:
+            self._is_observing_event.set()
+        else:
+            self._is_observing_event.clear()
+
+    @property
     def is_temperature_stable(self):
         return self._proxy.get("is_temperature_stable")
 
@@ -176,6 +188,7 @@ class Camera(AbstractHuntsmanCamera):
         # Set up proxies for remote camera's events required by base class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
         self._focus_event = RemoteEvent(self._uri, event_type="focuser")
+        self._is_observing_event = RemoteEvent(self._uri, event_type="observation")
 
         self._connected = True
         self.logger.debug(f"{self} connected.")

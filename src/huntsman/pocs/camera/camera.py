@@ -12,6 +12,7 @@ from astropy import units as u
 
 
 class AbstractHuntsmanCamera(AbstractCamera):
+    """Base class for Huntsman cameras"""
 
     def take_observation(self, observation, headers=None, filename=None, blocking=False, **kwargs):
         """Take an observation. Override of `panoptes.pocs.camera.camera.take_observation()` to
@@ -22,24 +23,28 @@ class AbstractHuntsmanCamera(AbstractCamera):
             `threading.Thread` object. The Thread calls `process_exposure`
             after the exposure had completed and the Event is set once
             `process_exposure` finishes.
+
         Args:
             observation (~panoptes.pocs.scheduler.observation.Observation): Object
                 describing the observation
-            headers (dict, optional): Header data to be saved along with the file.
+            headers (dict or Header, optional): Header data to be saved along with the file.
             filename (str, optional): pass a filename for the output FITS file to
                 override the default file naming system.
             blocking (bool): If method should wait for observation event to be complete
                 before returning, default False.
             **kwargs (dict): Optional keyword arguments (`exptime`, dark)
+
         Returns:
-            threading.Event: An event to be set when the image is done processing
+            dict: The metadata from the event.
         """
-        observation_event = threading.Event()
+        # Set the camera is_observing.
+        self._is_observing_event.set()
+
         # Setup the observation
-        exptime, file_path, image_id, metadata = self._setup_observation(observation,
-                                                                         headers,
-                                                                         filename,
-                                                                         **kwargs)
+        metadata = self._setup_observation(observation, headers, filename, **kwargs)
+        exptime = metadata['exptime']
+        file_path = metadata['filepath']
+        image_id = metadata['image_id']
 
         # pop exptime from kwarg as its now in exptime
         exptime = kwargs.pop('exptime', observation.exptime.value)
@@ -54,7 +59,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         # start the exposure
         self.take_exposure(seconds=exptime, filename=file_path, blocking=blocking,
-                           dark=observation.dark, **kwargs)
+                           metadata=metadata, dark=observation.dark, **kwargs)
 
         # Add most recent exposure to list
         if self.is_primary:
@@ -68,16 +73,16 @@ class AbstractHuntsmanCamera(AbstractCamera):
         t = threading.Thread(
             name=f'Thread-{image_id}',
             target=self.process_exposure,
-            args=(metadata, observation_event),
+            args=(metadata,),
             daemon=True)
         t.start()
 
         if blocking:
-            while not observation_event.is_set():
+            while self.is_observing:
                 self.logger.trace('Waiting for observation event')
                 time.sleep(0.1)
 
-        return observation_event
+        return metadata
 
     def tune_exposure_time(self, target, initial_exptime, min_exptime=0, max_exptime=None,
                            max_steps=5, tolerance=0.1, cutout_size=256, bias=None, **kwargs):
@@ -227,23 +232,26 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         # The exptime header data is set as part of observation but can
         # be overridden by passed parameter so update here.
-        exptime = kwargs.get('exptime', observation.exptime.value)
+        exptime = kwargs.get('exptime', get_quantity_value(observation.exptime, unit=u.second))
 
         # Camera metadata
         metadata = {
             'camera_name': self.name,
             'camera_uid': self.uid,
             'field_name': observation.field.field_name,
-            'file_path': file_path,
+            'filepath': file_path,
             'filter': self.filter_type,
             'image_id': image_id,
             'is_primary': self.is_primary,
             'sequence_id': sequence_id,
             'start_time': start_time,
-            'exptime': exptime
+            'exptime': exptime,
+            'current_exp_num': observation.current_exp_num
         }
         if filter_name is not None:
             metadata['filter_request'] = filter_name
+
+        metadata.update(observation.status)
 
         if headers is not None:
             self.logger.trace(f'Updating {file_path} metadata with provided headers')
@@ -253,4 +261,4 @@ class AbstractHuntsmanCamera(AbstractCamera):
             f'Observation setup: exptime={exptime!r} file_path={file_path!r} '
             f'image_id={image_id!r} metadata={metadata!r}')
 
-        return exptime, file_path, image_id, metadata
+        return metadata
