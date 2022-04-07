@@ -147,9 +147,9 @@ class Camera(AbstractHuntsmanCamera):
     def is_observing(self, is_observing):
         """Set or clear the remote exposure event."""
         if is_observing:
-            self._is_observing_event.set()
+            self._observing_event.set()
         else:
-            self._is_observing_event.clear()
+            self._observing_event.clear()
 
     @property
     def is_temperature_stable(self):
@@ -188,7 +188,7 @@ class Camera(AbstractHuntsmanCamera):
         # Set up proxies for remote camera's events required by base class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
         self._focus_event = RemoteEvent(self._uri, event_type="focuser")
-        self._is_observing_event = RemoteEvent(self._uri, event_type="observation")
+        self._observing_event = RemoteEvent(self._uri, event_type="observation")
 
         self._connected = True
         self.logger.debug(f"{self} connected.")
@@ -243,15 +243,23 @@ class Camera(AbstractHuntsmanCamera):
 
         return self._exposure_future
 
-    def take_observation(self, observation, *args, **kwargs):
+    def take_observation(self, observation, *args, blocking=False, ** kwargs):
         """ Overrride class method to add defocusing offset.
         TODO: Move to AbstractCamera.
         """
         focus_offset = 0
         with suppress(AttributeError):
             focus_offset = observation.focus_offset
-        return super().take_observation(observation, focus_offset=focus_offset,
-                                        *args, **kwargs)
+
+        metadata = self._proxy.take_observation(
+            observation, focus_offset=focus_offset, *args, **kwargs)
+
+        if blocking:
+            while self.is_observing:
+                self.logger.trace(f'Waiting for observation event')
+                time.sleep(0.5)
+
+        return metadata
 
     def autofocus(self, blocking=False, timeout=None, coarse=False, *args, **kwargs):
         """

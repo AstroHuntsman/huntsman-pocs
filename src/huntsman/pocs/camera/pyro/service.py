@@ -95,6 +95,15 @@ class CameraService(object):
             kwargs.pop("blocking")
         self._readout_thread = self._camera.take_exposure(*args, **kwargs)
 
+    def take_observation(self, *args, **kwargs):
+        """Proxy call to the camera client.
+
+        This method will strip any `blocking` parameter that is passed so Pyro can handle the blocking appropriately.
+        """
+        with suppress(KeyError):
+            kwargs.pop("blocking")
+        self._camera.take_observation(*args, **kwargs)
+
     def autofocus(self, *args, **kwargs):
         """ Start the autofocus non-blocking so that camera server can still respond to
         status requests.
