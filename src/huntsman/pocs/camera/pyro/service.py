@@ -20,7 +20,8 @@ class CameraService(object):
     """
     _event_locations = {"camera": ("_camera", "_is_exposing_event"),
                         "focuser": ("_focus_event",),
-                        "filterwheel": ("_camera", "filterwheel", "_move_event")}
+                        "filterwheel": ("_camera", "filterwheel", "_move_event"),
+                        "observation": ("_camera", "_is_observing_event")}
 
     def __init__(self, device_name=None, logger=None):
         """
