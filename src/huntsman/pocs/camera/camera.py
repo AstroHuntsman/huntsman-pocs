@@ -69,9 +69,9 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # Process the exposure once readout is complete
         # To be used for marking when exposure is complete (see `process_exposure`)
         t = threading.Thread(
-            name=f'Thread-{image_id}',
+            name=f'Thread-process_exposure-{image_id}',
             target=self.process_exposure,
-            args=(metadata, self._is_observing_event),
+            args=(metadata,),
             daemon=True)
         t.start()
 
