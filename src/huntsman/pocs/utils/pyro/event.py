@@ -3,13 +3,14 @@ from Pyro5.api import Proxy
 
 event_types = {"camera",
                "focuser",
-               "filterwheel"}
+               "filterwheel",
+               "observation"}
 
 
 class RemoteEvent(Event):
     """Interface for threading.Events of a remote camera or its subcomponents.
 
-    Current supported types are: `camera`, `focuser`, `filterwheel`.
+    Current supported types are: `camera`, `focuser`, `filterwheel`, `observation`.
     """
 
     def __init__(self, uri, event_type):
@@ -21,12 +22,15 @@ class RemoteEvent(Event):
         self._type = event_type
 
     def set(self):
+        self._proxy._pyroClaimOwnership()
         self._proxy.event_set(self._type)
 
     def clear(self):
+        self._proxy._pyroClaimOwnership()
         self._proxy.event_clear(self._type)
 
     def is_set(self):
+        self._proxy._pyroClaimOwnership()
         return self._proxy.event_is_set(self._type)
 
     def wait(self, timeout=None):
