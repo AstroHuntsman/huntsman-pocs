@@ -1,5 +1,6 @@
 import os
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
@@ -57,6 +58,9 @@ class Camera(AbstractHuntsmanCamera):
 
         self._exposure_future = None  # Used by self.process_exposure
         self._exposure_executor = ThreadPoolExecutor(max_workers=1)
+        # camera.take_observation() no longer returns an observing event, so we need an instance variable
+        # in the camera pyro client
+        self._is_observing_event = threading.Event()
 
         # Connect to camera
         self.connect()

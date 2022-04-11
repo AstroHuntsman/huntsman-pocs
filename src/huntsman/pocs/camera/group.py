@@ -122,12 +122,12 @@ class CameraGroup(PanBase):
 
             # Take the exposure and catch errors
             try:
-                event = camera.take_observation(observation, **obs_kwargs)
+                camera.take_observation(observation, **obs_kwargs)
             except error.PanError as err:
                 self.logger.error(f"{err!r}")
                 return None
 
-            return event
+            return camera._is_observing_event
 
         # Start the exposures and return events
         return dispatch_parallel(func, self.camera_names)
