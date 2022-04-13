@@ -35,9 +35,9 @@ def patterns(camera, images_dir):
 
 
 @pytest.fixture(scope='function')
-def camera(camera_service_name):
+def camera(camera_00_service_name):
     nameserver = get_running_nameserver()
-    camera_client = Camera(uri=nameserver.lookup(camera_service_name))
+    camera_client = Camera(uri=nameserver.lookup(camera_00_service_name))
 
     # Seems to be a bug somewhere with missing camera._exposure_error attribute
     # TODO: Remove
