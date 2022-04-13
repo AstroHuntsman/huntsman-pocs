@@ -27,12 +27,6 @@ scheduler:
   type: panoptes.pocs.scheduler.dispatch
   fields_file: simulator.yaml
   check_file: True
-  constraints:
-    - name: panoptes.pocs.scheduler.constraint.Altitude
-    - name: panoptes.pocs.scheduler.constraint.MoonAvoidance
-      options:
-        separation: 15
-    - name: panoptes.pocs.scheduler.constraint.Duration
 
 directories:
   base: /huntsman
@@ -53,8 +47,8 @@ cameras:
         model: huntsman.pocs.focuser.simulator.Focuser
         focus_port: /dev/fake/focuser.00
         initial_position: 20000
-        autofocus_range: [40, 80]
-        autofocus_step: [10, 20]
+        autofocus_range: [ 40, 80 ]
+        autofocus_step: [ 10, 20 ]
         autofocus_seconds: 0.1
         autofocus_size: 500
         autofocus_keep_files: False

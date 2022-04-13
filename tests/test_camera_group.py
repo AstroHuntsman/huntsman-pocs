@@ -44,9 +44,9 @@ def camera_group(cameras):
 
 def test_cg_move_filterwheel(camera_group):
 
-    camera_group.filterwheel_move_to(1, blocking=True)
+    camera_group.filterwheel_move_to(1)
     assert all([camera.filterwheel.position == 1 for camera in camera_group.cameras.values()])
-    camera_group.filterwheel_move_to(2, blocking=True)
+    camera_group.filterwheel_move_to(2)
     assert all([camera.filterwheel.position == 2 for camera in camera_group.cameras.values()])
 
 
@@ -58,12 +58,12 @@ def test_cg_fw_move_to_dark_position(camera_group):
     # if any camera in the camera group is already at dark position, move all cameras to a non-dark position
     if any([camera.filterwheel.position == camera.filterwheel._dark_position
             for camera in camera_group.cameras.values()]):
-        camera_group.filterwheel_move_to(2, blocking=True)
+        camera_group.filterwheel_move_to(2)
 
     assert all([camera.filterwheel.position != camera.filterwheel._dark_position
                 for camera in camera_group.cameras.values()])
 
-    camera_group.filterwheel_move_to(dark_position=True, blocking=True)
+    camera_group.filterwheel_move_to(dark_position=True)
 
     assert all([camera.filterwheel.position == camera.filterwheel._dark_position
                 for camera in camera_group.cameras.values()])
@@ -76,7 +76,7 @@ def test_cg_take_observation(camera_group):
     field = Field('Test Observation', '20h00m43.7135s +22d42m39.0645s')
     observation = Observation(field, exptime=1.5 * u.second, filter_name='deux')
     observation.seq_time = '19991231T235959'
-    camera_group.take_observation(observation, headers={}, blocking=True)
+    camera_group.take_observation(observation, headers={})
     time.sleep(7)
 
     # TODO: Should this go into the fields subdirectory?
