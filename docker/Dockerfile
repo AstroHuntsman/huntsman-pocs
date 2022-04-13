@@ -2,7 +2,7 @@ ARG image_url=gcr.io/panoptes-exp/panoptes-pocs
 ARG image_tag=develop
 FROM ${image_url}:${image_tag} AS pocs-base
 
-ARG pocs_url="https://github.com/panoptes/POCS.git@develop#egg=panoptes-pocs"
+ARG pocs_url="https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs"
 ARG image_url
 ARG image_tag
 
