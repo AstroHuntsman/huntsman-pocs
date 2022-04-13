@@ -508,10 +508,9 @@ class HuntsmanObservatory(Observatory):
                 start_times[cam_name] = current_time()
 
                 try:
-                    camera.take_observation(
+                    events[cam_name] = camera.take_observation(
                         observation, headers=headers, filename=filenames[cam_name],
                         exptime=exptimes[cam_name])
-                    events[cam_name] = camera._is_observing_event
                 except error.PanError as err:
                     self.logger.error(f"{err!r}")
                     self.logger.warning("Continuing with flat observation after error.")

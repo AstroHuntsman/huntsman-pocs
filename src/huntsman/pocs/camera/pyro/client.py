@@ -1,6 +1,5 @@
 import os
 import time
-import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
@@ -129,22 +128,6 @@ class Camera(AbstractHuntsmanCamera):
         return self._proxy.get("cooling_power")
 
     @property
-    def waiting_for_readout(self):
-        return self._proxy.get("waiting_for_readout")
-
-    @property
-    def is_observing(self):
-        return self._proxy.get("is_observing")
-
-    @is_observing.setter
-    def is_observing(self, is_observing):
-        """Set or clear the remote exposure event."""
-        if is_observing:
-            self._observing_event.set()
-        else:
-            self._observing_event.clear()
-
-    @property
     def is_exposing(self):
         return self._proxy.get("is_exposing")
 
@@ -193,7 +176,6 @@ class Camera(AbstractHuntsmanCamera):
         # Set up proxies for remote camera's events required by base class
         self._exposure_event = RemoteEvent(self._uri, event_type="camera")
         self._focus_event = RemoteEvent(self._uri, event_type="focuser")
-        self._is_observing_event = RemoteEvent(self._uri, event_type="observation")
 
         self._connected = True
         self.logger.debug(f"{self} connected.")
