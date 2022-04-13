@@ -234,7 +234,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
             'camera_name': self.name,
             'camera_uid': self.uid,
             'field_name': observation.field.field_name,
-            'file_path': file_path,
+            'filepath': file_path,
             'filter': self.filter_type,
             'image_id': image_id,
             'is_primary': self.is_primary,
