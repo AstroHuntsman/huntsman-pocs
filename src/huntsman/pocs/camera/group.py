@@ -182,7 +182,10 @@ class CameraGroup(PanBase):
 
         # need to remove `filter_name` from kwargs so it only gets passed once
         # to `cameras[cam_name].autofocus()`
-        filter_name = kwargs.pop('filter_name')
+        try:
+            filter_name = kwargs.pop('filter_name')
+        except KeyError:
+            filter_name = None
 
         def func(cam_name, filter_name=None, **kwargs):
             filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)

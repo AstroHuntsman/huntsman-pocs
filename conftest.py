@@ -76,16 +76,27 @@ def pytest_configure(config):
     ns_proc.start()
     logger.success(f'Pyro nameserver started: {ns_proc!r}')
 
-    # Start a pyro camera service
-    logger.info(f"Creating testing Pyro {service_class}")
-    pyro_proc = pyro_service_process(
+    # Start first pyro camera service
+    logger.info(f"Creating first testing Pyro {service_class}")
+    pyro_proc_00 = pyro_service_process(
         service_class=f'huntsman.pocs.camera.pyro.service.{service_class}',
         service_name='dslr.00',
         **service_config,
     )
-    pyro_proc.daemon = True
-    pyro_proc.start()
-    logger.success(f'Pyro service created: {pyro_proc!r}')
+    pyro_proc_00.daemon = True
+    pyro_proc_00.start()
+    logger.success(f'Pyro service created: {pyro_proc_00!r}')
+
+    # Start second pyro camera service
+    logger.info(f"Creating second testing Pyro {service_class}")
+    pyro_proc_01 = pyro_service_process(
+        service_class=f'huntsman.pocs.camera.pyro.service.{service_class}',
+        service_name='dslr.01',
+        **service_config,
+    )
+    pyro_proc_01.daemon = True
+    pyro_proc_01.start()
+    logger.success(f'Pyro service created: {pyro_proc_01!r}')
 
 
 def pytest_addoption(parser):
@@ -260,5 +271,10 @@ def caplog(_caplog):
 
 
 @pytest.fixture(scope='module')
-def camera_service_name():
+def camera_00_service_name():
     return 'dslr.00'
+
+
+@pytest.fixture(scope='module')
+def camera_01_service_name():
+    return 'dslr.01'
