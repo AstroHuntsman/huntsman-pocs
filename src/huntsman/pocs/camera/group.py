@@ -33,6 +33,7 @@ class CameraGroup(PanBase):
 
     def __init__(self, cameras, **kwargs):
         super().__init__(**kwargs)
+        # cameras is dict of camera name keys and associated camera objects
         self.cameras = cameras
 
     def __str__(self):
@@ -104,7 +105,7 @@ class CameraGroup(PanBase):
 
         return failed_cameras
 
-    def take_observation(self, observation, headers=None):
+    def take_observation(self, observation, headers=None, **kwargs):
         """ Take observation on all cameras in group.
         Args:
             observation (Observation): The observation object.
@@ -115,14 +116,14 @@ class CameraGroup(PanBase):
         self.logger.info(f"Taking observation {observation} for {self}.")
 
         # Define function to start exposures in parallel
-        def func(cam_name):
+        def func(cam_name, **kwargs):
             camera = self.cameras[cam_name]
 
             obs_kwargs = {"headers": headers}
 
             # Take the exposure and catch errors
             try:
-                camera.take_observation(observation, **obs_kwargs)
+                camera.take_observation(observation, **obs_kwargs, **kwargs)
             except error.PanError as err:
                 self.logger.error(f"{err!r}")
                 return None
@@ -130,9 +131,9 @@ class CameraGroup(PanBase):
             return camera._is_observing_event
 
         # Start the exposures and return events
-        return dispatch_parallel(func, self.camera_names)
+        return dispatch_parallel(func, self.camera_names, **kwargs)
 
-    def filterwheel_move_to(self, filter_name=None, dark_position=False):
+    def filterwheel_move_to(self, filter_name=None, dark_position=False, **kwargs):
         """Move all the filterwheels to a given filter
         Args:
             filter_name (str or dict, optional): Name of the filter where filterwheels will be
@@ -150,7 +151,7 @@ class CameraGroup(PanBase):
         if dark_position:
             self.logger.debug('Moving all filterwheels to dark position.')
             for camera in cameras.values():
-                filterwheel_events[camera] = camera.filterwheel.move_to_dark_position()
+                filterwheel_events[camera] = camera.filterwheel.move_to_dark_position(**kwargs)
 
         elif filter_name is None:
             raise ValueError("filter_name must not be None.")
@@ -164,7 +165,7 @@ class CameraGroup(PanBase):
                 else:
                     fn = filter_name
 
-                filterwheel_events[camera] = camera.filterwheel.move_to(fn)
+                filterwheel_events[camera] = camera.filterwheel.move_to(fn, **kwargs)
 
         # Wait for move to complete
         wait_for_events(list(filterwheel_events.values()))
@@ -182,7 +183,10 @@ class CameraGroup(PanBase):
 
         # need to remove `filter_name` from kwargs so it only gets passed once
         # to `cameras[cam_name].autofocus()`
-        filter_name = kwargs.pop('filter_name')
+        try:
+            filter_name = kwargs.pop('filter_name')
+        except KeyError:
+            filter_name = None
 
         def func(cam_name, filter_name=None, **kwargs):
             filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)

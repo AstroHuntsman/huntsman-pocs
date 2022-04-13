@@ -53,8 +53,32 @@ cameras:
         model: huntsman.pocs.focuser.simulator.Focuser
         focus_port: /dev/fake/focuser.00
         initial_position: 20000
-        autofocus_range: [ 40, 80 ]
-        autofocus_step: [ 10, 20 ]
+        autofocus_range: [40, 80]
+        autofocus_step: [10, 20]
+        autofocus_seconds: 0.1
+        autofocus_size: 500
+        autofocus_keep_files: False
+      filterwheel:
+        model: panoptes.pocs.filterwheel.simulator.FilterWheel
+        filter_names:
+          - one
+          - deux
+          - drei
+          - quattro
+          - blank
+        move_time: 0.1
+        timeout: 0.5
+        dark_position: blank
+    - model: huntsman.pocs.camera.simulator.camera
+      name: dslr.01
+      port: /dev/fake/dslr.focuser.01
+      is_distributed: True
+      focuser:
+        model: huntsman.pocs.focuser.simulator.Focuser
+        focus_port: /dev/fake/focuser.01
+        initial_position: 20100
+        autofocus_range: [40, 80]
+        autofocus_step: [10, 20]
         autofocus_seconds: 0.1
         autofocus_size: 500
         autofocus_keep_files: False
