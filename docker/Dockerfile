@@ -1,5 +1,5 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-pocs
-ARG image_tag=develop
+ARG image_url=docker.io/huntsmanarray/panoptes-pocs
+ARG image_tag=v0.7.8
 FROM ${image_url}:${image_tag} AS pocs-base
 
 ARG pocs_url="https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs"
