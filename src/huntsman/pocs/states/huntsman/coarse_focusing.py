@@ -20,13 +20,21 @@ def on_enter(event_data):
 
     # Get timeout, alt, and az from config dict.
     coarse_focus_timeout = coarse_focus_config['timeout']
-    coarse_focus_alt = coarse_focus_config['alt']
-    coarse_focus_az = coarse_focus_config['az']
 
-    # Convert altaz coordinates to radec.
-    coarse_focus_coords = altaz_to_radec(alt=coarse_focus_alt, az=coarse_focus_az,
-                                         location=pocs.observatory.earth_location,
-                                         obstime=current_time())
+    if coarse_focus_config['itis_daytime']:
+        pocs.say("It's daytime ☀️ so I'm focusing on the target star")
+        # get the focus target star (always the first entry in the daytime target list)
+        observation = pocs.observatory.scheduler.observations[pocs.observatory.scheduler.get_observation()[
+            0]]
+        # get the coordinates for it
+        coarse_focus_coords = observation.field.coord
+    else:
+        coarse_focus_alt = coarse_focus_config['alt']
+        coarse_focus_az = coarse_focus_config['az']
+        # Convert altaz coordinates to radec.
+        coarse_focus_coords = altaz_to_radec(alt=coarse_focus_alt, az=coarse_focus_az,
+                                             location=pocs.observatory.earth_location,
+                                             obstime=current_time())
 
     pocs.say(f'Coarse focus coordinates: {coarse_focus_coords}')
 
