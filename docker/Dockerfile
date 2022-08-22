@@ -2,7 +2,8 @@ ARG image_url=docker.io/huntsmanarray/panoptes-pocs
 ARG image_tag=v0.7.8
 FROM ${image_url}:${image_tag} AS pocs-base
 
-ARG pocs_url="https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs"
+ARG pocs_tag="v0.7.8"
+ARG pocs_url="https://github.com/panoptes/POCS.git@${pocs_tag}egg=panoptes-pocs"
 ARG image_url
 ARG image_tag
 
@@ -23,7 +24,7 @@ USER "${userid}"
 RUN echo "Building from ${image_url}:${image_tag}" && \
     sudo apt-get update && \
     sudo apt-get install -y --no-install-recommends \
-        gcc git udev nano vim-nox && \
+    gcc git udev nano vim-nox && \
     sudo mkdir -p "${POCS}/images"  && \
     sudo mkdir -p "${POCS}/logs"  && \
     sudo mkdir -p "${POCS}/archive"  && \
@@ -47,7 +48,7 @@ RUN conda env update -n base -f environment.yaml && \
     pip cache purge && \
     conda clean -fay && \
     sudo apt-get autoremove --purge --yes \
-        gcc pkg-config git && \
+    gcc pkg-config git && \
     sudo apt-get autoclean --yes && \
     sudo apt-get --yes clean && \
     sudo rm -rf /var/lib/apt/lists/*

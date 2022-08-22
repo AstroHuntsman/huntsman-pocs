@@ -9,5 +9,5 @@ dependencies:
   - pip
   - scipy
   - pip:
-      - "git+https://github.com/panoptes/panoptes-utils.git@v0.2.35#egg=panoptes-utils[config,images,social]"
-      - "git+https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs[focuser]" # Docker image uses updated github install
+      - panoptes-utils[config,images,social]==0.2.35
+      - panoptes-pocs[focuser]==0.7.8 # Docker image uses updated github install
