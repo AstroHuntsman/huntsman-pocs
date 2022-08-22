@@ -1,5 +1,5 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-pocs
-ARG image_tag=develop
+ARG image_url=docker.io/huntsmanarray/panoptes-pocs
+ARG image_tag=v0.7.8
 FROM ${image_url}:${image_tag} AS pocs-base
 
 LABEL description="Huntsman POCS Testing Service"
@@ -20,9 +20,9 @@ USER "${userid}"
 RUN echo "Building from ${image_name}:${image_tag}" && \
     sudo apt-get update && \
     sudo apt-get install -y --no-install-recommends \
-        git \
-        gcc \
-        udev && \
+    git \
+    gcc \
+    udev && \
     sudo mkdir -p "${HUNTSMAN_POCS}/images"  && \
     sudo mkdir -p "${HUNTSMAN_POCS}/logs"  && \
     sudo mkdir -p "${HUNTSMAN_POCS}/json_store"  && \

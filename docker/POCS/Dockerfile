@@ -1,5 +1,5 @@
-ARG image_url=gcr.io/panoptes-exp/panoptes-utils
-ARG image_tag=develop
+ARG image_url=docker.io/huntsmanarray/panoptes-utils
+ARG image_tag=latest
 FROM ${image_url}:${image_tag} AS panoptes-pocs-base
 
 ARG arduino_url="https://downloads.arduino.cc/arduino-cli/arduino-cli_latest"
