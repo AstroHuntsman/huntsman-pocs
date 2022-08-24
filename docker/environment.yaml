@@ -1,7 +1,7 @@
 channels:
   - https://conda.anaconda.org/conda-forge
 dependencies:
-  - ipython  # Interactive
+  - ipython # Interactive
   - matplotlib-base
   - numpy
   - photutils
@@ -9,5 +9,5 @@ dependencies:
   - pip
   - scipy
   - pip:
-      - panoptes-utils[config,images,social]
-      - panoptes-pocs[focuser]  # Docker image uses updated github install
+      - panoptes-utils[config,images,social]==0.2.35
+      - panoptes-pocs[focuser]==0.7.8 # Docker image uses updated github install
