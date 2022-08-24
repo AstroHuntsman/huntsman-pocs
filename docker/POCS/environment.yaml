@@ -12,4 +12,4 @@ dependencies:
   - streamz
   - uvicorn[standard]
   - pip:
-      - panoptes-utils[config,images,social]==0.2.35
+      - "git+https://github.com/panoptes/panoptes-utils.git@v0.2.35#egg=panoptes-utils[config,images,social]"

@@ -29,19 +29,15 @@ RUN echo "Building from ${image_name}:${image_tag}" && \
     sudo chown -R "${userid}:${userid}" "${HUNTSMAN_POCS}"
 
 COPY docker/environment.yaml .
-RUN conda env update -n base -f environment.yaml && \
+RUN micromamba update -n base -f environment.yaml && \
     # POCS from github.
-    pip install "panoptes-pocs[focuser]==0.7.8"
-
-# hack fix for ImportError: /opt/conda/bin/../lib/libstdc++.so.6: version `GLIBCXX_3.4.30' not found
-# note we already installed gcc earlier but installing it in the conda env as well resolves the above error
-RUN conda install -y gcc
+    pip install "git+https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs[focuser]"
 
 ARG pip_install_extras="[testing]"
 
 WORKDIR "${HUNTSMAN_POCS}"
 COPY --chown="${userid}:${userid}" . .
-RUN pip install -e ".${pip_install_extras}"
+RUN /usr/bin/env bash -ic 'pip install -e ".${pip_install_extras}"'
 
 ENTRYPOINT [ "/usr/bin/env", "bash", "-ic" ]
 CMD [ "pytest" ]

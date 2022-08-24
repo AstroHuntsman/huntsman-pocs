@@ -1,5 +1,5 @@
 ARG image_url=docker.io/huntsmanarray/panoptes-utils
-ARG image_tag=latest
+ARG image_tag=v0.2.35
 FROM ${image_url}:${image_tag} AS panoptes-pocs-base
 
 ARG arduino_url="https://downloads.arduino.cc/arduino-cli/arduino-cli_latest"
@@ -28,7 +28,8 @@ USER "${USERID}"
 RUN echo "Building from ${image_url}:${image_tag}" && \
     sudo apt-get update && \
     sudo apt-get install -y --no-install-recommends \
-    astrometry-data-tycho2-10-19 && \
+    astrometry-data-tycho2-10-19 \
+    python3-pip git && \
     # Set up directories in PANUSER home.
     sudo mkdir "$image_dir" && sudo chown -R "${USERID}:${USERID}" "$image_dir" && \
     sudo mkdir "$log_dir" && sudo chown -R "${USERID}:${USERID}" "$log_dir" && \
@@ -46,17 +47,18 @@ RUN echo "Installing arduino-cli from ${arduino_url}" && \
 FROM panoptes-pocs-base AS panoptes-pocs-dependencies
 
 # Update conda environment with dependencies.
-COPY docker/POCS/environment.yaml .
-RUN echo "Updating conda environment" && \
-    mamba env update -n base -f environment.yaml && \
-    mamba clean -tipy --force-pkgs-dirs
+COPY ./environment.yaml .
+RUN echo "Updating micromamba environment" && \
+    micromamba update -n base -f environment.yaml && \
+    micromamba clean -tipy --force-pkgs-dirs
 
 FROM panoptes-pocs-dependencies AS panoptes-pocs
 
 ARG pip_install_name="git+https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs"
 ARG pip_install_extras="[google]"
 
-# COPY --chown="${USERID}:${USERID}" . .
+USER "${USERID}"
+COPY --chown="${USERID}:${USERID}" . .
 RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
     pip install --no-cache-dir "${pip_install_name}${pip_install_extras}" && \
     # Cleanup

@@ -12,7 +12,7 @@ POCS="${POCS:-/var/panoptes/POCS}"
 HUNTSMAN_POCS="${HUNTSMAN_POCS:-/var/huntsman/huntsman-pocs}"
 
 # Docker images to user.
-POCS_IMAGE_URL="${POCS_IMAGE_URL:-gcr.io/panoptes-exp/panoptes-pocs:develop}"
+POCS_IMAGE_URL="${POCS_IMAGE_URL:-huntsmanarray/panoptes-pocs:v0.7.8}"
 HUNTS_POCS_IMAGE_URL="${HUNTS_POCS_IMAGE_URL:-huntsmanarray/huntsman-pocs:${TAG}}"
 
 echo "Setting up local environment."
