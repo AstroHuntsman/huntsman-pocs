@@ -178,8 +178,6 @@ class CameraGroup(PanBase):
         Returns:
             dict: Dict of cam_name: threading.Event pairs.
         """
-        cameras = {n: c for n, c in self.cameras.items() if c.has_focuser}
-
         # need to remove `filter_name` from kwargs so it only gets passed once
         # to `cameras[cam_name].autofocus()`
         try:
@@ -188,25 +186,61 @@ class CameraGroup(PanBase):
             filter_name = None
 
         def func(cam_name, filter_name=None, **kwargs):
-            filter_name = self._get_focus_filter_name(cam_name, filter_name=filter_name, **kwargs)
-            return cameras[cam_name].autofocus(filter_name=filter_name, **kwargs)
+            camera = self.cameras[cam_name]
+            filter_name = self._get_focus_filter_name(camera, filter_name=filter_name, **kwargs)
 
-        return dispatch_parallel(func, cameras.keys(), filter_name=filter_name, **kwargs)
+            # Start the autofocus sequence and catch errors
+            try:
+                event = camera.autofocus(filter_name=filter_name, **kwargs)
+            except Exception as err:
+                self.logger.error(f"{err!r}")
+                return None
+
+            return event
+
+        return dispatch_parallel(func, self.camera_names, filter_name=filter_name, **kwargs)
 
     # Private methods
 
-    def _get_focus_filter_name(self, camera_name, filter_name=None, coarse=False, *args, **kwargs):
+    def _get_focus_filter_name(self, camera, filter_name=None, coarse=False, *args, **kwargs):
         """
         """
         if coarse or filter_name is None:
             return self.get_config('focusing.coarse.filter_name')
         elif isinstance(filter_name, abc.Mapping):
             try:
-                return filter_name[camera_name]
+                return filter_name[camera.name]
             except KeyError as err:
                 self.logger.warning(
-                    f"No filter_name specified for camera {camera_name}, \
+                    f"No filter_name specified for camera {camera.name}, \
+                        attempting filter look up with camera IP: {err!r}")
+            # TODO: find a less terrible way of handling the case where the filter_name dict uses
+            # camera ip as keys as opposed to a camera name
+            try:
+                camera_ip = ip_from_pyro_uri(camera._uri)
+                return filter_name[camera_ip]
+            except KeyError as err:
+                self.logger.warning(
+                    f"No filter_name specified for ip address {camera_ip}, \
                     defaulting to coarse filter: {err!r}")
                 return self.get_config('focusing.coarse.filter_name')
         else:
             return filter_name
+
+
+def ip_from_pyro_uri(uri):
+    """Parse out ip address contained in a pyro5 uri. example uri shown below.
+
+    'PYRO:obj_987f5bde126041cf8cd17532f958e27c@localhost:43949'
+
+    Args:
+        uri (str): A pyro5 Universal Resource Identifier string.
+    Returns:
+        ip (str): The IP address contained in the uri.
+    """
+    # ip address starts after the '@' character
+    start = uri.find('@')+1
+    # ip ends at the first ':' after the '@'
+    end = uri.find(':', start)
+    ip = uri[start:end]
+    return ip
