@@ -8,7 +8,6 @@ from panoptes.utils.library import load_module
 from panoptes.utils import horizon as horizon_utils
 
 from panoptes.pocs.utils.location import create_location_from_config
-from panoptes.pocs.scheduler.constraint import Altitude
 
 from huntsman.pocs.utils.logger import get_logger
 from huntsman.pocs.camera.utils import create_cameras_from_config
@@ -18,6 +17,7 @@ from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.scheduler.constraint import SunAvoidance
 from panoptes.pocs.scheduler.constraint import AlreadyVisited
 from huntsman.pocs.scheduler.constraint import MoonAvoidance as HuntsmanMoonAvoidance
+from huntsman.pocs.scheduler.constraint import Altitude as HuntsmanAltitude
 from huntsman.pocs.mount.bisque import create_mount
 
 
@@ -60,7 +60,7 @@ def create_huntsman_scheduler(observer=None, logger=None, *args, **kwargs):
                                                  default_horizon=default_horizon.value)
 
             # Simple constraint for now
-            constraints = [Altitude(horizon=horizon_line),
+            constraints = [HuntsmanAltitude(horizon=horizon_line),
                            HuntsmanMoonAvoidance(),
                            SunAvoidance()]
 
