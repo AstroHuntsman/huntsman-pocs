@@ -1,4 +1,5 @@
 from panoptes.pocs.mount.simulator import Mount as SimulatorMount
+import time
 
 
 class Mount(SimulatorMount):
