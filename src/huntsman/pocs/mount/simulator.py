@@ -5,10 +5,10 @@ import time
 class Mount(SimulatorMount):
     """ Override class to use Huntsman mount functionality for tests. """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
-    def home_and_park(self, *args, home_timeout=None, park_timeout=None, ** kwargs):
+    def home_and_park(self, *args, home_timeout=None, park_timeout=None, **kwargs):
         """ Convenience method to first slew to the home position and then park.
         """
         if not self.is_parked:
@@ -20,10 +20,16 @@ class Mount(SimulatorMount):
             self._is_initialized = False
             self.initialize()
             # default timeout is 120 seconds but sometimes this isnt enough
-            self.park(*args, timeout=park_timeout, **kwargs)
+            self.park(*args, timeout=park_timeout, ** kwargs)
 
             while self.is_slewing and not self.is_parked:
                 time.sleep(5)
                 self.logger.debug("Slewing to park, sleeping for 5 seconds")
 
         self.logger.debug("Mount parked")
+
+    def park(self, *args, **kwargs):
+        # panoptes mount simulator version of `park()` doesn't accept kwargs
+        # but HuntsmanMount.park() and huntsman states do, so need to catch the kwargs
+        # here and not pass them on to the simulator `park()`
+        super().park()
