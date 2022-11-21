@@ -98,6 +98,8 @@ mount:
     baudrate: 9600
   non_sidereal_available: True
   num_park_attempts: 3
+  home_timeout: 180
+  park_timeout: 180
 
 pointing:
   exptime: 30
