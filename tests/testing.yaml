@@ -89,15 +89,17 @@ cameras:
         dark_position: blank
 
 mount:
-  brand: ioptron
+  brand: bisque
   model: 30
-  driver: ioptron
+  driver: huntsman.pocs.mount.simulator
   serial:
     port: /dev/ttyUSB0
     timeout: 0.
     baudrate: 9600
   non_sidereal_available: True
   num_park_attempts: 3
+  home_timeout: 180
+  park_timeout: 180
 
 pointing:
   exptime: 30

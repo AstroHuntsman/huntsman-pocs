@@ -16,8 +16,8 @@ def on_enter(event_data):
 
     # sometimes parking seems to arbitrarily time out, allow for n retries before raising error
     n = pocs.get_config('mount.num_park_attempts', default=3)
-    home_timeout = pocs.get_config('mount.home_timeout', default=3)
-    park_timeout = pocs.get_config('mount.park_timeout', default=3)
+    home_timeout = pocs.get_config('mount.home_timeout', default=180)
+    park_timeout = pocs.get_config('mount.park_timeout', default=180)
     for i in range(n):
         try:
             pocs.observatory.mount.home_and_park(
