@@ -1,4 +1,3 @@
-from turtle import home
 from panoptes.utils.error import TheSkyXTimeout
 
 
