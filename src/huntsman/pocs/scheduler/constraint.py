@@ -100,9 +100,10 @@ class Altitude(Altitude):
             if field_alt < min_alt:
                 self.logger.debug(f"Below minimum altitude: {field_alt:.02f} < {min_alt:.02f}")
                 veto = True
-                vetos.append(veto)
             else:
+                veto = False
                 score = 1
+            vetos.append(veto)
 
         # if any of the target fields are below min altitude then veto the observation
         veto = all(vetos)
