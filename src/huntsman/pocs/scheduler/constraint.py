@@ -90,7 +90,7 @@ class Altitude(Altitude):
 
         # Determine if the target altitude is above or below the determined
         # minimum elevation for that azimuth
-        min_alts = [self.horizon_line(int(field_az)) for field_az in field_azs]
+        min_alts = [self.horizon_line[int(field_az)] for field_az in field_azs]
 
         vetos = []
         for min_alt, field_alt, field_az in zip(min_alts, field_alts, field_azs):
