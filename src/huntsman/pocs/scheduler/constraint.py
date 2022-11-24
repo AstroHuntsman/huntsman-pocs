@@ -106,5 +106,5 @@ class Altitude(Altitude):
             vetos.append(veto)
 
         # if any of the target fields are below min altitude then veto the observation
-        veto = all(vetos)
+        veto = any(vetos)
         return veto, score * self.weight
