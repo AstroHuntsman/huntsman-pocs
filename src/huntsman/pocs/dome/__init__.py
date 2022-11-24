@@ -1,7 +1,6 @@
 from panoptes.utils.config.client import get_config
 from huntsman.pocs.dome.musca import HuntsmanDome
 from huntsman.pocs.dome.simulator import Dome
-from panoptes.utils.library import load_module
 from panoptes.pocs.utils.logger import get_logger
 
 logger = get_logger()
@@ -21,11 +20,10 @@ def create_dome_from_config(config=None):
 
 
 def create_dome_simulator(*args, **kwargs):
-    dome_config = get_config('dome')
 
-    logger.debug(f'Creating dome simulator.')
+    logger.debug('Creating dome simulator.')
 
     dome = Dome(*args, **kwargs)
-    logger.info(f'Created dome simulator.')
+    logger.info('Created dome simulator.')
 
     return dome
