@@ -108,6 +108,7 @@ class HuntsmanDome(ASDome, BDome):
         self._keep_open = None
         self._stop_dome_thread = False
         self._stop_status_thread = False
+        self._homed_count = 0
 
         self._status_thread = Thread(target=self._async_status_loop, daemon=True)
         self._dome_thread = Thread(target=self._async_dome_loop, daemon=True)
@@ -254,6 +255,8 @@ class HuntsmanDome(ASDome, BDome):
         if BDome.is_connected.fget(self):
             self.write(self._get_command('dome/home.js'))
             response = self.read(timeout=timeout)
+        if response['success']:
+            self._homed_count += 1
 
         return response['success']
 
