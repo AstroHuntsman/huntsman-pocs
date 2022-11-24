@@ -1,8 +1,6 @@
 import os
 import pytest
 
-from panoptes.utils.time import current_time
-
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from huntsman.pocs.mount import create_mount_simulator

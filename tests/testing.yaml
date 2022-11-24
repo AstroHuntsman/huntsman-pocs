@@ -33,7 +33,7 @@ directories:
   data: data
   images: images
   mounts: /panoptes-pocs/resources/mounts
-  resources: /panoptes-pocs/resources
+  resources: /huntsman/resources
   fields: /panoptes-pocs/conf_files/fields
   webcam: webcams
 
