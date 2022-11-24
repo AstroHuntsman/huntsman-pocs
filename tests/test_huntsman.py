@@ -7,7 +7,7 @@ from panoptes.pocs.core import POCS
 from panoptes.pocs.dome import create_dome_from_config
 from panoptes.pocs.mount import create_mount_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
-from panoptes.pocs.mount import create_mount_simulator
+from huntsman.pocs.mount import create_mount_simulator
 from huntsman.pocs.camera.utils import create_cameras_from_config
 from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 from huntsman.pocs.utils.huntsman import create_huntsman_pocs

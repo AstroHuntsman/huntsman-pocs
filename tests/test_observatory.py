@@ -7,7 +7,7 @@ from panoptes.utils.time import current_time
 
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
-from panoptes.pocs.mount import create_mount_simulator
+from huntsman.pocs.mount import create_mount_simulator
 
 from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.camera.utils import create_cameras_from_config
