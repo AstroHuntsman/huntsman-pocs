@@ -5,7 +5,7 @@ from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from huntsman.pocs.mount import create_mount_simulator
 from panoptes.utils.config.client import set_config
-from panoptes.pocs.dome import create_dome_simulator
+from huntsman.pocs.dome import create_dome_simulator
 
 from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.camera.utils import create_cameras_from_config
@@ -88,6 +88,8 @@ def test_starting_darks(pocs, pocstime_flat):
     pocs.db.insert_current('weather', {'safe': False})
     assert not pocs.is_weather_safe()
     assert not pocs.observatory.dome.is_open
+    print(type(pocs.observatory.dome))
+    pocs.observatory.dome.unpark()
 
     pocs.startup()
     assert pocs.state == "starting"

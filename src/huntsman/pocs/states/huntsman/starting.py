@@ -45,3 +45,5 @@ def on_enter(event_data):
             pocs.observatory.dome.park()
             pocs.say("Dome is parked: {pocs.observatory.dome.is_parked}")
             pocs.next_state = "sleeping"
+        else:
+            pocs.next_state = "scheduling"
