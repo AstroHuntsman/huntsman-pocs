@@ -18,6 +18,9 @@ def on_enter(event_data):
         pocs.say("Waiting for startup horizon from sleeping state.")
 
         while not pocs.is_dark(horizon="startup"):
+            if not pocs.observatory.is_safe(horizon='startup'):
+                pocs.say("Weather has become unsafe while sleeping, closing dome.")
+                pocs.observatory.close_dome()
             time.sleep(check_delay)
 
         pocs.say("Finished waiting for startup horizon.")

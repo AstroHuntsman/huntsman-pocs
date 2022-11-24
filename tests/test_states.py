@@ -56,6 +56,11 @@ def pocs(observatory, dome):
 
 
 @pytest.fixture(scope="function")
+def pocstime_prestartup():
+    return '2021-04-29 06:15:00'
+
+
+@pytest.fixture(scope="function")
 def pocstime_flat():
     return '2021-04-29 08:15:00'
 
@@ -141,7 +146,7 @@ def test_starting_scheduling_focus(pocs, pocstime_focus):
     assert pocs.next_state == "coarse_focusing"
 
 
-def test_shutdown(pocs, pocstime_focus):
+def test_shutdown(pocs, pocstime_focus, pocstime_prestartup):
     """ Test that we can shutdown properly after going to parking """
 
     pocs.initialize()
@@ -169,4 +174,14 @@ def test_shutdown(pocs, pocstime_focus):
         pocs.goto_next_state()
         assert pocs.state == state
         assert pocs.observatory.mount.is_parked
-        assert pocs.observatory.dome.is_closed
+        if pocs.state == "sleeping":
+            # simulate pocs sleeping above startup horizon and ensure the dome gets closed
+            os.environ['POCSTIME'] = pocstime_prestartup
+            pocs.next_state == "sleeping"
+            pocs.goto_next_state()
+            assert pocs.state == "starting"
+            pocs.next_state = "parking"
+            pocs.goto_next_state()
+            assert pocs.state == "parking"
+            assert pocs.observatory.mount.is_parked
+            assert pocs.observatory.dome.is_closed
