@@ -8,7 +8,8 @@ from panoptes.utils import error
 from panoptes.utils.time import CountdownTimer
 from panoptes.utils.utils import get_quantity_value
 
-from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome
+from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome as ASDome
+from panoptes.pocs.dome.bisque import Dome as BDome
 
 from huntsman.pocs.utils.logger import get_logger
 
@@ -51,7 +52,7 @@ class Protocol:
                     "Solar_A": float}
 
 
-class HuntsmanDome(AbstractSerialDome):
+class HuntsmanDome(ASDome, BDome):
     """Class for musca serial shutter control plus sending updated commands to TSX.
     Musca Port setting: 9600/8/N/1
 
@@ -59,6 +60,9 @@ class HuntsmanDome(AbstractSerialDome):
     (e.g. battery voltage) changes. A full status update can be requested by sending the appropriate
     command to the musca. However, it appears that musca will not send status updates while the
     shutter is moving, but sends a full status update after it stops moving.
+
+    This class also handles sending park/unpark/find_home requests to TheSkyX which are relayed to
+    the domepi via a TheSkyX gRPC plugin.
     """
     LISTEN_TIMEOUT = 3  # Max number of seconds to wait for a response.
     MOVE_LISTEN_TIMEOUT = 0.1  # When moving, how long to wait for feedback.
@@ -104,6 +108,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._keep_open = None
         self._stop_dome_thread = False
         self._stop_status_thread = False
+        self._homed_count = 0
 
         self._status_thread = Thread(target=self._async_status_loop, daemon=True)
         self._dome_thread = Thread(target=self._async_dome_loop, daemon=True)
@@ -122,6 +127,7 @@ class HuntsmanDome(AbstractSerialDome):
         self._dome_thread.join()
         self._stop_status_thread = True
         self._status_thread.join()
+        BDome.__del__(self)
 
     @property
     def is_open(self):
@@ -155,6 +161,36 @@ class HuntsmanDome(AbstractSerialDome):
     def status(self):
         """A dictionary containing all status info for dome. """
         return self._status
+
+    @property
+    def is_connected(self):
+        """  """
+        # get the serial property
+        serial_connected = ASDome.is_connected.fget(self)
+        bdome_connected = BDome.is_connected.fget(self)
+        self.logger.info(
+            f"Shutter connected: {serial_connected}, TSX dome connected: {bdome_connected}.")
+        return serial_connected and bdome_connected
+
+    def connect(self, timeout=10):
+        # serial connections
+        ASDome.connect(self)
+        # TSX connections
+        if not BDome.is_connected.fget(self):
+            self.write(self._get_command('dome/connect.js'))
+            response = self.read()
+            self._is_connected = response['success']
+        return self.is_connected
+
+    def disconnect(self):
+        # serial disconnection
+        ASDome.disconnect(self)
+        # TSX disconnection
+        if BDome.is_connected.fget(self):
+            self.write(self._get_command('dome/disconnect.js'))
+            response = self.read()
+            self._is_connected = not response["success"]
+        return not self.is_connected
 
     def open(self):
         """Open the shutter using musca.
@@ -196,6 +232,33 @@ class HuntsmanDome(AbstractSerialDome):
         if not self.is_closed:
             raise error.PanError("Attempted to close the dome shutter but got wrong status:"
                                  f" {self.status[Protocol.SHUTTER]}")
+
+    def park(self, timeout=210):
+        if BDome.is_connected.fget(self):
+            self.write(self._get_command('dome/park.js'))
+            response = self.read(timeout=timeout)
+
+            self._is_parked = response['success']
+
+        return self.is_parked
+
+    def unpark(self, timeout=20):
+        if BDome.is_connected.fget(self):
+            self.write(self._get_command('dome/unpark.js'))
+            response = self.read(timeout=timeout)
+
+            self._is_parked = not response['success']
+
+        return not self.is_parked
+
+    def find_home(self, timeout=210):
+        if BDome.is_connected.fget(self):
+            self.write(self._get_command('dome/home.js'))
+            response = self.read(timeout=timeout)
+        if response['success']:
+            self._homed_count += 1
+
+        return response['success']
 
     # Private Methods
 

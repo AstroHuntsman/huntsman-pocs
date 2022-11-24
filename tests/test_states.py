@@ -1,13 +1,11 @@
 import os
 import pytest
 
-from panoptes.utils.time import current_time
-
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.pocs.scheduler import create_scheduler_from_config
 from huntsman.pocs.mount import create_mount_simulator
 from panoptes.utils.config.client import set_config
-from panoptes.pocs.dome import create_dome_simulator
+from huntsman.pocs.dome import create_dome_simulator
 
 from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.camera.utils import create_cameras_from_config
@@ -56,8 +54,8 @@ def pocs(observatory, dome):
 
 
 @pytest.fixture(scope="function")
-def pocstime_prestartup():
-    return '2021-04-29 06:15:00'
+def pocstime_past_morning_startup():
+    return '2021-04-29 20:10:00'
 
 
 @pytest.fixture(scope="function")
@@ -90,6 +88,7 @@ def test_starting_darks(pocs, pocstime_flat):
     pocs.db.insert_current('weather', {'safe': False})
     assert not pocs.is_weather_safe()
     assert not pocs.observatory.dome.is_open
+    pocs.observatory.dome.unpark()
 
     pocs.startup()
     assert pocs.state == "starting"
@@ -146,11 +145,11 @@ def test_starting_scheduling_focus(pocs, pocstime_focus):
     assert pocs.next_state == "coarse_focusing"
 
 
-def test_shutdown(pocs, pocstime_focus, pocstime_prestartup):
+def test_shutdown(pocs, pocstime_focus, pocstime_past_morning_startup):
     """ Test that we can shutdown properly after going to parking """
 
     pocs.initialize()
-    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power'])
+    pocs.set_config('simulator', ['camera', 'mount', 'weather', 'power', 'dome'])
 
     os.environ['POCSTIME'] = pocstime_focus
     assert pocs.is_dark(horizon="focus")
@@ -176,7 +175,7 @@ def test_shutdown(pocs, pocstime_focus, pocstime_prestartup):
         assert pocs.observatory.mount.is_parked
         if pocs.state == "sleeping":
             # simulate pocs sleeping above startup horizon and ensure the dome gets closed
-            os.environ['POCSTIME'] = pocstime_prestartup
+            os.environ['POCSTIME'] = pocstime_past_morning_startup
             pocs.next_state == "sleeping"
             pocs.goto_next_state()
             assert pocs.state == "starting"
