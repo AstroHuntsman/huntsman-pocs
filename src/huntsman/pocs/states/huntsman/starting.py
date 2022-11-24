@@ -11,6 +11,7 @@ def on_enter(event_data):
     # Prepare the hardware
     pocs.observatory.prepare_cameras()
     pocs.observatory.mount.unpark()
+    pocs.observatory.dome.unpark()
 
     # Check if we need to take darks
     if pocs.should_take_darks:
