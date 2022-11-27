@@ -8,10 +8,8 @@ def on_enter(event_data):
     pocs = event_data.model
     pocs.next_state = 'parking'
 
-    # Prepare the hardware
+    # Prepare the cameras
     pocs.observatory.prepare_cameras()
-    pocs.observatory.mount.unpark()
-    pocs.observatory.dome.unpark()
 
     # Check if we need to take darks
     if pocs.should_take_darks:
@@ -30,20 +28,16 @@ def on_enter(event_data):
             pocs.say("Waiting for twilight max horizon from starting state.")
 
             while not pocs.is_dark(horizon="twilight_max"):
-                if not pocs.observatory.is_safe(horizon='startup'):
+                if not pocs.observatory.is_weather_safe():
                     pocs.say("Weather has become unsafe while starting, closing dome.")
                     pocs.observatory.close_dome()
                 time.sleep(check_delay)
 
-            pocs.say("Finished waiting for twilight max horizon.")
+            pocs.say("Finished waiting for twilight max horizon. Unparking mount and dome.")
+            pocs.observatory.mount.unpark()
+            pocs.observatory.dome.unpark()
             pocs.next_state = "scheduling"
         elif pocs.observatory.is_past_midnight and not pocs.is_dark(horizon="twilight_max"):
-            # in morning after flats park the dome and close the shutter
-            pocs.say("It is now the morning, closing the shutter and parking the dome.")
-            pocs.observatory.dome.close()
-            pocs.say("Shutter is closed: {pocs.observatory.dome.is_closed}")
-            pocs.observatory.dome.park()
-            pocs.say("Dome is parked: {pocs.observatory.dome.is_parked}")
             pocs.next_state = "sleeping"
         else:
             pocs.next_state = "scheduling"
