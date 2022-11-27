@@ -40,4 +40,6 @@ def on_enter(event_data):
         elif pocs.observatory.is_past_midnight and not pocs.is_dark(horizon="twilight_max"):
             pocs.next_state = "sleeping"
         else:
+            pocs.observatory.mount.unpark()
+            pocs.observatory.dome.unpark()
             pocs.next_state = "scheduling"
