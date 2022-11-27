@@ -238,7 +238,7 @@ class HuntsmanDome(ASDome, BDome):
             self.write(self._get_command('dome/park.js'))
             response = self.read(timeout=timeout)
 
-            self._is_parked = response['success']
+            self._is_parked = bool(response['success'])
 
         return self.is_parked
 
@@ -247,7 +247,7 @@ class HuntsmanDome(ASDome, BDome):
             self.write(self._get_command('dome/unpark.js'))
             response = self.read(timeout=timeout)
 
-            self._is_parked = not response['success']
+            self._is_parked = not bool(response['success'])
 
         return not self.is_parked
 
@@ -258,7 +258,7 @@ class HuntsmanDome(ASDome, BDome):
         if response['success']:
             self._homed_count += 1
 
-        return response['success']
+        return bool(response['success'])
 
     # Private Methods
 

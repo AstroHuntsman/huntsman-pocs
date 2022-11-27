@@ -1,4 +1,5 @@
 from panoptes.utils.error import TheSkyXTimeout
+import time
 
 
 def on_enter(event_data):
@@ -28,7 +29,9 @@ def on_enter(event_data):
                 home_timeout=home_timeout, park_timeout=park_timeout)
         except TheSkyXTimeout:
             if i + 1 < n:
-                pocs.say(f"Attempt {i+1}/{n} at parking timed out, trying again.")
+                pocs.say(
+                    f"Attempt {i+1}/{n} at parking timed out, waiting 30 seconds and trying again.")
+                time.sleep(30)
                 continue
             else:
                 pocs.say("Max parking attempts reached, final attempt timed out.")

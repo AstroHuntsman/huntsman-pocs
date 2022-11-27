@@ -1,3 +1,7 @@
+from panoptes.utils.error import TheSkyXTimeout
+import time
+
+
 def on_enter(event_data):
     """
 
@@ -18,6 +22,19 @@ def on_enter(event_data):
     pocs.observatory.camera_group.deactivate_camera_cooling()
 
     pocs.say('Sending dome to park position.')
-    pocs.observatory.dome.park()
+    n = pocs.get_config('mount.num_park_attempts', default=3)
+    for i in range(n):
+        try:
+            pocs.observatory.dome.park()
+        except TheSkyXTimeout:
+            if i + 1 < n:
+                pocs.say(
+                    f"Attempt {i+1}/{n} at parking dome timed out, waiting 30 seconds and trying again.")
+                time.sleep(30)
+                continue
+            else:
+                pocs.say("Max dome parking attempts reached, final attempt timed out.")
+                raise TheSkyXTimeout()
+        break
 
     pocs.say("Ok, looks like I'm done for the day. Time to get some sleep!")
