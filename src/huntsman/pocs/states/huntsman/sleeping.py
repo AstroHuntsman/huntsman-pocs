@@ -15,8 +15,8 @@ def on_enter(event_data):
     if pocs.observatory.is_past_midnight and not pocs.is_dark(horizon="twilight_max"):
         pocs.say("Morning approaches, I must return to my coffin.")
         pocs.observatory.dome.close()
-        pocs.say("Shutter is closed: {pocs.observatory.dome.is_closed}")
-        pocs.say('Sending dome to park position.')
+        pocs.say(f"Shutter is closed: {pocs.observatory.dome.is_closed}")
+        pocs.say("Sending dome to park position.")
         n = pocs.get_config('mount.num_park_attempts', default=3)
         for i in range(n):
             try:
@@ -31,7 +31,7 @@ def on_enter(event_data):
                     pocs.say("Max dome parking attempts reached, final attempt timed out.")
                     raise TheSkyXTimeout()
             break
-        pocs.say("Dome is parked: {pocs.observatory.dome.is_parked}")
+        pocs.say(f"Dome is parked: {pocs.observatory.dome.is_parked}")
 
     # if at any point in the nigth we enter the sleeping state with bad weather, close the dome
     if pocs.observatory.dome.is_open and pocs.is_weather_safe():
