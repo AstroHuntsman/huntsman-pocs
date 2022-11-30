@@ -15,7 +15,7 @@ def on_enter(event_data):
     try:
         pocs.observatory.cleanup_observations()
     except Exception as e:
-        pocs.logger.warning('Problem with cleanup: {}'.format(e))
+        pocs.logger.warning(f'Problem with cleanup: {e!r}')
 
     # Turn-off camera cooling
     pocs.say('Shutting down for the night, going to turn off the camera cooling')
@@ -35,6 +35,8 @@ def on_enter(event_data):
             else:
                 pocs.say("Max dome parking attempts reached, final attempt timed out.")
                 raise TheSkyXTimeout()
+        except Exception as e:
+            pocs.logger.warning(f'Problem occured while parking the dome: {e!r}')
         break
 
     pocs.say("Ok, looks like I'm done for the day. Time to get some sleep!")

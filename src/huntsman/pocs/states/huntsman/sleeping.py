@@ -30,6 +30,8 @@ def on_enter(event_data):
                 else:
                     pocs.say("Max dome parking attempts reached, final attempt timed out.")
                     raise TheSkyXTimeout()
+            except Exception as e:
+                pocs.logger.warning(f'Problem occured while parking the dome: {e!r}')
             break
         pocs.say(f"Dome is parked: {pocs.observatory.dome.is_parked}")
 

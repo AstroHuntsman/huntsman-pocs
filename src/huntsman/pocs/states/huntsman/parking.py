@@ -36,4 +36,6 @@ def on_enter(event_data):
             else:
                 pocs.say("Max parking attempts reached, final attempt timed out.")
                 raise TheSkyXTimeout()
+        except Exception as e:
+            pocs.logger.warning(f'Problem occured while parking the mount: {e!r}')
         break

@@ -326,8 +326,6 @@ class HuntsmanObservatory(Observatory):
         if observation.seq_time is None:
             observation.seq_time = current_time(flatten=True)
 
-        headers = self.get_standard_headers(observation=observation)
-
         # Take the observation block
         self.logger.info(f"Starting observation block for {observation}")
 
@@ -354,6 +352,8 @@ class HuntsmanObservatory(Observatory):
                 with self.safety_checking(**safety_kwargs):
                     self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
 
+            # NB: get headers here so header info is accurate per exposure for CompoundObservations
+            headers = self.get_standard_headers(observation=observation)
             # Set a common start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
