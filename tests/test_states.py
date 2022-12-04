@@ -55,7 +55,7 @@ def pocs(observatory, dome):
 
 @pytest.fixture(scope="function")
 def pocstime_past_morning_startup():
-    return '2021-04-29 20:10:00'
+    return '2021-04-29 22:10:00'
 
 
 @pytest.fixture(scope="function")

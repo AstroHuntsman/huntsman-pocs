@@ -357,6 +357,10 @@ class HuntsmanObservatory(Observatory):
             # Set a common start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
+            # check if cameras are ready, occasionally filterwheel needs a bit of time
+            self.logger.info(f"Waiting for cameras to be ready before starting exposure.")
+            self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
+
             # Start the exposures and get events
             with self.safety_checking(**safety_kwargs):
                 events = self.camera_group.take_observation(observation, headers=headers)
@@ -367,6 +371,9 @@ class HuntsmanObservatory(Observatory):
                 self._wait_for_camera_events(events, duration=observation.exptime + timeout,
                                              remove_on_error=remove_on_error, **safety_kwargs)
             except error.Timeout as err:
+                self.logger.error(f"{err!r}")
+                self.logger.warning("Continuing with observation block after error.")
+            except error.PanError as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
 
@@ -595,6 +602,15 @@ class HuntsmanObservatory(Observatory):
             **kwargs: Parsed to self._assert_safe.
         """
         self.logger.debug(f'Waiting for {len(events)} events with timeout of {duration}.')
+
+        # first check if there are any "None" values instead of events and remove from events dict
+        # often missing events result from trying to start an exposure before fw is ready
+        events = {k: v for k, v in events.items() if v is not None}
+
+        # if there are no events in dict, stop waiting and raise error
+        if not bool(events):
+            raise error.PanError(
+                "No exposure events found, an error may have occured in starting the exposures.")
 
         timer = CountdownTimer(duration)
         while not timer.expired():

@@ -36,7 +36,7 @@ def on_enter(event_data):
         pocs.say(f"Dome is parked: {pocs.observatory.dome.is_parked}")
 
     # if at any point in the nigth we enter the sleeping state with bad weather, close the dome
-    if pocs.observatory.dome.is_open and pocs.is_weather_safe():
+    if pocs.observatory.dome.is_open and not pocs.is_weather_safe():
         pocs.say("Dome is open while weather is unsafe, closing dome.")
         pocs.observatory.close_dome()
 
