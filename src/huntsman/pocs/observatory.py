@@ -359,7 +359,7 @@ class HuntsmanObservatory(Observatory):
 
             # check if cameras are ready, occasionally filterwheel needs a bit of time
             self.logger.info(f"Waiting for cameras to be ready before starting exposure.")
-            self.camera_group.wait_until_ready(self, sleep=3, max_attempts=3)
+            self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
 
             # Start the exposures and get events
             with self.safety_checking(**safety_kwargs):
