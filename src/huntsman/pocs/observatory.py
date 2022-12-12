@@ -201,6 +201,10 @@ class HuntsmanObservatory(Observatory):
                 self.logger.warning("Unable to retrieve filter name from current observation. Focus"
                                     " filter will be set to camera default coarse focus filter.")
 
+        # check if cameras are ready, occasionally filterwheel needs a bit of time
+        self.logger.info(f"Waiting for cameras to be ready before starting autofocus.")
+        self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
+
         # Asyncronously dispatch autofocus calls
         with self.safety_checking(horizon="focus"):
             events = self.camera_group.autofocus(coarse=coarse, filter_name=filter_name, **kwargs)
@@ -374,8 +378,13 @@ class HuntsmanObservatory(Observatory):
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
             except error.PanError as err:
-                self.logger.error(f"{err!r}")
-                self.logger.warning("Continuing with observation block after error.")
+                # we don't want generally PanErrors to interrupt obs block (ie filterwheel not ready etc)
+                # but also want to close if not safe (NotSafeError is child class of PanError)
+                if err is NotSafeError:
+                    raise err
+                else:
+                    self.logger.error(f"{err!r}")
+                    self.logger.warning("Continuing with observation block after error.")
 
             # Explicitly mark the observation as complete
             with suppress(AttributeError):
