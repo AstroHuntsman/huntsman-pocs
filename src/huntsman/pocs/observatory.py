@@ -378,7 +378,7 @@ class HuntsmanObservatory(Observatory):
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
             except error.PanError as err:
-                # we don't want generally PanErrors to interrupt obs block (ie filterwheel not ready etc)
+                # we don't want general PanErrors to interrupt obs block (ie filterwheel not ready etc)
                 # but also want to close if not safe (NotSafeError is child class of PanError)
                 if err is NotSafeError:
                     raise err
