@@ -448,6 +448,32 @@ class HuntsmanObservatory(Observatory):
             self.logger.info("Moving FWs back to last positions.")
             self.camera_group.filterwheel_move_to(current_fw_positions)
 
+    def park_dome(self):
+        """Park the dome, if there is one.
+        Returns: False if there is a problem Parking the dome,
+                 else True if parked (or if not exists).
+        """
+        if not self.dome:
+            return True
+        if not self.dome.connect():
+            return False
+        if not self.dome.is_parked:
+            self.logger.info('Parking dome')
+        return self.dome.park()
+
+    def unpark_dome(self):
+        """Unpark the dome, if there is one.
+        Returns: False if there is a problem Unparking the dome,
+                 else True if unparked (or if not exists).
+        """
+        if not self.dome:
+            return True
+        if not self.dome.connect():
+            return False
+        if self.dome.is_parked:
+            self.logger.info('Unparking dome')
+        return self.dome.unpark()
+
     # Private methods
 
     def _create_autoguider(self):
