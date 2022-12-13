@@ -81,6 +81,10 @@ class HuntsmanPOCS(POCS):
             self.logger.info("Parking the telescope before stopping states.")
             self.park()
             self.set_park()
+            self.logger.info("Closing dome shutter before stopping states.")
+            self.observatory.close_dome()
+            self.logger.info("Parking dome before stopping states.")
+            self.observatory.park_dome()
         except Exception as err:
             self.logger.error(f"Unable to park after stopping states: {err!r}")
         super().stop_states()

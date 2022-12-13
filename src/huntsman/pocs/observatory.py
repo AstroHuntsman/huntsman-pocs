@@ -201,6 +201,10 @@ class HuntsmanObservatory(Observatory):
                 self.logger.warning("Unable to retrieve filter name from current observation. Focus"
                                     " filter will be set to camera default coarse focus filter.")
 
+        # check if cameras are ready, occasionally filterwheel needs a bit of time
+        self.logger.info(f"Waiting for cameras to be ready before starting autofocus.")
+        self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
+
         # Asyncronously dispatch autofocus calls
         with self.safety_checking(horizon="focus"):
             events = self.camera_group.autofocus(coarse=coarse, filter_name=filter_name, **kwargs)
@@ -374,8 +378,13 @@ class HuntsmanObservatory(Observatory):
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
             except error.PanError as err:
-                self.logger.error(f"{err!r}")
-                self.logger.warning("Continuing with observation block after error.")
+                # we don't want general PanErrors to interrupt obs block (ie filterwheel not ready etc)
+                # but also want to close if not safe (NotSafeError is child class of PanError)
+                if err is NotSafeError:
+                    raise err
+                else:
+                    self.logger.error(f"{err!r}")
+                    self.logger.warning("Continuing with observation block after error.")
 
             # Explicitly mark the observation as complete
             with suppress(AttributeError):
@@ -447,6 +456,32 @@ class HuntsmanObservatory(Observatory):
         if move_fws:
             self.logger.info("Moving FWs back to last positions.")
             self.camera_group.filterwheel_move_to(current_fw_positions)
+
+    def park_dome(self):
+        """Park the dome, if there is one.
+        Returns: False if there is a problem Parking the dome,
+                 else True if parked (or if not exists).
+        """
+        if not self.dome:
+            return True
+        if not self.dome.connect():
+            return False
+        if not self.dome.is_parked:
+            self.logger.info('Parking dome')
+        return self.dome.park()
+
+    def unpark_dome(self):
+        """Unpark the dome, if there is one.
+        Returns: False if there is a problem Unparking the dome,
+                 else True if unparked (or if not exists).
+        """
+        if not self.dome:
+            return True
+        if not self.dome.connect():
+            return False
+        if self.dome.is_parked:
+            self.logger.info('Unparking dome')
+        return self.dome.unpark()
 
     # Private methods
 
