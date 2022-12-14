@@ -28,7 +28,7 @@ def on_enter(event_data):
             pocs.say("Waiting for twilight max horizon from starting state.")
 
             while not pocs.is_dark(horizon="twilight_max"):
-                if not pocs.observatory.is_weather_safe():
+                if not pocs.is_weather_safe():
                     pocs.say("Weather has become unsafe while starting, closing dome.")
                     pocs.observatory.close_dome()
                 time.sleep(check_delay)
