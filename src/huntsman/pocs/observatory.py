@@ -423,6 +423,7 @@ class HuntsmanObservatory(Observatory):
         if self.is_dark(horizon="twilight_min"):
             safety_kwargs = {"ignore": ["is_dark"]}
         else:
+            safety_kwargs = {"ignore": []}
             safety_kwargs = {"horizon": "twilight_max"}
 
         # Can ignore weather safety if dome is closed
