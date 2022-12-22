@@ -32,6 +32,10 @@ def on_enter(event_data):
         pocs.next_state = "twilight_flat_fielding"
         return
 
+    # Check if we need to take darks
+    if pocs.should_take_darks:
+        pocs.next_state = "taking_darks"
+
     # If we've got this far, nothing to schedule so park
     else:
         pocs.next_state = 'parking'

@@ -37,6 +37,7 @@ def on_enter(event_data):
                 raise TheSkyXTimeout()
         except Exception as e:
             pocs.logger.warning(f'Problem occured while parking the dome: {e!r}')
+            continue
         break
 
     pocs.say("Ok, looks like I'm done for the day. Time to get some sleep!")

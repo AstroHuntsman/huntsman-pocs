@@ -411,7 +411,12 @@ class HuntsmanObservatory(Observatory):
         observation = ObsClass(position=position)
 
         # Dark observations don't care if it's dark or not
-        safety_kwargs = {"ignore": ["is_dark"]}
+        # but don't want darks to interrupt twiflats so only
+        # start them after twiflats
+        if self.is_dark(horizon="twilight_min"):
+            safety_kwargs = {"ignore": ["is_dark"]}
+        else:
+            safety_kwargs = {"horizon": "twilight_max"}
 
         # Can ignore weather safety if dome is closed
         with suppress(AttributeError):
