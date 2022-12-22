@@ -7,6 +7,7 @@ from astropy import units as u
 from panoptes.utils import error
 from panoptes.utils.time import CountdownTimer
 from panoptes.utils.utils import get_quantity_value
+from panoptes.utils.error import TheSkyXTimeout
 
 from panoptes.pocs.dome.abstract_serial_dome import AbstractSerialDome as ASDome
 from panoptes.pocs.dome.bisque import Dome as BDome
@@ -236,18 +237,45 @@ class HuntsmanDome(ASDome, BDome):
     def park(self, timeout=210):
         if BDome.is_connected.fget(self):
             self.write(self._get_command('dome/park.js'))
-            response = self.read(timeout=timeout)
-
-            self._is_parked = bool(response['success'])
+            response = None
+            timer = CountdownTimer(timeout)
+            while not timer.expired():
+                try:
+                    response = self.read()
+                except TheSkyXTimeout:
+                    continue
+                if response is not None:
+                    break
+                else:
+                    self.logger.info(f'Waiting for dome to park with timeout of {timeout} seconds.')
+                    time.sleep(30)
+            if timer.expired():
+                raise TheSkyXTimeout("Timeout while parking Dome.")
+            else:
+                self._is_parked = bool(response['success'])
 
         return self.is_parked
 
     def unpark(self, timeout=20):
         if BDome.is_connected.fget(self):
             self.write(self._get_command('dome/unpark.js'))
-            response = self.read(timeout=timeout)
-
-            self._is_parked = not bool(response['success'])
+            response = None
+            timer = CountdownTimer(timeout)
+            while not timer.expired():
+                try:
+                    response = self.read()
+                except TheSkyXTimeout:
+                    continue
+                if response is not None:
+                    break
+                else:
+                    self.logger.info(
+                        f'Waiting for dome to unpark with timeout of {timeout} seconds.')
+                    time.sleep(3)
+            if timer.expired():
+                raise TheSkyXTimeout("Timeout while unparking Dome.")
+            else:
+                self._is_parked = not bool(response['success'])
 
         return not self.is_parked
 
