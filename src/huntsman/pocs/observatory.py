@@ -202,7 +202,7 @@ class HuntsmanObservatory(Observatory):
                                     " filter will be set to camera default coarse focus filter.")
 
         # check if cameras are ready, occasionally filterwheel needs a bit of time
-        self.logger.info(f"Waiting for cameras to be ready before starting autofocus.")
+        self.logger.info("Waiting for cameras to be ready before starting autofocus.")
         self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
 
         # Asyncronously dispatch autofocus calls
@@ -362,7 +362,7 @@ class HuntsmanObservatory(Observatory):
             headers['start_time'] = current_time(flatten=True)
 
             # check if cameras are ready, occasionally filterwheel needs a bit of time
-            self.logger.info(f"Waiting for cameras to be ready before starting exposure.")
+            self.logger.info("Waiting for cameras to be ready before starting exposure.")
             self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
 
             # Start the exposures and get events
@@ -374,17 +374,24 @@ class HuntsmanObservatory(Observatory):
             try:
                 self._wait_for_camera_events(events, duration=observation.exptime + timeout,
                                              remove_on_error=remove_on_error, **safety_kwargs)
+            except NotSafeError as err:
+                # want to close if not safe
+                self.logger.warning('Closing dome due to conditions no longer being safe.')
+                self.close_dome()
+                # after closing dome make sure the camera events complete to prevent errors later
+                self.logger.info('Waiting for camera events to complete after closing dome.')
+                self._wait_for_camera_events(events, duration=observation.exptime + timeout,
+                                             remove_on_error=remove_on_error, **safety_kwargs)
+                # finally raise the NotSafeError
+                raise err
             except error.Timeout as err:
                 self.logger.error(f"{err!r}")
                 self.logger.warning("Continuing with observation block after error.")
             except error.PanError as err:
-                # we don't want general PanErrors to interrupt obs block (ie filterwheel not ready etc)
-                # but also want to close if not safe (NotSafeError is child class of PanError)
-                if err is NotSafeError:
-                    raise err
-                else:
-                    self.logger.error(f"{err!r}")
-                    self.logger.warning("Continuing with observation block after error.")
+                # don't want general PanErrors to interrupt obs block (ie filterwheel not ready etc)
+                # NB NoteSafeError is child class of PanError but is handled above
+                self.logger.error(f"{err!r}")
+                self.logger.warning("Continuing with observation block after error.")
 
             # Explicitly mark the observation as complete
             with suppress(AttributeError):
@@ -471,7 +478,10 @@ class HuntsmanObservatory(Observatory):
             return True
         if not self.dome.connect():
             return False
-        if not self.dome.is_parked:
+        if self.dome.is_parked:
+            self.logger.info('Dome is already parked.')
+            return True
+        else:
             self.logger.info('Parking dome')
         return self.dome.park()
 
@@ -484,7 +494,9 @@ class HuntsmanObservatory(Observatory):
             return True
         if not self.dome.connect():
             return False
-        if self.dome.is_parked:
+        if not self.dome.is_parked:
+            self.logger.info('Dome is already unparked.')
+        else:
             self.logger.info('Unparking dome')
         return self.dome.unpark()
 
