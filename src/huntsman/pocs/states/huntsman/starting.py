@@ -11,8 +11,8 @@ def on_enter(event_data):
     # Prepare the cameras
     pocs.observatory.prepare_cameras()
 
-    # Check if we need to take darks
-    if pocs.should_take_darks:
+    # Check if we need to take darks and it is not yet twilight
+    if pocs.should_take_darks and not pocs.is_dark(horizon="twilight_max"):
         pocs.next_state = "taking_darks"
 
     # If we do not need to take darks, home the dome and then wait for
