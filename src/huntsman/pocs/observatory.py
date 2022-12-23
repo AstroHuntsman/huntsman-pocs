@@ -425,11 +425,6 @@ class HuntsmanObservatory(Observatory):
         # but don't want darks to interrupt twiflats so after
         # startup horizon add a twilight_max is dark check
         safety_kwargs = {"ignore": ["is_dark"]}
-        if self.is_dark(horizon="startup"):
-
-            safety_kwargs["horizon"] = "twilight_max"
-        else:
-            safety_kwargs["ignore"].append("is_dark")
 
         # Can ignore weather safety if dome is closed
         with suppress(AttributeError):
