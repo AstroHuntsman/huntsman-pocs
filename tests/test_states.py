@@ -59,6 +59,11 @@ def pocstime_past_morning_startup():
 
 
 @pytest.fixture(scope="function")
+def pocstime_beforeflat():
+    return '2021-04-29 07:40:00'
+
+
+@pytest.fixture(scope="function")
 def pocstime_flat():
     return '2021-04-29 08:15:00'
 
@@ -76,15 +81,15 @@ def pocstime_observe():
 # ==============================================================================
 
 
-def test_starting_darks(pocs, pocstime_flat):
+def test_starting_darks(pocs, pocstime_beforeflat):
     """ Test if the parking state transitions from sleeping into darks. """
 
     pocs.initialize()
     pocs.set_config('simulator', ['camera', 'mount', 'power'])
     assert not pocs.observatory.dome.is_open
 
-    os.environ['POCSTIME'] = pocstime_flat
-    assert pocs.is_dark(horizon="twilight_max")
+    os.environ['POCSTIME'] = pocstime_beforeflat
+    assert pocs.is_dark(horizon="startup")
     pocs.db.insert_current('weather', {'safe': False})
     assert not pocs.is_weather_safe()
     assert not pocs.observatory.dome.is_open

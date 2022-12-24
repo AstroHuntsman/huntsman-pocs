@@ -41,6 +41,11 @@ class HuntsmanPOCS(POCS):
             self.logger.debug("Vetoing darks because we can observe.")
             veto = True
 
+        # we do not want to take darks during twilight if the weather is safe
+        if self.is_weather_safe() and self.observatory.is_twilight:
+            self.logger.debug("Vetoing darks because we can take flats.")
+            veto = True
+
         # We do not want to take darks if we have already taken too many recently
         elif len(self._dark_state_times) == self._dark_state_times.maxlen:
             timediff = current_time() - self._dark_state_times[0]

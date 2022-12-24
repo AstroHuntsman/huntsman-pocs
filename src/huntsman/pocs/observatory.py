@@ -17,7 +17,7 @@ from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field
 from huntsman.pocs.utils.flats import get_cameras_with_filter
 from huntsman.pocs.utils.safety import get_solar_altaz
 from huntsman.pocs.camera.group import CameraGroup, dispatch_parallel
-from huntsman.pocs.error import NotTwilightError, NotSafeError
+from huntsman.pocs.error import NotTwilightError, NotSafeError, NoDarksDuringTwilightError
 
 
 class HuntsmanObservatory(Observatory):
@@ -406,6 +406,10 @@ class HuntsmanObservatory(Observatory):
                 Default: False.
             **kwargs: Parsed to `self.take_observation_block`.
         """
+        # First make sure it is not twilight
+        if self.is_twilight:
+            raise NoDarksDuringTwilightError("Not taking darks during twilight window.")
+
         # Move telescope to park position
         if not self.mount.is_parked:
             self.logger.info("Moving telescope to park position for dark observation.")
@@ -418,12 +422,9 @@ class HuntsmanObservatory(Observatory):
         observation = ObsClass(position=position)
 
         # Dark observations don't care if it's dark or not
-        # but don't want darks to interrupt twiflats so only
-        # start them after twiflats
-        if self.is_dark(horizon="twilight_min"):
-            safety_kwargs = {"ignore": ["is_dark"]}
-        else:
-            safety_kwargs = {"horizon": "twilight_max"}
+        # but don't want darks to interrupt twiflats so after
+        # startup horizon add a twilight_max is dark check
+        safety_kwargs = {"ignore": ["is_dark"]}
 
         # Can ignore weather safety if dome is closed
         with suppress(AttributeError):
