@@ -282,9 +282,23 @@ class HuntsmanDome(ASDome, BDome):
     def find_home(self, timeout=210):
         if BDome.is_connected.fget(self):
             self.write(self._get_command('dome/home.js'))
-            response = self.read(timeout=timeout)
-        if response['success']:
-            self._homed_count += 1
+            response = None
+            timer = CountdownTimer(timeout)
+            while not timer.expired():
+                try:
+                    response = self.read()
+                except TheSkyXTimeout:
+                    continue
+                if response is not None:
+                    break
+                else:
+                    self.logger.info(
+                        f'Waiting for dome to find home with timeout of  {timeout} seconds.')
+                    time.sleep(30)
+            if timer.expired():
+                raise TheSkyXTimeout("Timeout while finding Dome home.")
+            else:
+                self._homed_count += bool(response['success'])
 
         return bool(response['success'])
 
