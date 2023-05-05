@@ -5,6 +5,7 @@ dependencies:
   - matplotlib-base
   - astropy>=5.2
   - numpy
+  - paramiko
   - photutils
   - pillow
   - pip
