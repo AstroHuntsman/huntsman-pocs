@@ -4,7 +4,6 @@ import time
 import queue
 import atexit
 import shutil
-import paramiko as pm
 from contextlib import suppress
 from threading import Thread
 from astropy import units as u
@@ -19,28 +18,13 @@ VALID_EXTENSIONS = (".fits", ".fits.fz")
 
 
 class Archiver(PanBase):
-    """Class to watch the images directory for new files and move them to the archive directory
+    """ Class to watch the images directory for new files and move them to the archive directory
     after enough time has passed.
     """
-
     _valid_extensions = VALID_EXTENSIONS
 
-    def __init__(
-        self,
-        images_directory=None,
-        archive_directory=None,
-        delay_interval=None,
-        sleep_interval=None,
-        status_interval=60,
-        logger=None,
-        upload_to_cloud=False,
-        remote_host=None,
-        username=None,
-        password=None,
-        port=None,
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, images_directory=None, archive_directory=None, delay_interval=None,
+                 sleep_interval=None, status_interval=60, logger=None, *args, **kwargs):
         """
         Args:
             images_directory (str): The images directory to archive. If None (default), uses
@@ -63,16 +47,6 @@ class Archiver(PanBase):
             logger = get_logger()
 
         super().__init__(logger=logger, *args, **kwargs)
-
-        if upload_to_cloud:
-            self._carry_out = self._upload_file
-            self.remote_host = remote_host
-            self.username = username
-            self.password = password
-            self.port = port
-            self.upload_to_cloud = upload_to_cloud
-        else:
-            self._carry_out = self._archive_file
 
         if images_directory is None:
             images_directory = self.get_config("directories.images")
@@ -110,29 +84,27 @@ class Archiver(PanBase):
 
     @property
     def status(self):
-        """Return a status dictionary.
+        """ Return a status dictionary.
         Returns:
             dict: The status dictionary.
         """
-        status = {
-            "is_running": all([t.is_alive() for t in self._threads]),
-            "status_thread": self._status_thread.is_alive(),
-            "watch_thread": self._watch_thread.is_alive(),
-            "archive_thread": self._status_thread.is_alive(),
-            "queued": self._archive_queue.qsize(),
-            "archived": self._n_archived,
-        }
+        status = {"is_running": all([t.is_alive() for t in self._threads]),
+                  "status_thread": self._status_thread.is_alive(),
+                  "watch_thread": self._watch_thread.is_alive(),
+                  "archive_thread": self._status_thread.is_alive(),
+                  "queued": self._archive_queue.qsize(),
+                  "archived": self._n_archived}
         return status
 
     def start(self):
-        """Start archiving."""
+        """ Start archiving. """
         self.logger.info("Starting archiving.")
         self._stop = False
         for thread in self._threads:
             thread.start()
 
     def stop(self, blocking=True):
-        """Stop archiving.
+        """ Stop archiving.
         Args:
             blocking (bool, optional): If True (default), blocks until all threads have joined.
         """
@@ -144,22 +116,22 @@ class Archiver(PanBase):
                     thread.join()
 
     def _async_monitor_status(self):
-        """Report the status on a regular interval."""
+        """ Report the status on a regular interval. """
         self.logger.debug("Starting status thread.")
         while True:
             if self._stop:
-                self.logger.debug(f"Archiver status thread.")
+                self.logger.debug("Stopping status thread.")
                 break
             # Get the current status
             status = self.status
             self.logger.debug(f"Archiver status: {status}")
             if not self.is_running:
-                self.logger.warning(f"Archiver is not running.")
+                self.logger.warning("Archiver is not running.")
             # Sleep before reporting status again
             time.sleep(self._status_interval)
 
     def _async_watch_directory(self):
-        """Watch the images directory and add all valid files to the archive queue."""
+        """ Watch the images directory and add all valid files to the archive queue. """
         self.logger.debug("Starting watch thread.")
         while True:
             if self._stop:
@@ -173,7 +145,7 @@ class Archiver(PanBase):
             time.sleep(self.sleep_interval.to_value(u.second))
 
     def _async_archive_files(self, sleep=10):
-        """Archive files that have been in the queue longer than self.delay_interval.
+        """ Archive files that have been in the queue longer than self.delay_interval.
         Args:
             sleep (float, optional): Sleep for this long while waiting for self.delay_interval to
                 expire. Default: 10s.
@@ -184,37 +156,33 @@ class Archiver(PanBase):
                 break
             # Get the oldest file from the queue
             try:
-                track_time, filename = self._archive_queue.get(
-                    block=True, timeout=sleep
-                )
+                track_time, filename = self._archive_queue.get(block=True, timeout=sleep)
             except queue.Empty:
                 continue
             # Archive file when it is old enough
             while current_time() - track_time < self.delay_interval:
                 time.sleep(sleep)
             with suppress(FileNotFoundError):
-                self._carry_out(filename)
+                self._archive_file(filename)
                 self._n_archived += 1
             # Tell the queue we are done with this file
             self._archive_queue.task_done()
 
     def _get_filenames_to_archive(self):
-        """Get valid filenames in the images directory to archive.
+        """ Get valid filenames in the images directory to archive.
         Returns:
             list: The list of filenames to archive.
         """
         filenames = []
-        self.paths = []
         # Get all the matching filenames in the images directory
         for path, _, files in os.walk(self.images_directory):
             for name in files:
                 if any([name.endswith(ext) for ext in self._valid_extensions]):
                     filenames.append(os.path.join(path, name))
-                    self.paths.append(path)
         return filenames
 
     def _get_archive_filename(self, filename):
-        """Get the archive filename from the original filename.
+        """ Get the archive filename from the original filename.
         Args:
             filename (str): The filename string.
         Returns:
@@ -224,7 +192,7 @@ class Archiver(PanBase):
         return os.path.join(self.archive_directory, relpath)
 
     def _archive_file(self, filename):
-        """Archive the file.
+        """ Archive the file.
         Args:
             filename (str): The filename string.
         """
@@ -246,74 +214,3 @@ class Archiver(PanBase):
 
         # Finally, delete the original
         os.remove(filename)
-
-    def _upload_file(self, filename):
-        """Archive the file.
-        Args:
-            filename (str): The filename string.
-        """
-        if not os.path.exists(filename):  # May have already been archived or deleted
-            self.logger.debug(f"Tried to archive {filename} but it does not exist.")
-            raise FileNotFoundError
-
-        # Get the archived filename
-        upload_filename = self._get_archive_filename(filename)
-
-        # # Make sure the upload directory exists
-        # self._check_destination_directory()
-        # os.makedirs(os.path.dirname(upload_filename), exist_ok=True)
-
-        # Move the file to the DC directory
-        self.logger.debug(f"Moving {filename} to {upload_filename}.")
-        self.transfer_data(filename, upload_filename)
-
-        # Finally, delete the original
-        os.remove(filename)
-
-    def _setup_sftp(self):
-        self.ssh = pm.SSHClient()
-        self.ssh.set_missing_host_key_policy(pm.AutoAddPolicy())
-        self.ssh.connect(
-            self.remote_host,
-            username=self.username,
-            password=self.password,
-            port=self.port,
-        )
-        self.sftp = self.ssh.open_sftp()
-
-    def transfer_data(self, filename, destination):
-        self._setup_sftp()
-        try:
-            self.logger.info(
-                "Checking whether the provided destination directory exists"
-            )
-            print("filename")
-            print(filename)
-            print("destination")
-            print(destination)
-            print("see")
-            print(os.path.dirname(destination))
-            self.sftp.stat(os.path.dirname(destination))
-            self.logger.info("The destination directory exisets in the cloud!")
-        except FileNotFoundError:
-            self.logger.info("The destination directory was not found!")
-            self.logger.info(f"Creating {os.path.dirname(destination)} in the cloud.")
-            try:
-                folders = os.path.dirname(destination).split("/")
-            except:
-                pass
-            for folder in folders:
-                try:
-                    self.sftp.chdir(folder)
-                except:
-                    # Create the folder if it does not exist
-                    self.sftp.mkdir(folder)
-                    self.sftp.chdir(folder)
-            # self.sftp.mkdir(os.path.dirname(destination))
-        self.logger.info(
-            f"Copying {filename} into the destination directory: {destination}"
-        )
-        self.sftp.put(filename, destination)
-        self.logger.info("done!")
-        self.sftp.close()
-        self.ssh.close()
