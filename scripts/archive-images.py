@@ -4,6 +4,7 @@ from panoptes.utils import error
 from huntsman.pocs.archive.archiver import Archiver
 
 if __name__ == "__main__":
+
     archiver = Archiver()
     archiver.start()
 

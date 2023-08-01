@@ -150,8 +150,6 @@ if __name__ == "__main__":
     )
     archiver.start()
 
-    # Monitor the archiver
-    # If it breaks we want to terminate the script so docker can restart the service
     while True:
         if not archiver.is_running:
             raise error.PanError("Archiver is no longer running.")
