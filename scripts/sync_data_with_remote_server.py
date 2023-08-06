@@ -1,5 +1,6 @@
 """ Simple script to start archiving images. """
 import os
+import sys
 import time
 import paramiko as pm
 from huntsman.pocs.archive.archiver import Archiver
@@ -150,7 +151,16 @@ if __name__ == "__main__":
     )
     archiver.start()
 
-    while True:
-        if not archiver.is_running:
-            raise error.PanError("Archiver is no longer running.")
-        time.sleep(10)
+    try:
+        while True:
+            if not archiver.is_running:
+                raise error.PanError("Archiver is no longer running.")
+            time.sleep(10)
+    except KeyboardInterrupt:
+        # Gracefully handle KeyboardInterrupt (Ctrl+C) and SystemExit during file transfer
+        archiver.logger.info("KeyboardInterrupt received. Stopping the RemoteArchiver gracefully...")
+        archiver.stop()
+
+        archiver.logger.info("Archiver stopped.")
+        # Make sure to exit the script properly after handling the KeyboardInterrupt or SystemExit
+        sys.exit(0)
