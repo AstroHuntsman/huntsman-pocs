@@ -153,12 +153,12 @@ if __name__ == "__main__":
     # required position args in order :
     # [images_directory, archive_directory, username, remote_host, port, pkey_path]
     args = list()
-    args.append(get_config("remote_archiver.local_archive_directory", None))
-    args.append(get_config("remote_archiver.remote_archive_directory", None))
-    args.append(get_config("remote_archiver.username", 'huntsman'))
-    args.append(get_config("remote_archiver.remote_host", None))
-    args.append(get_config("remote_archiver.port", None))
-    args.append(get_config("remote_archiver.private_key_path", None))
+    args.append(get_config(key="remote_archiver.local_archive_directory", default=None))
+    args.append(get_config(key="remote_archiver.remote_archive_directory", default=None))
+    args.append(get_config(key="remote_archiver.username", default='huntsman'))
+    args.append(get_config(key="remote_archiver.remote_host", default=None))
+    args.append(get_config(key="remote_archiver.port", default=None))
+    args.append(get_config(key="remote_archiver.private_key_path", default=None))
 
     arg_names = ["images_directory", "archive_directory",
                  "username", "remote_host", "port", "pkey_path"]
@@ -168,9 +168,11 @@ if __name__ == "__main__":
 
     kwargs = dict()
     # The minimum amount of time a file must spend in the archive queue before it is uploaded
-    kwargs['delay_interval'] = get_config("remote_archiver.delay_interval", 300 * u.second)
+    kwargs['delay_interval'] = get_config(
+        key="remote_archiver.delay_interval", default=300 * u.second)
     # how often the remote archiver checks for new local files to upload
-    kwargs['sleep_interval'] = get_config("remote_archiver.sleep_interval", 900 * u.second)
+    kwargs['sleep_interval'] = get_config(
+        key="remote_archiver.sleep_interval", default=900 * u.second)
 
     archiver = RemoteArchiver(*args, **kwargs)
     archiver.start()
