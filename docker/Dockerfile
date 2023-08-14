@@ -3,7 +3,7 @@ ARG image_tag=v0.7.8
 FROM ${image_url}:${image_tag} AS pocs-base
 
 ARG pocs_tag="v0.7.8"
-ARG pocs_url="https://github.com/panoptes/POCS.git@${pocs_tag}#egg=panoptes-pocs"
+ARG pocs_url="https://github.com/panoptes/POCS.git#${pocs_tag}#egg=panoptes-pocs"
 
 LABEL description="Huntsman POCS Service"
 LABEL maintainers="developers@huntsman.space"

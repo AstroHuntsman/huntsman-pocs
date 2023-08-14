@@ -31,7 +31,7 @@ RUN echo "Building from ${image_name}:${image_tag}" && \
 COPY docker/environment.yaml .
 RUN micromamba update -n base -f environment.yaml && \
     # POCS from github.
-    pip install "git+https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs[focuser]"
+    pip install "git+https://github.com/panoptes/POCS.git#v0.7.8#egg=panoptes-pocs[focuser]"
 
 ARG pip_install_extras="[testing]"
 
