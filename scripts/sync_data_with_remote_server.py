@@ -153,7 +153,7 @@ if __name__ == "__main__":
     # required position args in order :
     # [images_directory, archive_directory, username, remote_host, port, pkey_path]
     args = list()
-    args.append(get_config("remote_archiver.images_directory", None))
+    args.append(get_config("remote_archiver.local_archive_directory", None))
     args.append(get_config("remote_archiver.remote_archive_directory", None))
     args.append(get_config("remote_archiver.username", 'huntsman'))
     args.append(get_config("remote_archiver.remote_host", None))
