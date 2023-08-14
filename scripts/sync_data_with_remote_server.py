@@ -169,10 +169,14 @@ if __name__ == "__main__":
     kwargs = dict()
     # The minimum amount of time a file must spend in the archive queue before it is uploaded
     kwargs['delay_interval'] = get_config(
-        key="remote_archiver.delay_interval", default=300 * u.second)
+        key="remote_archiver.delay_interval", default=60 * u.second)
     # how often the remote archiver checks for new local files to upload
     kwargs['sleep_interval'] = get_config(
-        key="remote_archiver.sleep_interval", default=900 * u.second)
+        key="remote_archiver.sleep_interval", default=60 * u.second)
+    # hardcode this parameter as the config entry is set assuming a docker environment
+    kwargs['db_folder'] = '/var/huntsman/json_store'
+    # for convenience create logger object here so we can change the log level is needed
+    kwargs['logger'] = get_logger(stderr_log_level='INFO')  # set to 'DEBUG' if needed
 
     archiver = RemoteArchiver(*args, **kwargs)
     archiver.start()
