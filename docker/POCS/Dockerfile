@@ -54,7 +54,7 @@ RUN echo "Updating micromamba environment" && \
 
 FROM panoptes-pocs-dependencies AS panoptes-pocs
 
-ARG pip_install_name="git+https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs"
+ARG pip_install_name="git+https://github.com/panoptes/POCS.git#v0.7.8#egg=panoptes-pocs"
 ARG pip_install_extras="[google]"
 
 USER "${USERID}"

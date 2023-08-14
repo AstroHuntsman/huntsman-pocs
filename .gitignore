@@ -35,6 +35,7 @@ htmlcov/*
 junit.xml
 coverage.xml
 .coverage.*
+.hypothesis/
 .pytest_cache/
 
 # Build and docs folder/files
