@@ -5,6 +5,17 @@ def on_enter(event_data):
     pocs = event_data.model
     pocs.next_state = 'parking'
 
+    # First wait for all the cameras to be ready (in case an exposure was interrupted)
+    # sleep interval is 1/5 of the current observation exposure time, repeated 5 times
+    try:
+        current_obs_exptime = pocs.observatory.current_observation.exptime.value
+        sleep_interval = current_obs_exptime/5
+    except Exception as err:
+        pocs.logger.warning(f"Error getting current observation exposure time: {err!r}")
+        sleep_interval = 60
+    pocs.say(f"Waiting for cameras to be ready in 5 intervals of {sleep_interval} seconds.")
+    pocs.observatory.camera_group.wait_until_ready(sleep=sleep_interval, max_attempts=5)
+
     # First check if a coarse focus is required
     if pocs.is_dark(horizon="focus") and pocs.observatory.coarse_focus_required:
         pocs.say("Scheduled coarse focusing")
