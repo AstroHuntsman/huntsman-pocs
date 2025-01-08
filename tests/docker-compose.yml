@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   python_tests:
-    image: huntsman-pocs:testing
+    image: huntsmanarray/huntsman-pocs:testing
     build:
       context: ../
       dockerfile: tests/Dockerfile
@@ -18,4 +18,4 @@ services:
       - "$PWD/build:/huntsman/build"
       - "$PWD/src:/huntsman/src"
       - "$PWD/tests:/huntsman/tests"
-    command: [ "pytest" ]
+    command: [ "pytest", "-v", "-s" ]
