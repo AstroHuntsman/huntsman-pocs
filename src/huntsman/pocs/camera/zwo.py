@@ -15,7 +15,7 @@ from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 
 from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
-
+from huntsman.pocs.camera.libasi import HuntsmanASIDriver
 
 class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     _driver = None  # Class variable to store the ASI driver interface
@@ -60,7 +60,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         else:
             self._image_type = 'RAW16'
 
-        super().__init__(name, ASIDriver, *args, **kwargs)
+        super().__init__(name, HuntsmanASIDriver, *args, **kwargs)
 
         # Increase default temperature_tolerance for ZWO cameras because the
         # default value is too low for their temperature resolution.
