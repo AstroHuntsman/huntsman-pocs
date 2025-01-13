@@ -13,6 +13,7 @@
 */.ipynb_checkpoints/*
 .DS_Store
 .vscode
+*.tar.bz2
 
 # Project files
 .ropeproject
