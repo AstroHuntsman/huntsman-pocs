@@ -1,4 +1,4 @@
-ARG image_url=huntsmanarray/huntsman-pocs
+ARG image_url=batbold/huntsman-pocs
 ARG image_tag=develop
 FROM ${image_url}:${image_tag} AS pocs-base
 
