@@ -1,4 +1,4 @@
-ARG image_url=huntsmanarray/panoptes-pocs
+ARG image_url=batbold/panoptes-pocs
 ARG image_tag=v0.7.8
 
 FROM ${image_url} AS pocs-base
@@ -47,6 +47,7 @@ RUN micromamba update -n base -f environment.yaml && \
     # Make sure we are using the intended version of POCS
     micromamba run -n base pip uninstall -y panoptes-pocs && \
     micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
+    micromamba run -n base pip install "flask<2.3" && \
     # Cleanup
     micromamba run -n base pip cache purge && \
     micromamba clean -fay && \

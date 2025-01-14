@@ -1,4 +1,4 @@
-ARG image_url=huntsmanarray/panoptes-utils
+ARG image_url=batbold/panoptes-utils
 ARG image_tag=v0.2.35
 FROM ${image_url}:${image_tag} AS panoptes-pocs-base
 
