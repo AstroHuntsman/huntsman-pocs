@@ -18,3 +18,7 @@ Once you have tagged the image you can then push it to docker hub
 
 ```docker push huntsmanarray/huntsman-pocs-camera:<tagname>
 ```
+
+For creating image for both x86_64 and arm64 architectures, you need to run the following command:
+
+```docker buildx build --platform linux/amd64,linux/arm64 -t huntsmanarray/huntsman-pocs-camera:develop --push .```

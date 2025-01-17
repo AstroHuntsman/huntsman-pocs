@@ -20,3 +20,7 @@ Once you have tagged the image you can then push it to docker hub
 
 ```docker push huntsmanarray/panoptes-utils:<tagname>
 ```
+
+For creating image for both x86_64 and arm64 architectures, you need to run the following command from the panoptes-utils docker directory:
+
+```docker buildx build --platform linux/amd64,linux/arm64 -t huntsmanarray/panoptes-utils:v0.2.35 --push .```
