@@ -1,7 +1,8 @@
-ARG image_url=batbold/panoptes-pocs
+ARG image_url=bsreddragon/panoptes-pocs
 ARG image_tag=v0.7.8
 
-FROM ${image_url} AS pocs-base
+# FROM ${image_url}:${image_tag} AS pocs-base
+FROM bsreddragon/panoptes-pocs:v0.7.8 AS pocs-base
 
 ARG pocs_tag="v0.7.8"
 ARG pocs_url="https://github.com/panoptes/POCS.git@${pocs_tag}#egg=panoptes-pocs"
