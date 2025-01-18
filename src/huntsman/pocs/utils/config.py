@@ -1,4 +1,7 @@
+# fmt: off
+
 import os
+
 import netifaces
 from panoptes.utils.config.client import get_config as pocs_get_config
 
@@ -9,7 +12,7 @@ def get_config(key, host=None, port=None, *args, **kwargs):
     Note that this should make it's way upstream eventually.
     """
     host = host or os.getenv('PANOPTES_CONFIG_HOST', 'localhost')
-    port = port or os.getenv('PANOPTES_CONFIG_PORT', 6563)
+    port = port or os.getenv('PANOPTES_CONFIG_PORT', 6573)
     return pocs_get_config(
         key=key,
         host=host,

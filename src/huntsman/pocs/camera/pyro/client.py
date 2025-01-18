@@ -1,21 +1,23 @@
+# fmt: off
+
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
-from astropy.io import fits
 from astropy import units as u
-from Pyro5.api import Proxy
-from panoptes.utils import error
-from panoptes.utils.time import CountdownTimer
-from panoptes.utils.utils import get_quantity_value
+from astropy.io import fits
 from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.pyro import \
+    serializers  # Required to set up the custom (de)serializers
 from huntsman.pocs.utils.pyro.event import RemoteEvent
-
-from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
+from panoptes.utils import error
+from panoptes.utils.time import CountdownTimer
+from panoptes.utils.utils import get_quantity_value
+from Pyro5.api import Proxy
 
 
 class Camera(AbstractHuntsmanCamera):
@@ -42,7 +44,7 @@ class Camera(AbstractHuntsmanCamera):
         # We need to replicate init functionality of AbstractCamera without overriding the
         # existing config of the camera proxy.
         self._config_host = config_host or os.getenv('PANOPTES_CONFIG_HOST', 'localhost')
-        self._config_port = config_port or os.getenv('PANOPTES_CONFIG_PORT', 6563)
+        self._config_port = config_port or os.getenv('PANOPTES_CONFIG_PORT', 6573)
         self.port = port
         self.is_primary = primary
         self.subcomponents = dict()  # Required for "stringifying" the camera
