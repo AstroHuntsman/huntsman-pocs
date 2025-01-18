@@ -11,7 +11,7 @@ REMOTE_HOST=${HUNTSMAN_REMOTE_HOST:-${PANOPTES_CONFIG_HOST}}
 REMOTE_IMAGES_DIR=${REMOTE_HOST}:${PANDIR}/images
 LOCAL_IMAGES_DIR=${PANDIR}/images
 
-DC_FILE_URL=https://raw.githubusercontent.com/AstroHuntsman/huntsman-pocs/develop/docker/camera/docker-compose.yaml
+DC_FILE_URL=https://raw.githubusercontent.com/oldyoungcoders/huntsman-pocs/adding-movie-mode/docker/camera/docker-compose.yaml
 
 # First, check if the camera docker service is already running. If so, exit 0.
 cd ${PANDIR}
