@@ -35,4 +35,4 @@ bin/panoptes-develop up
 
 For creating image for both x86_64 and arm64 architectures, you need to run the following command from the huntsman-pocs directory:
 
-```docker buildx build --platform linux/amd64,linux/arm64 -f docker/Dockerfile -t huntsmanarray/huntsman-pocs-camera:develop --push .```
+```docker buildx build --platform linux/amd64,linux/arm64 -f docker/Dockerfile -t huntsmanarray/huntsman-pocs:develop --push .```
