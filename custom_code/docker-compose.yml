@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  huntsman-pocs:
+    image: bsreddragon/huntsman-pocs:custom  # or whatever you named your built image
+    volumes:
+      # - ${PANDIR}/logs:/huntsman/logs
+      # - ${PANDIR}/build:/huntsman/build
+      - ${HUNTSMAN_POCS}/src:/huntsman/src
+      - ${HUNTSMAN_POCS}/tests:/huntsman/tests
+      - ${PANDIR}/POCS:/POCS
+    environment:
+      - PANDIR=${PANDIR}
+      - HUNTSMAN_POCS=${HUNTSMAN_POCS}
+    command:  tail -f /dev/null
+    stdin_open: true
+    tty: true
