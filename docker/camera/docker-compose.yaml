@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   camera:
-    image: bsreddragon/huntsman-pocs-camera:develop
+    image: bsreddragon/huntsman-pocs-camera:custom
     privileged: true
     network_mode: host
     stdin_open: true
