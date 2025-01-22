@@ -44,7 +44,7 @@ class Camera(AbstractHuntsmanCamera):
         # We need to replicate init functionality of AbstractCamera without overriding the
         # existing config of the camera proxy.
         self._config_host = config_host or os.getenv('PANOPTES_CONFIG_HOST', 'localhost')
-        self._config_port = config_port or os.getenv('PANOPTES_CONFIG_PORT', 6573)
+        self._config_port = config_port or os.getenv('PANOPTES_CONFIG_PORT', 6563)
         self.port = port
         self.is_primary = primary
         self.subcomponents = dict()  # Required for "stringifying" the camera

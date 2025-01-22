@@ -9,7 +9,7 @@ services:
     environment:
       PANDIR: /var/huntsman
       PANOPTES_CONFIG_HOST:
-      PANOPTES_CONFIG_PORT: 6573
+      PANOPTES_CONFIG_PORT: 6563
       TZ: "Australia/Sydney"
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:

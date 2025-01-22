@@ -20,7 +20,7 @@ def get_running_nameserver(host=None, port=None, broadcast=True):
     """
 
     host = host or get_config('pyro.nameserver.host', default='localhost')
-    port = int(port or get_config('pyro.nameserver.port', default=6574))
+    port = int(port or get_config('pyro.nameserver.port', default=6564))
 
     logger.info(f'Looking for nameserver on {host}:{port}')
     name_server = locate_ns(host=host, port=port, broadcast=broadcast)
