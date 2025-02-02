@@ -1,5 +1,5 @@
 ARG image_url=bsreddragon/huntsman-pocs
-ARG image_tag=custom
+ARG image_tag=develop
 FROM ${image_url}:${image_tag} AS pocs-base
 
 ARG arch="armv7"
