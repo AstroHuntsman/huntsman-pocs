@@ -1,21 +1,21 @@
+# fmt: off
+
 import threading
 import time
 from contextlib import suppress
-from usb.core import find as finddev
 
 import numpy as np
 from astropy import units as u
 from astropy.time import Time
-
+from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
+from huntsman.pocs.camera.libasi import HuntsmanASIDriver
+from panoptes.pocs.camera.libasi import ASIDriver
+from panoptes.pocs.camera.sdk import AbstractSDKCamera
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
+from usb.core import find as finddev
 
-from panoptes.pocs.camera.libasi import ASIDriver
-from panoptes.pocs.camera.sdk import AbstractSDKCamera
-
-from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
-from huntsman.pocs.camera.libasi import HuntsmanASIDriver
 
 class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     _driver = None  # Class variable to store the ASI driver interface
@@ -211,6 +211,48 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self._current_focus_offset = actual_offset
 
         return super().take_exposure(*args, **kwargs)
+    
+    
+
+    def take_video(self, *args, **kwargs):
+        """ Overrride class method to add defocusing offset.
+        Note that the focus offset is checked at the exposure level so that we don't end up
+        moving the focuser back and forth unnecessarily.
+        TODO: Move to AbstractCamera.
+        Args:
+            defocused (bool, optional): If True, apply the defocusing offset before the exposure.
+                Default: False.
+            *args, **kwargs: Parsed to super().take_exposure.
+        Returns:
+            threading.Thread: The readout thread, which joins when readout has finished.
+        """
+        focus_offset = kwargs.pop("focus_offset", 0)
+        required_focus_move = focus_offset - self._current_focus_offset
+
+        if required_focus_move != 0:
+            self.logger.debug(f"Setting focus offset for {self} to: {focus_offset}.")
+
+            default_pos = self.focuser.position - self._current_focus_offset
+
+            new_pos = self.focuser.move_by(required_focus_move)
+
+            # The actual offset may be different from the one we expected
+            actual_offset = new_pos - default_pos
+
+            # Update the current focus offset
+            self._current_focus_offset = actual_offset
+        
+        # video_obj = super().take_exposure(*args, **kwargs)
+        
+        filename_root = kwargs['files_dir']
+        max_frames = kwargs['max_frames']
+        seconds = kwargs['seconds']
+        
+        video_obj = self.start_video(seconds, filename_root, max_frames)
+
+        return video_obj
+
+
 
     def start_video(self, seconds, filename_root, max_frames, image_type=None):
         if not isinstance(seconds, u.Quantity):

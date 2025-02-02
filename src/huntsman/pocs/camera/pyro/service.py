@@ -1,11 +1,13 @@
-from threading import Event, Thread
+# fmt: off
+
 from contextlib import suppress
+from threading import Event, Thread
 
 import Pyro5.server
+from huntsman.pocs.utils.config import get_own_ip
+from huntsman.pocs.utils.logger import get_logger
 from panoptes.utils.config.client import get_config
 from panoptes.utils.library import load_module
-from huntsman.pocs.utils.logger import get_logger
-from huntsman.pocs.utils.config import get_own_ip
 
 
 @Pyro5.server.expose
@@ -93,6 +95,20 @@ class CameraService(object):
         with suppress(KeyError):
             kwargs.pop("blocking")
         self._readout_thread = self._camera.take_exposure(*args, **kwargs)
+        
+    def take_video(self, *args, **kwargs):
+        """Proxy call to the camera client.
+
+        This method will strip any `blocking` parameter that is passed so Pyro can handle the blocking appropriately.
+        """
+        
+        with suppress(KeyError):
+            kwargs.pop("blocking")
+            
+        # returning video_obj
+        video_obj = self._camera.take_video(*args, **kwargs)
+        
+        self._readout_thread = video_obj
 
     def autofocus(self, *args, **kwargs):
         """ Start the autofocus non-blocking so that camera server can still respond to
