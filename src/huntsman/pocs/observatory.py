@@ -825,7 +825,7 @@ class HuntsmanObservatory(Observatory):
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:
-                self._wait_for_camera_events(events, duration=observation.exptime + timeout,
+                self._wait_for_camera_events(events, duration=observation.duration + timeout,
                                              remove_on_error=remove_on_error, **safety_kwargs)
             except NotSafeError as err:
                 # want to close if not safe
@@ -833,7 +833,7 @@ class HuntsmanObservatory(Observatory):
                 self.close_dome()
                 # after closing dome make sure the camera events complete to prevent errors later
                 self.logger.info('Waiting for camera events to complete after closing dome.')
-                self._wait_for_camera_events(events, duration=observation.exptime + timeout,
+                self._wait_for_camera_events(events, duration=observation.duration + timeout,
                                              remove_on_error=remove_on_error, **safety_kwargs)
                 # finally raise the NotSafeError
                 raise err

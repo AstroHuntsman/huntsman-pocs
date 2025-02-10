@@ -2,7 +2,9 @@
 
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
+from queue import Empty, Queue
 
 import numpy as np
 from astropy import units as u
@@ -248,7 +250,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         max_frames = kwargs['max_frames']
         seconds = kwargs['seconds']
         
-        video_obj = self.start_video(seconds, filename_root, max_frames)
+        # video_obj = self.start_video(seconds, filename_root, max_frames)
+        video_obj = self.start_concurrent_video(seconds, filename_root, max_frames)
 
         return video_obj
 
@@ -284,6 +287,122 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self._video_event.clear()
         video_thread.start()
         self.logger.debug("Video capture started on {}".format(self))
+        
+        return video_thread
+    
+            
+    def start_concurrent_video(self, seconds, filename_root, max_frames, image_type=None):
+        """Start video capture with concurrent frame processing.
+        
+        Args:
+            seconds (u.Quantity): Exposure time for each frame
+            filename_root (str): Root name for saved files
+            max_frames (int): Maximum number of frames to capture
+            image_type (str, optional): Image format to use. If None, uses current camera setting.
+        
+        Returns:
+            threading.Thread: The video processing thread that manages capture and writing
+        
+        Notes:
+            - The function starts a main video thread that manages both reading and writing threads
+            - Frame reading is done in a single thread to maintain sequential capture
+            - Frame writing is done with multiple threads for I/O optimization
+            - Progress can be monitored through the logger
+            - Use stop_video() to terminate capture before max_frames
+        """
+        
+        breakpoint()
+        
+        # Ensure seconds is a Quantity
+        if not isinstance(seconds, u.Quantity):
+            seconds = seconds * u.second
+            
+        # Set exposure time
+        self._control_setter('EXPOSURE', seconds)
+        
+        # Set image type if specified
+        if image_type:
+            self.image_type = image_type
+
+        # Get ROI format for frame size
+        roi_format = Camera._driver.get_roi_format(self._handle)
+        width = int(get_quantity_value(roi_format['width'], unit=u.pixel))
+        height = int(get_quantity_value(roi_format['height'], unit=u.pixel))
+        image_type = roi_format['image_type']
+
+        # Calculate timeout based on exposure time
+        # timeout = 2 * seconds + self._timeout * u.second
+        
+        # Calculate timeout based on exposure time (convert to seconds)
+        base_timeout = 2 * seconds.to(u.second).value + self._timeout
+        if isinstance(base_timeout, u.Quantity):
+            timeout = base_timeout.to(u.second).value
+        else:
+            timeout = float(base_timeout)
+        
+        # Prepare arguments for video processing
+        video_args = (width,
+                    height,
+                    image_type,
+                    timeout,
+                    filename_root,
+                    self.file_extension,
+                    int(max_frames),
+                    self._create_fits_header(seconds, dark=False))
+
+        # Start video capture on camera
+        try:
+            Camera._driver.start_video_capture(self._handle)
+            self._video_event.clear()
+        except Exception as e:
+            self.logger.error(f"Failed to start video capture: {e}")
+            raise
+        
+        # breakpoint()
+        # Create and start video processing thread
+        video_thread = threading.Thread(
+            target=self._concurrent_video_readout,
+            args=video_args,
+            name=f"Video-{filename_root}",
+            daemon=True
+        )
+        
+        # breakpoint()
+
+        try:
+            video_thread.start()
+            #self._concurrent_video_readout(*video_args)
+            self.logger.info(f"Started video capture on {self}:")
+            self.logger.info(f"- Exposure: {get_quantity_value(seconds, u.second):.3f}s")
+            self.logger.info(f"- Frames: {max_frames}")
+            self.logger.info(f"- Size: {width}x{height}")
+            self.logger.info(f"- Type: {image_type}")
+            self.logger.info(f"- Output: {filename_root}_NNNNNN.{self.file_extension}")
+        except Exception as e:
+            self.logger.error(f"Failed to start video processing thread: {e}")
+            self.stop_concurrent_video()  # Cleanup camera if thread start fails
+            raise
+
+        return video_thread
+
+    def stop_concurrent_video(self):
+        """Stop video capture and cleanup resources.
+        
+        This method:
+        1. Sets the video event to signal stopping
+        2. Stops camera video capture
+        3. Allows threads to cleanup gracefully
+        """
+        self._video_event.set()
+        Camera._driver.stop_video_capture(self._handle)
+        self.logger.debug("Video capture stopped on {}".format(self))
+        
+        # try:
+        #     Camera._driver.stop_video_capture(self._handle)
+        #     self.logger.info(f"Stopped video capture on {self}")
+        # except Exception as e:
+        #     self.logger.error(f"Error stopping video capture: {e}")
+
 
     def stop_video(self):
         self._video_event.set()
@@ -454,3 +573,248 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         if not dev:
             raise RuntimeError(f"Unable to determine USB product ID for {self}.")
         dev.reset()
+
+
+    def _concurrent_video_readout(self,
+                    width,
+                    height,
+                    image_type,
+                    timeout,
+                    filename_root,
+                    file_extension,
+                    max_frames,
+                    header):
+        """Video readout with optimized I/O threading and proper cleanup.
+        
+        Args:
+            width (int): Image width in pixels
+            height (int): Image height in pixels
+            image_type (str): Type of image data
+            timeout (float): Timeout duration in seconds
+            filename_root (str): Base filename for saving frames
+            file_extension (str): File extension for saved frames
+            max_frames (int): Maximum number of frames to capture
+            header (fits.Header): FITS header template for saved frames
+        """
+        # breakpoint()
+        
+        start_time = time.monotonic()
+        
+        # Convert timeout to seconds if it's a Quantity
+        if isinstance(timeout, u.Quantity):
+            timeout = timeout.to(u.second).value
+        
+        # Configure thread pool for I/O bound operations
+        frame_rate = getattr(self, 'frame_rate', 50)  # default to 50 if not set
+        num_writer_threads = min(20, max(2, int(frame_rate / 5)))  # 1 thread per 5 fps, capped at 20
+        queue_size = min(50, max(20, int(frame_rate / 2)))  # Dynamic queue size based on frame rate
+        
+        self.logger.info(f"Starting video capture:")
+        self.logger.info(f"- Frame rate: {frame_rate} fps")
+        self.logger.info(f"- Writer threads: {num_writer_threads}")
+        self.logger.info(f"- Queue size: {queue_size}")
+        self.logger.info(f"- Max frames: {max_frames}")
+        
+        data_queue = Queue(maxsize=queue_size)
+        stop_event = threading.Event()
+        completion_event = threading.Event()
+        
+        # Calculate bit padding
+        if self.image_type == 'RAW16':
+            pad_bits = 16 - int(get_quantity_value(self.bit_depth, u.bit))
+        else:
+            pad_bits = 0
+
+        def write_frame_data(frame_number, video_data):
+            """Writer thread function to save frame to disk"""
+            
+            # import pdb
+            # pdb.set_trace()
+            
+            try:
+                thread_id = threading.current_thread().name
+                write_start = time.monotonic()
+                
+                # Create a copy of the header for this frame
+                frame_header = header.copy()
+                now = Time.now()
+                frame_header.set('DATE-OBS', now.fits, 'End of exposure + readout')
+                
+                # Process data if needed
+                if pad_bits:
+                    video_data = np.right_shift(video_data, pad_bits)
+                
+                # Construct filename and save
+                filename = f"{filename_root}/{frame_number:06d}.{file_extension}"
+                fits_utils.write_fits(video_data, frame_header, filename)
+                
+                write_time = time.monotonic() - write_start
+                if frame_number % 50 == 0:
+                    self.logger.debug(f"Thread {thread_id}: Frame {frame_number} "
+                                    f"written in {write_time:.3f}s")
+                return True
+                
+            except Exception as e:
+                self.logger.error(f"Thread {thread_id}: Error writing frame {frame_number}: {e}")
+                return False
+
+        def read_video_data():
+            """Reader thread function to get data from camera"""
+            from datetime import datetime, timezone
+
+            # import pdb
+            # pdb.set_trace()
+            
+            try:
+                frames_read = 0
+                read_start_time = time.monotonic()
+                
+                self.logger.info("Reader thread started")
+                
+                start_datetime = datetime.now(timezone.utc)
+                start_time = time.perf_counter()
+                frame_start_datetime = start_datetime
+                frame_start_time = start_time
+    
+                
+                while frames_read < max_frames and not stop_event.is_set():
+                    try:
+                        # Add backpressure if queue is nearly full
+                        if self._video_event.is_set():
+                            break
+            
+                        if data_queue.qsize() >= data_queue.maxsize - 2:
+                            time.sleep(0.01)
+                            continue
+                        
+                        video_data = Camera._driver.get_video_data(self._handle,
+                                                                width,
+                                                                height,
+                                                                image_type,
+                                                                timeout)
+                        
+                        frame_got_data_time = time.perf_counter()
+                        frame_end_datetime = datetime.now(timezone.utc) 
+                    
+                        
+                                                                
+                        if video_data is not None:
+                            frames_read += 1
+                            data_queue.put((frames_read, video_data))
+                            
+                            if frames_read % 50 == 0:
+                                elapsed = time.monotonic() - read_start_time
+                                current_fps = frames_read / elapsed
+                                self.logger.info(f"Reader status: {frames_read}/{max_frames} frames "
+                                            f"({current_fps:.1f} fps)")
+                        else:
+                            self.logger.warning("Failed to get video data")
+                            
+                    except Exception as e:
+                        self.logger.error(f"Error reading video data: {e}")
+                        stop_event.set()
+                        break
+                        
+                self.logger.info(f"Reader thread completed: {frames_read}/{max_frames} frames read")
+                
+            finally:
+                # Signal no more data
+                data_queue.put(None)
+
+        
+        
+        # Start reader thread
+        reader_thread = threading.Thread(target=read_video_data)
+        
+        # breakpoint()
+        
+        reader_thread.start()
+
+        # Process frames with ThreadPoolExecutor
+        good_frames = 0
+        bad_frames = 0
+        
+        # breakpoint()
+        
+        try:
+            with ThreadPoolExecutor(max_workers=num_writer_threads) as executor:
+                futures = []
+                active_futures = set()
+                
+                while not stop_event.is_set():
+                    try:
+                        # Clean up completed futures
+                        active_futures = {f for f in active_futures if not f.done()}
+                        
+                        # Log status periodically
+                        if len(futures) % 100 == 0 and futures:
+                            self.logger.info(f"Writer pool status: "
+                                        f"Active: {len(active_futures)}, "
+                                        f"Queue: {data_queue.qsize()}, "
+                                        f"Total: {len(futures)}")
+                        
+                        # Get next frame from queue
+                        queue_item = data_queue.get(timeout=timeout)
+                        
+                        # breakpoint()
+                        
+                        if queue_item is None:  # End signal
+                            break
+                            
+                        frame_number, frame_data = queue_item
+                        
+                        # breakpoint()
+                        future = executor.submit(write_frame_data, frame_number, frame_data)
+                        futures.append(future)
+                        
+                        # breakpoint()
+                        active_futures.add(future)
+                        
+                    except Exception as e:
+                        self.logger.error(f"Error in main processing loop: {e}")
+                        stop_event.set()
+                        break
+
+                # Wait for all writing tasks to complete
+                for future in futures:
+                    try:
+                        if future.result(timeout=timeout):
+                            good_frames += 1
+                        else:
+                            bad_frames += 1
+                    except Exception as e:
+                        self.logger.error(f"Error waiting for future: {e}")
+                        bad_frames += 1
+                        
+        finally:
+            # Cleanup
+            stop_event.set()
+            reader_thread.join(timeout=5)
+            
+            # Clear the queue with timeout
+            try:
+                while True:
+                    data_queue.get_nowait()  # Remove remaining items
+            except Empty:
+                # Queue is empty now
+                pass
+                
+            # Signal completion
+            completion_event.set()
+            
+            # Log final statistics
+            elapsed_time = time.monotonic() - start_time
+            fps = good_frames / elapsed_time
+            
+            self.logger.info("Video capture complete:")
+            self.logger.info(f"- Total frames: {good_frames + bad_frames}")
+            self.logger.info(f"- Successful frames: {good_frames}")
+            self.logger.info(f"- Failed frames: {bad_frames}")
+            self.logger.info(f"- Time elapsed: {elapsed_time:.2f}s")
+            self.logger.info(f"- Average frame rate: {fps:.1f} fps")
+            self.stop_video()
+
+        # if self._video_event.is_set():
+        #     self.stop_video()
+
+        return completion_event
