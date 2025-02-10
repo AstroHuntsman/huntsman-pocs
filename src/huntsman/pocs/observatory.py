@@ -802,6 +802,7 @@ class HuntsmanObservatory(Observatory):
 
             # Fine focus the cameras if necessary
             focus_required = self.fine_focus_required or observation.current_exp_num == 0
+            # TODO: Remove this once we dont need fine focus
             focus_required = False
             
             if do_focus and focus_required:

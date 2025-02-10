@@ -301,7 +301,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
     
         # start the exposure
-        self.take_video(seconds=observation.duration, max_frames=observation.max_frames, 
+        self.take_video(seconds=exptime, max_frames=observation.max_frames, 
                         files_dir=files_dir, blocking=blocking,
                         dark=observation.dark, **kwargs)
 
@@ -320,11 +320,15 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # t = threading.Thread(
         #     name=f'Thread-{image_id}',
         #     target=self.process_video_files,
-        #     args=(metadata, observation_event),
+        #     args=(metadata, observation_event, observation.max_frames),
         #     daemon=True)
         # t.start()
         
-        self.process_video_files(metadata, observation_event)
+
+        # self.process_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
+        self.process_concurrent_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
+        
+        # breakpoint()
 
         if blocking:
             while not observation_event.is_set():

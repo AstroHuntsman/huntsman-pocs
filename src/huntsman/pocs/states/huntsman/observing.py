@@ -1,4 +1,3 @@
-
 def on_enter(event_data):
 
     pocs = event_data.model
@@ -8,6 +7,11 @@ def on_enter(event_data):
     observation = pocs.observatory.current_observation
 
     try:
-        pocs.observatory.take_observation_block(observation)
+        if 'Movie' in observation.__class__.__name__:
+            pocs.observatory.take_recording_block(observation)
+        else:
+            pocs.observatory.take_observation_block(observation)
     except Exception as err:
-        pocs.logger.error(f"Exception while taking observation block for {observation}: {err!r}")
+        pocs.logger.error(
+            f"Exception while taking observation block for {observation}: {err!r}"
+        )
