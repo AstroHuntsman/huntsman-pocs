@@ -10,6 +10,8 @@ def on_enter(event_data):
 
     Will do a coarse focus for each camera and move to the scheduling state.
     """
+    # breakpoint()
+    
     pocs = event_data.model
     pocs.next_state = 'parking'
 

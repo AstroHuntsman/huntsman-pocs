@@ -311,7 +311,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             - Use stop_video() to terminate capture before max_frames
         """
         
-        breakpoint()
+        # breakpoint()
         
         # Ensure seconds is a Quantity
         if not isinstance(seconds, u.Quantity):
@@ -818,3 +818,428 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         #     self.stop_video()
 
         return completion_event
+
+    def _multithread_video_readout(self,
+                        width,
+                        height,
+                        image_type,
+                        timeout,
+                        filename_root,
+                        file_extension,
+                        max_frames,
+                        header):
+        """Video readout with reader/writer threads on separate cores.
+        
+        Uses:
+        - One dedicated reader thread pinned to a core
+        - Multiple writer threads on separate core(s)
+        - Shared queue for thread communication
+        """
+        import os
+        import psutil
+        from queue import Queue
+        from datetime import datetime, timezone
+        
+        start_time = time.monotonic()
+
+        # Configure queue size based on frame rate
+        frame_rate = getattr(self, 'frame_rate', 50)
+        queue_size = min(100, max(20, int(frame_rate)))  # Buffer ~1-2 seconds worth of frames
+        data_queue = Queue(maxsize=queue_size)
+        
+        # Configure number of writer threads
+        num_writer_threads = min(20, max(2, int(frame_rate / 5)))
+        
+        stop_event = threading.Event()
+        completion_event = threading.Event()
+
+        def pin_to_core(core_id):
+            """Pin current thread to specified CPU core"""
+            process = psutil.Process()
+            try:
+                process.cpu_affinity([core_id])
+                self.logger.debug(f"Pinned thread to core {core_id}")
+            except Exception as e:
+                self.logger.warning(f"Failed to pin to core {core_id}: {e}")
+
+        def read_video_data():
+            """Reader thread function - runs on dedicated core"""
+            try:
+                # Pin reader thread to last core
+                available_cores = psutil.cpu_count()
+                pin_to_core(available_cores - 1)
+                
+                frames_read = 0
+                read_start_time = time.monotonic()
+                
+                self.logger.info("Reader thread started")
+                
+                while frames_read < max_frames and not stop_event.is_set():
+                    try:
+                        if self._video_event.is_set():
+                            break
+                            
+                        # Add backpressure if queue is nearly full
+                        if data_queue.qsize() >= data_queue.maxsize - 2:
+                            time.sleep(0.001)  # Short sleep
+                            continue
+                        
+                        # Get frame from camera
+                        video_data = Camera._driver.get_video_data(self._handle,
+                                                                width,
+                                                                height,
+                                                                image_type,
+                                                                timeout)
+                                                                
+                        if video_data is not None:
+                            frames_read += 1
+                            frame_time = datetime.now(timezone.utc)
+                            
+                            # Put frame data and metadata in queue
+                            data_queue.put({
+                                'frame_number': frames_read,
+                                'data': video_data,
+                                'timestamp': frame_time
+                            })
+                            
+                            if frames_read % 50 == 0:
+                                elapsed = time.monotonic() - read_start_time
+                                current_fps = frames_read / elapsed
+                                self.logger.info(f"Reader status: {frames_read}/{max_frames} frames "
+                                            f"({current_fps:.1f} fps)")
+                        else:
+                            self.logger.warning("Failed to get video data")
+                            
+                    except Exception as e:
+                        self.logger.error(f"Error reading frame: {e}")
+                        
+                self.logger.info(f"Reader completed: {frames_read}/{max_frames} frames")
+                
+            except Exception as e:
+                self.logger.error(f"Fatal error in reader thread: {e}")
+            finally:
+                # Signal no more frames
+                data_queue.put(None)
+
+        def write_frame_data(frame_info):
+            """Writer thread function to save frame to disk"""
+            try:
+                # Get frame info
+                frame_number = frame_info['frame_number']
+                video_data = frame_info['data']
+                frame_time = frame_info['timestamp']
+                
+                # Create frame-specific header
+                frame_header = header.copy()
+                frame_header.set('DATE-OBS', frame_time.isoformat(), 'Frame timestamp')
+                
+                # Process data if needed (bit shifting etc)
+                if self.image_type == 'RAW16':
+                    pad_bits = 16 - int(get_quantity_value(self.bit_depth, u.bit))
+                    video_data = np.right_shift(video_data, pad_bits)
+                
+                # Save frame
+                filename = f"{filename_root}/{frame_number:06d}.{file_extension}"
+                fits_utils.write_fits(video_data, frame_header, filename)
+                
+                if frame_number % 50 == 0:
+                    self.logger.debug(f"Wrote frame {frame_number}")
+                    
+                return True
+                
+            except Exception as e:
+                self.logger.error(f"Error writing frame {frame_number}: {e}")
+                return False
+
+        # Start reader thread on dedicated core
+        reader_thread = threading.Thread(target=read_video_data, name="VideoReader")
+        reader_thread.start()
+
+        # Start writer threads on remaining cores
+        writer_cores = list(range(psutil.cpu_count() - 1))  # All cores except last
+        good_frames = 0
+        bad_frames = 0
+        
+        try:
+            with ThreadPoolExecutor(max_workers=num_writer_threads) as executor:
+                futures = []
+                
+                while not stop_event.is_set():
+                    try:
+                        # Get next frame from queue
+                        frame_info = data_queue.get(timeout=timeout)
+                        
+                        if frame_info is None:  # Reader finished
+                            break
+                            
+                        # Submit frame for writing
+                        future = executor.submit(write_frame_data, frame_info)
+                        futures.append(future)
+                        
+                    except Empty:
+                        if not reader_thread.is_alive():
+                            break
+                        continue
+                        
+                # Wait for remaining writes to complete
+                for future in futures:
+                    try:
+                        if future.result(timeout=timeout):
+                            good_frames += 1
+                        else:
+                            bad_frames += 1
+                    except Exception as e:
+                        self.logger.error(f"Error in future: {e}")
+                        bad_frames += 1
+                        
+        except Exception as e:
+            self.logger.error(f"Error in writer pool: {e}")
+        finally:
+            # Cleanup
+            stop_event.set()
+            reader_thread.join(timeout=5)
+            
+            # Log final statistics
+            elapsed_time = time.monotonic() - start_time
+            fps = good_frames / elapsed_time if elapsed_time > 0 else 0
+            
+            self.logger.info("Video capture complete:")
+            self.logger.info(f"- Successful frames: {good_frames}")
+            self.logger.info(f"- Failed frames: {bad_frames}")
+            self.logger.info(f"- Time elapsed: {elapsed_time:.2f}s")
+            self.logger.info(f"- Average frame rate: {fps:.1f} fps")
+            
+            completion_event.set()
+
+        return completion_event
+    
+        
+    def _multicore_video_readout(self,
+                        width,
+                        height,
+                        image_type,
+                        timeout,
+                        filename_root,
+                        file_extension,
+                        max_frames,
+                        header):
+        """Video readout optimized for 4-core server with other Pyro services.
+        
+        Core allocation strategy:
+        - Core 0: Reserved for system & Pyro services (I/O bound management)
+        - Core 1: Shared between reader thread and services
+        - Cores 2-3: Writer thread pool
+        """
+        import os
+        import psutil
+        from queue import Queue
+        from datetime import datetime, timezone
+
+        start_time = time.monotonic()
+        
+        # Conservative core allocation
+        SYSTEM_CORE = 0      # Reserved for system & Pyro services
+        READER_CORE = 1      # Shared core for reader
+        WRITER_CORES = [2, 3]  # Dedicated cores for writers
+        NUM_WRITER_THREADS = len(WRITER_CORES)
+        
+        # Smaller queue size to reduce memory pressure
+        frame_rate = getattr(self, 'frame_rate', 50)
+        queue_size = min(100, max(20, int(frame_rate)))  # Buffer ~1 second
+        data_queue = Queue(maxsize=queue_size)
+        
+        stop_event = threading.Event()
+        completion_event = threading.Event()
+
+        def pin_to_core(core_id):
+            """Pin thread to specified CPU core with nice value"""
+            try:
+                # Set core affinity
+                os.sched_setaffinity(0, {core_id})
+                
+                # Set nice value (lower = higher priority)
+                # Reader: higher priority (-10)
+                # Writers: normal priority (0)
+                if core_id == READER_CORE:
+                    os.nice(-10)  # Higher priority for reader
+                else:
+                    os.nice(0)    # Normal priority for writers
+                    
+                self.logger.debug(f"Pinned thread to core {core_id}")
+            except Exception as e:
+                self.logger.warning(f"Failed to pin to core {core_id}: {e}")
+
+        def read_video_data():
+            """Reader thread function with adaptive sleep"""
+            try:
+                # Pin reader to shared core with high priority
+                pin_to_core(READER_CORE)
+                self.logger.info(f"Reader thread started on core {READER_CORE}")
+                
+                frames_read = 0
+                read_start_time = time.monotonic()
+                last_log_time = read_start_time
+                
+                # Adaptive sleep parameters
+                min_sleep = 0.0001  # 100 microseconds
+                max_sleep = 0.001   # 1 millisecond
+                current_sleep = min_sleep
+                
+                while frames_read < max_frames and not stop_event.is_set():
+                    try:
+                        if self._video_event.is_set():
+                            break
+                            
+                        # Adaptive backpressure based on queue fullness
+                        queue_fullness = data_queue.qsize() / queue_size
+                        if queue_fullness > 0.8:  # Queue more than 80% full
+                            current_sleep = min(max_sleep, current_sleep * 1.5)
+                            time.sleep(current_sleep)
+                            continue
+                        else:
+                            current_sleep = max(min_sleep, current_sleep * 0.8)
+                        
+                        # Get frame from camera
+                        video_data = Camera._driver.get_video_data(self._handle,
+                                                                width,
+                                                                height,
+                                                                image_type,
+                                                                timeout)
+                                                                
+                        if video_data is not None:
+                            frames_read += 1
+                            frame_time = datetime.now(timezone.utc)
+                            
+                            data_queue.put({
+                                'frame_number': frames_read,
+                                'data': video_data,
+                                'timestamp': frame_time
+                            })
+                            
+                            # Log progress every 2 seconds
+                            current_time = time.monotonic()
+                            if current_time - last_log_time >= 2.0:
+                                elapsed = current_time - read_start_time
+                                current_fps = frames_read / elapsed
+                                self.logger.debug(
+                                    f"Reader: {frames_read}/{max_frames} frames "
+                                    f"({current_fps:.1f} fps, queue: {data_queue.qsize()}, "
+                                    f"sleep: {current_sleep*1000:.2f}ms)"
+                                )
+                                last_log_time = current_time
+                        else:
+                            self.logger.warning("Failed to get video data")
+                            time.sleep(min_sleep)
+                            
+                    except Exception as e:
+                        self.logger.error(f"Error reading frame: {e}")
+                        time.sleep(min_sleep)
+                        
+                self.logger.info(f"Reader completed: {frames_read}/{max_frames} frames")
+                
+            except Exception as e:
+                self.logger.error(f"Fatal error in reader thread: {e}")
+            finally:
+                data_queue.put(None)
+
+        def write_frame_data(frame_info):
+            """Writer thread function with I/O optimization"""
+            try:
+                frame_number = frame_info['frame_number']
+                video_data = frame_info['data']
+                frame_time = frame_info['timestamp']
+                
+                # Prepare header (CPU work)
+                frame_header = header.copy()
+                frame_header.set('DATE-OBS', frame_time.isoformat(), 'Frame timestamp')
+                
+                if self.image_type == 'RAW16':
+                    pad_bits = 16 - int(get_quantity_value(self.bit_depth, u.bit))
+                    video_data = np.right_shift(video_data, pad_bits)
+                
+                # Write file (I/O work)
+                filename = f"{filename_root}/{frame_number:06d}.{file_extension}"
+                fits_utils.write_fits(video_data, frame_header, filename)
+                
+                return True
+                
+            except Exception as e:
+                self.logger.error(f"Error writing frame {frame_number}: {e}")
+                return False
+
+        # Start reader thread
+        reader_thread = threading.Thread(target=read_video_data, name="VideoReader")
+        reader_thread.start()
+
+        good_frames = 0
+        bad_frames = 0
+        last_log_time = time.monotonic()
+        
+        try:
+            with ThreadPoolExecutor(max_workers=NUM_WRITER_THREADS) as executor:
+                # Pin writer threads to dedicated cores
+                for core_id in WRITER_CORES:
+                    pin_to_core(core_id)
+                    
+                futures = []
+                active_futures = set()
+                
+                while not stop_event.is_set():
+                    try:
+                        # Clean up completed futures
+                        active_futures = {f for f in active_futures if not f.done()}
+                        
+                        frame_info = data_queue.get(timeout=timeout)
+                        if frame_info is None:
+                            break
+                            
+                        future = executor.submit(write_frame_data, frame_info)
+                        futures.append(future)
+                        active_futures.add(future)
+                        
+                        # Log progress every 2 seconds
+                        current_time = time.monotonic()
+                        if current_time - last_log_time >= 2.0:
+                            completed = len([f for f in futures if f.done()])
+                            pending = len(active_futures)
+                            self.logger.debug(
+                                f"Writers: {completed} written, {pending} pending, "
+                                f"queue: {data_queue.qsize()}"
+                            )
+                            last_log_time = current_time
+                        
+                    except Empty:
+                        if not reader_thread.is_alive():
+                            break
+                        continue
+                        
+                # Wait for remaining writes
+                for future in futures:
+                    try:
+                        if future.result(timeout=timeout):
+                            good_frames += 1
+                        else:
+                            bad_frames += 1
+                    except Exception as e:
+                        self.logger.error(f"Error in future: {e}")
+                        bad_frames += 1
+                        
+        except Exception as e:
+            self.logger.error(f"Error in writer pool: {e}")
+        finally:
+            stop_event.set()
+            reader_thread.join(timeout=5)
+            
+            elapsed_time = time.monotonic() - start_time
+            fps = good_frames / elapsed_time if elapsed_time > 0 else 0
+            
+            self.logger.info("Video capture complete:")
+            self.logger.info(f"- Successful frames: {good_frames}")
+            self.logger.info(f"- Failed frames: {bad_frames}")
+            self.logger.info(f"- Time elapsed: {elapsed_time:.2f}s")
+            self.logger.info(f"- Average frame rate: {fps:.1f} fps")
+            
+            completion_event.set()
+
+        return completion_event
+

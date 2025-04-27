@@ -818,11 +818,12 @@ class HuntsmanObservatory(Observatory):
             self.logger.info("Waiting for cameras to be ready before starting exposure.")
             self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
 
+            # breakpoint()
             # Start the exposures and get events
             with self.safety_checking(**safety_kwargs):
                 events = self.camera_group.take_recording(observation, headers=headers)
 
-
+            # breakpoint()
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:
