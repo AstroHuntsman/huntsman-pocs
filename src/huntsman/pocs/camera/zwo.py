@@ -18,6 +18,14 @@ from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
 from usb.core import find as finddev
 
+import nats
+import os
+import asyncio
+import json
+
+# from minio import Minio
+# from minio.threadpool import ThreadPool
+# from huntsman.pocs.camera.utils import write_minio_fits
 
 class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     _driver = None  # Class variable to store the ASI driver interface
@@ -55,6 +63,16 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self._video_event = threading.Event()
 
         self._gain = gain
+        
+        # Define subjects based on producer ID
+        producer_id=0
+        self.memory_subject = f"camera.memory.{producer_id}.frame"
+        self.disk_subject = f"camera.archive.{producer_id}.frame"
+        self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
+        
+        self.nats_client = None
+    
+        # self.nats_client = self._setup_nats()
 
         if image_type:
             self._image_type = image_type
@@ -148,7 +166,61 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         return Camera._driver.get_exposure_status(self._handle) == "WORKING"
 
     # Methods
+    async def _setup_nats_async(self):
+        """Set up the NATS connection asynchronously - exactly like in producer_nopub.py"""
+        try:
+            # Connect to NATS
+            nc = await nats.connect(servers=[self.NATS_SERVER])
+            js = nc.jetstream()
+            
+            self.logger.info(f"Connected to NATS server at {self.NATS_SERVER}")
+            return (nc, js)
+        except Exception as e:
+            self.logger.error(f"Failed to connect to NATS: {e}")
+            return None
 
+    async def _publish_to_nats_async(self, subject, data, headers):
+        """Publish data to NATS subject - exactly like in producer_nopub.py"""
+        try:
+            if self.nats_client is None:
+                connection = await self._setup_nats_async()
+                if connection is None:
+                    return False
+                self.nc, self.nats_client = connection
+
+            # This matches exactly with producer_nopub.py's await js.publish()
+            await self.nats_client.publish(subject, data, headers=headers)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error publishing to NATS: {e}")
+            self.nats_client = None
+            return False
+
+    def _publish_frame_to_nats(self, frame_data, headers):
+        """
+        Synchronous wrapper for the async publish function.
+        Creates and manages its own event loop.
+        """
+        # Ensure we have an event loop
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+        except RuntimeError:
+            # No event loop exists yet
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the async publish function in this loop
+        try:
+            return loop.run_until_complete(
+                self._publish_to_nats_async(self.memory_subject, frame_data, headers)
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to publish frame to NATS: {e}")
+            return False
+   
     def connect(self):
         """
         Connect to ZWO ASI camera.
@@ -246,18 +318,21 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         
         # video_obj = super().take_exposure(*args, **kwargs)
         
+        breakpoint()
+        
         filename_root = kwargs['files_dir']
         max_frames = kwargs['max_frames']
         seconds = kwargs['seconds']
         
-        # video_obj = self.start_video(seconds, filename_root, max_frames)
-        video_obj = self.start_concurrent_video(seconds, filename_root, max_frames)
+        video_obj = self.start_video(seconds, filename_root, max_frames)
+        # video_obj = self.start_concurrent_video(seconds, filename_root, max_frames)
 
         return video_obj
 
 
 
     def start_video(self, seconds, filename_root, max_frames, image_type=None):
+    
         if not isinstance(seconds, u.Quantity):
             seconds = seconds * u.second
         self._control_setter('EXPOSURE', seconds)
@@ -311,7 +386,38 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             - Use stop_video() to terminate capture before max_frames
         """
         
-        # breakpoint()
+        breakpoint()
+                
+        import psutil
+        import os
+        import threading
+        
+        # Get main thread's current core
+        main_process = psutil.Process()
+        main_thread_id = threading.get_ident()
+        main_thread = next(thread for thread in main_process.threads() 
+                        if thread.id == main_thread_id)
+        main_core = main_thread.cpu_num()
+
+        self.logger.info(f"Main thread running on core {main_core}")
+        
+        # Dynamic core allocation based on main thread location
+        available_cores = list(range(4))  # Assuming 4 cores
+        available_cores.remove(main_core)  # Remove main thread's core
+
+        # Allocate remaining cores
+        SYSTEM_CORE = main_core  # Main thread & system services
+        READER_CORE = available_cores[0]  # First available core for reader
+        WRITER_CORES = available_cores[1:]  # Remaining cores for writers
+        NUM_WRITER_THREADS = len(WRITER_CORES)
+    
+        self.logger.info(f"""Core allocation:
+            System/Main: Core {SYSTEM_CORE}
+            Reader: Core {READER_CORE}
+            Writers: Cores {WRITER_CORES}
+        """)
+       
+        breakpoint() 
         
         # Ensure seconds is a Quantity
         if not isinstance(seconds, u.Quantity):
@@ -358,16 +464,16 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self.logger.error(f"Failed to start video capture: {e}")
             raise
         
-        # breakpoint()
+        breakpoint()
         # Create and start video processing thread
         video_thread = threading.Thread(
-            target=self._concurrent_video_readout,
+            target=self._multithread_video_readout,
             args=video_args,
             name=f"Video-{filename_root}",
             daemon=True
         )
         
-        # breakpoint()
+        breakpoint()
 
         try:
             video_thread.start()
@@ -454,10 +560,56 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 # Fix 'raw' data scaling by changing from zero padding of LSBs
                 # to zero padding of MSBs.
                 video_data = np.right_shift(video_data, pad_bits)
-                fits_utils.write_fits(video_data, header, filename)
+                
+                # breakpoint()
+                
+                self.logger.error("data.shape: {}".format(video_data.shape))
+                
+                self.logger.debug("header: {}".format(header))
+                
+                self.logger.error("header type: {}".format(type(header)))
+                
+                # fits_utils.write_fits(video_data, header, filename)
+                
+                # send video data to nats here :
+                frame0 = video_data.tobytes()
+                
+                header_dict = dict(header)
+                
+                headers = {
+                    'frame_number': str(frame_number),
+                    'width':str(width),
+                    'height':str(height),
+                    'header': json.dumps(header_dict)  # This serializes the dictionary to a JSON string
+                }
+                
+                self.logger.error("header: {}".format(header_dict))
+                
+                self.logger.error("video_data[0][0]: {}".format(video_data[0,0]))
+                
+                self._publish_frame_to_nats(frame0, headers=headers)
+                
+                self.logger.error("SENT TO NATS")
+                
+                
                 good_frames += 1
+                
             else:
                 bad_frames += 1
+                
+            elapsed_time = (time.monotonic() - start_time) * u.second
+            
+            n=1
+            FRAME_SIZE_MB = 40.0
+            mbps = (good_frames * FRAME_SIZE_MB/n) /(time.monotonic() - start_time)
+            
+            self.logger.error("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost, Throughput: {:.2f} MB/s".format(
+                good_frames,
+                max_frames,
+                elapsed_time,
+                get_quantity_value(good_frames / elapsed_time),
+                bad_frames,
+                mbps))
 
         if frame_number == max_frames - 1:
             # No one callled stop_video() before max_frames so have to call it here
@@ -470,7 +622,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             elapsed_time,
             get_quantity_value(good_frames / elapsed_time),
             bad_frames))
-
+        
     def _start_exposure(self, seconds, filename, dark, header, *args, **kwargs):
         self._control_setter('EXPOSURE', seconds)
         roi_format = Camera._driver.get_roi_format(self._handle)
@@ -596,7 +748,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             max_frames (int): Maximum number of frames to capture
             header (fits.Header): FITS header template for saved frames
         """
-        # breakpoint()
+        breakpoint()
         
         start_time = time.monotonic()
         
@@ -606,8 +758,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         
         # Configure thread pool for I/O bound operations
         frame_rate = getattr(self, 'frame_rate', 50)  # default to 50 if not set
-        num_writer_threads = min(20, max(2, int(frame_rate / 5)))  # 1 thread per 5 fps, capped at 20
-        queue_size = min(50, max(20, int(frame_rate / 2)))  # Dynamic queue size based on frame rate
+        num_writer_threads = min(20, max(2, int(frame_rate / 2)))  # 1 thread per 5 fps, capped at 20
+        queue_size = min(50, max(30, int(frame_rate / 2)))  # Dynamic queue size based on frame rate
         
         self.logger.info(f"Starting video capture:")
         self.logger.info(f"- Frame rate: {frame_rate} fps")
@@ -619,11 +771,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         stop_event = threading.Event()
         completion_event = threading.Event()
         
-        # Calculate bit padding
-        if self.image_type == 'RAW16':
-            pad_bits = 16 - int(get_quantity_value(self.bit_depth, u.bit))
-        else:
-            pad_bits = 0
+        breakpoint()
+        
+        # # Calculate bit padding
+        # if self.image_type == 'RAW16':
+        #     pad_bits = 16 - int(get_quantity_value(self.bit_depth, u.bit))
+        # else:
+        #     pad_bits = 0
 
         def write_frame_data(frame_number, video_data):
             """Writer thread function to save frame to disk"""
@@ -641,8 +795,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 frame_header.set('DATE-OBS', now.fits, 'End of exposure + readout')
                 
                 # Process data if needed
-                if pad_bits:
-                    video_data = np.right_shift(video_data, pad_bits)
+                # if pad_bits:
+                #     video_data = np.right_shift(video_data, pad_bits)
                 
                 # Construct filename and save
                 filename = f"{filename_root}/{frame_number:06d}.{file_extension}"
@@ -684,7 +838,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                             break
             
                         if data_queue.qsize() >= data_queue.maxsize - 2:
-                            time.sleep(0.01)
+                            time.sleep(0.005)
                             continue
                         
                         video_data = Camera._driver.get_video_data(self._handle,
@@ -726,7 +880,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         # Start reader thread
         reader_thread = threading.Thread(target=read_video_data)
         
-        # breakpoint()
+        breakpoint()
         
         reader_thread.start()
 
@@ -734,7 +888,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         good_frames = 0
         bad_frames = 0
         
-        # breakpoint()
+        breakpoint()
         
         try:
             with ThreadPoolExecutor(max_workers=num_writer_threads) as executor:
@@ -756,18 +910,18 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                         # Get next frame from queue
                         queue_item = data_queue.get(timeout=timeout)
                         
-                        # breakpoint()
+                        breakpoint()
                         
                         if queue_item is None:  # End signal
                             break
                             
                         frame_number, frame_data = queue_item
                         
-                        # breakpoint()
+                        breakpoint()
                         future = executor.submit(write_frame_data, frame_number, frame_data)
                         futures.append(future)
                         
-                        # breakpoint()
+                        breakpoint()
                         active_futures.add(future)
                         
                     except Exception as e:
@@ -819,6 +973,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         return completion_event
 
+
+
     def _multithread_video_readout(self,
                         width,
                         height,
@@ -839,6 +995,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         import psutil
         from queue import Queue
         from datetime import datetime, timezone
+        
+        breakpoint()
         
         start_time = time.monotonic()
 
@@ -902,7 +1060,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                                 'timestamp': frame_time
                             })
                             
-                            if frames_read % 50 == 0:
+                            if frames_read % 10 == 0:
                                 elapsed = time.monotonic() - read_start_time
                                 current_fps = frames_read / elapsed
                                 self.logger.info(f"Reader status: {frames_read}/{max_frames} frames "
@@ -942,7 +1100,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 filename = f"{filename_root}/{frame_number:06d}.{file_extension}"
                 fits_utils.write_fits(video_data, frame_header, filename)
                 
-                if frame_number % 50 == 0:
+                if frame_number % 10 == 0:
                     self.logger.debug(f"Wrote frame {frame_number}")
                     
                 return True
@@ -950,7 +1108,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             except Exception as e:
                 self.logger.error(f"Error writing frame {frame_number}: {e}")
                 return False
-
+        
         # Start reader thread on dedicated core
         reader_thread = threading.Thread(target=read_video_data, name="VideoReader")
         reader_thread.start()
@@ -1030,6 +1188,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         - Core 1: Shared between reader thread and services
         - Cores 2-3: Writer thread pool
         """
+        breakpoint()
+        
         import os
         import psutil
         from queue import Queue
@@ -1127,6 +1287,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                                     f"sleep: {current_sleep*1000:.2f}ms)"
                                 )
                                 last_log_time = current_time
+                                
+                            if frames_read % 10 == 0:
+                                elapsed = time.monotonic() - read_start_time
+                                current_fps = frames_read / elapsed
+                                self.logger.info(f"Reader status: {frames_read}/{max_frames} frames "
+                                            f"({current_fps:.1f} fps)")
+                                
                         else:
                             self.logger.warning("Failed to get video data")
                             time.sleep(min_sleep)

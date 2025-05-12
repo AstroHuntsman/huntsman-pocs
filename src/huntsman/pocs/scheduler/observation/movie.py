@@ -15,8 +15,8 @@ class MovieObservation(AbstractObservation):
     def __init__(
         self,
         field,
-        frame_rate=10,  # frames per second
-        duration=1 * u.second,  # Total duration of movie
+        frame_rate=5,  # frames per second
+        duration=10 * u.second,  # Total duration of movie
         compression=None,  # FITS compression type
         files_dir=None,
         *args,
