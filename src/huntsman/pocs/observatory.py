@@ -360,6 +360,7 @@ class HuntsmanObservatory(Observatory):
 
             # NB: get headers here so header info is accurate per exposure for CompoundObservations
             headers = self.get_standard_headers(observation=observation)
+            
             # Set a common start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
@@ -818,12 +819,12 @@ class HuntsmanObservatory(Observatory):
             self.logger.info("Waiting for cameras to be ready before starting exposure.")
             self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
 
-            # breakpoint()
+            breakpoint()
             # Start the exposures and get events
             with self.safety_checking(**safety_kwargs):
                 events = self.camera_group.take_recording(observation, headers=headers)
 
-            # breakpoint()
+            breakpoint()
             # Wait for the exposures (blocking)
             # TODO: Use same timeout as camera client
             try:

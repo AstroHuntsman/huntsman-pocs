@@ -8,17 +8,22 @@ import json
 import fitsio  # Added fitsio for writing FITS files
 import numpy as np  # Added for handling frame data
 from datetime import datetime, timezone  # Added for timestamp handling
-import argparse  # Added for argument parsing
+import threading
+import queue
 from astropy.io import fits
 
 # Flag to control the consumer loop
 running = True
 
-# Configuration - can be overridden by environment variables or command line arguments
+# Configuration - can be overridden by environment variables
 NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
 OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/home/batbold/Projects/huntsman/images")  # Default output directory
 COMPRESS = os.environ.get("COMPRESS", "RICE")  # Default compression method
-DISABLE_FILE_WRITING = False  # Disable file writing for testing
+DISABLE_FILE_WRITING = os.environ.get("DISABLE_FILE_WRITING", "False").lower() == "true"
+NUM_WRITER_THREADS = int(os.environ.get("NUM_WRITER_THREADS", "4"))  # Number of writer threads
+
+# Create file writing queue
+file_write_queue = queue.Queue()
 
 def signal_handler(sig, frame):
     global running
@@ -89,6 +94,36 @@ def write_fits_file(data, header, filename, compress=None):
     except Exception as e:
         print(f"Error writing FITS file {filename}: {e}")
         return False
+
+# Writer thread function
+def file_writer_thread(thread_id):
+    print(f"Starting writer thread {thread_id}")
+    while running:
+        try:
+            # Get item from queue with timeout
+            try:
+                item = file_write_queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+                
+            # Extract data from queue item
+            frame_data, header, filepath = item
+            
+            # Write the file
+            write_fits(frame_data, header, filepath)
+            print(f"Writer {thread_id}: Saved frame to {filepath}")
+            
+            # Mark task as done
+            file_write_queue.task_done()
+        except Exception as e:
+            print(f"Writer {thread_id}: Error writing file: {e}")
+            # Mark task as done even if it failed
+            try:
+                file_write_queue.task_done()
+            except:
+                pass
+    
+    print(f"Writer thread {thread_id} shutdown")
 
 async def process_memory_stream(consumer_id, memory_sub, stats):
     while running:
@@ -161,8 +196,12 @@ async def process_memory_stream(consumer_id, memory_sub, stats):
                     filepath = os.path.join(OUTPUT_DIR, str(consumer_id), "memory", filename)
                     
                     # Write the file
-                    write_fits(frame_data, header, filepath)
-                    print(f"Saved memory frame to {filepath}")
+                    # write_fits(frame_data, header, filepath)
+                    # print(f"Saved memory frame to {filepath}")
+                    
+                    # Add to write queue instead of writing directly
+                    file_write_queue.put((frame_data, header, filepath))
+                    print(f"Added memory frame to write queue, queue size: {file_write_queue.qsize()}")
                 
                 await msg.ack()
                 stats["memory_count"] += 1
@@ -243,8 +282,12 @@ async def process_disk_stream(consumer_id, disk_sub, stats):
                     filepath = os.path.join(OUTPUT_DIR, str(consumer_id), "disk", filename)
                     
                     # Write the file
-                    write_fits(frame_data, header, filepath)
-                    print(f"Saved disk frame to {filepath}")
+                    # write_fits(frame_data, header, filepath)
+                    # print(f"Saved disk frame to {filepath}")
+                    
+                    # Add to write queue instead of writing directly
+                    file_write_queue.put((frame_data, header, filepath))
+                    print(f"Added disk frame to write queue, queue size: {file_write_queue.qsize()}")
                 
                 await msg.ack()
                 stats["disk_count"] += 1
@@ -267,7 +310,8 @@ async def report_stats(consumer_id, stats):
         fps = stats["total_count"] / elapsed if elapsed > 0 else 0
         
         if stats["total_count"] > 0:  # Only report if we've processed messages
-            print(f"Consumer {consumer_id}: Processed {stats['total_count']} frames ({stats['memory_count']} memory, {stats['disk_count']} disk), {fps:.2f} FPS")
+            queue_size = file_write_queue.qsize()
+            print(f"Consumer {consumer_id}: Processed {stats['total_count']} frames ({stats['memory_count']} memory, {stats['disk_count']} disk), {fps:.2f} FPS, Queue size: {queue_size}")
         
         last_report_time = current_time
 
@@ -282,9 +326,17 @@ async def run_consumer(consumer_id):
         
         print(f"Consumer {consumer_id}: Saving frames to {OUTPUT_DIR}")
         print(f"Consumer {consumer_id}: Using compression: {COMPRESS}")
+        print(f"Consumer {consumer_id}: Using {NUM_WRITER_THREADS} writer threads")
     else:
         print(f"Consumer {consumer_id}: File writing disabled - frames will be processed but not saved")
 
+    # Start writer threads
+    writer_threads = []
+    for i in range(NUM_WRITER_THREADS):
+        t = threading.Thread(target=file_writer_thread, args=(i,), daemon=True)
+        t.start()
+        writer_threads.append(t)
+    
     # Connect to NATS
     nc = await nats.connect(servers=[NATS_SERVER])
     js = nc.jetstream()
@@ -366,6 +418,14 @@ async def run_consumer(consumer_id):
         # Clean up
         if nc.is_connected:
             await nc.close()
+        
+        # Wait for the queue to empty
+        try:
+            print(f"Consumer {consumer_id}: Waiting for file write queue to empty ({file_write_queue.qsize()} items)...")
+            file_write_queue.join()
+        except:
+            pass
+            
         print(f"Consumer {consumer_id}: Shutdown complete")
 
 async def main():
@@ -376,7 +436,7 @@ async def main():
     # Get consumer ID from command line or environment
     consumer_id = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("CONSUMER_ID", "0"))
     
-    print(f"Starting tiered consumer {consumer_id}")
+    print(f"Starting tiered consumer {consumer_id} with {NUM_WRITER_THREADS} writer threads")
     
     # Run consumer
     await run_consumer(consumer_id)

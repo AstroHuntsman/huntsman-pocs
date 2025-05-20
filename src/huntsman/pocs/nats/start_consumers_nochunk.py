@@ -36,7 +36,7 @@ def main():
         env["CONSUMER_ID"] = str(consumer_id)
 
         # Start the consumer process
-        cmd = ["python", "consumer.py", str(consumer_id)]
+        cmd = ["python", "consumer-nochunk.py", str(consumer_id)]
         p = subprocess.Popen(cmd, env=env)
         processes.append(p)
 

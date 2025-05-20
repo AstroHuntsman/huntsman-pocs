@@ -93,7 +93,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     def __del__(self):
         """ Attempt some clean up """
         with suppress(AttributeError):
-            self.shutdown_chunk_publisher()
             camera_ID = self._handle
             Camera._driver.close_camera(camera_ID)
             self.logger.debug("Closed ZWO camera {}".format(camera_ID))
@@ -539,10 +538,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         good_frames = 0
         bad_frames = 0
 
-        # Set up chunk publisher system if not already done
-        if not hasattr(self, 'chunk_queue'):
-            self.setup_chunk_publisher()
-
         # Calculate number of bits that have been used to pad the raw data to RAW16 format.
         if self.image_type == 'RAW16':
             pad_bits = 16 - int(get_quantity_value(self.bit_depth, u.bit))
@@ -554,10 +549,10 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 break
             # This call will block for up to timeout milliseconds waiting for a frame
             video_data = Camera._driver.get_video_data(self._handle,
-                                                      width,
-                                                      height,
-                                                      image_type,
-                                                      timeout)
+                                                       width,
+                                                       height,
+                                                       image_type,
+                                                       timeout)
             if video_data is not None:
                 now = Time.now()
                 header.set('DATE-OBS', now.fits, 'End of exposure + readout')
@@ -566,32 +561,36 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 # to zero padding of MSBs.
                 video_data = np.right_shift(video_data, pad_bits)
                 
-                self.logger.info(f"Processing frame {frame_number}, shape: {video_data.shape}")
+                # breakpoint()
                 
-                # Prepare base headers
+                self.logger.error("data.shape: {}".format(video_data.shape))
+                
+                self.logger.debug("header: {}".format(header))
+                
+                self.logger.error("header type: {}".format(type(header)))
+                
+                # fits_utils.write_fits(video_data, header, filename)
+                
+                # send video data to nats here :
+                frame0 = video_data.tobytes()
+                
                 header_dict = dict(header)
-                base_headers = {
+                
+                headers = {
                     'frame_number': str(frame_number),
-                    'original_width': str(width),
-                    'original_height': str(height),
-                    'header': json.dumps(header_dict)
+                    'width':str(width),
+                    'height':str(height),
+                    'header': json.dumps(header_dict)  # This serializes the dictionary to a JSON string
                 }
                 
-                # Divide frame into chunks
-                chunks = self.divide_image_into_chunks(video_data)
+                self.logger.error("header: {}".format(header_dict))
                 
-                # Add all chunks to queue
-                for chunk_data, chunk_coords, chunk_indices in chunks:
-                    self.chunk_queue.put((
-                        chunk_data,
-                        base_headers,
-                        chunk_coords,
-                        chunk_indices
-                    ))
+                self.logger.error("video_data[0][0]: {}".format(video_data[0,0]))
                 
-                # Wait for all chunks to be processed before moving to next frame
-                self.chunk_queue.join()
-                self.logger.info(f"Frame {frame_number}: All {len(chunks)} chunks processed")
+                self._publish_frame_to_nats(frame0, headers=headers)
+                
+                self.logger.error("SENT TO NATS")
+                
                 
                 good_frames += 1
                 
@@ -604,7 +603,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             FRAME_SIZE_MB = 40.0
             mbps = (good_frames * FRAME_SIZE_MB/n) /(time.monotonic() - start_time)
             
-            self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost, Throughput: {:.2f} MB/s".format(
+            self.logger.error("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost, Throughput: {:.2f} MB/s".format(
                 good_frames,
                 max_frames,
                 elapsed_time,
@@ -613,11 +612,11 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 mbps))
 
         if frame_number == max_frames - 1:
-            # No one called stop_video() before max_frames so have to call it here
+            # No one callled stop_video() before max_frames so have to call it here
             self.stop_video()
 
         elapsed_time = (time.monotonic() - start_time) * u.second
-        self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost".format(
+        self.logger.debug("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost".format(
             good_frames,
             max_frames,
             elapsed_time,
@@ -1410,224 +1409,5 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             completion_event.set()
 
         return completion_event
-
-    def divide_image_into_chunks(self, image_data, n_chunks_x=8, n_chunks_y=8):
-        """
-        Divides an image into a grid of chunks.
-        
-        Args:
-            image_data (numpy.ndarray): 2D image array to divide
-            n_chunks_x (int): Number of chunks in x direction (width)
-            n_chunks_y (int): Number of chunks in y direction (height)
-            
-        Returns:
-            list: List of tuples, each containing:
-                - chunk data (numpy.ndarray)
-                - coordinates (x_start, y_start, x_end, y_end)
-                - chunk indices (chunk_x, chunk_y)
-        """
-        height, width = image_data.shape
-        
-        # Calculate chunk dimensions
-        chunk_width = width // n_chunks_x
-        chunk_height = height // n_chunks_y
-        
-        chunks = []
-        
-        for y in range(n_chunks_y):
-            for x in range(n_chunks_x):
-                # Calculate chunk boundaries
-                x_start = x * chunk_width
-                y_start = y * chunk_height
-                
-                # Adjust width/height for edge chunks
-                if x == n_chunks_x - 1:
-                    x_end = width
-                else:
-                    x_end = x_start + chunk_width
-                    
-                if y == n_chunks_y - 1:
-                    y_end = height
-                else:
-                    y_end = y_start + chunk_height
-                
-                # Extract the chunk
-                chunk = image_data[y_start:y_end, x_start:x_end]
-                
-                # Store chunk with its coordinates and indices
-                chunks.append((
-                    chunk,
-                    (x_start, y_start, x_end, y_end),
-                    (x, y)
-                ))
-        
-        return chunks
-
-    def create_chunk_headers(self, base_headers, chunk_coords, chunk_indices, n_chunks_x=8, n_chunks_y=8):
-        """
-        Create headers for a specific chunk based on the original frame headers.
-        
-        Args:
-            base_headers (dict): Original headers from the full frame
-            chunk_coords (tuple): Coordinates (x_start, y_start, x_end, y_end)
-            chunk_indices (tuple): Grid position (x, y)
-            n_chunks_x (int): Number of chunks in x direction
-            n_chunks_y (int): Number of chunks in y direction
-            
-        Returns:
-            dict: Headers for the chunk
-        """
-        x, y = chunk_indices
-        x_start, y_start, x_end, y_end = chunk_coords
-        
-        # Create a copy of base headers
-        chunk_headers = base_headers.copy()
-        
-        # Add chunk-specific information
-        chunk_headers.update({
-            'chunk_x': str(x),
-            'chunk_y': str(y),
-            'x_start': str(x_start),
-            'y_start': str(y_start),
-            'x_end': str(x_end),
-            'y_end': str(y_end),
-            'width': str(x_end - x_start),
-            'height': str(y_end - y_start),
-            'total_chunks_x': str(n_chunks_x),
-            'total_chunks_y': str(n_chunks_y),
-            'chunk_number': str(y * n_chunks_x + x)
-        })
-        
-        return chunk_headers
-
-    def setup_chunk_publisher(self):
-        """Set up the multi-threaded chunk publisher system with shared thread-local NATS connections."""
-        import queue
-        import threading
-        
-        # Create queue with max size of 64 chunks (one full frame)
-        self.chunk_queue = queue.Queue(maxsize=64)
-        self.chunk_stop_event = threading.Event()
-        self.chunk_workers = []
-        
-        # Thread-local storage for NATS connections
-        self.thread_local = threading.local()
-        
-        # Create 8 worker threads
-        for i in range(8):
-            worker = threading.Thread(
-                target=self._chunk_publisher_worker,
-                name=f"ChunkPublisher-{i}",
-                daemon=True
-            )
-            worker.start()
-            self.chunk_workers.append(worker)
-        
-        self.logger.info("Started 8 chunk publisher threads")
-
-    def _ensure_nats_connection(self):
-        """Ensure this thread has a NATS connection."""
-        if not hasattr(self.thread_local, 'nats_nc') or not self.thread_local.nats_nc.is_connected:
-            # Create a new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            # Connect to NATS
-            self.thread_local.loop = loop
-            self.thread_local.nats_nc = loop.run_until_complete(nats.connect(servers=[self.NATS_SERVER]))
-            self.thread_local.nats_js = self.thread_local.nats_nc.jetstream()
-            
-            self.logger.info(f"Thread {threading.current_thread().name} connected to NATS")
-        
-        return self.thread_local.nats_nc, self.thread_local.nats_js, self.thread_local.loop
-
-    def _publish_frame_to_nats_thread_local(self, data, headers):
-        """Publish data to NATS using thread-local connection."""
-        try:
-            # Ensure we have a connection for this thread
-            nc, js, loop = self._ensure_nats_connection()
-            
-            # Create coroutine to publish the data
-            async def publish():
-                await js.publish(self.memory_subject, data, headers=headers)
-                return True
-            
-            # Run the publish coroutine
-            return loop.run_until_complete(publish())
-            
-        except Exception as e:
-            self.logger.error(f"Error publishing to NATS: {e}")
-            # For timeout errors, try to reset connection
-            if "timeout" in str(e).lower():
-                if hasattr(self.thread_local, 'nats_nc'):
-                    delattr(self.thread_local, 'nats_nc')
-            return False
-
-    def _chunk_publisher_worker(self):
-        """Worker thread to publish chunks from queue using thread-local NATS connection."""
-        while not self.chunk_stop_event.is_set():
-            try:
-                # Get chunk from queue with timeout
-                chunk_item = self.chunk_queue.get(timeout=0.5)
-                if chunk_item is None:
-                    # None is signal to exit
-                    self.chunk_queue.task_done()
-                    break
-                
-                # Unpack chunk data
-                chunk_data, base_headers, chunk_coords, chunk_indices = chunk_item
-                
-                # Create headers for this chunk
-                chunk_headers = self.create_chunk_headers(
-                    base_headers, 
-                    chunk_coords, 
-                    chunk_indices
-                )
-                
-                # Publish the chunk using thread-local connection
-                success = self._publish_frame_to_nats_thread_local(chunk_data.tobytes(), headers=chunk_headers)
-                
-                # Mark task as done
-                self.chunk_queue.task_done()
-                
-            except Empty:  # Make sure this is imported: from queue import Empty
-                # Queue timeout, continue checking
-                continue
-            except Exception as e:
-                self.logger.error(f"Error in chunk publisher: {e}")
-                # Mark task as done even on error
-                try:
-                    self.chunk_queue.task_done()
-                except:
-                    pass
-
-    def shutdown_chunk_publisher(self):
-        """Safely shut down chunk publisher system."""
-        if hasattr(self, 'chunk_stop_event'):
-            self.chunk_stop_event.set()
-            
-            # Send None to each worker to signal exit
-            for _ in range(len(self.chunk_workers)):
-                try:
-                    self.chunk_queue.put(None, timeout=0.5)
-                except:
-                    pass
-                
-            # Wait for workers to exit
-            for worker in self.chunk_workers:
-                worker.join(timeout=2)
-            
-            # Close NATS connections for each thread if possible
-            for thread in self.chunk_workers:
-                try:
-                    if hasattr(thread, '_thread_local') and hasattr(thread._thread_local, 'nats_nc'):
-                        nc = thread._thread_local.nats_nc
-                        loop = thread._thread_local.loop
-                        if nc.is_connected:
-                            loop.run_until_complete(nc.close())
-                except Exception as e:
-                    self.logger.error(f"Error closing thread NATS connection: {e}")
-            
-            self.logger.info("Chunk publisher system shut down")
 
 
