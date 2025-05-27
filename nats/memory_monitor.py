@@ -7,7 +7,7 @@ import json
 # Configuration
 MEMORY_THRESHOLD = 31  # Stop publishing when memory usage reaches 31%
 CHECK_INTERVAL = 1  # Check every second
-STATUS_FILE = "/tmp/memory_status.json"
+STATUS_FILE = "/var/huntsman/images/memory_status.json"
 
 def monitor_memory():
     """Monitor system memory and write status to file"""

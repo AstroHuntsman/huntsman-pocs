@@ -5,7 +5,7 @@ import sys
 import time
 
 # Configuration
-NUM_CONSUMERS = 10
+NUM_CONSUMERS = 1
 NATS_SERVER = "nats://localhost:4222"
 
 # List to keep track of processes

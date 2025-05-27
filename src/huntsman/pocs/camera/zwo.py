@@ -70,6 +70,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.disk_subject = f"camera.archive.{producer_id}.frame"
         self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
         
+        chunking_enabled = False
+        self.chunking_enabled = chunking_enabled
+        
         self.nats_client = None
     
         # self.nats_client = self._setup_nats()
@@ -93,7 +96,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     def __del__(self):
         """ Attempt some clean up """
         with suppress(AttributeError):
-            self.shutdown_chunk_publisher()
+            if self.chunking_enabled:
+                self.shutdown_chunk_publisher()
             camera_ID = self._handle
             Camera._driver.close_camera(camera_ID)
             self.logger.debug("Closed ZWO camera {}".format(camera_ID))
@@ -540,8 +544,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         bad_frames = 0
 
         # Set up chunk publisher system if not already done
-        if not hasattr(self, 'chunk_queue'):
-            self.setup_chunk_publisher()
+        if self.chunking_enabled:
+            if not hasattr(self, 'chunk_queue'):
+                self.setup_chunk_publisher()
 
         # Calculate number of bits that have been used to pad the raw data to RAW16 format.
         if self.image_type == 'RAW16':
@@ -570,28 +575,41 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 
                 # Prepare base headers
                 header_dict = dict(header)
-                base_headers = {
-                    'frame_number': str(frame_number),
-                    'original_width': str(width),
-                    'original_height': str(height),
-                    'header': json.dumps(header_dict)
-                }
-                
-                # Divide frame into chunks
-                chunks = self.divide_image_into_chunks(video_data)
-                
-                # Add all chunks to queue
-                for chunk_data, chunk_coords, chunk_indices in chunks:
-                    self.chunk_queue.put((
-                        chunk_data,
-                        base_headers,
-                        chunk_coords,
-                        chunk_indices
-                    ))
-                
-                # Wait for all chunks to be processed before moving to next frame
-                self.chunk_queue.join()
-                self.logger.info(f"Frame {frame_number}: All {len(chunks)} chunks processed")
+            
+                if self.chunking_enabled:
+                    # Divide frame into chunks
+                    
+                    base_headers = {
+                        'frame_number': str(frame_number),
+                        'original_width': str(width),
+                        'original_height': str(height),
+                        'header': json.dumps(header_dict)
+                    }
+                    
+                    chunks = self.divide_image_into_chunks(video_data)
+                    
+                    # Add all chunks to queue
+                    for chunk_data, chunk_coords, chunk_indices in chunks:
+                        self.chunk_queue.put((
+                            chunk_data,
+                            base_headers,
+                            chunk_coords,
+                            chunk_indices
+                        ))
+                    
+                    # Wait for all chunks to be processed before moving to next frame
+                    self.chunk_queue.join()
+                    self.logger.info(f"Frame {frame_number}: All {len(chunks)} chunks processed")
+                else :
+                    base_headers = {
+                        'frame_number': str(frame_number),
+                        'width':str(width),
+                        'height':str(height),
+                        'header': json.dumps(header_dict)  # This serializes the dictionary to a JSON string
+                    }
+                    
+                    frame0 = video_data.tobytes()
+                    self._publish_frame_to_nats(frame0, headers=base_headers)
                 
                 good_frames += 1
                 
@@ -1629,5 +1647,4 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                     self.logger.error(f"Error closing thread NATS connection: {e}")
             
             self.logger.info("Chunk publisher system shut down")
-
 
