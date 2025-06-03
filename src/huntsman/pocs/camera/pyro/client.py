@@ -694,12 +694,12 @@ class Camera(AbstractHuntsmanCamera):
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {files_dir}')
 
-        breakpoint()
+        # breakpoint()
         
         # Remote method call to start the exposure
         self._proxy.take_video(seconds=seconds, max_frames=max_frames, dark=dark, files_dir=files_dir, *args, **kwargs)
     
-        breakpoint()
+        # breakpoint()
 
         # Start the readout thread
         if timeout is None:

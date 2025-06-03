@@ -49,6 +49,7 @@ RUN micromamba update -n base -f environment.yaml && \
     micromamba run -n base pip uninstall -y panoptes-pocs && \
     micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
     micromamba run -n base pip install "flask<2.3" && \
+    micromamba run -n base pip install "nats-py==2.10.0" && \
     # Cleanup
     micromamba run -n base pip cache purge && \
     micromamba clean -fay && \

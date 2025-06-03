@@ -1,11 +1,15 @@
 # fmt: off
 
+import asyncio
+import json
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from queue import Empty, Queue
 
+import nats
 import numpy as np
 from astropy import units as u
 from astropy.time import Time
@@ -17,11 +21,6 @@ from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
 from usb.core import find as finddev
-
-import nats
-import os
-import asyncio
-import json
 
 # from minio import Minio
 # from minio.threadpool import ThreadPool
@@ -323,7 +322,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         
         # video_obj = super().take_exposure(*args, **kwargs)
         
-        breakpoint()
+        # breakpoint()
         
         filename_root = kwargs['files_dir']
         max_frames = kwargs['max_frames']
@@ -391,12 +390,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             - Use stop_video() to terminate capture before max_frames
         """
         
-        breakpoint()
+        # breakpoint()
                 
-        import psutil
         import os
         import threading
-        
+
+        import psutil
+
         # Get main thread's current core
         main_process = psutil.Process()
         main_thread_id = threading.get_ident()
@@ -422,7 +422,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             Writers: Cores {WRITER_CORES}
         """)
        
-        breakpoint() 
+        # breakpoint() 
         
         # Ensure seconds is a Quantity
         if not isinstance(seconds, u.Quantity):
@@ -469,7 +469,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self.logger.error(f"Failed to start video capture: {e}")
             raise
         
-        breakpoint()
+        # breakpoint()
         # Create and start video processing thread
         video_thread = threading.Thread(
             target=self._multithread_video_readout,
@@ -478,7 +478,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             daemon=True
         )
         
-        breakpoint()
+        # breakpoint()
 
         try:
             video_thread.start()
@@ -767,7 +767,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             max_frames (int): Maximum number of frames to capture
             header (fits.Header): FITS header template for saved frames
         """
-        breakpoint()
+        # breakpoint()
         
         start_time = time.monotonic()
         
@@ -790,7 +790,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         stop_event = threading.Event()
         completion_event = threading.Event()
         
-        breakpoint()
+        # breakpoint()
         
         # # Calculate bit padding
         # if self.image_type == 'RAW16':
@@ -899,7 +899,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         # Start reader thread
         reader_thread = threading.Thread(target=read_video_data)
         
-        breakpoint()
+        # breakpoint()
         
         reader_thread.start()
 
@@ -907,7 +907,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         good_frames = 0
         bad_frames = 0
         
-        breakpoint()
+        # breakpoint()
         
         try:
             with ThreadPoolExecutor(max_workers=num_writer_threads) as executor:
@@ -929,18 +929,18 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                         # Get next frame from queue
                         queue_item = data_queue.get(timeout=timeout)
                         
-                        breakpoint()
+                        # breakpoint()
                         
                         if queue_item is None:  # End signal
                             break
                             
                         frame_number, frame_data = queue_item
                         
-                        breakpoint()
+                        # breakpoint()
                         future = executor.submit(write_frame_data, frame_number, frame_data)
                         futures.append(future)
                         
-                        breakpoint()
+                        # breakpoint()
                         active_futures.add(future)
                         
                     except Exception as e:
@@ -1011,11 +1011,12 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         - Shared queue for thread communication
         """
         import os
-        import psutil
-        from queue import Queue
         from datetime import datetime, timezone
-        
-        breakpoint()
+        from queue import Queue
+
+        import psutil
+
+        # breakpoint()
         
         start_time = time.monotonic()
 
@@ -1207,12 +1208,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         - Core 1: Shared between reader thread and services
         - Cores 2-3: Writer thread pool
         """
-        breakpoint()
+        # breakpoint()
         
         import os
-        import psutil
-        from queue import Queue
         from datetime import datetime, timezone
+        from queue import Queue
+
+        import psutil
 
         start_time = time.monotonic()
         
@@ -1522,7 +1524,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         """Set up the multi-threaded chunk publisher system with shared thread-local NATS connections."""
         import queue
         import threading
-        
+
         # Create queue with max size of 64 chunks (one full frame)
         self.chunk_queue = queue.Queue(maxsize=64)
         self.chunk_stop_event = threading.Event()
@@ -1647,4 +1649,3 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                     self.logger.error(f"Error closing thread NATS connection: {e}")
             
             self.logger.info("Chunk publisher system shut down")
-

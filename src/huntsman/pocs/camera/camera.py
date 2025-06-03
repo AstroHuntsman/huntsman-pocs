@@ -328,7 +328,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # self.process_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
         self.process_concurrent_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
         
-        breakpoint()
+        # breakpoint()
 
         if blocking:
             while not observation_event.is_set():
