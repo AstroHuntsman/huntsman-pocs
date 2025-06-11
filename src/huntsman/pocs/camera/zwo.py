@@ -15,6 +15,7 @@ from astropy import units as u
 from astropy.time import Time
 from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 from huntsman.pocs.camera.libasi import HuntsmanASIDriver
+from huntsman.pocs.utils.config import get_own_ip
 from panoptes.pocs.camera.libasi import ASIDriver
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 from panoptes.utils import error
@@ -64,7 +65,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self._gain = gain
         
         # Define subjects based on producer ID
-        producer_id=0
+        producer_id = self._get_producer_id()
+        
         self.memory_subject = f"camera.memory.{producer_id}.frame"
         self.disk_subject = f"camera.archive.{producer_id}.frame"
         self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
@@ -223,6 +225,29 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         except Exception as e:
             self.logger.error(f"Failed to publish frame to NATS: {e}")
             return False
+        
+            
+    def _get_producer_id(self):
+        """Get producer ID from camera ID or IP address last digit.
+        
+        Returns:
+            int: Producer ID (0-9) for NATS subjects
+        """
+        try:
+            # Fall back to extracting from IP address
+            ip_address = get_own_ip()
+            last_digit = int(ip_address.split('.')[-1]) % 10
+            
+            print(f"Using camera_ID {last_digit} as producer_id on server: {ip_address}")
+            return last_digit
+            
+        except Exception as e:
+            print(f"Could not determine producer_id from IP: {e}")
+        
+        # Final fallback to default
+        
+        return 0
+  
    
     def connect(self):
         """
