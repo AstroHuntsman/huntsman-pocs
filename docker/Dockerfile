@@ -54,7 +54,7 @@ RUN micromamba update -n base -f environment.yaml && \
     micromamba run -n base pip cache purge && \
     micromamba clean -fay && \
     sudo apt-get autoremove --purge --yes \
-    gcc pkg-config git && \
+    gcc pkg-config && \
     sudo apt-get autoclean --yes && \
     sudo apt-get --yes clean && \
     sudo rm -rf /var/lib/apt/lists/*
