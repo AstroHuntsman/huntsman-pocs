@@ -69,8 +69,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.disk_subject = f"camera.archive.{producer_id}.frame"
         self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
         
-        chunking_enabled = False
-        self.chunking_enabled = chunking_enabled
+        self.chunking_enabled = False
         
         self.nats_client = None
     
@@ -327,6 +326,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         filename_root = kwargs['files_dir']
         max_frames = kwargs['max_frames']
         seconds = kwargs['seconds']
+        self.chunking_enabled = kwargs.get('chunking_enabled', False)
         
         video_obj = self.start_video(seconds, filename_root, max_frames)
         # video_obj = self.start_concurrent_video(seconds, filename_root, max_frames)

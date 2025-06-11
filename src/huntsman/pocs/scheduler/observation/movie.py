@@ -16,7 +16,7 @@ class MovieObservation(AbstractObservation):
         self,
         field,
         frame_rate=5,  # frames per second
-        duration=10 * u.second,  # Total duration of movie
+        duration=10,  # Total duration of movie
         compression=None,  # FITS compression type
         files_dir=None,
         *args,
@@ -24,11 +24,13 @@ class MovieObservation(AbstractObservation):
     ):
 
         # Store movie-specific parameters
-        self.frame_rate = frame_rate  # frames per second
-        self.duration = duration
+        self.frame_rate = kwargs.pop('frame_rate', frame_rate)  # frames per second
+        self.duration = kwargs.pop('duration', duration) * u.second
         self.compression = compression
         self.files_dir = files_dir
-        self.max_frames = int(np.ceil(get_quantity_value(duration * frame_rate)))
+        self.max_frames = kwargs.pop('max_frames', int(np.ceil(get_quantity_value(duration * frame_rate))))
+        self.mode = kwargs.pop('mode', 'image')
+        self.chunking_enabled = kwargs.pop('chunking_enabled', False)
 
         super().__init__(field, *args, **kwargs)
 

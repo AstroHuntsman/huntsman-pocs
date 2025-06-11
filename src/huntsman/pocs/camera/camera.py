@@ -301,7 +301,8 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
     
         # start the exposure
-        self.take_video(seconds=exptime, max_frames=observation.max_frames, 
+        self.take_video(seconds=exptime, max_frames=observation.max_frames,
+                        chunking_enabled=observation.chunking_enabled,  
                         files_dir=files_dir, blocking=blocking,
                         dark=observation.dark, **kwargs)
 
@@ -441,6 +442,9 @@ class AbstractHuntsmanCamera(AbstractCamera):
             
         if hasattr(observation, 'max_frames'):
             metadata['max_frames'] = observation.max_frames
+        
+        if hasattr(observation, 'chunking_enabled'):
+            metadata['chunking_enabled'] = observation.chunking_enabled
             
         if headers is not None:
             self.logger.trace(f'Updating {image_dir} metadata with provided headers')

@@ -666,6 +666,7 @@ class Camera(AbstractHuntsmanCamera):
 
 
     def take_video(self, seconds=1.0 * u.second, max_frames=None, 
+        chunking_enabled=False,
         dark=False, blocking=False, files_dir=None,
         sleep_interval=0.1 * u.second, max_write_time=10, *args, timeout=None,
         **kwargs):
@@ -697,7 +698,7 @@ class Camera(AbstractHuntsmanCamera):
         # breakpoint()
         
         # Remote method call to start the exposure
-        self._proxy.take_video(seconds=seconds, max_frames=max_frames, dark=dark, files_dir=files_dir, *args, **kwargs)
+        self._proxy.take_video(seconds=seconds, max_frames=max_frames, dark=dark, files_dir=files_dir, chunking_enabled=chunking_enabled, *args, **kwargs)
     
         # breakpoint()
 
