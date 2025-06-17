@@ -71,19 +71,21 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.memory_subject = f"camera.memory.{producer_id}.frame"
         self.disk_subject = f"camera.archive.{producer_id}.frame"
         self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
-        self.MEMORY_THRESHOLD = 50
-        
         self.chunking_enabled = False
+        
         # last memory check and memory usage
         self.memory_usage = 0.0
+        self.MEMORY_THRESHOLD = 50.0
         self.last_memory_check = time.time()
         self.MEMORY_STATUS_FILE = os.environ.get("MEMORY_STATUS_FILE", "/huntsman/images/memory_status.json")
         if os.path.exists(self.MEMORY_STATUS_FILE):
             with open(self.MEMORY_STATUS_FILE, 'r') as f:
                 memory_data = json.load(f)
                 self.memory_usage = memory_data.get('memory_used_percent', 0.0)
+                self.MEMORY_THRESHOLD = memory_data.get('threshold', 50.0)
                 
         print(f"Memory usage: {self.memory_usage}%")
+        print(f"MEMORY_THRESHOLD: {self.MEMORY_THRESHOLD}%")
         
         self.nats_client = None
     
