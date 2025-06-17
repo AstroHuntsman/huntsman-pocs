@@ -721,3 +721,26 @@ class Camera(AbstractHuntsmanCamera):
             self._exposure_future.result()
 
         return self._exposure_future
+
+    def process_nats_video_files(self, metadata, observation_event, max_frames,
+                                     compress_fits=None, record_observations=None,
+                                     make_pretty_images=None):
+        """Process video files using multiple threads.
+        Each thread processes a distinct subset of files.
+        """
+        
+        # Wait for exposure to complete
+        while self.is_exposing:
+            time.sleep(1)
+
+        self.logger.debug(f'Starting exposure processing for {observation_event}')
+
+        metadata['exptime'] = get_quantity_value(metadata['exptime'], unit='second')
+
+        if record_observations:
+            self.logger.debug(f"Adding current observation to db: {metadata['image_id']}")
+            self.db.insert_current('observations', metadata)
+
+        # Mark the event as done
+        observation_event.set()
+        self.logger.info("Processing complete, observation event set")

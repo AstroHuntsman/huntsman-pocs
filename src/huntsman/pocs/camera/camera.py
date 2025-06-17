@@ -317,18 +317,21 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # Process the exposure once readout is complete
         # To be used for marking when exposure is complete (see `process_exposure`)
         
-
+        # Option 1
         # t = threading.Thread(
         #     name=f'Thread-{image_id}',
         #     target=self.process_video_files,
         #     args=(metadata, observation_event, observation.max_frames),
         #     daemon=True)
         # t.start()
-        
-
         # self.process_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
-        self.process_concurrent_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
         
+        # Option 2
+        # self.process_concurrent_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
+        
+        # Option 3
+        self.process_nats_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
+
         # breakpoint()
 
         if blocking:

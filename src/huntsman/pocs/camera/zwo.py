@@ -27,6 +27,7 @@ from usb.core import find as finddev
 # from minio.threadpool import ThreadPool
 # from huntsman.pocs.camera.utils import write_minio_fits
 
+
 class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     _driver = None  # Class variable to store the ASI driver interface
     _cameras = []  # Cache of camera string IDs
@@ -70,8 +71,19 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.memory_subject = f"camera.memory.{producer_id}.frame"
         self.disk_subject = f"camera.archive.{producer_id}.frame"
         self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
+        self.MEMORY_THRESHOLD = 50
         
         self.chunking_enabled = False
+        # last memory check and memory usage
+        self.memory_usage = 0.0
+        self.last_memory_check = time.time()
+        self.MEMORY_STATUS_FILE = os.environ.get("MEMORY_STATUS_FILE", "/huntsman/images/memory_status.json")
+        if os.path.exists(self.MEMORY_STATUS_FILE):
+            with open(self.MEMORY_STATUS_FILE, 'r') as f:
+                memory_data = json.load(f)
+                self.memory_usage = memory_data.get('memory_used_percent', 0.0)
+                
+        print(f"Memory usage: {self.memory_usage}%")
         
         self.nats_client = None
     
@@ -169,6 +181,23 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     def is_exposing(self):
         """ True if an exposure is currently under way, otherwise False """
         return Camera._driver.get_exposure_status(self._handle) == "WORKING"
+    
+    def check_memory_usage(self):
+        current_time = time.time()
+
+        # Only check every 2 seconds
+        if current_time - self.last_memory_check < 2.0:
+            return self.memory_usage
+
+        try:
+            if os.path.exists(self.MEMORY_STATUS_FILE):
+                with open(self.MEMORY_STATUS_FILE, 'r') as f:
+                    memory_data = json.load(f)
+                    self.memory_usage = memory_data.get('memory_used_percent', 0)
+        except Exception as e:
+            print(f"Error reading memory status: {e}")
+
+        self.last_memory_check = current_time
 
     # Methods
     async def _setup_nats_async(self):
@@ -194,6 +223,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 self.nc, self.nats_client = connection
 
             # This matches exactly with producer_nopub.py's await js.publish()
+            
             await self.nats_client.publish(subject, data, headers=headers)
             return True
         except Exception as e:
@@ -219,9 +249,17 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         
         # Run the async publish function in this loop
         try:
-            return loop.run_until_complete(
-                self._publish_to_nats_async(self.memory_subject, frame_data, headers)
-            )
+            self.check_memory_usage()
+            if self.memory_usage < self.MEMORY_THRESHOLD:
+                return loop.run_until_complete(
+                    self._publish_to_nats_async(self.memory_subject, frame_data, headers)
+                )
+            else :
+                return loop.run_until_complete(
+                    self._publish_to_nats_async(self.disk_subject, frame_data, headers)
+                )
+                    
+            
         except Exception as e:
             self.logger.error(f"Failed to publish frame to NATS: {e}")
             return False
@@ -646,6 +684,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             n=1
             FRAME_SIZE_MB = 40.0
             mbps = (good_frames * FRAME_SIZE_MB/n) /(time.monotonic() - start_time)
+            current_frame_rate = good_frames/(time.monotonic() - start_time)
             
             self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost, Throughput: {:.2f} MB/s".format(
                 good_frames,
@@ -654,6 +693,11 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 get_quantity_value(good_frames / elapsed_time),
                 bad_frames,
                 mbps))
+            
+            # Sleep to maintain the desired frame rate
+            # FRAME_RATE = 10
+            # if current_frame_rate > FRAME_RATE:
+            #     time.sleep(1.0 / FRAME_RATE)
 
         if frame_number == max_frames - 1:
             # No one called stop_video() before max_frames so have to call it here
@@ -1594,7 +1638,12 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             
             # Create coroutine to publish the data
             async def publish():
-                await js.publish(self.memory_subject, data, headers=headers)
+                self.check_memory_usage()
+                if self.memory_usage < self.MEMORY_THRESHOLD:
+                    await js.publish(self.memory_subject, data, headers=headers)
+                else :
+                    await js.publish(self.disk_subject, data, headers=headers)
+                
                 return True
             
             # Run the publish coroutine
