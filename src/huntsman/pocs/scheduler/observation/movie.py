@@ -28,7 +28,10 @@ class MovieObservation(AbstractObservation):
         self.duration = kwargs.pop('duration', duration) * u.second
         self.compression = compression
         self.files_dir = files_dir
-        self.max_frames = kwargs.pop('max_frames', int(np.ceil(get_quantity_value(duration * frame_rate))))
+        self.max_frames = kwargs.pop(
+            'max_frames',
+            int(np.ceil(get_quantity_value(self.duration * self.frame_rate))),
+        )
         self.mode = kwargs.pop('mode', 'image')
         self.chunking_enabled = kwargs.pop('chunking_enabled', False)
 
