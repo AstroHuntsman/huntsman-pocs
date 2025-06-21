@@ -9,7 +9,7 @@ def on_enter(event_data):
 
     print("observation.__class__.__name__: ", observation.__class__.__name__)
 
-    breakpoint()
+    # breakpoint()
 
     try:
         if 'Movie' in observation.__class__.__name__:
