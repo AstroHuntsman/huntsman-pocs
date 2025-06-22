@@ -112,6 +112,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         with suppress(AttributeError):
             if self.chunking_enabled:
                 self.shutdown_chunk_publisher()
+            else :
+                self.shutdown_single_publisher()
+                
             camera_ID = self._handle
             Camera._driver.close_camera(camera_ID)
             self.logger.debug("Closed ZWO camera {}".format(camera_ID))
@@ -215,8 +218,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self.logger.error(f"Failed to connect to NATS: {e}")
             return None
 
+        
     async def _publish_to_nats_async(self, subject, data, headers):
-        """Publish data to NATS subject - exactly like in producer_nopub.py"""
+        """Publish data to NATS subject with acknowledgment"""
         try:
             if self.nats_client is None:
                 connection = await self._setup_nats_async()
@@ -224,10 +228,17 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                     return False
                 self.nc, self.nats_client = connection
 
-            # This matches exactly with producer_nopub.py's await js.publish()
+            # Wait for acknowledgment from JetStream
+            ack = await self.nats_client.publish(subject, data, headers=headers)
             
-            await self.nats_client.publish(subject, data, headers=headers)
-            return True
+            # Verify the message was stored
+            if ack and ack.seq:
+                self.logger.debug(f"Message stored with sequence: {ack.seq}")
+                return True
+            else:
+                self.logger.error("No acknowledgment received from JetStream")
+                return False
+            
         except Exception as e:
             self.logger.error(f"Error publishing to NATS: {e}")
             self.nats_client = None
@@ -235,37 +246,44 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
     def _publish_frame_to_nats(self, frame_data, headers):
         """
-        Synchronous wrapper for the async publish function.
-        Creates and manages its own event loop.
+        Synchronous wrapper for the async publish function with proper loop management.
         """
-        # Ensure we have an event loop
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_closed():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-        except RuntimeError:
-            # No event loop exists yet
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+        # Always create a fresh event loop for each publish operation
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         
-        # Run the async publish function in this loop
+        # Reset any existing connections since we're using a new loop
+        self.nats_client = None
+        if hasattr(self, 'nc'):
+            self.nc = None
+    
         try:
             self.check_memory_usage()
             if self.memory_usage < self.MEMORY_THRESHOLD:
-                return loop.run_until_complete(
+                success = loop.run_until_complete(
                     self._publish_to_nats_async(self.memory_subject, frame_data, headers)
                 )
-            else :
-                return loop.run_until_complete(
+            else:
+                success = loop.run_until_complete(
                     self._publish_to_nats_async(self.disk_subject, frame_data, headers)
                 )
-                    
-            
+            return success
         except Exception as e:
             self.logger.error(f"Failed to publish frame to NATS: {e}")
             return False
-        
+        finally:
+            # Close connections on the same loop they were created on
+            try:
+                if hasattr(self, 'nc') and self.nc and not self.nc.is_closed:
+                    loop.run_until_complete(self.nc.close())
+            except Exception as e:
+                self.logger.warning(f"Error closing NATS connection: {e}")
+            finally:
+                # Always close the loop and reset state
+                loop.close()
+                self.nats_client = None
+                if hasattr(self, 'nc'):
+                    self.nc = None
             
     def _get_producer_id(self):
         """Get producer ID from camera ID or IP address last digit.
@@ -438,6 +456,15 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     def stop_video(self):
         self._video_event.set()
         Camera._driver.stop_video_capture(self._handle)
+        
+        # Clean up based on chunking mode
+        # if self.chunking_enabled:
+        #     if hasattr(self, 'chunk_workers') and self.chunk_workers:
+        #         self.shutdown_chunk_publisher()
+        if self.chunking_enabled==False:
+            # Clean up single publisher system
+            self.shutdown_single_publisher()
+        
         self.logger.debug("Video capture stopped on {}".format(self))
 
     # Private methods
@@ -824,14 +851,20 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             async def publish():
                 self.check_memory_usage()
                 if self.memory_usage < self.MEMORY_THRESHOLD:
-                    await js.publish(self.memory_subject, data, headers=headers)
-                else :
-                    await js.publish(self.disk_subject, data, headers=headers)
+                    ack = await js.publish(self.memory_subject, data, headers=headers)
+                else:
+                    ack = await js.publish(self.disk_subject, data, headers=headers)
                 
-                return True
+                # Verify acknowledgment
+                if ack and ack.seq:
+                    return True
+                else:
+                    raise Exception("No acknowledgment received")
             
             # Run the publish coroutine
-            return loop.run_until_complete(publish())
+            success = loop.run_until_complete(publish())
+            if success:
+                return True
             
         except Exception as e:
             self.logger.error(f"Error publishing to NATS: {e}")
@@ -907,3 +940,40 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                     self.logger.error(f"Error closing thread NATS connection: {e}")
             
             self.logger.info("Chunk publisher system shut down")
+    
+    def shutdown_single_publisher(self):
+        """Safely shut down single-threaded publisher system with proper cleanup."""
+        self.logger.info("Shutting down single publisher system...")
+        
+        try:
+            # Just reset the NATS client reference - don't try to close across different loops
+            if hasattr(self, 'nats_client'):
+                self.logger.debug("Resetting NATS JetStream client")
+                self.nats_client = None
+            
+            if hasattr(self, 'nc'):
+                self.logger.debug("Resetting NATS connection")
+                # Don't try to close connection across different event loops
+                # Just reset the reference and let garbage collection handle it
+                self.nc = None
+            
+            # Get current event loop and close it if it exists and is not running
+            try:
+                current_loop = asyncio.get_event_loop()
+                if current_loop and not current_loop.is_running() and not current_loop.is_closed():
+                    self.logger.debug("Closing existing event loop")
+                    current_loop.close()
+            except RuntimeError:
+                # No event loop exists, which is fine
+                pass
+            
+            # Clear any event loop from the thread
+            try:
+                asyncio.set_event_loop(None)
+            except Exception as e:
+                self.logger.debug(f"Error clearing event loop: {e}")
+            
+            self.logger.info("Single publisher system shut down complete")
+            
+        except Exception as e:
+            self.logger.error(f"Error during single publisher shutdown: {e}")
