@@ -409,16 +409,17 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         filename_root = kwargs['files_dir']
         max_frames = kwargs['max_frames']
         frame_rate = kwargs['frame_rate']
+        duration = kwargs['duration']
         seconds = kwargs['seconds']
         self.chunking_enabled = kwargs.get('chunking_enabled', False)
         
-        video_obj = self.start_video(seconds, filename_root, max_frames, frame_rate)
+        video_obj = self.start_video(seconds, filename_root, max_frames, frame_rate, duration)
 
         return video_obj
 
 
 
-    def start_video(self, seconds, filename_root, max_frames, frame_rate, image_type=None):
+    def start_video(self, seconds, filename_root, max_frames, frame_rate, duration, image_type=None):
     
         if not isinstance(seconds, u.Quantity):
             seconds = seconds * u.second
@@ -441,6 +442,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                       self.file_extension,
                       int(max_frames),
                       frame_rate,
+                      duration,
                       self._create_fits_header(seconds, dark=False))
         video_thread = threading.Thread(target=self._video_readout,
                                         args=video_args,
@@ -485,9 +487,11 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                        file_extension,
                        max_frames,
                        frame_rate,
+                       duration,
                        header):
 
         start_time = time.monotonic()
+        duration_seconds = get_quantity_value(duration, u.second)
         good_frames = 0
         bad_frames = 0
 
@@ -502,7 +506,12 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         else:
             pad_bits = 0
 
-        for frame_number in range(max_frames):
+        # for frame_number in range(max_frames):
+        frame_number = 0
+        while True:
+            if time.monotonic() - start_time > duration_seconds:
+                break
+            
             if self._video_event.is_set():
                 break
             # This call will block for up to timeout milliseconds waiting for a frame
@@ -595,8 +604,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                         time.sleep(sleep_time)
                 
             frame_start_time = time.monotonic()
+            frame_number += 1
 
-        if frame_number == max_frames - 1:
+        time_taken = time.monotonic() - start_time
+        print(f"Time taken: {time_taken} and duration: {duration}")
+        
+        # if frame_number == max_frames - 1:
+        if time_taken > duration_seconds:
             # No one called stop_video() before max_frames so have to call it here
             self.stop_video()
 

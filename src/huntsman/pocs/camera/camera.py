@@ -303,6 +303,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # start the exposure
         self.take_video(seconds=exptime, max_frames=observation.max_frames,
                         frame_rate=observation.frame_rate,
+                        duration=observation.duration,
                         chunking_enabled=observation.chunking_enabled,
                         files_dir=files_dir, blocking=blocking,
                         dark=observation.dark, **kwargs)

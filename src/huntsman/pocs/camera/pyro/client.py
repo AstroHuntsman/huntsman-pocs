@@ -667,6 +667,7 @@ class Camera(AbstractHuntsmanCamera):
 
     def take_video(self, seconds=1.0 * u.second, max_frames=None, 
         frame_rate=None,
+        duration=None,
         chunking_enabled=False,
         dark=False, blocking=False, files_dir=None,
         sleep_interval=0.1 * u.second, max_write_time=10, *args, timeout=None,
@@ -702,6 +703,7 @@ class Camera(AbstractHuntsmanCamera):
         self._proxy.take_video(seconds=seconds, 
             max_frames=max_frames, 
             frame_rate=frame_rate, 
+            duration=duration,
             dark=dark, 
             files_dir=files_dir, 
             chunking_enabled=chunking_enabled, 
