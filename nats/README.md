@@ -33,11 +33,9 @@ byobu --version
 ## Quick Start
 
 ### 1. Environment Setup
-```bash
-# Set required environment variables
-export PANDIR=/var/huntsman
-export HUNTSMAN_POCS=/var/huntsman/huntsman-pocs
+please run huntsman.env file
 
+```bash
 # Verify paths
 ls -la $PANDIR/huntsman-config/conf_files/pocs/
 ls -la $HUNTSMAN_POCS/src/
@@ -68,8 +66,6 @@ chmod +x setup_nats_monitoring.sh
 ## Movie Mode Observations
 
 ### Overview
-
-Movie mode is designed for capturing fast astronomical events (stellar occultations, transients) using very short exposures at high frame rates. Unlike standard long-exposure observations, movie mode takes many rapid frames continuously.
 
 ### Configuration in fields.yaml
 
@@ -136,26 +132,18 @@ def on_enter(event_data):
 
 ### Parameter Usage and Timing
 
-#### Frame Rate Calculation
-```python
-frame_interval = 1.0 / frame_rate  # 1/20.0 = 0.05 seconds between frames
-```
+
+#### Frame Rate Behavior
+**Important**: `frame_rate` sets the **maximum** rate, not a guaranteed rate.
+- If camera captures faster than `frame_rate`: Sleep time is added to slow down to target
+- If camera captures slower than `frame_rate`: No sleep added, runs at hardware maximum
+- **Use realistic values** based on your `exptime` + readout time constraints
+
 
 #### Duration vs Max Frames
-```python
-# Two limits work together:
-total_frames_by_duration = duration * frame_rate  # 120 * 20 = 2400 frames
-actual_frames = min(max_frames, total_frames_by_duration)  # min(200, 2400) = 200 frames
-# Recording stops at whichever limit is reached first
-```
 
-#### Exposure Timing Constraints
-```python
-# Exposure time must be shorter than frame interval
-exptime = 0.009 seconds        # 9ms exposure
-frame_interval = 0.05 seconds  # 50ms between frames (20 fps)
-readout_time = frame_interval - exptime  # 41ms for readout and processing
-```
+Instead of max_frames, duration is used for ending the observation.
+
 
 ### Movie Mode vs Standard Observations
 
@@ -201,37 +189,6 @@ readout_time = frame_interval - exptime  # 41ms for readout and processing
    - Memory monitor tracks usage
    - Storage manager moves data when memory fills
 
-### Example Movie Mode Use Cases
-
-#### Stellar Occultation
-```yaml
-observation:
-  type: huntsman.pocs.scheduler.observation.movie.DitheredMovieObservation
-  exptime: 0.005          # 5ms for fast events
-  frame_rate: 50.0        # High frame rate
-  duration: 300           # 5 minutes around predicted time
-  max_frames: 15000       # 300s × 50fps
-```
-
-#### Asteroid Transit
-```yaml
-observation:
-  type: huntsman.pocs.scheduler.observation.movie.DitheredMovieObservation
-  exptime: 0.01           # 10ms exposure
-  frame_rate: 30.0        # Medium frame rate
-  duration: 600           # 10 minutes
-  max_frames: 18000       # 600s × 30fps
-```
-
-#### Variable Star Monitoring
-```yaml
-observation:
-  type: huntsman.pocs.scheduler.observation.movie.DitheredMovieObservation
-  exptime: 0.02           # 20ms exposure
-  frame_rate: 10.0        # Lower frame rate
-  duration: 1800          # 30 minutes
-  max_frames: 18000       # 1800s × 10fps
-```
 
 ## SSH Tunneling for Remote Access
 
