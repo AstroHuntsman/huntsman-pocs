@@ -406,16 +406,14 @@ byobu kill-session -t nats-monitoring
 # Stop all services
 docker-compose down
 
-# Kill SSH tunnels
-pkill -f "ssh -.*R.*4222"
+# Kill SSH tunnels - not necessary - optional
+pkill -f "ssh -.*R.*4222" 
 
 # Clean up (WARNING: Removes data!)
 docker-compose down -v
-docker system prune -f
 
-# Start fresh
-docker-compose up -d
-./setup_nats_monitoring.sh
+# not necessary - optional
+docker system prune -f 
 ```
 
 ## Monitoring and Logs
