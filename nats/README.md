@@ -56,9 +56,6 @@ docker-compose ps
 ```bash
 cd /var/huntsman/huntsman-pocs/nats
 
-# Make script executable
-chmod +x setup_nats_monitoring.sh
-
 # Run NATS monitoring setup (creates streams and starts monitors)
 ./setup_nats_monitoring.sh
 ```
@@ -137,13 +134,12 @@ def on_enter(event_data):
 **Important**: `frame_rate` sets the **maximum** rate, not a guaranteed rate.
 - If camera captures faster than `frame_rate`: Sleep time is added to slow down to target
 - If camera captures slower than `frame_rate`: No sleep added, runs at hardware maximum
-- **Use realistic values** based on your `exptime` + readout time constraints
+- **Use realistic values** if needed
 
 
 #### Duration vs Max Frames
 
 Instead of max_frames, duration is used for ending the observation.
-
 
 ### Movie Mode Workflow
 
@@ -319,6 +315,10 @@ byobu kill-session -t nats-monitoring
 
 ### Environment Variables
 
+The MEMORY_THRESHOLD in memory_monitor.py is currently set to 31 for testing purposes and should be adjusted for production use(60-70). 
+
+Both NUM_STREAMS and NUM_CONSUMERS should be configured to match the number of active telescopes in your system. This ensures optimal resource allocation and data processing efficiency. The default values(10) for NUM_STREAMS and NUM_CONSUMERS are typically sufficient and don't require modification.
+
 ```bash
 # Core paths
 export PANDIR=/var/huntsman
@@ -327,6 +327,7 @@ export HUNTSMAN_POCS=/var/huntsman/huntsman-pocs
 # NATS configuration
 export NATS_SERVER=nats://localhost:4222
 export NUM_STREAMS=10
+export NUM_CONSUMERS=10
 export MEMORY_THRESHOLD=31  # Percentage
 
 # File paths
@@ -448,9 +449,8 @@ docker-compose up -d
 
 ### Creating New Movie Observations
 1. Copy existing movie observation configuration in `fields.yaml`
-2. Modify target coordinates and observation parameters
-3. Adjust `exptime`, `frame_rate`, `duration`, and `max_frames` as needed
-4. Test with low `duration` and `max_frames` values first
+2. Adjust `exptime`, `frame_rate`, `duration`, and `max_frames` as needed
+3. Test with low `duration` and `max_frames` values first
 
 ## Support
 
