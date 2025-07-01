@@ -85,7 +85,7 @@ observation:
   exp_set_size: 1
   max_frames: 200         # Maximum frames to capture
   mode: video             # Video recording mode
-  frame_rate: 20.0        # Target 20 frames per second
+  frame_rate: 2.0        # Target 2.0 frames per second
   duration: 120           # Record for 120 seconds
   chunking_enabled: false # Single continuous recording
   filter_name:
@@ -145,19 +145,6 @@ def on_enter(event_data):
 Instead of max_frames, duration is used for ending the observation.
 
 
-### Movie Mode vs Standard Observations
-
-| Aspect | Standard Mode | Movie Mode |
-|--------|---------------|------------|
-| **Observation Type** | `DitheredObservation` | `DitheredMovieObservation` |
-| **Method Called** | `take_observation_block()` | `take_recording_block()` |
-| **Exposure Time** | 120-300 seconds | 0.009 seconds (9ms) |
-| **Frame Rate** | N/A (single exposure) | 20 fps continuous |
-| **Total Duration** | Single long exposure | 120 seconds of frames |
-| **File Output** | Individual FITS files | Video streams/chunks |
-| **Data Volume** | ~10MB per exposure | ~200 frames × 10 cameras |
-| **Use Case** | Deep imaging | Transient events, occultations |
-
 ### Movie Mode Workflow
 
 1. **Scheduler Creation**
@@ -197,7 +184,6 @@ Instead of max_frames, duration is used for ending the observation.
 ```bash
 # On Huntsman server (run in background with -f)
 ssh -f -N -R 4222:localhost:4222 huntsman@203.1.111.20
-ssh -f -N -R 8222:localhost:8222 huntsman@203.1.111.20  # Optional: HTTP monitoring
 ```
 
 ### Test Connection
@@ -205,14 +191,9 @@ ssh -f -N -R 8222:localhost:8222 huntsman@203.1.111.20  # Optional: HTTP monitor
 ```bash
 # Check if ports are listening
 ss -tuln | grep 4222
-ss -tuln | grep 8222
 
 # Test connectivity
 nc -zv localhost 4222
-nc -zv localhost 8222
-
-# Test NATS HTTP monitoring (if port 8222 is forwarded)
-curl -s http://localhost:8222/varz | jq .
 ```
 
 ### Manage SSH Tunnels
@@ -221,9 +202,6 @@ curl -s http://localhost:8222/varz | jq .
 ```bash
 # Kill NATS client port tunnel
 pkill -f "ssh -.*R.*4222"
-
-# Kill NATS monitoring port tunnel  
-pkill -f "ssh -.*R.*8222"
 ```
 
 #### Kill Tunnel by PID
@@ -240,15 +218,6 @@ kill <PID>
 # Show all SSH reverse tunnels
 ps aux | grep "ssh -.*-R" | grep -v grep
 ```
-
-## Service Architecture
-
-| Service | Container | Purpose | Ports | Health Check |
-|---------|-----------|---------|-------|--------------|
-| **Config Server** | `dev-pocs-config-server-mm` | POCS configuration management | 6563 | `curl localhost:6563/status` |
-| **Pyro Nameserver** | `dev-pyro-name-server-mm` | Python remote objects | - | Check logs |
-| **POCS Control** | `dev-pocs-control-mm` | Main telescope control | - | Interactive shell |
-| **NATS JetStream** | `nats-jetstream-mm` | Message streaming | 4222, 8222 | `curl localhost:8222/varz` |
 
 ## NATS Monitoring Components
 
@@ -354,14 +323,6 @@ export MEMORY_THRESHOLD=31  # Percentage
 export MEMORY_STATUS_FILE=/var/huntsman/images/memory_status.json
 export STATS_FILE=/tmp/stream_stats.json
 ```
-
-### Docker Compose Configuration
-
-Key configuration files:
-- `huntsman-config/conf_files/pocs/docker-compose.yaml`
-- `huntsman-config/conf_files/pocs/huntsman.yaml`
-- `huntsman-config/conf_files/pocs/nats-server.conf`
-- `huntsman-config/conf_files/pocs/fields.yaml` (observation targets)
 
 ## Troubleshooting
 
