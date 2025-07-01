@@ -245,8 +245,18 @@ ps aux | grep "ssh -.*-R" | grep -v grep
 # Start everything
 cd /var/huntsman/huntsman-config/conf_files/pocs
 docker-compose up -d
+
+# create streams and start monitoring scripts 
 cd /var/huntsman/huntsman-pocs/nats
 ./setup_nats_monitoring.sh
+
+# on remote server
+cd /home/huntsman/Projects/huntsman
+python start_consumers.py
+
+# start services on telescope servers
+cd /var/huntsman/
+./scripts/start-byobu.sh
 
 # Check system status
 docker-compose ps
@@ -362,8 +372,6 @@ docker exec -it dev-pocs-control-mm bash
 # Verify field configuration
 cat /huntsman/conf_files/fields.yaml | grep -A 20 "DitheredMovieObservation"
 
-# Check camera readout speeds
-# Ensure exptime + readout_time < frame_interval
 ```
 
 #### SSH Tunnel Problems
@@ -387,22 +395,21 @@ ssh -f -N -R 4222:localhost:4222 huntsman@203.1.111.20
 # Check current memory usage
 free -h
 cat /var/huntsman/images/memory_status.json
-
-# Check stream statistics
-curl -s http://localhost:8222/jsz | jq '.streams[] | {name: .config.name, messages: .state.messages}'
 ```
 
 ### Reset Everything
 ```bash
-# Stop all services
-docker-compose down
+# Kill consumers on remote server
+pkill -f "python consumer.py"
 
 # Kill NATS monitoring
 byobu kill-session -t nats-monitoring
 
+# Stop all services
+docker-compose down
+
 # Kill SSH tunnels
 pkill -f "ssh -.*R.*4222"
-pkill -f "ssh -.*R.*8222"
 
 # Clean up (WARNING: Removes data!)
 docker-compose down -v
