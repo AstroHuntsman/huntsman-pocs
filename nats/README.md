@@ -158,19 +158,16 @@ Instead of max_frames, duration is used for ending the observation.
 4. **Movie Recording Execution**
    - Calls `take_recording_block(observation)`
    - Configures all 10 cameras with movie parameters:
-     - Sets exposure time to 9ms
-     - Sets frame rate to 20 fps
-     - Starts synchronized recording
 
 5. **Recording Control**
-   - Records for specified duration (120s) or until max_frames (200)
+   - Records for specified duration (120s)
    - Monitors memory usage via NATS
    - Manages file output (chunked or continuous)
 
 6. **Data Flow**
-   - Raw frames → NATS memory streams → Disk streams
-   - Memory monitor tracks usage
-   - Storage manager moves data when memory fills
+   - Raw frames → NATS memory streams or Disk streams depending memory usage 
+   - Nats-stream container runs on main server(keeps data on memory or disk)
+   - End consumers on remote server 
 
 
 ## SSH Tunneling for Remote Access
