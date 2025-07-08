@@ -1,21 +1,27 @@
+# fmt: off
+
+import glob
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 
-from astropy.io import fits
+import numpy as np
 from astropy import units as u
-from Pyro5.api import Proxy
-from panoptes.utils import error
-from panoptes.utils.time import CountdownTimer
-from panoptes.utils.utils import get_quantity_value
+from astropy.io import fits
 from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 from huntsman.pocs.filterwheel.pyro import FilterWheel as PyroFilterWheel
 from huntsman.pocs.focuser.pyro import Focuser as PyroFocuser
 from huntsman.pocs.utils.logger import logger
+from huntsman.pocs.utils.pyro import \
+    serializers  # Required to set up the custom (de)serializers
 from huntsman.pocs.utils.pyro.event import RemoteEvent
-
-from huntsman.pocs.utils.pyro import serializers  # Required to set up the custom (de)serializers
+from panoptes.utils import error
+from panoptes.utils import images as img_utils
+from panoptes.utils.images import fits as fits_utils
+from panoptes.utils.time import CountdownTimer
+from panoptes.utils.utils import get_quantity_value
+from Pyro5.api import Proxy
 
 
 class Camera(AbstractHuntsmanCamera):
@@ -305,6 +311,234 @@ class Camera(AbstractHuntsmanCamera):
         written before starting processing. """
         self._exposure_future.result()
         return super().process_exposure(*args, **kwargs)
+     
+    def process_video_files(self,
+                         metadata,
+                         observation_event,
+                         max_frames,
+                         compress_fits=None,
+                         record_observations=None,
+                         make_pretty_images=None):
+        """ Processes the exposure.
+
+        Performs the following steps:
+
+            1. First checks to make sure that the file exists on the file system.
+            2. Calls `_process_fits` with the filename and info, which is specific to each camera.
+            3. Makes pretty images if requested.
+            4. Records observation metadata if requested.
+            5. Compresses FITS files if requested.
+            6. Sets the observation_event.
+
+        If the camera is a primary camera, extract the jpeg image and save metadata to database
+        `current` collection. Saves metadata to `observations` collection for all images.
+
+        Args:
+            metadata (dict): Header metadata saved for the image
+            observation_event (threading.Event): An event that is set signifying that the
+                camera is done with this exposure
+            compress_fits (bool or None): If FITS files should be fpacked into .fits.fz.
+                If None (default), checks the `observations.compress_fits` config-server key.
+            record_observations (bool or None): If observation metadata should be saved.
+                If None (default), checks the `observations.record_observations`
+                config-server key.
+            make_pretty_images (bool or None): If should make a jpg from raw image.
+                If None (default), checks the `observations.make_pretty_images`
+                config-server key.
+
+        Raises:
+            FileNotFoundError: If the FITS file isn't at the specified location.
+        """
+        # Wait for exposure to complete. Timeout handled by exposure thread.
+        while self.is_exposing:
+            time.sleep(1)
+
+        self.logger.debug(f'Starting exposure processing for {observation_event}')
+
+        if compress_fits is None:
+            compress_fits = self.get_config('observations.compress_fits', default=False)
+
+        if make_pretty_images is None:
+            make_pretty_images = self.get_config('observations.make_pretty_images', default=False)
+
+        image_id = metadata['image_id']
+        seq_id = metadata['sequence_id']
+        files_dir = metadata['files_dir']
+        exptime = metadata['exptime']
+        field_name = metadata['field_name']
+
+        # Get list of files and limit to max_frames
+        files = sorted(glob.glob(files_dir + '/*.fits'))
+        num_files = len(files)
+        
+        # Define number of worker threads
+        num_workers = 5  # Using 5 threads as specified
+        
+        for file_path in files:
+            # Make sure image exists.
+            if not os.path.exists(file_path):
+                observation_event.set()
+                raise FileNotFoundError(
+                    f"Expected image at {file_path=!r} does not exist or " +
+                    "cannot be accessed, cannot process.")
+
+            self.logger.debug(f'Starting FITS processing for {file_path}')
+            
+            file_path = super()._process_fits(file_path, metadata)
+            
+            self.logger.debug(f'Finished FITS processing for {file_path}')
+
+            # TODO make this async and take it out of camera.
+            if make_pretty_images:
+                try:
+                    image_title = f'{field_name} [{exptime}s] {seq_id}'
+
+                    self.logger.debug(f"Making pretty image for file_path={file_path!r}")
+                    link_path = None
+                    if metadata['is_primary']:
+                        # This should be in the config somewhere.
+                        link_path = os.path.expandvars('$PANDIR/images/latest.jpg')
+
+                    img_utils.make_pretty_image(file_path,
+                                                title=image_title,
+                                                link_path=link_path)
+                except Exception as e:  # pragma: no cover
+                    self.logger.warning(f'Problem with extracting pretty image: {e!r}')
+                    
+            if compress_fits:
+                self.logger.debug(f'Compressing file_path={file_path!r}')
+                compressed_file_path = fits_utils.fpack(file_path)
+                self.logger.debug(f'Compressed {compressed_file_path}')
+            
+
+        metadata['exptime'] = get_quantity_value(metadata['exptime'], unit='second')
+
+        if record_observations:
+            self.logger.debug(f"Adding current observation to db: {image_id}")
+            self.db.insert_current('observations', metadata)
+
+        # Mark the event as done
+        observation_event.set()
+
+    def process_concurrent_video_files(self, metadata, observation_event, max_frames,
+                                     compress_fits=None, record_observations=None,
+                                     make_pretty_images=None):
+        """Process video files using multiple threads.
+        Each thread processes a distinct subset of files.
+        """
+        
+        # Wait for exposure to complete
+        while self.is_exposing:
+            time.sleep(1)
+
+        self.logger.debug(f'Starting exposure processing for {observation_event}')
+
+        if compress_fits is None:
+            compress_fits = self.get_config('observations.compress_fits', default=False)
+        if make_pretty_images is None:
+            make_pretty_images = self.get_config('observations.make_pretty_images', default=False)
+
+        files_dir = metadata['files_dir']
+        
+        # Get list of files and limit to max_frames
+        files = sorted(glob.glob(files_dir + '/*.fits'))[:max_frames]
+        num_files = len(files)
+        
+        self.logger.info(f"Found {num_files} files to process in {files_dir}")
+        
+        # Define number of worker threads
+        num_workers = 5
+        
+        # Calculate files per thread
+        files_per_thread = int(np.ceil(num_files / num_workers))
+        self.logger.info(f"Using {num_workers} threads, {files_per_thread} files per thread")
+        
+        def process_file_chunk(chunk_id, file_list):
+            """Process a chunk of files assigned to a single thread"""
+            self.logger.info(f"Thread {chunk_id}: Starting processing of {len(file_list)} files")
+            processed_files = []
+            
+            # import pdb
+            # pdb.set_trace()
+            
+            for i, file_path in enumerate(file_list):
+                try:
+                    self.logger.info(f"Thread {chunk_id}: Processing file {i+1}/{len(file_list)}: {file_path}")
+                    
+                    if not os.path.exists(file_path):
+                        raise FileNotFoundError(
+                            f"Expected image at {file_path=!r} does not exist or cannot be accessed")
+
+                    processed_path = self._process_fits(file_path, metadata)
+                    self.logger.debug(f"Thread {chunk_id}: Completed FITS processing for {processed_path}")
+
+                    if make_pretty_images:
+                        try:
+                            image_title = f'{metadata["field_name"]} [{metadata["exptime"]}s] {metadata["sequence_id"]}'
+                            link_path = None
+                            if metadata['is_primary']:
+                                link_path = os.path.expandvars('$PANDIR/images/latest.jpg')
+
+                            img_utils.make_pretty_image(processed_path,
+                                                      title=image_title,
+                                                      link_path=link_path)
+                            self.logger.debug(f"Thread {chunk_id}: Created pretty image for {processed_path}")
+                        except Exception as e:
+                            self.logger.warning(f"Thread {chunk_id}: Problem with extracting pretty image: {e!r}")
+
+                    if compress_fits:
+                        self.logger.debug(f"Thread {chunk_id}: Compressing {processed_path}")
+                        compressed_path = fits_utils.fpack(processed_path)
+                        self.logger.debug(f"Thread {chunk_id}: Compressed to {compressed_path}")
+                    
+                    processed_files.append(processed_path)
+                    
+                except Exception as e:
+                    self.logger.error(f"Thread {chunk_id}: Error processing file {file_path}: {e}")
+                    
+            self.logger.info(f"Thread {chunk_id}: Completed processing all files")
+            return processed_files
+
+        # Split files into chunks for each thread
+        file_chunks = [files[i:i + files_per_thread] 
+                      for i in range(0, len(files), files_per_thread)]
+        
+        self.logger.info(f"Divided files into {len(file_chunks)} chunks")
+        
+        # Process chunks in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            try:
+                # Submit all chunks for processing
+                self.logger.info("Submitting chunks to thread pool")
+                futures = [executor.submit(process_file_chunk, i, chunk) 
+                          for i, chunk in enumerate(file_chunks)]
+                
+                # Wait for all tasks to complete and collect results
+                all_processed_files = []
+                self.logger.info("Waiting for all threads to complete")
+                
+                for i, future in enumerate(futures):
+                    try:
+                        processed_files = future.result()
+                        self.logger.info(f"Thread {i} completed successfully, processed {len(processed_files)} files")
+                        all_processed_files.extend(processed_files)
+                    except Exception as e:
+                        self.logger.error(f"Thread {i} failed with error: {e}")
+
+            except Exception as e:
+                self.logger.error(f"Error in parallel processing: {e}")
+        
+        self.logger.info(f"All threads completed. Total processed files: {len(all_processed_files)}")
+
+        metadata['exptime'] = get_quantity_value(metadata['exptime'], unit='second')
+
+        if record_observations:
+            self.logger.debug(f"Adding current observation to db: {metadata['image_id']}")
+            self.db.insert_current('observations', metadata)
+
+        # Mark the event as done
+        observation_event.set()
+        self.logger.info("Processing complete, observation event set")
 
     # Private Methods
     def _wait_for_file(self, filename, timeout, sleep_interval=0.1):
@@ -337,6 +571,83 @@ class Camera(AbstractHuntsmanCamera):
 
         raise error.Timeout(f"{timeout!r} reached for {filename=} to exist on {self}.")
 
+
+    # Private Methods
+    def _wait_for_video_files(self, foldername, timeout, max_frames, sleep_interval=0.1):
+        """ Wait for the file to be written.
+        Useful when files are written from camera to host over network with SSHFS, which can be
+        slow.
+        Args:
+            filename (str): The filename to wait for.
+            timeout (float): The timeout in seconds.
+            sleep_interval (float, optional): Wait for this long in between checks. Default 0.1s.
+        """
+        sleep_interval = get_quantity_value(sleep_interval, u.second)
+        proxy = self._proxy
+        timer = CountdownTimer(timeout)
+
+        self.logger.debug(f'Waiting for {foldername} to exist with timeout of {timeout}s.')
+
+        while not timer.expired():
+
+            # Make sure the file exists and we can read it
+            if not proxy.is_reading_out and os.path.exists(foldername):
+            
+                try:
+                    files = glob.glob(foldername + '/*.fits')
+                    if len(files) == max_frames:
+                        fits.open(files[0], output_verify='exception')
+                        self.logger.debug(f"Finished waiting for file {foldername}.")
+                        return
+                    else:
+                        self.logger.debug(f"Waiting for {max_frames-len(files)} more frames.")
+                except Exception as e:
+                    self.logger.error(f'Problem reading out file: {e!r}')
+
+            time.sleep(sleep_interval)
+
+        raise error.Timeout(f"{timeout!r} reached for {foldername=} to exist on {self}.")
+
+    def _wait_for_concurrent_video_files(self, foldername, timeout, max_frames, sleep_interval=0.1):
+        """Wait for video files with better completion checking."""
+        sleep_interval = get_quantity_value(sleep_interval, u.second)
+        proxy = self._proxy
+        timer = CountdownTimer(timeout)
+
+        self.logger.debug(f'Waiting for {foldername} to exist with timeout of {timeout}s.')
+
+        while not timer.expired():
+            # First check if camera is still processing
+            if proxy.is_reading_out:
+                time.sleep(sleep_interval)
+                continue
+
+            # Then check if folder exists and has all files
+            if os.path.exists(foldername):
+                try:
+                    files = glob.glob(foldername + '/*.fits')
+                    num_files = len(files)
+                    
+                    if num_files == max_frames:
+                        # Verify first and last file are readable
+                        fits.open(files[0], output_verify='exception')
+                        fits.open(files[-1], output_verify='exception')
+                        self.logger.debug(f"All {max_frames} files written and verified.")
+                        return
+                    elif num_files < max_frames:
+                        if not proxy.is_reading_out:
+                            self.logger.warning(f"Camera finished but only {num_files}/{max_frames} "
+                                            f"files found.")
+                    else:
+                        self.logger.warning(f"Found {num_files} files, expected {max_frames}")
+                        
+                except Exception as e:
+                    self.logger.error(f'Problem verifying files: {e!r}')
+
+            time.sleep(sleep_interval)
+
+        raise error.Timeout(f"Timeout waiting for {max_frames} files in {foldername}")
+
     def _start_exposure(self, **kwargs):
         """Dummy method on the client required to overwrite @abstractmethod"""
         pass
@@ -352,3 +663,93 @@ class Camera(AbstractHuntsmanCamera):
     def _set_target_temperature(self):
         """Dummy method required by the abstract class"""
         raise NotImplementedError
+
+
+    def take_video(self, seconds=1.0 * u.second, max_frames=None, 
+        frame_rate=None,
+        duration=None,
+        chunking_enabled=False,
+        dark=False, blocking=False, files_dir=None,
+        sleep_interval=0.1 * u.second, max_write_time=10, *args, timeout=None,
+        **kwargs):
+        """Take an exposure for given number of seconds and saves to provided filename.
+        Args:
+            seconds (astropy.Quantity, optional): Length of exposure.
+            filename (str, optional): Image is saved to this filename.
+            dark (bool, optional): Exposure is a dark frame, default False. On cameras that support
+                taking dark frames internally (by not opening a mechanical shutter) this will be
+                done, for other cameras the light must be blocked by some other means. In either
+                case setting dark to True will cause the `IMAGETYP` FITS header keyword to have
+                value 'Dark Frame' instead of 'Light Frame'. Set dark to None to disable the
+                `IMAGETYP` keyword entirely.
+            max_write_time (astropy.Quantity, optional): The maximum allowable delay between the
+                file being written on the camaera host and it being fully written on the local
+                filesystem. Default 10s.
+            sleep_interval (astropy.Quantity, optional): The time to sleep between checks for
+                the file existing.
+            blocking (bool, optional): If False (default) returns immediately after starting
+                the exposure, if True will block (on the client-side) until it completes.
+            timeout (float, optional): If provided, override the default timeout with this value.
+        Returns:
+            concurrent.futures.Future: The Future object for the exposure.
+        """
+        
+        # Start the exposure
+        self.logger.debug(f'Taking {seconds} second exposure on {self}: {files_dir}')
+
+        # breakpoint()
+        
+        # Remote method call to start the exposure
+        self._proxy.take_video(seconds=seconds, 
+            max_frames=max_frames, 
+            frame_rate=frame_rate, 
+            duration=duration,
+            dark=dark, 
+            files_dir=files_dir, 
+            chunking_enabled=chunking_enabled, 
+            *args, **kwargs)
+    
+        # breakpoint()
+
+        # Start the readout thread
+        if timeout is None:
+            timeout = get_quantity_value(seconds, u.second)*max_frames + self.readout_time + self._timeout
+            timeout += get_quantity_value(max_write_time, u.second)
+        else:
+            timeout = get_quantity_value(timeout, u.second)
+
+        # reading out file
+        # self._exposure_future = self._exposure_executor.submit(self._wait_for_video_files, files_dir,
+        #                                                        timeout, max_frames)
+        
+        self._exposure_future = self._exposure_executor.submit(self._wait_for_concurrent_video_files, files_dir,
+                                                               timeout, max_frames)
+
+        
+        if blocking:
+            self._exposure_future.result()
+
+        return self._exposure_future
+
+    def process_nats_video_files(self, metadata, observation_event, max_frames,
+                                     compress_fits=None, record_observations=None,
+                                     make_pretty_images=None):
+        """Process video files using multiple threads.
+        Each thread processes a distinct subset of files.
+        """
+        
+        # Wait for exposure to complete
+        while self.is_exposing:
+            time.sleep(1)
+
+        self.logger.debug(f'Starting exposure processing for {observation_event}')
+
+        metadata['exptime'] = get_quantity_value(metadata['exptime'], unit='second')
+
+        if record_observations:
+            self.logger.debug(f"Adding current observation to db: {metadata['image_id']}")
+            self.db.insert_current('observations', metadata)
+
+        # Mark the event as done
+        observation_event.set()
+        self.logger.info("Processing complete, observation event set")

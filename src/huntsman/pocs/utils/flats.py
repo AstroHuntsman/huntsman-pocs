@@ -4,6 +4,7 @@ from astropy.stats import sigma_clipped_stats
 from astropy import units as u
 from astropy.coordinates import get_sun
 from astropy.coordinates import AltAz
+from astropy.coordinates import SkyCoord, ICRS
 
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.images import crop_data
@@ -95,6 +96,19 @@ def get_flat_field_altaz(location):
     return AltAz(alt=alt, az=az, obstime=time_now, location=location)
 
 
+def altaz_to_radec(alt=None, az=None, location=None, obstime=None, **kwargs):
+    
+    assert location is not None
+    if obstime is None:
+        obstime = current_time()
+
+    alt = get_quantity_value(alt, 'degree') * u.degree
+    az = get_quantity_value(az, 'degree') * u.degree
+
+    altaz = AltAz(obstime=obstime, location=location, alt=alt, az=az)
+    return SkyCoord(altaz.transform_to(ICRS()))
+
+
 def make_flat_field_observation(earth_location, **kwargs):
     """ Make a flat field Observation.
     Args:
@@ -109,6 +123,8 @@ def make_flat_field_observation(earth_location, **kwargs):
     # Make the flat field Field object
     position = altaz_to_radec(alt=altaz.alt, az=altaz.az, location=earth_location,
                               obstime=current_time())
+    
+    
     field = DitheredField(name="Flat", position=position)
 
     # Return the observation object

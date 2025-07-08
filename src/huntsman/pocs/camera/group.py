@@ -1,13 +1,13 @@
-import time
+# fmt: off
 
-from functools import partial
+import time
 from collections import abc
+from functools import partial
 from multiprocessing.pool import ThreadPool
 
+from panoptes.pocs.base import PanBase
 from panoptes.utils import error
 from panoptes.utils.time import wait_for_events
-
-from panoptes.pocs.base import PanBase
 
 
 def dispatch_parallel(function, camera_names, **kwargs):
@@ -131,6 +131,38 @@ class CameraGroup(PanBase):
 
         # Start the exposures and return events
         return dispatch_parallel(func, self.camera_names)
+    
+    
+
+    def take_recording(self, observation, headers=None):
+        """ Take observation on all cameras in group.
+        Args:
+            observation (Observation): The observation object.
+            headers (dict, optional): Header items.
+        Returns:
+            dict: Dict of cam_name: threading.Event.
+        """
+        self.logger.info(f"Taking recording {observation} for {self}.")
+        
+        # Define function to start exposures in parallel
+        def func(cam_name):
+            camera = self.cameras[cam_name]
+
+            obs_kwargs = {"headers": headers}
+
+            # Take the exposure and catch errors
+            try:
+                event = camera.take_recording(observation, **obs_kwargs)
+            except error.PanError as err:
+                self.logger.error(f"{err!r}")
+                return None
+
+            return event
+
+        # Start the exposures and return events
+        return dispatch_parallel(func, self.camera_names)
+
+
 
     def filterwheel_move_to(self, filter_name=None, dark_position=False):
         """Move all the filterwheels to a given filter

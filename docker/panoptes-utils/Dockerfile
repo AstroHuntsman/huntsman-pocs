@@ -1,6 +1,10 @@
 ARG image_url=mambaorg/micromamba
-ARG image_tag=latest
+ARG image_tag=debian12-slim
 FROM ${image_url}:${image_tag} AS panoptes-utils-base
+
+RUN micromamba install -y -n base -c conda-forge \
+    python=3.9  && \
+    micromamba clean --all --yes
 
 LABEL description="Installs the dependencies for panoptes-utils."
 LABEL maintainers="developers@projectpanoptes.org"
@@ -28,13 +32,13 @@ ENV PATH "$PATH:/home/mambauser/.local/bin"
 USER root
 RUN echo "Building from ${image_url}:${image_tag}" && \
     apt-get update && apt-get install --no-install-recommends --yes \
-        bzip2 ca-certificates \
-        wget gcc pkg-config sudo less udev wait-for-it \
-        dcraw exiftool git \
-        nano \
-        astrometry.net \
-        libcfitsio-dev libcfitsio-bin \
-        libfreetype6-dev libpng-dev libjpeg-dev libffi-dev && \
+    bzip2 ca-certificates \
+    wget gcc pkg-config sudo less udev wait-for-it \
+    dcraw exiftool git \
+    nano \
+    astrometry.net \
+    libcfitsio-dev libcfitsio-bin \
+    libfreetype6-dev libpng-dev libjpeg-dev libffi-dev && \
     apt-get autoremove --purge --yes && \
     apt-get autoclean --yes && \
     apt-get --yes clean && \
@@ -59,14 +63,18 @@ RUN echo "Updating python environment." && \
 USER root
 WORKDIR "/"
 RUN echo "Cloning panpoptes-utils into ${APP_DIR}" && \
-    git clone https://github.com/panoptes/panoptes-utils.git --branch v0.2.35 && \
-    chown -R ${userid}:${userid} ${APP_DIR}
+    git clone https://github.com/panoptes/panoptes-utils.git --branch v0.2.35
+
+
+RUN chown -R ${PANUSER}:${MAMBA_USER} ${APP_DIR}
 
 USER "${panuser}"
+
 WORKDIR "${APP_DIR}"
-COPY --chown="${userid}:${userid}" . .
+COPY --chown="${PANUSER}:${MAMBA_USER}" . .
+
 RUN echo "Installing panoptes-utils module with ${pip_install_extras}" && \
-    python3 -m pip install "${pip_install_name}${pip_install_extras}" && \
+    python3 -m pip install "git+https://github.com/panoptes/panoptes-utils.git@v0.2.35${pip_install_extras}" && \
     # Cleanup.
     python3 -m pip cache purge && \
     sudo apt purge -y git

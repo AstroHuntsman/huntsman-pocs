@@ -2,6 +2,7 @@
 set -e
 
 TAG="${1:-develop}"
+OWNER="batbold"
 
 # Options to control build.
 INCLUDE_PANOPTES="${INCLUDE_PANOPTES:-false}"
@@ -12,8 +13,8 @@ POCS="${POCS:-/var/panoptes/POCS}"
 HUNTSMAN_POCS="${HUNTSMAN_POCS:-/var/huntsman/huntsman-pocs}"
 
 # Docker images to user.
-POCS_IMAGE_URL="${POCS_IMAGE_URL:-huntsmanarray/panoptes-pocs:v0.7.8}"
-HUNTS_POCS_IMAGE_URL="${HUNTS_POCS_IMAGE_URL:-huntsmanarray/huntsman-pocs:${TAG}}"
+POCS_IMAGE_URL="${POCS_IMAGE_URL:-${OWNER}/panoptes-pocs:v0.7.8}"
+HUNTS_POCS_IMAGE_URL="${HUNTS_POCS_IMAGE_URL:-${OWNER}/huntsman-pocs:${TAG}}"
 
 echo "Setting up local environment."
 cd "${HUNTSMAN_POCS}"
@@ -33,7 +34,7 @@ build_develop() {
   echo "Building local ${HUNTS_POCS_IMAGE_URL} from ${POCS_IMAGE_URL} in ${HUNTSMAN_POCS}."
   docker build \
     --build-arg "image_url=${POCS_IMAGE_URL}" \
-    -t "huntsmanarray/huntsman-pocs:${TAG}" \
+      -t "${OWNER}/huntsman-pocs:${TAG}" \
     -f "${HUNTSMAN_POCS}/docker/Dockerfile" \
     "${HUNTSMAN_POCS}"
 
@@ -44,7 +45,7 @@ build_develop() {
 build_camera() {
   echo "Building local huntsman-pocs-camera:${TAG} from ${HUNTS_POCS_IMAGE_URL} in ${HUNTSMAN_POCS}"
   docker build \
-    -t "huntsmanarray/huntsman-pocs-camera:${TAG}" \
+    -t "${OWNER}/huntsman-pocs-camera:${TAG}" \
     --build-arg "image_url=${HUNTS_POCS_IMAGE_URL}" \
     -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" \
     "${HUNTSMAN_POCS}"

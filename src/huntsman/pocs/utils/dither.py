@@ -75,6 +75,6 @@ def get_dither_positions(base_position, n_positions=9, pattern=dice9, pattern_of
         dec_offsets += np.random.uniform(low=-1, high=+1, size=dec_offsets.shape) * random_offset
 
     offsets = SkyOffsetFrame(lon=RA_offsets, lat=dec_offsets, origin=base_position)
-    positions = offsets.transform_to(ICRS)
+    positions = offsets.transform_to(ICRS())
 
     return SkyCoord(positions)

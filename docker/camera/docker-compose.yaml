@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   camera:
-    image: huntsmanarray/huntsman-pocs-camera:develop
+    image: huntsmanarray/huntsman-pocs-camera:moviemode
     privileged: true
     network_mode: host
     stdin_open: true
@@ -9,9 +9,15 @@ services:
     environment:
       PANDIR: /var/huntsman
       PANOPTES_CONFIG_HOST:
-      PANOPTES_CONFIG_PORT:
+      PANOPTES_CONFIG_PORT: 6563
       TZ: "Australia/Sydney"
     command: [ "huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService" ]
     volumes:
       - "${PANDIR}/images:/huntsman/images"
       - "${PANDIR}/logs:/huntsman/logs"
+      - /dev/bus/usb:/dev/bus/usb
+    group_add:
+      - dialout
+      - sudo
+      - plugdev
+      - users

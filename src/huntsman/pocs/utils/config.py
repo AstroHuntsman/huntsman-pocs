@@ -1,4 +1,7 @@
+# fmt: off
+
 import os
+
 import netifaces
 from panoptes.utils.config.client import get_config as pocs_get_config
 

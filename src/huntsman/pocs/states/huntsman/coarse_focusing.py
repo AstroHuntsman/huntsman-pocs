@@ -1,7 +1,8 @@
-from panoptes.utils.time import CountdownTimer, current_time
+# fmt: off
 
-from panoptes.utils.utils import altaz_to_radec
+from huntsman.pocs.utils.flats import altaz_to_radec
 from panoptes.pocs.utils.location import create_location_from_config
+from panoptes.utils.time import CountdownTimer, current_time
 
 
 def on_enter(event_data):
@@ -9,6 +10,8 @@ def on_enter(event_data):
 
     Will do a coarse focus for each camera and move to the scheduling state.
     """
+    # breakpoint()
+    
     pocs = event_data.model
     pocs.next_state = 'parking'
 

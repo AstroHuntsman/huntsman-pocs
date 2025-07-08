@@ -1,23 +1,25 @@
+# fmt: off
+
 import time
-from contextlib import suppress, contextmanager
+from contextlib import contextmanager, suppress
+
 from astropy import units as u
-
-from panoptes.utils import error
-from panoptes.utils.utils import get_quantity_value
-from panoptes.utils.time import current_time, wait_for_events, CountdownTimer
-
-from panoptes.pocs.observatory import Observatory
-
-from huntsman.pocs.utils.logger import get_logger
-from huntsman.pocs.guide.bisque import Guide
 from huntsman.pocs.archive.utils import remove_empty_directories
-from huntsman.pocs.scheduler.observation.dark import DarkObservation
-from huntsman.pocs.scheduler.observation.bias import BiasObservation
-from huntsman.pocs.utils.flats import make_flat_field_sequences, make_flat_field_observation
-from huntsman.pocs.utils.flats import get_cameras_with_filter
-from huntsman.pocs.utils.safety import get_solar_altaz
 from huntsman.pocs.camera.group import CameraGroup, dispatch_parallel
-from huntsman.pocs.error import NotTwilightError, NotSafeError, NoDarksDuringTwilightError
+from huntsman.pocs.error import (NoDarksDuringTwilightError, NotSafeError,
+                                 NotTwilightError)
+from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.observation.bias import BiasObservation
+from huntsman.pocs.scheduler.observation.dark import DarkObservation
+from huntsman.pocs.utils.flats import (get_cameras_with_filter,
+                                       make_flat_field_observation,
+                                       make_flat_field_sequences)
+from huntsman.pocs.utils.logger import get_logger
+from huntsman.pocs.utils.safety import get_solar_altaz
+from panoptes.pocs.observatory import Observatory
+from panoptes.utils import error
+from panoptes.utils.time import CountdownTimer, current_time, wait_for_events
+from panoptes.utils.utils import get_quantity_value
 
 
 class HuntsmanObservatory(Observatory):
@@ -358,6 +360,7 @@ class HuntsmanObservatory(Observatory):
 
             # NB: get headers here so header info is accurate per exposure for CompoundObservations
             headers = self.get_standard_headers(observation=observation)
+            
             # Set a common start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
@@ -742,3 +745,112 @@ class HuntsmanObservatory(Observatory):
         while not timer.expired():
             self._assert_safe(*args, **kwargs)
             time.sleep(interval)
+
+
+
+    def take_recording_block(self, observation, cameras=None, timeout=60 * u.second,
+                               remove_on_error=False, do_focus=True, safety_kwargs=None,
+                               do_slew=True):
+        """ Macro function to take an observation block.
+        This function will perform:
+            - slewing (when necessary)
+            - fine focusing (when necessary)
+            - observation exposures
+            - safety checking
+        Args:
+            observation (Observation): The observation object.
+            cameras (dict, optional): Dict of cam_name: camera pairs. If None (default), use all
+                cameras.
+            timeout (float, optional): The timeout in addition to the exposure time. Default 60s.
+            remove_on_error (bool, default False): If True, remove cameras that timeout. If False,
+                raise a TimeoutError instead.
+            do_slew (bool, optional): If True, do not attempt to slew the telescope. Default
+                False.
+            **safety_kwargs (dict, optional): Extra kwargs to be parsed to safety function.
+        Raises:
+            NotSafeError: If safety check fails.
+        """
+        
+        if cameras is None:
+            cameras = self.cameras
+
+        safety_kwargs = {} if safety_kwargs is None else safety_kwargs
+        self._assert_safe(**safety_kwargs)
+
+        # Set the sequence time of the observation
+        if observation.seq_time is None:
+            observation.seq_time = current_time(flatten=True)
+
+        # Take the observation block
+        self.logger.info(f"Starting recording block for {observation}")
+
+        # The start new set flag is True before we enter the loop and is set to False
+        # immediately inside the loop. This allows the loop to start a new set in case
+        # the set_is_finished condition is already satisfied.
+        start_new_set = True
+
+        current_field = None
+        while (start_new_set or not observation.set_is_finished):
+
+            start_new_set = False  # We don't want to start another set after this one
+
+            # Perform the slew if necessary
+            slew_required = (current_field != observation.field) and do_slew
+            if slew_required:
+                with self.safety_checking(**safety_kwargs):
+                    self.slew_to_observation(observation)
+                current_field = observation.field
+
+            # Fine focus the cameras if necessary
+            focus_required = self.fine_focus_required or observation.current_exp_num == 0
+            # TODO: Remove this once we dont need fine focus
+            focus_required = False
+            
+            if do_focus and focus_required:
+                with self.safety_checking(**safety_kwargs):
+                    self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)
+
+            # NB: get headers here so header info is accurate per exposure for CompoundObservations
+            headers = self.get_standard_headers(observation=observation)
+            # Set a common start time for this batch of exposures
+            headers['start_time'] = current_time(flatten=True)
+
+            # check if cameras are ready, occasionally filterwheel needs a bit of time
+            self.logger.info("Waiting for cameras to be ready before starting exposure.")
+            self.camera_group.wait_until_ready(sleep=3, max_attempts=3)
+
+            # breakpoint()
+            # Start the exposures and get events
+            with self.safety_checking(**safety_kwargs):
+                events = self.camera_group.take_recording(observation, headers=headers)
+
+            # breakpoint()
+            # Wait for the exposures (blocking)
+            # TODO: Use same timeout as camera client
+            try:
+                self._wait_for_camera_events(events, duration=observation.duration + timeout,
+                                             remove_on_error=remove_on_error, **safety_kwargs)
+            except NotSafeError as err:
+                # want to close if not safe
+                self.logger.warning('Closing dome due to conditions no longer being safe.')
+                self.close_dome()
+                # after closing dome make sure the camera events complete to prevent errors later
+                self.logger.info('Waiting for camera events to complete after closing dome.')
+                self._wait_for_camera_events(events, duration=observation.duration + timeout,
+                                             remove_on_error=remove_on_error, **safety_kwargs)
+                # finally raise the NotSafeError
+                raise err
+            except error.Timeout as err:
+                self.logger.error(f"{err!r}")
+                self.logger.warning("Continuing with observation block after error.")
+            except error.PanError as err:
+                # don't want general PanErrors to interrupt obs block (ie filterwheel not ready etc)
+                # NB NoteSafeError is child class of PanError but is handled above
+                self.logger.error(f"{err!r}")
+                self.logger.warning("Continuing with observation block after error.")
+
+            # Explicitly mark the observation as complete
+            with suppress(AttributeError):
+                observation.mark_exposure_complete()
+
+            self.logger.info(f"Observation status: {observation.status}")

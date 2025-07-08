@@ -7,10 +7,15 @@ BUILD_DIR="${1:-./ASIBuild}"
 CAM_LIB_VERSION=1.16
 EFW_LIB_VERSION=1.5.0615  # This has a bug when rotating forwards >one full rotation
 
+# Print initial ARCH value
+# echo "Initial ARCH value: ${ARCH}"
+
 # Get the arch -> x86_64 == x86
 ARCH="${ARCH:-$(uname -m | cut -d'_' -f1)}"
 # Change aarch64 to armv8
 ARCH="${ARCH/aarch64/armv8}"
+
+echo "Final ARCH value: ${ARCH}"
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root"

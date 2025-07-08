@@ -1,4 +1,4 @@
-ARG image_url=docker.io/huntsmanarray/panoptes-utils
+ARG image_url=docker.io/bsreddragon/panoptes-utils
 ARG image_tag=v0.2.35
 FROM ${image_url}:${image_tag} AS panoptes-pocs-base
 
@@ -12,8 +12,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PYTHONUNBUFFERED 1
 
+ARG panuser=pocs-user
 ARG userid=1000
-ENV USERID $USERID
+ENV USERID $userid
+ENV PANUSER $panuser
 
 ARG app_dir=/panoptes-pocs
 ENV APP_DIR $app_dir
@@ -22,7 +24,8 @@ ARG image_dir=/images
 ARG log_dir=/logs
 
 WORKDIR "${APP_DIR}"
-USER "${USERID}"
+# USER "${USERID}"
+USER "${panuser}"
 
 # Dependencies and directories.
 RUN echo "Building from ${image_url}:${image_tag}" && \
@@ -31,11 +34,12 @@ RUN echo "Building from ${image_url}:${image_tag}" && \
     astrometry-data-tycho2-10-19 \
     python3-pip git && \
     # Set up directories in PANUSER home.
-    sudo mkdir "$image_dir" && sudo chown -R "${USERID}:${USERID}" "$image_dir" && \
-    sudo mkdir "$log_dir" && sudo chown -R "${USERID}:${USERID}" "$log_dir" && \
-    sudo chown -R "${USERID}:${USERID}" "${APP_DIR}"
+    sudo mkdir "$image_dir" && sudo chown -R "${PANUSER}:${MAMBA_USER}" "$image_dir" && \
+    sudo mkdir "$log_dir" && sudo chown -R "${PANUSER}:${MAMBA_USER}" "$log_dir" && \
+    sudo chown -R "${PANUSER}:${MAMBA_USER}" "${APP_DIR}"
 
 # Set up arduino cli tools.
+# USER root
 RUN echo "Installing arduino-cli from ${arduino_url}" && \
     wget "${arduino_url}_Linux_$(uname -m | sed 's/x86_64/64bit/' | sed 's/aarch64/ARM64/').tar.gz" \
     -O arduino-cli.tar.gz && \
@@ -54,15 +58,17 @@ RUN echo "Updating micromamba environment" && \
 
 FROM panoptes-pocs-dependencies AS panoptes-pocs
 
-ARG pip_install_name="git+https://github.com/panoptes/POCS.git#v0.7.8#egg=panoptes-pocs"
+USER "${panuser}"
+
+ARG pip_install_name="git+https://github.com/panoptes/POCS.git@v0.7.8#egg=panoptes-pocs"
 ARG pip_install_extras="[google]"
 
-USER "${USERID}"
-COPY --chown="${USERID}:${USERID}" . .
+COPY --chown="${PANUSER}:${MAMBA_USER}" . .
+
 RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
-    pip install --no-cache-dir "${pip_install_name}${pip_install_extras}" && \
-    # Cleanup
-    sudo apt-get autoremove --purge --yes \
+    micromamba run -n base python -m pip install --no-cache-dir "${pip_install_name}${pip_install_extras}"
+
+RUN sudo apt-get autoremove --purge --yes \
     gcc pkg-config && \
     sudo apt-get autoclean --yes && \
     sudo apt-get --yes clean && \

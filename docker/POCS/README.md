@@ -24,3 +24,8 @@ panoptes-utils, use the release number as the tag e.g. v.0.7.8.
 Once you have tagged the image you can then push it to docker hub
 
 ```docker push huntsmanarray/panoptes-pocs:<tagname>
+```
+
+For creating image for both x86_64 and arm64 architectures, you need to run the following command from the POCS docker directory:
+
+```docker buildx build --platform linux/amd64,linux/arm64 -t huntsmanarray/panoptes-pocs:v0.7.8 --push .```
