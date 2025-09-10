@@ -5,8 +5,8 @@ import sys
 import time
 
 # Configuration
-NUM_CONSUMERS = 10
-NATS_SERVER = "nats://localhost:4222"
+NATS_NUM_CONSUMERS = os.environ.get("NATS_NUM_CONSUMERS", 10)
+NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
 
 # List to keep track of processes
 processes = []
@@ -25,9 +25,9 @@ signal.signal(signal.SIGTERM, signal_handler)
 
 
 def main():
-    print(f"Starting {NUM_CONSUMERS} NATS consumers...")
+    print(f"Starting {NATS_NUM_CONSUMERS} NATS consumers...")
 
-    for i in range(NUM_CONSUMERS):
+    for i in range(NATS_NUM_CONSUMERS):
         consumer_id = i
 
         # Set environment variables
@@ -43,7 +43,7 @@ def main():
         # Small delay to stagger startup
         time.sleep(0.1)
 
-    print(f"Started {NUM_CONSUMERS} consumers. Press Ctrl+C to stop.")
+    print(f"Started {NATS_NUM_CONSUMERS} consumers. Press Ctrl+C to stop.")
 
     # Wait for processes to complete or be interrupted
     try:
