@@ -17,7 +17,7 @@ running = True
 
 # Configuration - can be overridden by environment variables
 NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
-OUTPUT_DIR = os.environ.get("OUTPUT_DIR", "/home/batbold/Projects/huntsman/images")  # Default output directory
+NATS_CONSUMER_OUTPUT_DIR = os.environ.get("NATS_CONSUMER_OUTPUT_DIR", "/home/batbold/Projects/huntsman/images")  # Default output directory
 COMPRESS = os.environ.get("COMPRESS", "RICE")  # Default compression method
 DISABLE_FILE_WRITING = os.environ.get("DISABLE_FILE_WRITING", "False").lower() == "true"
 NUM_WRITER_THREADS = int(os.environ.get("NUM_WRITER_THREADS", "4"))  # Number of writer threads
@@ -340,7 +340,7 @@ def process_frame_data(msg, consumer_id, stream_type):
     
     timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     filename = f"frame_{stream_type}_{consumer_id}_{frame_number}{chunk_info}_{timestamp_str}.fits"
-    filepath = os.path.join(OUTPUT_DIR, str(consumer_id), stream_type, filename)
+    filepath = os.path.join(NATS_CONSUMER_OUTPUT_DIR, str(consumer_id), stream_type, filename)
     
     return frame_data, header, filepath
 
@@ -423,12 +423,12 @@ async def run_consumer(consumer_id):
     # Print settings information
     if not DISABLE_FILE_WRITING:
         # Ensure output directories exist for both memory and disk streams
-        memory_dir = os.path.join(OUTPUT_DIR, str(consumer_id), "memory")
-        disk_dir = os.path.join(OUTPUT_DIR, str(consumer_id), "disk")
+        memory_dir = os.path.join(NATS_CONSUMER_OUTPUT_DIR, str(consumer_id), "memory")
+        disk_dir = os.path.join(NATS_CONSUMER_OUTPUT_DIR, str(consumer_id), "disk")
         os.makedirs(memory_dir, exist_ok=True)
         os.makedirs(disk_dir, exist_ok=True)
         
-        print(f"Consumer {consumer_id}: Saving frames to {OUTPUT_DIR}")
+        print(f"Consumer {consumer_id}: Saving frames to {NATS_CONSUMER_OUTPUT_DIR}")
         print(f"Consumer {consumer_id}: Using compression: {COMPRESS}")
         print(f"Consumer {consumer_id}: Using {NUM_WRITER_THREADS} writer threads")
         print(f"Consumer {consumer_id}: Adaptive mode - will handle both chunked and non-chunked data")
