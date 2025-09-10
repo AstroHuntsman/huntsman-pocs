@@ -5,6 +5,7 @@ This repository contains the configuration and scripts for running the Huntsman 
 ## Overview
 
 The movie mode setup includes:
+
 - **POCS Control System**: Core telescope control and configuration
 - **NATS JetStream**: High-performance message streaming for camera data
 - **Memory Monitoring**: Real-time system memory usage tracking
@@ -33,6 +34,7 @@ byobu --version
 ## Quick Start
 
 ### 1. Environment Setup
+
 please run huntsman.env file
 
 ```bash
@@ -42,6 +44,7 @@ ls -la $HUNTSMAN_POCS/src/
 ```
 
 ### 2. Start Movie Mode Services
+
 ```bash
 cd /var/huntsman/huntsman-config/conf_files/pocs
 
@@ -53,6 +56,7 @@ docker-compose ps
 ```
 
 ### 3. Set Up NATS Monitoring
+
 ```bash
 cd /var/huntsman/huntsman-pocs/nats
 
@@ -77,32 +81,32 @@ field:
 observation:
   type: huntsman.pocs.scheduler.observation.movie.DitheredMovieObservation
   priority: 9000
-  exptime: 0.009          # 9ms exposure time
+  exptime: 0.009 # 9ms exposure time
   batch_size: 1
   exp_set_size: 1
-  max_frames: 200         # Maximum frames to capture
-  mode: video             # Video recording mode
-  frame_rate: 2.0        # Target 2.0 frames per second
-  duration: 120           # Record for 120 seconds
+  max_frames: 200 # Maximum frames to capture
+  mode: video # Video recording mode
+  frame_rate: 2.0 # Target 2.0 frames per second
+  duration: 120 # Record for 120 seconds
   chunking_enabled: false # Single continuous recording
   filter_name:
-    192.168.80.200: r_band  # All cameras use r_band filter
+    192.168.80.200: r_band # All cameras use r_band filter
     # ... (all 10 cameras configured)
 ```
 
 ### Movie Mode Parameters Explained
 
-| Parameter | Value | Purpose | Usage |
-|-----------|-------|---------|--------|
-| **`type`** | `DitheredMovieObservation` | Observation class | Triggers movie mode detection |
-| **`exptime`** | `0.009` | 9ms exposure time | Very short for fast readout |
-| **`frame_rate`** | `20.0` | Target FPS | Controls timing between frames |
-| **`duration`** | `120` | Recording duration (seconds) | Total observation time |
-| **`max_frames`** | `200` | Frame limit | Safety stop (duration × fps or max_frames) |
-| **`mode`** | `video` | Recording mode | Enables video-specific features |
-| **`chunking_enabled`** | `false` | File splitting | Continuous vs. chunked recording |
-| **`batch_size`** | `1` | Observation batching | Process one observation at a time |
-| **`exp_set_size`** | `1` | Exposures per set | Simplified for video mode |
+| Parameter              | Value                      | Purpose                      | Usage                                      |
+| ---------------------- | -------------------------- | ---------------------------- | ------------------------------------------ |
+| **`type`**             | `DitheredMovieObservation` | Observation class            | Triggers movie mode detection              |
+| **`exptime`**          | `0.009`                    | 9ms exposure time            | Very short for fast readout                |
+| **`frame_rate`**       | `20.0`                     | Target FPS                   | Controls timing between frames             |
+| **`duration`**         | `120`                      | Recording duration (seconds) | Total observation time                     |
+| **`max_frames`**       | `200`                      | Frame limit                  | Safety stop (duration × fps or max_frames) |
+| **`mode`**             | `video`                    | Recording mode               | Enables video-specific features            |
+| **`chunking_enabled`** | `false`                    | File splitting               | Continuous vs. chunked recording           |
+| **`batch_size`**       | `1`                        | Observation batching         | Process one observation at a time          |
+| **`exp_set_size`**     | `1`                        | Exposures per set            | Simplified for video mode                  |
 
 ### Movie Mode Detection
 
@@ -112,16 +116,16 @@ The system detects movie mode in `huntsman-pocs/src/huntsman/pocs/states/huntsma
 def on_enter(event_data):
     pocs = event_data.model
     observation = pocs.observatory.current_observation
-    
+
     print("observation.__class__.__name__: ", observation.__class__.__name__)
-    
+
     try:
         # Movie mode detection - checks if 'Movie' is in class name
         if 'Movie' in observation.__class__.__name__:
             # Uses specialized movie recording method
             pocs.observatory.take_recording_block(observation)
         else:
-            # Uses standard observation method  
+            # Uses standard observation method
             pocs.observatory.take_observation_block(observation)
     except Exception as err:
         pocs.logger.error(f"Exception: {err!r}")
@@ -129,13 +133,13 @@ def on_enter(event_data):
 
 ### Parameter Usage and Timing
 
-
 #### Frame Rate Behavior
+
 **Important**: `frame_rate` sets the **maximum** rate, not a guaranteed rate.
+
 - If camera captures faster than `frame_rate`: Sleep time is added to slow down to target
 - If camera captures slower than `frame_rate`: No sleep added, runs at hardware maximum
 - **Use realistic values** if needed
-
 
 #### Duration vs Max Frames
 
@@ -165,10 +169,9 @@ Instead of max_frames, duration is used for ending the observation.
    - Manages file output (chunked or continuous)
 
 6. **Data Flow**
-   - Raw frames → NATS memory streams or Disk streams depending memory usage 
+   - Raw frames → NATS memory streams or Disk streams depending memory usage
    - Nats-stream container runs on main server(keeps data on memory or disk)
-   - End consumers on remote server 
-
+   - End consumers on remote server
 
 ## SSH Tunneling for Remote Access
 
@@ -192,12 +195,14 @@ nc -zv localhost 4222
 ### Manage SSH Tunnels
 
 #### Kill Tunnel by Process Name
+
 ```bash
 # Kill NATS client port tunnel
 pkill -f "ssh -.*R.*4222"
 ```
 
 #### Kill Tunnel by PID
+
 ```bash
 # Find the SSH tunnel process
 ps aux | grep "ssh -.*R.*4222" | grep -v grep
@@ -207,6 +212,7 @@ kill <PID>
 ```
 
 #### List All SSH Tunnels
+
 ```bash
 # Show all SSH reverse tunnels
 ps aux | grep "ssh -.*-R" | grep -v grep
@@ -215,19 +221,21 @@ ps aux | grep "ssh -.*-R" | grep -v grep
 ## NATS Monitoring Components
 
 ### Scripts Overview
+
 - **`create_streams.py`**: Creates JetStream streams for camera data
 - **`memory_monitor.py`**: Monitors system memory usage
 - **`storage_manager.py`**: Manages tiered storage (memory → disk)
 - **`setup_manager_monitoring.sh`**: Byobu setup script for all monitoring
 
 ### Stream Configuration
+
 - **Memory Streams**: `CAMERA_MEMORY_0` to `CAMERA_MEMORY_9`
   - Storage: In-memory (fast)
   - Retention: 60 seconds
   - Max: 1GB per stream
 - **Disk Streams**: `CAMERA_DISK_0` to `CAMERA_DISK_9`
   - Storage: File-based (persistent)
-  - Retention: 2 hours  
+  - Retention: 2 hours
   - Max: 10GB per stream
 
 ## Usage Examples
@@ -239,7 +247,7 @@ ps aux | grep "ssh -.*-R" | grep -v grep
 cd /var/huntsman/huntsman-config/conf_files/pocs
 docker-compose up -d
 
-# create streams and start monitoring scripts 
+# create streams and start monitoring scripts
 cd /var/huntsman/huntsman-pocs/nats
 ./setup_manager_monitoring.sh
 
@@ -268,7 +276,7 @@ cd /var/huntsman/huntsman-pocs/nats
 python create_streams.py
 
 # Delete all streams
-python create_streams.py delete
+python create_streams.py --delete
 
 # Check stream status
 curl -s http://localhost:8222/jsz | jq .
@@ -313,7 +321,7 @@ byobu kill-session -t nats-monitoring
 
 ### Environment Variables
 
-The MEMORY_THRESHOLD in memory_monitor.py is currently set to 31 for testing purposes and should be adjusted for production use(60-70). 
+The MEMORY_THRESHOLD in memory_monitor.py is currently set to 31 for testing purposes and should be adjusted for production use(60-70).
 
 Both NUM_STREAMS and NUM_CONSUMERS should be configured to match the number of active telescopes in your system. This ensures optimal resource allocation and data processing efficiency. The default values(10) for NUM_STREAMS and NUM_CONSUMERS are typically sufficient and don't require modification.
 
@@ -338,6 +346,7 @@ export STATS_FILE=/tmp/stream_stats.json
 ### Common Issues
 
 #### Services Won't Start
+
 ```bash
 # Check logs
 docker-compose logs
@@ -350,6 +359,7 @@ netstat -tulpn | grep -E ':(4222|6563|8222)'
 ```
 
 #### NATS Connection Issues
+
 ```bash
 # Verify NATS is running
 docker ps | grep nats
@@ -363,6 +373,7 @@ docker-compose restart nats-mm
 ```
 
 #### Movie Mode Issues
+
 ```bash
 # Check if movie observation is detected
 docker exec -it dev-pocs-control-mm bash
@@ -374,6 +385,7 @@ cat /huntsman/conf_files/fields.yaml | grep -A 20 "DitheredMovieObservation"
 ```
 
 #### SSH Tunnel Problems
+
 ```bash
 # Check if tunnel is active
 ss -tuln | grep 4222
@@ -390,6 +402,7 @@ ssh -f -N -R 4222:localhost:4222 huntsman@203.1.111.20
 ```
 
 #### Memory Issues
+
 ```bash
 # Check current memory usage
 free -h
@@ -397,6 +410,7 @@ cat /var/huntsman/images/memory_status.json
 ```
 
 ### Reset Everything
+
 ```bash
 # Kill consumers on remote server
 pkill -f "python consumer.py"
@@ -408,23 +422,25 @@ byobu kill-session -t nats-monitoring
 docker-compose down
 
 # Kill SSH tunnels - not necessary - optional
-pkill -f "ssh -.*R.*4222" 
+pkill -f "ssh -.*R.*4222"
 
 # Clean up (WARNING: Removes data!)
 docker-compose down -v
 
 # not necessary - optional
-docker system prune -f 
+docker system prune -f
 ```
 
 ## Monitoring and Logs
 
 ### Log Locations
+
 - Docker logs: `docker-compose logs [service-name]`
 - POCS logs: `/var/huntsman/logs/`
 - NATS monitoring: Byobu session `nats-monitoring`
 
 ### Key Metrics
+
 - Memory usage: `/var/huntsman/images/memory_status.json`
 - Stream statistics: `/tmp/stream_stats.json`
 - NATS server stats: `http://localhost:8222/varz`
@@ -433,17 +449,20 @@ docker system prune -f
 ## Development
 
 ### Adding New Streams
+
 1. Modify `NUM_STREAMS` environment variable
 2. Run `python create_streams.py` to create new streams
 3. Update consumer scripts if needed
 
 ### Custom Configuration
+
 - Edit `docker-compose.yaml` for service configuration
 - Modify `nats-server.conf` for NATS settings
 - Update `huntsman.yaml` for POCS configuration
 - Modify `fields.yaml` for observation targets and movie parameters
 
 ### Creating New Movie Observations
+
 1. Copy existing movie observation configuration in `fields.yaml`
 2. Adjust `exptime`, `frame_rate`, `duration`, and `max_frames` as needed
 3. Test with low `duration` and `max_frames` values first
@@ -451,6 +470,7 @@ docker system prune -f
 ## Support
 
 For issues and questions:
+
 1. Check the troubleshooting section above
 2. Review Docker and NATS logs
 3. Verify SSH tunnel connectivity
