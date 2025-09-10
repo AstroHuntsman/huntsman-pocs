@@ -57,7 +57,7 @@ docker-compose ps
 cd /var/huntsman/huntsman-pocs/nats
 
 # Run NATS monitoring setup (creates streams and starts monitors)
-./setup_nats_monitoring.sh
+./setup_manager_monitoring.sh
 ```
 
 ## Movie Mode Observations
@@ -218,7 +218,7 @@ ps aux | grep "ssh -.*-R" | grep -v grep
 - **`create_streams.py`**: Creates JetStream streams for camera data
 - **`memory_monitor.py`**: Monitors system memory usage
 - **`storage_manager.py`**: Manages tiered storage (memory → disk)
-- **`setup_nats_monitoring.sh`**: Byobu setup script for all monitoring
+- **`setup_manager_monitoring.sh`**: Byobu setup script for all monitoring
 
 ### Stream Configuration
 - **Memory Streams**: `CAMERA_MEMORY_0` to `CAMERA_MEMORY_9`
@@ -241,7 +241,7 @@ docker-compose up -d
 
 # create streams and start monitoring scripts 
 cd /var/huntsman/huntsman-pocs/nats
-./setup_nats_monitoring.sh
+./setup_manager_monitoring.sh
 
 # on remote server
 cd /home/huntsman/Projects/huntsman
@@ -251,12 +251,13 @@ python start_consumers.py
 cd /var/huntsman/
 ./scripts/start-byobu.sh
 
+# Access POCS control container
+docker exec -it dev-pocs-control-mm bash
+python src/run_coarse_f_observing.py # run inside container
+
 # Check system status
 docker-compose ps
 curl -s http://localhost:8222/varz | jq .server_name
-
-# Access POCS control
-docker exec -it dev-pocs-control-mm bash
 ```
 
 ### NATS Operations
@@ -296,16 +297,16 @@ byobu kill-session -t nats-monitoring
 
 ```bash
 # Basic usage - creates streams then runs monitors
-./setup_nats_monitoring.sh
+./setup_manager_monitoring.sh
 
 # Skip creating streams if they already exist
-./setup_nats_monitoring.sh --skip-create-streams
+./setup_manager_monitoring.sh --skip-create-streams
 
 # Use a custom session name
-./setup_nats_monitoring.sh --session-name my-nats-session
+./setup_manager_monitoring.sh --session-name my-nats-session
 
 # Get help
-./setup_nats_monitoring.sh --help
+./setup_manager_monitoring.sh --help
 ```
 
 ## Configuration
