@@ -55,5 +55,6 @@ MANIFEST
 **/.ipynb_checkpoints/**
 
 .env
+huntsman.env
 logs/*
 conf_files/*_local*
