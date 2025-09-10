@@ -14,7 +14,7 @@ NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
 MEMORY_THRESHOLD = float(os.environ.get("MEMORY_THRESHOLD", "31"))  # Percentage
 MEMORY_STATUS_FILE = os.environ.get("MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
 CHECK_INTERVAL = int(os.environ.get("CHECK_INTERVAL", "10"))  # Seconds between checks
-STATS_FILE = os.environ.get("STATS_FILE", "/tmp/stream_stats.json")
+NATS_STATS_FILE = os.environ.get("NATS_STATS_FILE", "/tmp/stream_stats.json")
 
 # Global variables
 running = True
@@ -271,7 +271,7 @@ async def get_stream_stats(js: JetStreamContext, memory_streams: List[str], disk
 
     # Save stats to file
     try:
-        with open(STATS_FILE, 'w') as f:
+        with open(NATS_STATS_FILE, 'w') as f:
             json.dump(stats, f, indent=2)
     except Exception as e:
         print(f"Error writing stats to file: {e}")
@@ -412,6 +412,7 @@ async def run():
     print(f"Tiered storage manager started. Checking every {CHECK_INTERVAL} seconds...")
 
     # Write initial memory status file if it doesn't exist
+    os.makedirs(os.path.dirname(MEMORY_STATUS_FILE), exist_ok=True)
     if not os.path.exists(MEMORY_STATUS_FILE):
         async with asyncio.Lock():
             with open(MEMORY_STATUS_FILE, 'w') as f:

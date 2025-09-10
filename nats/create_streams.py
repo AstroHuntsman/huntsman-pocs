@@ -102,7 +102,7 @@ async def delete_streams():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Setup and run a NATS Jetstream streams. Or tear down existing streams.")
-    parser.add_argument("--delete", type=bool, action="store_true",
+    parser.add_argument("--delete", action="store_true", default=False,
                         help="Whether to delete streams previously created, instead of creating new streams.")
     args = parser.parse_args()
 

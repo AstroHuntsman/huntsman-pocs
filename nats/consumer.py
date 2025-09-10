@@ -25,7 +25,7 @@ NATS_CONSUMER_OUTPUT_DIR = os.environ.get(
 )  # Default output directory
 COMPRESS = os.environ.get("COMPRESS", "RICE")  # Default compression method
 DISABLE_FILE_WRITING = os.environ.get("DISABLE_FILE_WRITING", "False").lower() == "true"
-NUM_WRITER_THREADS = int(os.environ.get("NUM_WRITER_THREADS", "4"))  # Number of writer threads
+NATS_NUM_WRITER_THREADS = int(os.environ.get("NATS_NUM_WRITER_THREADS", "4"))  # Number of writer threads
 
 # Create file writing queue
 FILE_WRITE_QUEUE = queue.Queue()
@@ -494,14 +494,14 @@ async def run_consumer(consumer_id: int) -> None:
 
         print(f"Consumer {consumer_id}: Saving frames to {NATS_CONSUMER_OUTPUT_DIR}")
         print(f"Consumer {consumer_id}: Using compression: {COMPRESS}")
-        print(f"Consumer {consumer_id}: Using {NUM_WRITER_THREADS} writer threads")
+        print(f"Consumer {consumer_id}: Using {NATS_NUM_WRITER_THREADS} writer threads")
         print(f"Consumer {consumer_id}: Adaptive mode - will handle both chunked and non-chunked data")
     else:
         print(f"Consumer {consumer_id}: File writing disabled - frames will be processed but not saved")
 
     # Start writer threads
     writer_threads = []
-    for i in range(NUM_WRITER_THREADS):
+    for i in range(NATS_NUM_WRITER_THREADS):
         t = threading.Thread(target=file_writer_thread, args=(i,), daemon=True)
         t.start()
         writer_threads.append(t)
@@ -600,7 +600,7 @@ async def main(consumer_id: int) -> None:
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     print(
-        f"Starting adaptive tiered consumer {consumer_id} with {NUM_WRITER_THREADS} writer threads")
+        f"Starting adaptive tiered consumer {consumer_id} with {NATS_NUM_WRITER_THREADS} writer threads")
     await run_consumer(consumer_id)
 
 

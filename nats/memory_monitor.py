@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import time
 import psutil
 import json
@@ -6,7 +7,7 @@ import json
 # Configuration
 MEMORY_THRESHOLD = 31  # Stop publishing when memory usage reaches 31%
 CHECK_INTERVAL = 1  # Check every second
-MEMORY_STATUS_FILE = "/var/huntsman/images/memory_status.json"
+MEMORY_STATUS_FILE = os.environ.get("MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
 
 
 def monitor_memory():

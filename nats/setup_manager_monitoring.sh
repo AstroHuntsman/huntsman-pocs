@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Enhanced NATS Setup Script with Byobu
 # Usage: ./setup_manager_monitoring.sh [--skip-create-streams] [--session-name NAME]
