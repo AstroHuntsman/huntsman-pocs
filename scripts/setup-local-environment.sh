@@ -1,68 +1,115 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-TAG="${1:-develop}"
-OWNER="batbold"
+help(){
+    echo "Usage: setup-local-environment [OPTIONS]"
+    echo "Ensure that the DOCKER_BUILD_TAG and HUNTSMAN_POCS environment variables are set"
+    echo ""
+    echo "Options:"
+    echo "  --skip-panoptes     Skip building of panoptes-pocs image"
+    echo "  --skip-huntsman     Skip building of huntsman-pocs image"
+    echo "  --skip-camera       Skip building of huntsman-pocs-camera image"
+    echo "  -h, --help              Show this help message"
+    echo ""
+}
 
-# Options to control build.
-INCLUDE_PANOPTES="${INCLUDE_PANOPTES:-false}"
-INCLUDE_CAMERA="${INCLUDE_CAMERA:-false}"
+check=0
+if [ -z $DOCKER_BUILD_TAG ]; then
+    echo "DOCKER_BUILD_TAG is not assigned"
+    check=1
+fi
+if [ -z $HUNTSMAN_POCS ]; then
+    echo "HUNTSMAN_POCS is not assigned"
+    check=1
+fi
+if [ "${check}" -eq 1 ]; then
+    echo "Cannot continue. Please address the above issues and rerun"
+    exit
+fi
 
-# Directories to build from.
-POCS="${POCS:-/var/panoptes/POCS}"
-HUNTSMAN_POCS="${HUNTSMAN_POCS:-/var/huntsman/huntsman-pocs}"
-
-# Docker images to user.
-POCS_IMAGE_URL="${POCS_IMAGE_URL:-${OWNER}/panoptes-pocs:v0.7.8}"
-HUNTS_POCS_IMAGE_URL="${HUNTS_POCS_IMAGE_URL:-${OWNER}/huntsman-pocs:${TAG}}"
+# Parse command line arguments
+skip_panoptes=false
+skip_huntsman=false
+skip_camera=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-panoptes)
+            skip_panoptes=true
+            shift
+            ;;
+        --skip-huntsman)
+            skip_huntsman=true
+            shift
+            ;;
+        --skip-camera)
+            skip_camera=true
+            shift
+            ;;
+        -h|--help)
+            help
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            help
+            exit 1
+            ;;
+    esac
+done
 
 echo "Setting up local environment."
-cd "${HUNTSMAN_POCS}"
 
 # Builds a local image for the PANOPTES items.
-build_panoptes() {
-  echo "Building local ${POCS_IMAGE_URL} from ${POCS_IMAGE_URL} in ${HUNTSMAN_POCS}."
-  INCLUDE_BASE=true INCLUDE_UTILS=true "${POCS}/scripts/setup-local-environment.sh"
-  # Use our local image for build below instead of gcr.io image.
-  POCS_IMAGE_URL="panoptes-pocs:${TAG}"
-  echo "Setting POCS_IMAGE_URL=${POCS_IMAGE_URL}"
+# build_panoptes_utils(){
+#     echo "Building local panoptes utils image"
+#     cd "${HUNTSMAN_POCS}/docker/panoptes-utils"
+#     docker build -t "panoptes-utils:${DOCKER_BUILD_TAG}" .
+# }
+
+build_panoptes_pocs() {
+    echo "Building local panoptes pocs image"
+    docker build -t "panoptes-pocs:${DOCKER_BUILD_TAG}" \
+        --build-arg "image_url=docker.io/huntsmanarray/panoptes-utils" \
+        --build-arg "image_tag=v0.2.35" \
+        -f "${HUNTSMAN_POCS}/docker/panoptes-pocs/Dockerfile" "${HUNTSMAN_POCS}/docker/panoptes-pocs"
 
 }
 
 # Builds a local image for testing, etc. Also the base of other images.
-build_develop() {
-  echo "Building local ${HUNTS_POCS_IMAGE_URL} from ${POCS_IMAGE_URL} in ${HUNTSMAN_POCS}."
-  docker build \
-    --build-arg "image_url=${POCS_IMAGE_URL}" \
-      -t "${OWNER}/huntsman-pocs:${TAG}" \
-    -f "${HUNTSMAN_POCS}/docker/Dockerfile" \
-    "${HUNTSMAN_POCS}"
-
-  # Use the local image below now that we have built it.
-  HUNTS_POCS_IMAGE_URL="huntsman-pocs:${TAG}"
+build_huntsman_pocs() {
+    echo "Building local huntsman pocs image"
+    docker build -t "huntsman-pocs:${DOCKER_BUILD_TAG}" \
+        --build-arg "image_url=panoptes-pocs" \
+        --build-arg "image_tag=${DOCKER_BUILD_TAG}" \
+        -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}"
 }
 
-build_camera() {
-  echo "Building local huntsman-pocs-camera:${TAG} from ${HUNTS_POCS_IMAGE_URL} in ${HUNTSMAN_POCS}"
-  docker build \
-    -t "${OWNER}/huntsman-pocs-camera:${TAG}" \
-    --build-arg "image_url=${HUNTS_POCS_IMAGE_URL}" \
-    -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" \
-    "${HUNTSMAN_POCS}"
+build_huntsman_camera() {
+    echo "Building local huntsman camera image"
+    docker build -t "huntsman-pocs-camera:${DOCKER_BUILD_TAG}" \
+        --build-arg "image_url=huntsman-pocs" \
+        --build-arg "image_tag=${DOCKER_BUILD_TAG}" \
+        -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" "${HUNTSMAN_POCS}"
 }
 
 ####################################################################################
 # Script logic below
 ####################################################################################
 
-if [ "${INCLUDE_PANOPTES}" = true ]; then
-  build_panoptes
+if [ $skip_panoptes == "false" ]; then
+    build_panoptes_pocs
+else
+    echo "Skipping PANOPTES-POCS image build"
 fi
-
-build_develop
-
-if [ "${INCLUDE_CAMERA}" = true ]; then
-  build_camera
+if [ $skip_huntsman == "false" ]; then
+    build_huntsman_pocs
+else
+    echo "Skipping Huntsman-POCS image build"
+fi
+if [ $skip_camera == "false" ]; then
+    build_huntsman_camera
+else
+    echo "Skipping Huntsman-POCS-camera image build"
 fi
 
 cat <<EOF
