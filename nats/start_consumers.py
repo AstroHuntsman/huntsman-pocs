@@ -37,7 +37,7 @@ def main():
         env["CONSUMER_ID"] = str(consumer_id)
 
         # Start the consumer process
-        cmd = ["python3", "consumer.py", str(consumer_id)]
+        cmd = ["python3", f"{NATS_REMOTE_SCRIPT_DIR}/consumer.py", str(consumer_id)]
         p = subprocess.Popen(cmd, env=env)
         processes.append(p)
 
