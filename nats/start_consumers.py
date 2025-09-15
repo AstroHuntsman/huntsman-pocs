@@ -7,7 +7,10 @@ import time
 # Configuration
 NATS_NUM_CONSUMERS = os.environ.get("NATS_NUM_CONSUMERS", 10)
 NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
-NATS_REMOTE_SCRIPT_DIR = os.environ.get("NATS_REMOTE_SCRIPT_DIR", "/home/huntsman/Projects/huntsman")
+NATS_REMOTE_SCRIPT_DIR = os.environ.get(
+    "NATS_REMOTE_SCRIPT_DIR", "/home/huntsman/Projects/huntsman")
+NATS_REMOTE_PYTHON_EXECUTABLE = os.environ.get(
+    "NATS_REMOTE_PYTHON_EXECUTABLE", "/home/huntsman/conda/envs/huntsman-pocs/bin/python")
 
 # List to keep track of processes
 processes = []
@@ -37,7 +40,8 @@ def main():
         env["CONSUMER_ID"] = str(consumer_id)
 
         # Start the consumer process
-        cmd = ["python3", f"{NATS_REMOTE_SCRIPT_DIR}/consumer.py", str(consumer_id)]
+        cmd = [f"{NATS_REMOTE_PYTHON_EXECUTABLE}",
+               f"{NATS_REMOTE_SCRIPT_DIR}/consumer.py", str(consumer_id)]
         p = subprocess.Popen(cmd, env=env)
         processes.append(p)
 

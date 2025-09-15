@@ -21,11 +21,12 @@ running = True
 # Configuration - can be overridden by environment variables
 NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
 NATS_CONSUMER_OUTPUT_DIR = os.environ.get(
-    "NATS_CONSUMER_OUTPUT_DIR", "/home/batbold/Projects/huntsman/images"
+    "NATS_CONSUMER_OUTPUT_DIR", "/home/huntsman/Projects/huntsman/images"
 )  # Default output directory
 COMPRESS = os.environ.get("COMPRESS", "RICE")  # Default compression method
 DISABLE_FILE_WRITING = os.environ.get("DISABLE_FILE_WRITING", "False").lower() == "true"
-NATS_NUM_WRITER_THREADS = int(os.environ.get("NATS_NUM_WRITER_THREADS", "4"))  # Number of writer threads
+NATS_NUM_WRITER_THREADS = int(os.environ.get(
+    "NATS_NUM_WRITER_THREADS", "4"))  # Number of writer threads
 
 # Create file writing queue
 FILE_WRITE_QUEUE = queue.Queue()
