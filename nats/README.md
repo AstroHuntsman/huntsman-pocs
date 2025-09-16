@@ -1,17 +1,26 @@
+
 # Huntsman NATS Movie Mode Setup
 
 This repository contains the configuration and scripts for running the Huntsman telescope system in movie mode with NATS message streaming and monitoring.
 
 ## Overview
+The system comprosises of three main components:
+- **Huntsman Cameras:** Up to 10 cameras that record the data and publish it to the control server.
+- **Huntsman Control:** The Control server, where data is recieved from the cameras and published to the remote server.
+- **Huntsman Remote:** The Remote server, where data is recieved from the control server and stored.
 
-The movie mode setup includes:
-
-- **POCS Control System**: Core telescope control and configuration
-- **NATS JetStream**: High-performance message streaming for camera data
-- **Memory Monitoring**: Real-time system memory usage tracking
-- **Storage Management**: Tiered storage system (memory → disk)
-- **SSH Tunneling**: Remote access to NATS services
-- **Movie Mode Observations**: High-speed video recording for transient events
+The movie mode setup includes the following components
+- **Control**
+    - **POCS Control System**: Core telescope control and configuration
+    - **[NATS JetStream Server](https://docs.nats.io/nats-concepts/jetstream)**: High-performance message streaming for camera data using a [Pub/Sub model](##Pub-Sub).
+        - **[JetStream Streams](https://docs.nats.io/nats-concepts/jetstream/streams):** The data streams that make publishes messages (images) available to consumers.
+    - **Memory Monitoring**: Real-time system memory usage tracking
+    - **Storage Management**: Tiered storage system (memory → disk)
+    - **SSH Tunneling**: To open ports between the Control and Remote servers for data transfer via NATS Jetstream
+- **Cameras**
+    - **[Pyro](https://github.com/irmen/pyro5)**: Python Remote Objects. Allows Python objects to communicate over networks
+- **Remote**
+    - **[Jetstream Consumers](https://docs.nats.io/nats-concepts/jetstream/consumers):** Subscribes to messages from streams. Used to recieve image data.
 
 ## Prerequisites
 
@@ -23,7 +32,7 @@ The movie mode setup includes:
 ```bash
 # Install required packages
 sudo apt-get update
-sudo apt-get install byobu docker.io docker-compose
+sudo apt-get install byobu docker.io docker-compose jq
 
 # Verify installations
 docker --version
@@ -31,38 +40,101 @@ docker-compose --version
 byobu --version
 ```
 
+## First Time Setup
+### Environment Variables
+To run movie mode for the first time, you'll need to configure your environment variables. There is an [example .env file](../example.huntsman.env) for this purpose. Copy it with
+
+```bash
+cp example.huntsman.env huntsman.env
+```
+
+Most of the variables will not need changing, but it's good to give a quick once-over to make sure. See the following guide for variable descriptors:
+
+- **PANUSER:** The username to use for most operations
+- **PANDIR:** The working directory for the Control and Camera servers
+- **PANLOG:** The directory to store logs (on the Control server)
+- **HUNTSMAN_POCS:** The path to the huntsman-pocs repository repo on the Control server
+- **HUNTSMAN_DOME:** The path to the huntsman-dome repository repo on the Control server
+- **HUNTSMAN_DRP:** The path to the huntsman-drp repository repo on the Control server
+- **HUNTSMAN_REMOTE_HOST:** Then hostname for the Remote server. See [SSH Configuration](###SSH-Configuration) for more information.
+- **HUNTSMAN_CONTROL_HOST:** Then hostname for the Control server. See [SSH Configuration](###SSH-Configuration) for more information.
+- **HUNTSMAN_CAMERAS:** A JSON-structured list of Camera hostnames (`hostname`), numbers (`num`) and whether to use this camera (`use`).  See [SSH Configuration](###SSH-Configuration) for more information.
+- **PANOPTES_CONFIG_HOST:** The host running the config container
+- **PANOPTES_CONFIG_PORT:** The exposed config cotnainer port
+- **NATS_SERVER:** The hostname and port of the NATS server, running on the Control server
+- **NATS_CONSUMER_OUTPUT_DIR:** The image output directory on the Remote server
+- **NATS_STATS_FILE:** Where to save the NATS statistics on the control server
+- **NATS_NUM_STREAMS:** The number of JetStream streams to create
+- **NATS_NUM_CONSUMERS:** The number of JetStream consumers to create
+- **NATS_REMOTE_PYTHON_EXECUTABLE:** The path of the python environment executable on the Remote server
+- **NATS_REMOTE_SCRIPT_DIR:** The directory that stores the consumer.py python file on the Remote server
+- **MEMORY_STATUS_FILE:** The location of the memory status file that will be accessed by the Camera and Control servers
+- **MEMORY_THRESHOLD:** If the memory of the Control server is above this percentage, will instead publish to the disk-storage stream.
+
+### Python
+You'll need to set up your Python environment on the control server. The officially supported version is 3.9. If this is not already installed, it'll need to be. There are numerous online tutorials on how to install a specific version of Python.
+
+As for the environment, the dependencies for this project aren't pinned, so you'll need to use a dependency solver. There are a few options for these:
+- [Anaconda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/)
+- [Mamba](https://github.com/mamba-org/mamba)
+- [UV](https://github.com/astral-sh/uv)
+
+Choose your favourite then install the project with your manager's install command.
+
+### SSH Configuration
+This is a distributed setup that is primarily managed via SSH. To assist with ease-of-use, `~/.ssh/config` use is employed. 
+
+We need to set up the following *host aliases* for the following **hosts**:
+- **Control**
+    - *Remote server*
+    - *Cameras 1->10*
+- **Camera**
+    - *Control server*
+- **Remote**
+    - *Control server*
+
+Each SSH alias looks like this in the `~/.ssh/config` file of the host:
+```bash
+Host hostname1
+    HostName xxx.xxx.xxx.xxx
+    User Username
+    IdentityFile ~/.ssh/hostname1_key
+```
+
+Note the use of an IdentityFile. We will similarly employ the use of SSH keys between each of the hosts.
+
+This setup has the enormous advantage of seemless connectivity between each of our distributed components.
+
 ## Quick Start
 
 ### 1. Environment Setup
 
-please run huntsman.env file
-
+Source your `huntsman.env` file to load the correct environment variables
 ```bash
-# Verify paths
-ls -la $PANDIR/huntsman-config/conf_files/pocs/
-ls -la $HUNTSMAN_POCS/src/
+source huntsman.env
 ```
 
-### 2. Start Movie Mode Services
+### 2. Start Movie Mode Services from Config
 
 ```bash
-cd /var/huntsman/huntsman-config/conf_files/pocs
-
-# Start all services
-docker-compose up -d
+# Start all containerised services on the Control server
+docker compose -f $HUNTSMAN_CONFIG/conf_files/pocs/docker-compose.yaml up -d
 
 # Check status
 docker-compose ps
 ```
 
-### 3. Set Up NATS Monitoring
+### 3. Run the NATS Startup Script
 
 ```bash
-cd /var/huntsman/huntsman-pocs/nats
+$HUNTSMAN_POCS/nats/setup_nats.sh
 
-# Run NATS monitoring setup (creates streams and starts monitors)
-./setup_manager_monitoring.sh
 ```
+This script will check all required environment variables, the SSH tunnel and SSH connectivity before setting up the rest of the system.
+
+Provided it succeeds, instructions will be displayed describing how to connect to the byobu session and monitor the system.
+
+It is possible that the script runs without apparent error, but not all components have started successfully. For this reason, it is recommended that the user check each of the windows for signs of error or incomplete setup.
 
 ## Movie Mode Observations
 
@@ -299,22 +371,6 @@ byobu list-sessions
 
 # Kill monitoring session
 byobu kill-session -t nats-monitoring
-```
-
-### Script Options
-
-```bash
-# Basic usage - creates streams then runs monitors
-./setup_manager_monitoring.sh
-
-# Skip creating streams if they already exist
-./setup_manager_monitoring.sh --skip-create-streams
-
-# Use a custom session name
-./setup_manager_monitoring.sh --session-name my-nats-session
-
-# Get help
-./setup_manager_monitoring.sh --help
 ```
 
 ## Configuration
