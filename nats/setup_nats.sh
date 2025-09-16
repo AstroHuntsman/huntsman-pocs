@@ -39,12 +39,21 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+
+# Test remote to a host using hostname set in ~/.ssh/config
+test_ssh_connectivity(){
+    local hostname="$1"
+
+    if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "${hostname}" true; then
+        return 1
+    fi
+    return 0
+
 # Look for a byobu window and return its index
 # e.g. idx=$(get_window_idx "Window Name") || exit 1
 get_window_idx() {
     local window_name="$1"
-    local idx
-    idx=$(byobu list-windows -t "$BYOBU_SESSION" | grep -F "$window_name" | cut -d: -f1)
+    local idx=$(byobu list-windows -t "$BYOBU_SESSION" | grep -F "$window_name" | cut -d: -f1)
     if [ -z "$idx" ]; then
         echo "Window '$window_name' not found" >&2
         return 1
@@ -56,12 +65,16 @@ get_window_idx() {
 pre_script_checks(){
     # Environment variables
     CHECK_PASS=0
-    if [ -z "$NATS_SCRIPT_DIR" ]; then
-        echo "ERROR: NATS_SCRIPT_DIR not set. Please source huntsman.env. See nats/README.md for details"
+    if [ -z "$HUNTSMAN_POCS/nats" ]; then
+        echo "ERROR: HUNTSMAN_POCS/nats not set. Please source huntsman.env. See nats/README.md for details"
         CHECK_PASS=1
     fi
     if [ -z "${HUNTSMAN_REMOTE_HOST}" ]; then
         echo "ERROR: HUNTSMAN_REMOTE_HOST not set. Please source huntsman.env. See nats/README.md for details"
+        CHECK_PASS=1
+    fi
+    if [ -z "${HUNTSMAN_CONTROL_HOST}" ]; then
+        echo "ERROR: HUNTSMAN_CONTROL_HOST not set. Please source huntsman.env. See nats/README.md for details"
         CHECK_PASS=1
     fi
     if [ -z "${NATS_REMOTE_SCRIPT_DIR}" ]; then
@@ -89,15 +102,24 @@ pre_script_checks(){
     fi
 
     # Test remote connectivity
-    if ! ssh -o ConnectTimeout=10 -o BatchMode=yes "${HUNTSMAN_REMOTE_HOST}" true; then
+    if ! test_ssh_connectivity "${HUNTSMAN_REMOTE_HOST}"; then
         echo "ERROR: SSH authentication to remote host failed: '${HUNTSMAN_REMOTE_HOST}'. Please investigate."
         CHECK_PASS=1
     fi
+    # Test connectivity of selected cameras
+    for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do
+        local hostname = $(echo "$row" | jq -r '.hostname')
+        local use = $(echo "$row" | jq -r '.use')
+        if [ $use == "true" ] && ! test_ssh_connectivity "${hostname}"; then
+            echo "ERROR: SSH authentication to camera host failed: '${hostname}'. Please investigate."
+            CHECK_PASS=1
+        fi
+    done
 
     # Check if Python scripts exist
     for script in create_streams.py memory_monitor.py storage_manager.py consumer.py; do
-        if [ ! -f "$NATS_SCRIPT_DIR/$script" ]; then
-            echo "Error: $script not found in $NATS_SCRIPT_DIR"
+        if [ ! -f "$HUNTSMAN_POCS/nats/$script" ]; then
+            echo "Error: $script not found in $HUNTSMAN_POCS/nats"
             CHECK_PASS=1
         fi
     done
@@ -105,7 +127,7 @@ pre_script_checks(){
     # Check if SSH tunnel is active
     if ! ssh "${HUNTSMAN_REMOTE_HOST}" "nc -z localhost 4222"; then
         echo "ERROR: SSH tunnel test failed"
-        exit 1
+        CHECK_PASS=1
     fi
 }
 
@@ -127,15 +149,15 @@ monitoring_setup(){
 
     byobu split-window -h -t $BYOBU_SESSION:$idx # Split the window into two columns (vertical split)
     echo "Starting memory monitor in left pane..."
-    byobu send-keys -t $BYOBU_SESSION:"${idx}.0" "echo 'Starting Memory Monitor...' && python $NATS_SCRIPT_DIR/memory_monitor.py" Enter
+    byobu send-keys -t $BYOBU_SESSION:"${idx}.0" "echo 'Starting Memory Monitor...' && python $HUNTSMAN_POCS/nats/memory_monitor.py" Enter
     echo "Starting storage manager in right pane..."
-    byobu send-keys -t $BYOBU_SESSION:"${idx}.1" "echo 'Starting Storage Manager...' && python $NATS_SCRIPT_DIR/storage_manager.py" Enter
+    byobu send-keys -t $BYOBU_SESSION:"${idx}.1" "echo 'Starting Storage Manager...' && python $HUNTSMAN_POCS/nats/storage_manager.py" Enter
 }
 
 # Setup the consumers window. Runs on the remote server
 remote_host_setup(){
-    echo "Copying scripts from local NATS_SCRIPT_DIR to remote NATS_REMOTE_SCRIPT_DIR:"
-    scp $NATS_SCRIPT_DIR/* huntsman@$HUNTSMAN_REMOTE_HOST:$NATS_REMOTE_SCRIPT_DIR
+    echo "Copying scripts from local HUNTSMAN_POCS/nats to remote NATS_REMOTE_SCRIPT_DIR:"
+    scp $HUNTSMAN_POCS/nats/* huntsman@$HUNTSMAN_REMOTE_HOST:$NATS_REMOTE_SCRIPT_DIR
 
     echo "Running consumers on remote server..."
     byobu new-window -t $BYOBU_SESSION -n "Remote Consumers"
@@ -160,8 +182,8 @@ camera_setup(){
     byobu split-window -h -t $BYOBU_SESSION:$idx # Split the window into two columns (vertical split)
     byobu send-keys -t $BYOBU_SESSION:"$idx.0" "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$hostname" Enter
     byobu send-keys -t $BYOBU_SESSION:"$idx.1" "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$hostname" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export HUNTSMAN_REMOTE_HOST=${HUNTSMAN_REMOTE_HOST}" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export HUNTSMAN_REMOTE_IMAGES_DIR=${HUNTSMAN_REMOTE_HOST}:${PANDIR}/images" Enter
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export HUNTSMAN_CONTROL_HOST=${HUNTSMAN_CONTROL_HOST}" Enter
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export HUNTSMAN_CONTROL_IMAGES_DIR=${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images" Enter
     byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export LOCAL_IMAGES_DIR=${PANDIR}/images" Enter
     byobu send-keys -t $BYOBU_SESSION:"$idx.0" "source ~/.bash_profile && sleep 10" Enter
     byobu send-keys -t $BYOBU_SESSION:"$idx.0" "/bin/bash /var/huntsman/scripts/run-camera-service.sh" Enter # Run the service setup script
@@ -180,7 +202,7 @@ if [ "$CHECK_PASS" -eq 1 ]; then
 fi
 
 echo "Proceeding with the following configuration:"
-echo "  NATS_SCRIPT_DIR:                ${NATS_SCRIPT_DIR}"
+echo "  HUNTSMAN_POCS:                  ${HUNTSMAN_POCS}"
 echo "  NATS_REMOTE_SCRIPT_DIR:         ${NATS_REMOTE_SCRIPT_DIR}"
 echo "  NATS_REMOTE_PYTHON_EXECUTABLE:  ${NATS_REMOTE_PYTHON_EXECUTABLE}"
 echo "  HUNTSMAN_REMOTE_HOST:           ${HUNTSMAN_REMOTE_HOST}"
@@ -188,12 +210,13 @@ echo "  BYOBU_SESSION:                  ${BYOBU_SESSION}"
 
 # Kill any existing session with the same name and start a new one
 byobu kill-session -t $BYOBU_SESSION 2>/dev/null || true
-byobu new-session -d -s $BYOBU_SESSION -c $NATS_SCRIPT_DIR
+byobu new-session -d -s $BYOBU_SESSION -c $HUNTSMAN_POCS/nats
 
 
+# Main system setup
 monitoring_setup
 remote_host_setup
-for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do
+for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do # All cameras as defined in huntsman.env
     hostname = $(echo "$row" | jq -r '.hostname')
     use = $(echo "$row" | jq -r '.use')
     cam_num = $(echo "$row" | jq -r '.cam_num')
