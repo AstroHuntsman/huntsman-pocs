@@ -127,7 +127,7 @@ docker-compose ps
 ### 3. Run the NATS Startup Script
 
 ```bash
-$HUNTSMAN_POCS/nats/setup_nats.sh
+$HUNTSMAN_POCS/scripts/setup_nats.sh
 
 ```
 This script will check all required environment variables, the SSH tunnel and SSH connectivity before setting up the rest of the system.
@@ -361,7 +361,7 @@ tail -f /var/huntsman/images/memory_status.json
 
 ```bash
 # Attach to monitoring session
-byobu attach-session -t nats-monitoring
+byobu attach-session -t huntsman-nats
 
 # Detach from session (Ctrl+F6 or)
 byobu detach
@@ -370,7 +370,7 @@ byobu detach
 byobu list-sessions
 
 # Kill monitoring session
-byobu kill-session -t nats-monitoring
+byobu kill-session -t huntsman-nats
 ```
 
 ## Configuration
