@@ -1,4 +1,4 @@
-ARG image_url=bsreddragon/panoptes-pocs
+ARG image_url=huntsmanarray/panoptes-pocs
 ARG image_tag=v0.7.8
 
 FROM ${image_url}:${image_tag} AS pocs-base
@@ -16,8 +16,8 @@ ENV POCS="/huntsman"
 
 ARG panuser=pocs-user
 ARG userid=1000
-ENV USERID $userid
-ENV PANUSER $panuser
+ENV USERID=$userid
+ENV PANUSER=$panuser
 
 
 #USER "${userid}"
@@ -36,10 +36,10 @@ RUN echo "Building from ${image_url}:${image_tag}" && \
 ARG pip_install_name="."
 ARG pip_install_extras=""
 
+WORKDIR "${POCS}"
+
 COPY --chown="${PANUSER}:${MAMBA_USER}" resources resources
 COPY --chown="${PANUSER}:${MAMBA_USER}" scripts scripts
-
-WORKDIR "${POCS}"
 COPY --chown="${PANUSER}:${MAMBA_USER}" . .
 
 RUN echo "Installing ${pip_install_name} module with ${pip_install_extras}" && \
