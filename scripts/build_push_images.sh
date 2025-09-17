@@ -69,8 +69,8 @@ pre_script_checks(){
         echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See nats/README.md for details"
         CHECK_PASS=1
     fi
-    if [ -z "$DOCKER_BUILD_TAG" ]; then
-        echo "ERROR: DOCKER_BUILD_TAG not set. Please source huntsman.env. See nats/README.md for details"
+    if [ -z "$DOCKER_TAG" ]; then
+        echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See nats/README.md for details"
         CHECK_PASS=1
     fi
     if [ -z "$HUNTSMAN_POCS" ]; then
@@ -139,24 +139,24 @@ fi
 if  [ ${huntsman_pocs} == "true" ]; then
     echo "Building HUNTSMN-POCS image: ${huntsman_pocs_name}"
     cd "${HUNTSMAN_POCS}/docker/huntsman-pocs"
-    docker build ${nocache} --tag ${huntsman_pocs_name}:${DOCKER_BUILD_TAG} \
+    docker build ${nocache} --tag ${huntsman_pocs_name}:${DOCKER_TAG} \
         -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}"
     if [ ${push} == "true" ]; then
         echo "Pushing HUNTSMAN-POCS image: ${huntsman_pocs_name}"
-        docker push ${huntsman_pocs_name}:${DOCKER_BUILD_TAG}
+        docker push ${huntsman_pocs_name}:${DOCKER_TAG}
     fi
     cd -
 fi
 if  [ ${huntsman_camera} == "true" ]; then
     echo "Building HUNTSMAN-CAMERA image: ${huntsman_camera_name}"
     cd "${HUNTSMAN_POCS}/docker/camera"
-    docker build ${nocache} --tag ${huntsman_camera_name}:${DOCKER_BUILD_TAG} \
+    docker build ${nocache} --tag ${huntsman_camera_name}:${DOCKER_TAG} \
         --build-arg image_url=${huntsman_pocs_name} \
-        --build-arg image_tag=${DOCKER_BUILD_TAG} \
+        --build-arg image_tag=${DOCKER_TAG} \
         -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" "${HUNTSMAN_POCS}"
     if [ ${push} == "true" ]; then
         echo "Pushing HUNTSMAN-CAMERA image: ${huntsman_camera_name}"
-        docker push ${huntsman_camera_name}:${DOCKER_BUILD_TAG}
+        docker push ${huntsman_camera_name}:${DOCKER_TAG}
     fi
     cd -
 fi

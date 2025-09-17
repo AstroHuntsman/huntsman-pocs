@@ -70,6 +70,10 @@ Most of the variables will not need changing, but it's good to give a quick once
 - **NATS_REMOTE_SCRIPT_DIR:** The directory that stores the consumer.py python file on the Remote server
 - **MEMORY_STATUS_FILE:** The location of the memory status file that will be accessed by the Camera and Control servers
 - **MEMORY_THRESHOLD:** If the memory of the Control server is above this percentage, will instead publish to the disk-storage stream.
+- **DOCKER_USER:** The Docker user. Will be used for naming images, pushing to Dockerhub, and pulling from the appropriate url. e.g. `${DOCKER_USER}/huntsman-pocs`
+- **DOCKER_TAG:** The tag to use for huntsman (not panoptes) docker images. Used for both image creation and pulling. e.g. `${DOCKER_USER}/huntsman-pocs:${DOCKER_TAG}`
+- **DOCKER_PAT:** The Docker Personal Access Token. Used to push images to Docker hub. See [the official docs](https://docs.docker.com/security/access-tokens/) for further information.
+
 
 ### Python
 You'll need to set up your Python environment on the control server. The officially supported version is 3.9. If this is not already installed, it'll need to be. There are numerous online tutorials on how to install a specific version of Python.
@@ -107,29 +111,45 @@ This setup has the enormous advantage of seemless connectivity between each of o
 
 ## Quick Start
 
-### 1. Environment Setup
+### Environment Setup
 
 Source your `huntsman.env` file to load the correct environment variables
 ```bash
 source huntsman.env
 ```
 
-### 2. Start Movie Mode Services from Config
+### Build Docker Images
+There are four docker images that need to be built. Two from the base Panoptes and two Huntsman images that build from it.
+
+You can quickly build these with the build script
+```bash
+$HUNTSMAN_POCS/scripts/build_push_images.sh
+
+# Optionally, don't push the images to Docker Hub
+$HUNTSMAN_POCS/scripts/build_push_images.sh --no-push
+
+# If you've already build the panoptes images and don't want to have to rebuild (their tags are static)
+$HUNTSMAN_POCS/scripts/build_push_images.sh --no-pan-utils --no-pan-pocs
+```
+
+### Start Movie Mode Services from Config
 
 ```bash
 # Start all containerised services on the Control server
 docker compose -f $HUNTSMAN_CONFIG/conf_files/pocs/docker-compose.yaml up -d
 
 # Check status
-docker-compose ps
+docker compose ps
 ```
 
-### 3. Run the NATS Startup Script
+### Run the NATS Startup Script
+Start the rest of the services including the memory monitor (control), the streams (control), the consumers (remote) and the pyro server (camera).
 
 ```bash
 $HUNTSMAN_POCS/scripts/setup_nats.sh
 
 ```
+
 This script will check all required environment variables, the SSH tunnel and SSH connectivity before setting up the rest of the system.
 
 Provided it succeeds, instructions will be displayed describing how to connect to the byobu session and monitor the system.

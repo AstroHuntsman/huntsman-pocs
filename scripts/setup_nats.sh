@@ -1,30 +1,28 @@
 #!/bin/bash
-set -u
-# set -euo pipefail NOTE: we don't want to fail because we might make a running session and then die without closing it.
 
-# Enhanced NATS Setup Script with Byobu
-# Usage: ./setup_manager_monitoring.sh [--skip-create-streams] [--session-name NAME]
-
-SKIP_CREATE_STREAMS=false
 BYOBU_SESSION="huntsman-nats"
+SKIP_CONFIRMATION=false
+# Generate Image names from env variables
+POCS_IMAGE=${DOCKER_USER}/huntsman-pocs:${DOCKER_TAG}
+CAMERA_IMAGE=${DOCKER_USER}/huntsman-pocs-camera:${DOCKER_TAG}
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --skip-create-streams)
-            SKIP_CREATE_STREAMS=true
-            shift
-            ;;
         --session-name)
             BYOBU_SESSION="$2"
             shift 2
             ;;
+        --skip-confirmation)
+            SKIP_CONFIRMATION=true
+            shift 
+            ;;
         -h|--help)
             echo "Usage: $0 [OPTIONS]"
             echo "Options:"
-            echo "  --skip-create-streams    Skip running create_streams.py"
-            echo "  --session-name NAME      Use custom session name (default: ${BYOBU_SESSION})"
-            echo "  -h, --help              Show this help message"
+            echo "  --session-name NAME                 Use custom session name (default: ${BYOBU_SESSION})"
+            echo "  --skip-confirmation                 Don't ask for confirmation before proceeding"
+            echo "  -h, --help                          Show this help message"
             exit 0
             ;;
         *)
@@ -61,6 +59,27 @@ get_window_idx() {
     echo "$idx"
 }
 
+# Ask for Yes/No confirmation
+user_confirm() {
+    local prompt="$1"
+    local response
+
+    while true; do
+        read -r -p "$prompt [y/n]: " response
+        case "$response" in
+            [Yy]|[Yy][Ee][Ss])
+                return 0  # yes
+                ;;
+            [Nn]|[Nn][Oo])
+                return 1  # no
+                ;;
+            *)
+                echo "Please enter y (yes) or n (no)."
+                ;;
+        esac
+    done
+}
+
 # Make any necessary checks before proceesing
 pre_script_checks(){
     # Environment variables
@@ -87,6 +106,14 @@ pre_script_checks(){
     fi
     if [ -z "${BYOBU_SESSION}" ]; then
         echo "ERROR: BYOBU_SESSION not set. Please source huntsman.env. See nats/README.md for details"
+        CHECK_PASS=1
+    fi
+    if [ -z "${DOCKER_USER}" ]; then
+        echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See nats/README.md for details"
+        CHECK_PASS=1
+    fi
+    if [ -z "${DOCKER_TAG}" ]; then
+        echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See nats/README.md for details"
         CHECK_PASS=1
     fi
     # Check dependencies
@@ -124,24 +151,18 @@ pre_script_checks(){
         fi
     done
 
-    # Check if SSH tunnel is active
-    if ! ssh "${HUNTSMAN_REMOTE_HOST}" "nc -z localhost 4222"; then
-        echo "ERROR: SSH tunnel test failed"
-        CHECK_PASS=1
-    fi
 }
+
 
 # Setup the monitoring window. Runs on the (local) control server
 monitoring_setup(){
-    if [ "$SKIP_CREATE_STREAMS" = false ]; then
-        echo "Creating NATS streams..."
-        # Run create_streams.py and wait for it to complete
-        byobu send-keys -t $BYOBU_SESSION "echo 'Creating NATS streams...' && python create_streams.py && echo 'Streams created successfully!'" Enter
-        echo "Waiting for streams to be created..."
-        sleep 8
-    else
-        echo "Skipping stream creation..."
-    fi
+    echo "Creating NATS streams..."
+    # Run create_streams.py and wait for it to complete
+    # byobu send-keys -t $BYOBU_SESSION "echo 'Creating NATS streams...' && python create_streams.py && echo 'Streams created successfully!'" Enter
+    # byobu send-keys -t $BYOBU_SESSION "echo 'Pulling Huntsaman-POCS container' && docker pull ${POCS_IMAGE}" Enter
+    byobu send-keys -t $BYOBU_SESSION "echo 'Creating NATS streams...' && docker run --pull=always ${POCS_IMAGE} 'python nats/create_streams.py'" Enter
+    echo "Waiting for streams to be created..."
+    sleep 8
 
     # Start the window
     byobu rename-window -t $BYOBU_SESSION:0 "Monitor"
@@ -149,71 +170,116 @@ monitoring_setup(){
 
     byobu split-window -h -t $BYOBU_SESSION:$idx # Split the window into two columns (vertical split)
     echo "Starting memory monitor in left pane..."
-    byobu send-keys -t $BYOBU_SESSION:"${idx}.0" "echo 'Starting Memory Monitor...' && python $HUNTSMAN_POCS/nats/memory_monitor.py" Enter
+    byobu send-keys -t $BYOBU_SESSION:"${idx}.0" "echo 'Starting Memory Monitor...' && docker run --pull=always ${POCS_IMAGE} 'python nats/memory_monitor.py'" Enter
     echo "Starting storage manager in right pane..."
-    byobu send-keys -t $BYOBU_SESSION:"${idx}.1" "echo 'Starting Storage Manager...' && python $HUNTSMAN_POCS/nats/storage_manager.py" Enter
+    byobu send-keys -t $BYOBU_SESSION:"${idx}.1" "echo 'Starting Storage Manager...' && docker run --pull=always ${POCS_IMAGE} 'python nats/storage_manager.py'" Enter
 }
 
 # Setup the consumers window. Runs on the remote server
 remote_host_setup(){
-    echo "Copying scripts from local HUNTSMAN_POCS/nats to remote NATS_REMOTE_SCRIPT_DIR:"
-    scp $HUNTSMAN_POCS/nats/* huntsman@$HUNTSMAN_REMOTE_HOST:$NATS_REMOTE_SCRIPT_DIR
+    # echo "Copying scripts from local HUNTSMAN_POCS/nats to remote NATS_REMOTE_SCRIPT_DIR:"
+    # scp $HUNTSMAN_POCS/nats/* huntsman@$HUNTSMAN_REMOTE_HOST:$NATS_REMOTE_SCRIPT_DIR
 
     echo "Running consumers on remote server..."
     byobu new-window -t $BYOBU_SESSION -n "Remote Consumers"
     local idx=$(get_window_idx "Remote Consumers") || exit 1
 
     byobu send-keys -t $BYOBU_SESSION:$idx "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$HUNTSMAN_REMOTE_HOST" Enter
-    byobu send-keys -t $BYOBU_SESSION:$idx "export NATS_REMOTE_SCRIPT_DIR=$NATS_REMOTE_SCRIPT_DIR" Enter
-    byobu send-keys -t $BYOBU_SESSION:$idx "export NATS_REMOTE_PYTHON_EXECUTABLE=$NATS_REMOTE_PYTHON_EXECUTABLE" Enter
-    byobu send-keys -t $BYOBU_SESSION:$idx "echo 'Starting consumers..' && $NATS_REMOTE_PYTHON_EXECUTABLE $NATS_REMOTE_SCRIPT_DIR/start_consumers.py" Enter
+    # byobu send-keys -t $BYOBU_SESSION:$idx "export NATS_REMOTE_SCRIPT_DIR=$NATS_REMOTE_SCRIPT_DIR" Enter
+    # byobu send-keys -t $BYOBU_SESSION:$idx "export NATS_REMOTE_PYTHON_EXECUTABLE=$NATS_REMOTE_PYTHON_EXECUTABLE" Enter
+    # byobu send-keys -t $BYOBU_SESSION:$idx "echo 'Starting consumers..' && $NATS_REMOTE_PYTHON_EXECUTABLE $NATS_REMOTE_SCRIPT_DIR/start_consumers.py" Enter
+    byobu send-keys -t $BYOBU_SESSION:$idx "echo 'Starting consumers..' && docker run --pull=always ${POCS_IMAGE} 'python nats/start_consumers.py'" Enter
 }
+
 
 # Setup the cameras windows. Runs on each camera server.
 camera_setup(){
     local hostname
     local cam_num
-    echo "Copying scripts from local HUNTSMAN_POCS/camera/scripts to remote camera /var/huntsman/scripts"
-    scp $HUNTSMAN_POCS/camera/scripts/* huntsman@$hostname:/var/huntsman/scripts
+    # echo "Copying scripts from local HUNTSMAN_POCS/camera/scripts to remote camera /var/huntsman/scripts"
+    # scp $HUNTSMAN_POCS/camera/scripts/* $hostname:/var/huntsman/scripts
 
     echo "Creating new window for camera ${cam_num}"
     byobu new-window -t $BYOBU_SESSION -n "Cam ${cam_num}"
     local idx=$(get_window_idx "Cam ${cam_num}")
     byobu split-window -h -t $BYOBU_SESSION:$idx # Split the window into two columns (vertical split)
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$hostname" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.1" "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$hostname" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export HUNTSMAN_CONTROL_HOST=${HUNTSMAN_CONTROL_HOST}" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export HUNTSMAN_CONTROL_IMAGES_DIR=${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "export LOCAL_IMAGES_DIR=${PANDIR}/images" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "source ~/.bash_profile && sleep 10" Enter
-    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "/bin/bash /var/huntsman/scripts/run-camera-service.sh" Enter # Run the service setup script
-    byobu send-keys -t $BYOBU_SESSION:"$idx.1" "echo 'Sleeping 30 seconds...' && sleep 30 && tail -F -n 10000 /var/huntsman/logs/huntsman.log" Enter
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "ssh -o ConnectTimeout=10 -o BatchMode=yes ${hostname}" Enter
+    byobu send-keys -t $BYOBU_SESSION:"$idx.1" "ssh -o ConnectTimeout=10 -o BatchMode=yes ${hostname}" Enter
 
+    # The docker run command to run the contianer
+    local run = "docker run \
+        --pull=always \
+        --name camera \ 
+        -it --rm \
+        --privileged \
+        --network host \
+        -e PANDIR=/var/huntsman \
+        -e PANOPTES_CONFIG_HOST= \
+        -e PANOPTES_CONFIG_PORT=6563 \
+        -e TZ="Australia/Sydney" \
+        -v '${PANDIR}/images:/huntsman/images' \
+        -v '${PANDIR}/logs:/huntsman/logs' \
+        -v /dev/bus/usb:/dev/bus/usb \
+        --group-add dialout \
+        --group-add sudo \
+        --group-add plugdev \
+        --group-add users \
+        ${CAMERA_IMAGE} \
+        huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService"
+    # byobu send-keys -t $BYOBU_SESSION:"$idx.0" "/bin/bash /var/huntsman/scripts/run-camera-service.sh" Enter # Run the service setup script
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "source ~/.bash_profile && sleep 10" Enter
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "docker ps -q --filter 'name=camera' | grep -q . && docker stop camera" # Stop any camera service if it's running
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "docker system prune -f --volumes" Enter # Delete old volumes
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "mkdir -p ${PANDIR}/images && sudo unmount ${PANDIR}/images && sudo mounts -t nfs ${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images ${PANDIR}/images" Enter # Mount the network volume
+    byobu send-keys -t $BYOBU_SESSION:"$idx.0" "${run}" Enter # Run the service setup script
+    byobu send-keys -t $BYOBU_SESSION:"$idx.1" "echo 'Sleeping 30 seconds...' && sleep 30 && tail -F -n 10000 /var/huntsman/logs/huntsman.log" Enter
 }
 
-# Restart SSH tunnel
-pkill -f "ssh -.*R.*4222"
-ssh -f -N -R 4222:localhost:4222 $HUNTSMAN_REMOTE_HOST
 
+## Pre-Script Assurances ##
 pre_script_checks
 if [ "$CHECK_PASS" -eq 1 ]; then
     echo "Checks failed with error(s). Exiting..."
     exit 1
 fi
 
-echo "Proceeding with the following configuration:"
+
+# Set undefined variable error ONLY. If something errors, we don't want to stop the whole system from proceeding.
+set -u 
+
+echo "----------- Configuration -----------"
+echo "  BYOBU_SESSION:                  ${BYOBU_SESSION}"
 echo "  HUNTSMAN_POCS:                  ${HUNTSMAN_POCS}"
 echo "  NATS_REMOTE_SCRIPT_DIR:         ${NATS_REMOTE_SCRIPT_DIR}"
 echo "  NATS_REMOTE_PYTHON_EXECUTABLE:  ${NATS_REMOTE_PYTHON_EXECUTABLE}"
 echo "  HUNTSMAN_REMOTE_HOST:           ${HUNTSMAN_REMOTE_HOST}"
-echo "  BYOBU_SESSION:                  ${BYOBU_SESSION}"
+echo "  POCS_IMAGE_NAME:                ${POCS_IMAGE}"
+echo "  CAMERA_IMAGE_NAME:              ${CAMERA_IMAGE}"
 
-# Kill any existing session with the same name and start a new one
+if [ SKIP_CONFIRMATION == "false" ]; then
+    if ! user_confirm "Continue with this configuration? [y/n]"; then
+        echo "Exiting..."
+        exit 1
+    else
+        echo "Continuing..."
+    fi
+fi
+
+
+## Set up the SSH tunnel ##
+pkill -f "ssh -.*R.*4222" # Kill any exisitng tunnel
+ssh -f -N -R 4222:localhost:4222 $HUNTSMAN_REMOTE_HOST
+# Check if SSH tunnel is active
+if ! ssh "${HUNTSMAN_REMOTE_HOST}" "nc -z localhost 4222"; then
+    echo "ERROR: SSH tunnel test failed"
+    exit 1
+fi
+
+
+## Main system setup ##
+# Kill any existing byobu session with the same name and start a new one
 byobu kill-session -t $BYOBU_SESSION 2>/dev/null || true
 byobu new-session -d -s $BYOBU_SESSION -c $HUNTSMAN_POCS/nats
-
-
-# Main system setup
 monitoring_setup
 remote_host_setup
 for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do # All cameras as defined in huntsman.env
@@ -228,7 +294,6 @@ for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do # All cameras as defi
 done
 
 
-
 echo ""
 echo "Setup complete! Byobu session '${BYOBU_SESSION}' is ready."
 echo ""
@@ -240,8 +305,3 @@ echo "  Alt+Left/Right     - Switch between panes"
 echo "  F2                 - Create new window"
 echo "  F3/F4              - Previous/Next window"
 echo ""
-# echo "Attaching to session..."
-# sleep 2
-
-# Attach to the session
-# byobu attach-session -t $BYOBU_SESSION
