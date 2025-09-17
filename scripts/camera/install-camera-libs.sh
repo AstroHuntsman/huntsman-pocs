@@ -28,23 +28,27 @@ function install_zwo() {
     # Install dependencies.
     apt-get update && apt-get --yes install libusb-1.0-0-dev libudev-dev
 
+    echo "Downloading ASI SDK"
     mkdir -p "${BUILD_DIR}/zwo" && cd "${BUILD_DIR}/zwo"
     INSTALL_FILE="ASI_SDK"
     wget --output-document "${INSTALL_FILE}.zip" "${ASI_SDK_URI}"
     unzip "${INSTALL_FILE}.zip"
-    tar xvjf "${INSTALL_FILE}/ASI_linux_mac_SDK_V*.tar.bz2" && cd ASI_linux_mac_SDK_V*/lib
+    tar xvjf ASI_Camera_SDK/ASI_linux_mac_SDK_V*.tar.bz2 && cd ASI_linux_mac_SDK_V*/lib
     # Move the library file.
+    echo "Installing ASI libraries"
     cp "${ARCH}/libASICamera2.so" /usr/local/lib/
     chmod a+rx /usr/local/lib/libASICamera2.so
     install asi.rules /etc/udev/rules.d
 
     # ZWO filterwheel
+    echo "Downloading ZWO EFW SDK"
     mkdir -p "${BUILD_DIR}/zwo-filterwheel" && cd "${BUILD_DIR}/zwo-filterwheel"
     INSTALL_FILE="EFW_SDK"
     wget --output-document "${INSTALL_FILE}.zip" "${EFW_SDK_URI}"
-    unzip "${INSTALL_FILE}"
-    tar xvjf "${INSTALL_FILE}/EFW_linux_macOS_SDK_V*.tar.bz2" && cd EFW_linux_mac_SDK_V*/lib
+    unzip "${INSTALL_FILE}.zip"
+    tar xvjf ${INSTALL_FILE}/EFW_Linux_macOS_SDK_V*.tar.bz2 && cd EFW_linux_mac_SDK_V*/lib
     # Move the library file.
+    echo "Installing ZWO EFW libraries"
     cp "${ARCH}/libEFWFilter.so" /usr/local/lib/
     chmod a+rx /usr/local/lib/libEFWFilter.so
     install efw.rules /etc/udev/rules.d
