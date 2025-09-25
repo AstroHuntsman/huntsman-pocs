@@ -5,7 +5,7 @@ dependencies:
   - matplotlib-base
   - astropy>=5.2
   - numpy
-  - photutils
+  - photutils>=0.7
   - pillow
   - pip
   - scipy

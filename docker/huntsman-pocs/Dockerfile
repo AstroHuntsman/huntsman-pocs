@@ -34,7 +34,7 @@ RUN echo "Building from ${image_url}:${image_tag}" && \
     sudo chown -R "${PANUSER}:${MAMBA_USER}" "${POCS}"
 
 ARG pip_install_name="."
-ARG pip_install_extras=""
+ARG pip_install_extras="[testing]"
 
 WORKDIR "${POCS}"
 

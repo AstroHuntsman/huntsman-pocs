@@ -12,7 +12,6 @@ from panoptes.utils.config.client import get_config, set_config
 from panoptes.utils.config.server import config_server
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.service import pyro_service_process
-import huntsman.pocs.utils.pyro.serializers  # noqa
 
 _all_databases = ['file', 'memory']
 
