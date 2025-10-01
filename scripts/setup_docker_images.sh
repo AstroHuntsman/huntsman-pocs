@@ -1,38 +1,38 @@
 #!/bin/bash
 set -eo pipefail
 
-panoptes_utils=true
-panoptes_pocs=true
-huntsman_pocs=true
-huntsman_camera=true
-push=true
-nocache=""
+PANOPTES_UTILS=true
+PANOPTES_POCS=true
+HUNTSMAN_POCS_IMAGE=true
+HUNTSMAN_CAMERA=true
+PUSH=true
+NOCACHE=""
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
-    case $1 in
+    case "$1" in
         --no-pan-utils)
-            panoptes_utils=false
+            PANOPTES_UTILS=false
             shift
             ;;
         --no-pan-pocs)
-            panoptes_pocs=false
+            PANOPTES_POCS=false
             shift
             ;;
         --no-hun-pocs)
-            huntsman_pocs=false
+            HUNTSMAN_POCS_IMAGE=false
             shift
             ;;
         --no-hun-cam)
-            huntsman_camera=false
+            HUNTSMAN_CAMERA=false
             shift
             ;;
         --no-push)
-            push=false
+            PUSH=false
             shift
             ;;
         --no-cache)
-            nocache="--no-cache"
+            NOCACHE="--no-cache"
             shift
             ;;
         -h|--help)
@@ -79,7 +79,7 @@ pre_script_checks(){
     fi
 
     # DOCKER PAT if pushing
-    if [ $push == "true" ]; then
+    if [ "$PUSH" == "true" ]; then
         if [ -z "$DOCKER_PAT" ]; then
             echo "ERROR: DOCKER_PAT not set. Please source huntsman.env. See nats/README.md for details"
             CHECK_PASS=1
@@ -91,72 +91,78 @@ pre_script_checks(){
         echo "Error: docker is not installed. Please install it first:"
         CHECK_PASS=1
     fi
+
+
 }
 
 pre_script_checks
+if [ "$CHECK_PASS" -eq 1 ]; then
+    echo "Checks failed with error(s). Exiting..."
+    exit 1
+fi
 set -u # Turn on unknown variable errors
 
 # Login to docker if push is on
-if [ $push == "true" ]; then
-    echo "${DOCKER_PAT}" | docker login -u ${DOCKER_USER} --password-stdin
+if [ "$PUSH" == "true" ]; then
+    echo "${DOCKER_PAT}" | docker login -u "${DOCKER_USER}" --password-stdin
 fi
 
 echo "Proceeding with the following settings:"
-echo "  Build PANOPTES-UTILS:   ${panoptes_utils}"
-echo "  Build PANOPTES-POCS:    ${panoptes_pocs}"
-echo "  Build HUNTSMAN-POCS:    ${huntsman_pocs}"
-echo "  Build HUNTSMAN-CAMERA:  ${huntsman_camera}"
-echo "  Push images to remote:  ${push}"
-echo "  Cache:  ${nocache}"
+echo "  Build PANOPTES-UTILS:   ${PANOPTES_UTILS}"
+echo "  Build PANOPTES-POCS:    ${PANOPTES_POCS}"
+echo "  Build HUNTSMAN-POCS:    ${HUNTSMAN_POCS_IMAGE}"
+echo "  Build HUNTSMAN-CAMERA:  ${HUNTSMAN_CAMERA}"
+echo "  Push images to remote:  ${PUSH}"
+echo "  Cache:  ${NOCACHE}"
 echo ""
 
-panoptes_utils_name=${DOCKER_USER}/panoptes-utils
-panoptes_pocs_name=${DOCKER_USER}/panoptes-pocs
-huntsman_pocs_name=${DOCKER_USER}/huntsman-pocs
-huntsman_camera_name=${DOCKER_USER}/huntsman-pocs-camera
+PANOPTES_UTILS_NAME=${DOCKER_USER}/panoptes-utils
+PANOPTES_POCS_NAME=${DOCKER_USER}/panoptes-pocs
+HUNTSMAN_POCS_NAME=${DOCKER_USER}/huntsman-pocs
+HUNTSMAN_CAMERA_NAME=${DOCKER_USER}/huntsman-pocs-camera
 
 # Builds
-if  [ ${panoptes_utils} == "true" ]; then
-    echo "Building PANOPTES-UTILS image: ${panoptes_utils_name}"
+if  [ "${PANOPTES_UTILS}" == "true" ]; then
+    echo "Building PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-utils"
-    docker build ${nocache} --tag ${panoptes_utils_name}:v0.2.35 .
-    if [ ${push} == "true" ]; then
-        echo "Pushing PANOPTES-UTILS image: ${panoptes_utils_name}"
-        docker push ${panoptes_utils_name}:v0.2.35
+    docker build "${NOCACHE}" --tag "${PANOPTES_UTILS_NAME}:v0.2.35" .
+    if [ "${PUSH}" == "true" ]; then
+        echo "Pushing PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
+        docker push "${PANOPTES_UTILS_NAME}:v0.2.35"
     fi
     cd -
 fi
-if  [ ${panoptes_pocs} == "true" ]; then
-    echo "Building PANOPTES-POCS image: ${panoptes_pocs_name}"
+if  [ "${PANOPTES_POCS}" == "true" ]; then
+    echo "Building PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-pocs"
-    docker build ${nocache} --tag ${panoptes_pocs_name}:v0.7.8 .
-    if [ ${push} == "true" ]; then
-        echo "Pushing PANOPTES-POCS image: ${panoptes_pocs_name}"
-        docker push ${panoptes_pocs_name}:v0.7.8
+    docker build "${NOCACHE}" --tag "${PANOPTES_POCS_NAME}:v0.7.8" .
+    if [ "${PUSH}" == "true" ]; then
+        echo "Pushing PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
+        docker push "${PANOPTES_POCS_NAME}:v0.7.8"
     fi
     cd -
 fi
-if  [ ${huntsman_pocs} == "true" ]; then
-    echo "Building HUNTSMN-POCS image: ${huntsman_pocs_name}"
+if  [ "${HUNTSMAN_POCS_IMAGE}" == "true" ]; then
+    echo "Building HUNTSMN-POCS image: ${HUNTSMAN_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/huntsman-pocs"
-    docker build ${nocache} --tag ${huntsman_pocs_name}:${DOCKER_TAG} \
+    docker build "${NOCACHE}" --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" \
         -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}"
-    if [ ${push} == "true" ]; then
-        echo "Pushing HUNTSMAN-POCS image: ${huntsman_pocs_name}"
-        docker push ${huntsman_pocs_name}:${DOCKER_TAG}
+    if [ "${PUSH}" == "true" ]; then
+        echo "Pushing HUNTSMAN-POCS image: ${HUNTSMAN_POCS_NAME}"
+        docker push "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}"
     fi
     cd -
 fi
-if  [ ${huntsman_camera} == "true" ]; then
-    echo "Building HUNTSMAN-CAMERA image: ${huntsman_camera_name}"
+if  [ "${HUNTSMAN_CAMERA}" == "true" ]; then
+    echo "Building HUNTSMAN-CAMERA image: ${HUNTSMAN_CAMERA_NAME}"
     cd "${HUNTSMAN_POCS}/docker/camera"
-    docker build ${nocache} --tag ${huntsman_camera_name}:${DOCKER_TAG} \
-        --build-arg image_url=${huntsman_pocs_name} \
-        --build-arg image_tag=${DOCKER_TAG} \
+    docker build "${NOCACHE}" --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" \
+        --build-arg image_url="${HUNTSMAN_POCS_NAME}" \
+        --build-arg image_tag="${DOCKER_TAG}" \
         -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" "${HUNTSMAN_POCS}"
-    if [ ${push} == "true" ]; then
-        echo "Pushing HUNTSMAN-CAMERA image: ${huntsman_camera_name}"
-        docker push ${huntsman_camera_name}:${DOCKER_TAG}
+    if [ "${PUSH}" == "true" ]; then
+        echo "Pushing HUNTSMAN-CAMERA image: ${HUNTSMAN_CAMERA_NAME}"
+        docker push "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}"
     fi
     cd -
 fi
