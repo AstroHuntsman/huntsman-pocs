@@ -1,28 +1,28 @@
-version: '3.7'
 services:
   python_tests:
     image: ${DOCKER_USER}/huntsman-pocs-test:${DOCKER_TAG}
-    # build:
-    #   context: ../
-    #   dockerfile: tests/Dockerfile
-    #   args:
-    #     - image_url=${DOCKER_USER}/panoptes-pocs
-    #     - image_tag=v0.7.8
+    build:
+      context: ../
+      dockerfile: tests/Dockerfile
+      args:
+        - image_url=${DOCKER_USER}/panoptes-pocs
+        - image_tag=v0.7.8
     # stdin_open: true
     init: true
-    tty: true
-    # environment:
-    #   - PANDIR=/huntsman
-    #   - HUNTSMAN_POCS=/huntsman
+    # tty: true
+    env_file:
+      - huntsman.test.env
+      # - PANDIR=/huntsman
+      # - HUNTSMAN_POCS=/huntsman
     volumes:
       - "./logs:/huntsman/logs"
-      # - "./build:/huntsman/build"
-      # - "./src:/huntsman/src"
-      # - "./tests:/huntsman/tests"
+      - "./build:/huntsman/build"
+    # - "./src:/huntsman/src"
+    # - "./tests:/huntsman/tests"
     # command: "pytest -v -s tests"
     # command: "/opt/conda/bin/python -m pytest -v -s tests"
     # command: ["/opt/conda/bin/python", "-m", "pytest", "-v", "-s", "tests"]
     # command: ["micromamba", "run", "-n", "base", "pytest", "-v", "-s", "tests"]
-    command: [ "pytest", "-v", "-s", "tests"]
+    command: ["pytest", "-v", "-s"]
     # command: ["pip freeze"]
     # entrypoint: ["/usr/bin/env",  "bash", "-ci"]
