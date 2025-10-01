@@ -54,3 +54,4 @@ USER $PANUSER
 
 ENV PATH=/opt/conda/bin:$PATH
 RUN source tests/huntsman.test.env
+ENTRYPOINT ["pytest"]
