@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
         -h|--help)
             echo "Utility for building and running the docker test environment."
             echo "Accepts arbitrary pytest arguments. Prefix test filenames with 'tests/'"
-            echo "e.g tests/test_camera.py"
+            echo "e.g -s tests/test_camera.py"
             echo ""
             echo "Usage: $0 [OPTIONS] [PYTEST_ARGS]"
             echo "Options:"
@@ -65,12 +65,15 @@ if [ $TEST == "true" ]; then
     mkdir -p "$logs_dir" && chmod -R 777 "$logs_dir"
     mkdir -p "$build_dir" && chmod -R 777 "$build_dir"
 
+
+    docker rm huntsman-pocs-test
     echo "Running tests..."
-    docker run --rm -it --init \
+    docker run -it \
+        --name huntsman-pocs-test \
         -v "$logs_dir:/huntsman/logs" \
         -v "$build_dir:/huntsman/build" \
         --env-file "${HUNTSMAN_POCS}/tests/huntsman.test.env" \
         "${DOCKER_USER}/huntsman-pocs-test:${DOCKER_TAG}" \
-        "${PYTEST_ARGS[@]}"
+        "/bin/bash -c 'pytest ${PYTEST_ARGS[*]}'"
 
 fi

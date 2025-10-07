@@ -8,12 +8,12 @@ LABEL repo="github.com/AstroHuntsman/huntsman-pocs"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
-ENV POCS "/panoptes-pocs"
-ENV HUNTSMAN_POCS "/huntsman"
+ENV POCS="/panoptes-pocs"
+ENV HUNTSMAN_POCS="/huntsman"
 ARG pocs_tag="v0.7.8"
 ARG pocs_url="https://github.com/panoptes/POCS.git@${pocs_tag}#egg=panoptes-pocs"
 
-ENV USERID 1000
+ENV USERID=1000
 ENV PANUSER=$USERID
 
 
@@ -36,13 +36,19 @@ COPY --chown="${PANUSER}:${PANUSER}" . .
 USER $PANUSER
 
 COPY docker/huntsman-pocs/environment.yaml .
-RUN micromamba update -n base -f environment.yaml && \
+RUN micromamba update -y --verbose --debug -n base -f environment.yaml && \
+    echo "1" && \
     micromamba run -n base pip uninstall -y panoptes-pocs && \
+    echo "2" && \
     micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
+    echo "3" && \
     micromamba run -n base pip install -e ".[testing]" && \
+    echo "4" && \
     # Cleanup
     micromamba run -n base pip cache purge && \
-    micromamba clean -fay 
+    echo "4" && \
+    micromamba clean -fay  && \
+    echo "5" 
 
 USER root
 RUN apt-get autoremove --purge --yes gcc pkg-config && \
@@ -54,4 +60,3 @@ USER $PANUSER
 
 ENV PATH=/opt/conda/bin:$PATH
 RUN source tests/huntsman.test.env
-ENTRYPOINT ["pytest"]
