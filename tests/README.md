@@ -30,6 +30,12 @@ The container can take any pytests arguments.
 docker compose run --rm python_tests -s tests/test_camera.py
 ```
 
+You can also run from the project root (or any other directory) by specifying the docker compose filepath:
+
+```bash
+docker compose -f /path/to/huntsman/tests/docker-compose.yml run --rm python_tests -s tests/test_camera.py
+```
+
 ## Additional Information
 
 The test container bind-mounts the following directories in the parent directory:

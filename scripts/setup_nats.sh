@@ -117,6 +117,14 @@ pre_script_checks(){
         echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See nats/README.md for details"
         CHECK_PASS=1
     fi
+    if [ -z "${MEMORY_THRESHOLD}" ]; then
+        echo "ERROR: MEMORY_THRESHOLD not set. Please source huntsman.env. See nats/README.md for details"
+        CHECK_PASS=1
+    fi
+    if [ -z "${MEMORY_STATUS_FILE}" ]; then
+        echo "ERROR: MEMORY_STATUS_FILE not set. Please source huntsman.env. See nats/README.md for details"
+        CHECK_PASS=1
+    fi
     # Check dependencies
     if ! command_exists byobu; then
         echo "Error: byobu is not installed. Please install it first:"
@@ -171,7 +179,7 @@ monitoring_setup(){
 
     byobu split-window -h -t "$BYOBU_SESSION":"$idx" # Split the window into two columns (vertical split)
     echo "Starting memory monitor in left pane..."
-    byobu send-keys -t "$BYOBU_SESSION":"${idx}.0" "echo 'Starting Memory Monitor...' && docker run --pull=always ${POCS_IMAGE} 'python nats/memory_monitor.py'" Enter
+    byobu send-keys -t "$BYOBU_SESSION":"${idx}.0" "echo 'Starting Memory Monitor...' && docker run --pull=always ${POCS_IMAGE} 'python nats/memory_monitor.py -m ${MEMORY_THRESHOLD}' -f ${MEMORY_STATUS_FILE}" Enter
     echo "Starting storage manager in right pane..."
     byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "echo 'Starting Storage Manager...' && docker run --pull=always ${POCS_IMAGE} 'python nats/storage_manager.py'" Enter
 }
