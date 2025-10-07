@@ -37,18 +37,12 @@ USER $PANUSER
 
 COPY docker/huntsman-pocs/environment.yaml .
 RUN micromamba update -y --verbose --debug -n base -f environment.yaml && \
-    echo "1" && \
     micromamba run -n base pip uninstall -y panoptes-pocs && \
-    echo "2" && \
     micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
-    echo "3" && \
     micromamba run -n base pip install -e ".[testing]" && \
-    echo "4" && \
     # Cleanup
     micromamba run -n base pip cache purge && \
-    echo "4" && \
-    micromamba clean -fay  && \
-    echo "5" 
+    micromamba clean -fay
 
 USER root
 RUN apt-get autoremove --purge --yes gcc pkg-config && \
