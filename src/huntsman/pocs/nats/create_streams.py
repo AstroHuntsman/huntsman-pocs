@@ -1,25 +1,19 @@
 import argparse
 import asyncio
-import os
-import sys
+from typing import Optional
 
 import nats
+from nats.js import JetStreamContext
 
-# Configuration
-NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
-NATS_NUM_STREAMS = int(os.environ.get("NATS_NUM_STREAMS", 10))
+from huntsman.pocs.nats.utils import list_streams
 
 
-async def setup_streams():
+async def setup_streams(js: JetStreamContext, num_streams: int):
     # Connect to NATS
-    print(f"Connecting to NATS server at {NATS_SERVER}")
-    nc = await nats.connect(servers=[NATS_SERVER])
-    js = nc.jetstream()
-
-    print(f"Creating {NATS_NUM_STREAMS} memory streams and {NATS_NUM_STREAMS} disk streams...")
+    print(f"Creating {num_streams} memory streams and {num_streams} disk streams...")
 
     # Create multiple memory streams
-    for i in range(NATS_NUM_STREAMS):
+    for i in range(num_streams):
         try:
             await js.add_stream(
                 name=f"CAMERA_MEMORY_{i}",
@@ -38,7 +32,7 @@ async def setup_streams():
             print(f"Error creating CAMERA_MEMORY_{i} stream: {e}")
 
     # Create multiple disk streams
-    for i in range(NATS_NUM_STREAMS):
+    for i in range(num_streams):
         try:
             await js.add_stream(
                 name=f"CAMERA_DISK_{i}",
@@ -67,46 +61,52 @@ async def setup_streams():
         print(f"  Max Bytes: {stream.config.max_bytes} bytes")
         print()
 
-    await nc.close()
     print("Stream creation complete")
 
 
-async def delete_streams():
-    # Connect to NATS
-    print(f"Connecting to NATS server at {NATS_SERVER}")
-    nc = await nats.connect(servers=[NATS_SERVER])
-    js = nc.jetstream()
+async def delete_streams(js: JetStreamContext) -> None:
+    """Deletes all streams for a jetstream context
 
-    print(f"Deleting {NATS_NUM_STREAMS} memory streams and {NATS_NUM_STREAMS} disk streams...")
+    Args:
+        js: The JetStreamContext object
+    """
 
-    # Delete memory streams
-    for i in range(NATS_NUM_STREAMS):
+    memory_streams, disk_streams = await list_streams(js)
+    print(f"Deleting {len(memory_streams)} memory streams and {len(disk_streams)} disk streams...")
+
+    for stream in memory_streams + disk_streams:
         try:
-            await js.delete_stream(f"CAMERA_MEMORY_{i}")
-            print(f"Deleted CAMERA_MEMORY_{i} stream")
+            await js.delete_stream(stream)
+            print(f"Deleted stream: {stream}")
         except Exception as e:
-            print(f"Error deleting CAMERA_MEMORY_{i} stream: {e}")
-
-    # Delete disk streams
-    for i in range(NATS_NUM_STREAMS):
-        try:
-            await js.delete_stream(f"CAMERA_DISK_{i}")
-            print(f"Deleted CAMERA_DISK_{i} stream")
-        except Exception as e:
-            print(f"Error deleting CAMERA_DISK_{i} stream: {e}")
-
-    await nc.close()
+            print(f"Error deleting '{stream}' stream: {e}")
     print("Stream deletion complete")
 
+
+async def main(delete: bool, nats_server: str, num_streams: Optional[int] = None):
+    # Connect to NATS
+    print(f"Connecting to NATS server at {nats_server}")
+    nc = await nats.connect(servers=[nats_server])
+    js = nc.jetstream()
+    try:
+        if delete:
+            asyncio.run(delete_streams(js))
+        else:
+            if not isinstance(num_streams, int):
+                raise TypeError(
+                    f"Expected int for num_streams, got {type(num_streams)}: {num_streams}")
+            asyncio.run(setup_streams(js, num_streams))
+    finally:  # Always close connection
+        await nc.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Setup and run a NATS Jetstream streams. Or tear down existing streams.")
     parser.add_argument("--delete", action="store_true", default=False,
                         help="Whether to delete streams previously created, instead of creating new streams.")
-    args = parser.parse_args()
+    parser.add_argument("-s", "--nats-server", default="nats://localhost:4222",
+                        help="The nats server host and port.")
+    parser.add_argument("-n", "--num-streams", default=10, help="The number of streams to create.")
 
-    if args.delete:
-        asyncio.run(delete_streams())
-    else:
-        asyncio.run(setup_streams())
+    args = parser.parse_args()
+    asyncio.run(main(**vars(args)))

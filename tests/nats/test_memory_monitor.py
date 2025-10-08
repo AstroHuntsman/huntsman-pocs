@@ -5,6 +5,8 @@ from huntsman.pocs.nats.memory_monitor import monitor_memory
 
 
 def test_monitor_memory_sleep_called(mocker, tmp_path):
+    """Test that the sleep function is called the appropriate amount of times
+    and for the appropriate length of time"""
     fake_mem = mocker.Mock()
     fake_mem.percent = 85.0
     mocker.patch("huntsman.pocs.nats.memory_monitor.psutil.virtual_memory", return_value=fake_mem)
@@ -22,6 +24,7 @@ def test_monitor_memory_sleep_called(mocker, tmp_path):
 
 
 def test_monitor_memory_invalid_threshold(mocker, tmp_path):
+    """Tests that an invalid input threshold is handled"""
     fake_mem = mocker.Mock()
     fake_mem.percent = 85.0
     mocker.patch("huntsman.pocs.nats.memory_monitor.psutil.virtual_memory", return_value=fake_mem)
@@ -43,6 +46,7 @@ def test_monitor_memory_invalid_threshold(mocker, tmp_path):
 
 
 def test_monitor_memory_high_usage(mocker, tmp_path):
+    """Tests that high memory usage is handled"""
     fake_mem = mocker.Mock()
     fake_mem.percent = 85.0
     mocker.patch("huntsman.pocs.nats.memory_monitor.psutil.virtual_memory", return_value=fake_mem)
@@ -70,7 +74,8 @@ def test_monitor_memory_high_usage(mocker, tmp_path):
     assert data["timestamp"] == fake_time
 
 
-def test_monitor_memory_high_usage(mocker, tmp_path):
+def test_monitor_memory_low_usage(mocker, tmp_path):
+    """Test that low memory usage is handled"""
     fake_mem = mocker.Mock()
     fake_mem.percent = 20.0
     mocker.patch("huntsman.pocs.nats.memory_monitor.psutil.virtual_memory", return_value=fake_mem)
