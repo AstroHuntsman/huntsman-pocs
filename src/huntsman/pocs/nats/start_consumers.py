@@ -1,73 +1,69 @@
-import os
+import asyncio
+import argparse
 import signal
-import subprocess
-import sys
-import time
 
-# Configuration
-NATS_NUM_CONSUMERS = os.environ.get("NATS_NUM_CONSUMERS", 10)
-NATS_SERVER = os.environ.get("NATS_SERVER", "nats://localhost:4222")
-NATS_REMOTE_SCRIPT_DIR = os.environ.get(
-    "NATS_REMOTE_SCRIPT_DIR", "/home/huntsman/Projects/huntsman")
-NATS_REMOTE_PYTHON_EXECUTABLE = os.environ.get(
-    "NATS_REMOTE_PYTHON_EXECUTABLE", "/home/huntsman/conda/envs/huntsman-pocs/bin/python")
+import nats
 
-# List to keep track of processes
-processes = []
+from huntsman.pocs.nats.consumer import ConsumerConfig, Consumer
 
 
-def signal_handler(sig, frame):
-    print("\nShutting down all consumers...")
-    for p in processes:
-        if p.poll() is None:  # If process is still running
-            p.terminate()
-    sys.exit(0)
+async def run_consumers(cfg: ConsumerConfig, nats_server: str, n_consumers: int):
+    print(f"Starting {n_consumers} NATS consumers...")
 
+    nc = None
+    stop_event = asyncio.Event()
 
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-
-def start_consumers():
-    print(f"Starting {NATS_NUM_CONSUMERS} NATS consumers...")
-
-    for i in range(NATS_NUM_CONSUMERS):
-        consumer_id = i
-
-        # Set environment variables
-        env = os.environ.copy()
-        env["NATS_SERVER"] = NATS_SERVER
-        env["CONSUMER_ID"] = str(consumer_id)
-
-        # Start the consumer process
-        cmd = [f"{NATS_REMOTE_PYTHON_EXECUTABLE}",
-               f"{NATS_REMOTE_SCRIPT_DIR}/consumer.py", str(consumer_id)]
-        p = subprocess.Popen(cmd, env=env)
-        processes.append(p)
-
-        # Small delay to stagger startup
-        time.sleep(0.1)
-
-    print(f"Started {NATS_NUM_CONSUMERS} consumers. Press Ctrl+C to stop.")
-
-    # Wait for processes to complete or be interrupted
     try:
-        while True:
-            time.sleep(1)
+        print(f"Connecting to NATS server at {nats_server}")
+        nc = await nats.connect(servers=[nats_server])
+        js = nc.jetstream()
 
-            # Check if any process has exited
-            for i, proc in enumerate(processes[:]):
-                if proc.poll() is not None:
-                    print(f"Consumer process {i} exited with code {proc.returncode}")
-                    processes.remove(proc)
+        consumers = []
+        for i in range(n_consumers):
+            consumers.append(Consumer(cfg, js, str(i+1)))
 
-            # If all processes have exited, exit the script
-            if not processes:
-                print("All consumer processes have exited.")
-                break
-    except KeyboardInterrupt:
-        signal_handler(signal.SIGINT, None)
+        # Set up the shutdown on interrupt signals
+        def shutdown():
+            for c in consumers:
+                asyncio.create_task(c.shutdown())
+            stop_event.set()  # Interrupt event
+
+        loop = asyncio.get_running_loop()
+        loop.add_signal_handler(signal.SIGINT, shutdown)
+        loop.add_signal_handler(signal.SIGTERM, shutdown)
+
+        tasks = []
+        for consumer in consumers:
+            tasks.append(asyncio.create_task(consumer.run_consumer()))
+
+        await stop_event.wait()  # Wait for interrupt event
+    finally:
+        if nc:
+            print("Closing NATS connection...")
+            await nc.close()
+        print("Done")
 
 
 if __name__ == "__main__":
-    start_consumers()
+    cfg = ConsumerConfig()
+    parser = argparse.ArgumentParser(
+        description="Setup and run NATS Jetstream consumers. Requires streams to have been started already.")
+    setup_args = parser.add_argument_group(title="Setup configuration")
+    setup_args.add_argument("-n", "--num-consumers", type=int, required=True,
+                            help="The number of consumers to start")
+    setup_args.add_argument("-s", "--nats-server", type=str,
+                            default="nats://localhost:4222", help="The nats server host and port.")
+
+    consumer_args = parser.add_argument_group(title="Consumer Config")
+    consumer_args.add_argument("-o", "--consumer_output_dir", type=str,
+                               default=cfg.consumer_output_dir, help="The directory to ouptut consumer data to")
+    consumer_args.add_argument("-c", "--compression-method", type=str,
+                               default=cfg.compression_method, help="The compression method to use.")
+    consumer_args.add_argument("-d", "--disable-file-writing", action="store_true",
+                               default=cfg.disable_file_writing, help="Whether to disable file writing for this consumer.")
+    consumer_args.add_argument("-w", "--num-writer-threads", type=int,
+                               default=cfg.num_writer_threads, help="Number of threads to use when writing to file.")
+    args = parser.parse_args()
+    cfg = ConsumerConfig(consumer_output_dir=args.consumer_output_dir, compression_method=args.compression_method,
+                         disable_file_writing=args.disable_file_writing, num_writer_threads=args.num_writer_threads)
+    asyncio.run(run_consumers(cfg, args.nats_server, args.num_consumers))

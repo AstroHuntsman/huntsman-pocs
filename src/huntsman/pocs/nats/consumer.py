@@ -1,8 +1,6 @@
-import argparse
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import signal
 import time
 import os
 import json
@@ -12,8 +10,8 @@ import queue
 
 from astropy.io import fits
 import numpy as np
-import nats
 from nats.js import JetStreamContext
+from nats.js import api as jsapi
 from nats.aio.msg import Msg
 
 from huntsman.pocs.nats.utils import write_fits
@@ -89,11 +87,8 @@ class Consumer():
                 except queue.Empty:
                     continue
 
-                # Write the file
                 write_fits(frame_data, header, filepath)
                 print(f"Writer {thread_id}: Saved frame to {filepath}")
-
-                # Mark task as done
                 self.file_write_queue.task_done()
             except Exception as e:
                 print(f"Writer {thread_id}: Error writing file: {e}")
@@ -104,6 +99,14 @@ class Consumer():
                     pass
 
         print(f"Writer thread {thread_id} shutdown")
+
+    def start_writer_threads(self):
+        """Begins the writer threads"""
+        writer_threads = []
+        for i in range(self.cfg.num_writer_threads):
+            t = threading.Thread(target=self.file_writer_thread, args=(i,), daemon=True)
+            t.start()
+            writer_threads.append(t)
 
     def is_chunked_data(self, msg: Msg) -> bool:
         """
@@ -259,7 +262,7 @@ class Consumer():
 
         return header
 
-    def create_frame_fname(self, msg: Msg, is_chunked: bool, stream_type: Literal["disk", "memory"], timestamp: Optional[datetime.Datetime] = None) -> str:
+    def create_frame_fname(self, msg: Msg, is_chunked: bool, stream_type: Literal["disk", "memory"]) -> str:
         """Create filename with timestamp and chunk info if available
 
         Args:
@@ -279,9 +282,7 @@ class Consumer():
             elif "chunk_number" in msg.headers:
                 chunk_info = f"_chunk_{msg.headers['chunk_number']}"
 
-        if not timestamp:
-            timestamp = datetime.now()
-        timestamp_str = timestamp.strftime("%Y%m%d_%H%M%S_%f")
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         filename = f"frame_{self.consumer_id}_{frame_number}{chunk_info}_{timestamp_str}.fits"
         return os.path.join(self.cfg.consumer_output_dir, str(
             self.consumer_id), stream_type, filename)
@@ -334,7 +335,7 @@ class Consumer():
                 f"Consumer {self.consumer_id}: Error - Could not process message from consumer: {e}")
             return None
 
-    async def get_stream_type_from_sub(sub: JetStreamContext.PullSubscription) -> Optional[str]:
+    async def get_stream_type_from_sub(self, sub: JetStreamContext.PullSubscription) -> Optional[str]:
         """Tries to determine the stream type from a subscription object
 
         Args:
@@ -418,7 +419,62 @@ class Consumer():
                     f"Consumer {self.consumer_id}: Processed {self.stats.total_count} frames ({self.stats.memory_count} memory, {self.stats.disk_count} disk), {fps:.2f} FPS, Queue size: {queue_size}"
                 )
 
-    async def run_consumer(self) -> None:
+    async def setup_memory_consumer(self) -> JetStreamContext.PullSubscription:
+        """Starts the memory consumer. Subscribes the consumer to its relevant stream.
+
+       Returns:
+           memory_sub: The jetstream memory subscription object
+        """
+        # Define streams and subjects based on consumer ID
+        memory_stream = f"CAMERA_MEMORY_{self.consumer_id}"
+        memory_subject = f"camera.memory.{self.consumer_id}.>"
+        memory_consumer_name = f"memory_consumer_{self.consumer_id}"
+
+        try:
+            await self.js.add_consumer(
+                memory_stream,
+                jsapi.ConsumerConfig(
+                    durable_name=memory_consumer_name, ack_policy="explicit", deliver_policy="all"
+                ),
+            )
+            print(f"Consumer {self.consumer_id}: Created memory consumer {memory_consumer_name}")
+        except Exception as e:
+            print(f"Consumer {self.consumer_id} ERROR: Memory consumer setup note: {e}")
+
+        # Subscribe to memory stream
+        memory_sub = await self.js.pull_subscribe(memory_subject, memory_consumer_name, stream=memory_stream)
+        print(f"Consumer {self.consumer_id}: Subscribed to memory stream {memory_stream}")
+
+        return memory_sub
+
+    async def setup_disk_consumer(self) -> JetStreamContext.PullSubscription:
+        """Starts the disk consumer. Subscribes the consumer to its relevant stream.
+
+       Returns:
+           memory_sub: The jetstream disk subscription object
+        """
+        # Define streams and subjects based on consumer ID
+        disk_stream = f"CAMERA_DISK_{self.consumer_id}"
+        disk_subject = f"camera.archive.{self.consumer_id}.>"
+        disk_consumer_name = f"disk_consumer_{self.consumer_id}"
+
+        try:
+            await self.js.add_consumer(
+                disk_stream,
+                jsapi.ConsumerConfig(
+                    durable_name=disk_consumer_name, ack_policy="explicit", deliver_policy="all"
+                ),
+            )
+            print(f"Consumer {self.consumer_id}: Created disk consumer {disk_consumer_name}")
+        except Exception as e:
+            print(f"Consumer {self.consumer_id} ERROR: Disk consumer setup note: {e}")
+
+        # Subscribe to disk stream
+        disk_sub = await self.js.pull_subscribe(disk_subject, disk_consumer_name, stream=disk_stream)
+        print(f"Consumer {self.consumer_id}: Subscribed to disk stream {disk_stream}")
+        return disk_sub
+
+    async def run_consumer(self, memory_sub: Optional[JetStreamContext.PullSubscription] = None, disk_sub: Optional[JetStreamContext.PullSubscription] = None) -> None:
         """Initialize and run a tiered memory/disk consumer for NATS JetStream.
 
         Sets up file writer threads, connects to a NATS server, subscribes
@@ -426,60 +482,15 @@ class Consumer():
         messages from both streams concurrently. It also periodically reports processing
         statistics and ensures graceful shutdown of resources.
         """
-        # Start writer threads
-        writer_threads = []
-        for i in range(self.cfg.num_writer_threads):
-            t = threading.Thread(target=self.file_writer_thread, args=(i,), daemon=True)
-            t.start()
-            writer_threads.append(t)
-
-        # Define streams and subjects based on consumer ID
-        memory_stream = f"CAMERA_MEMORY_{self.consumer_id}"
-        disk_stream = f"CAMERA_DISK_{self.consumer_id}"
-        memory_subject = f"camera.memory.{self.consumer_id}.>"
-        disk_subject = f"camera.archive.{self.consumer_id}.>"
-
-        # Create consumer names
-        memory_consumer_name = f"memory_consumer_{self.consumer_id}"
-        disk_consumer_name = f"disk_consumer_{self.consumer_id}"
-
+        self.start_writer_threads()
         try:
             # Create pull consumers for memory stream
-            try:
-                # First try to create the consumer
-                await self.js.add_consumer(
-                    memory_stream,
-                    nats.jetstream.ConsumerConfig(
-                        durable_name=memory_consumer_name, ack_policy="explicit", deliver_policy="all"
-                    ),
-                )
-                print(f"Consumer {self.consumer_id}: Created memory consumer {memory_consumer_name}")
-            except Exception as e:
-                # Consumer might already exist
-                print(f"Consumer {self.consumer_id}: Memory consumer setup note: {e}")
+            if not memory_sub:
+                memory_sub = await self.setup_memory_consumer()
+            if not disk_sub:
+                disk_sub = await self.setup_disk_consumer()
 
-            # Subscribe to memory stream
-            memory_sub = await self.js.pull_subscribe(memory_subject, memory_consumer_name, stream=memory_stream)
-            print(f"Consumer {self.consumer_id}: Subscribed to memory stream {memory_stream}")
-
-            # Create pull consumers for disk stream
-            try:
-                await self.js.add_consumer(
-                    disk_stream,
-                    nats.jetstream.ConsumerConfig(
-                        durable_name=disk_consumer_name, ack_policy="explicit", deliver_policy="all"
-                    ),
-                )
-                print(f"Consumer {self.consumer_id}: Created disk consumer {disk_consumer_name}")
-            except Exception as e:
-                # Consumer might already exist
-                print(f"Consumer {self.consumer_id}: Disk consumer setup note: {e}")
-
-            # Subscribe to disk stream
-            disk_sub = await self.js.pull_subscribe(disk_subject, disk_consumer_name, stream=disk_stream)
-            print(f"Consumer {self.consumer_id}: Subscribed to disk stream {disk_stream}")
-
-            # Launch parallel tasks
+            # Launch concurrent tasks
             memory_task = asyncio.create_task(self.process_stream(memory_sub))
             disk_task = asyncio.create_task(self.process_stream(disk_sub))
             stats_task = asyncio.create_task(self.report_stats())
@@ -503,37 +514,3 @@ class Consumer():
                 pass
 
             print(f"Consumer {self.consumer_id}: Shutdown complete")
-
-
-async def main(nats_server: str, consumer_id: str,  cfg: ConsumerConfig = ConsumerConfig()) -> None:
-    try:
-        print(f"Connecting to NATS server at {nats_server}")
-        nc = await nats.connect(servers=[nats_server])
-        js = nc.jetstream()
-
-        consumer = Consumer(cfg, js, consumer_id)
-        loop = asyncio.get_running_loop()
-        loop.add_signal_handler(signal.SIGINT, lambda: asyncio.create_task(consumer.shutdown()))
-        loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.create_task(consumer.shutdown()))
-
-        await consumer.run_consumer()
-    finally:
-        await nc.close()
-
-
-if __name__ == "__main__":
-    cfg = ConsumerConfig()
-    parser = argparse.ArgumentParser(description="Setup and run a NATS Jetstream consumer")
-    parser.add_argument("-i", "--consumer-id", type=str, required=True,
-                        help="The ID to use for this consumer")
-    parser.add_argument("-s", "--nats-server", type=str,
-                        default="nats://localhost:4222", help="The nats server host and port.")
-    parser.add_argument("-c", "--compression-method", type=str,
-                        default=cfg.compression_method, help="The compression method to use.")
-    parser.add_argument("-d", "--disable-file-writing", action="store_true", type=bool,
-                        default=cfg.disable_file_writing, help="Whether to disable file writing for this consumer.")
-    parser.add_argument("-n", "--num-writer-threads", type=int,
-                        default=cfg.num_writer_threads, help="Number of threads to use when writing to file.")
-    args = parser.parse_args()
-    cfg = ConsumerConfig(**vars(args))
-    asyncio.run(main(args.nats_server, args.consumer_id, cfg))

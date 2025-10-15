@@ -405,7 +405,8 @@ async def main(nats_server: str, cfg: StorageManagerConfig = StorageManagerConfi
         print(f"Tiered storage manager started. Checking every {cfg.check_interval} seconds...")
         await storage_manager.run()
     finally:
-        await nc.close()
+        if nc:
+            await nc.close()
 
 if __name__ == "__main__":
     cfg = StorageManagerConfig()

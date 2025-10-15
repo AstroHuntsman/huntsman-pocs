@@ -1,8 +1,12 @@
-from typing import Tuple, List
+import threading
+import numpy as np
+from typing import Tuple, List, Union, Dict, Any, Optional
+
+from astropy.io import fits
 from nats.js import JetStreamContext
 
 
-async def list_streams(js: JetStreamContext, mem_pattern: str = "CAMERA_MEMERY_", disk_pattern: str = "CAMERA_DISK_") -> Tuple[List[str], List[str]]:
+async def list_streams(js: JetStreamContext, mem_pattern: str = "CAMERA_MEMORY_", disk_pattern: str = "CAMERA_DISK_") -> Tuple[List[str], List[str]]:
     """List all streams matching our naming pattern.
 
     Args:
