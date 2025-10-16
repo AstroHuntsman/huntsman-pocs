@@ -15,7 +15,7 @@ class StreamConfig():
     disk_bytes: int = 10_000_000_000
 
 
-async def setup_streams(js: JetStreamContext, num_streams: int, cfg: StreamConfig = StreamConfig()) -> None:
+async def start_streams(js: JetStreamContext, num_streams: int, cfg: StreamConfig = StreamConfig()) -> None:
     """Sets up all data streams.
 
     Args:
@@ -113,7 +113,7 @@ async def start(nats_server: str, num_streams: int, cfg: StreamConfig = StreamCo
     nc = await nats.connect(servers=[nats_server])
     js = nc.jetstream()
     try:
-        await setup_streams(js, num_streams, cfg)
+        await start_streams(js, num_streams, cfg)
     finally:  # Always close connection
         await nc.close()
 
@@ -129,10 +129,18 @@ async def delete(nats_server: str):
     nc = await nats.connect(servers=[nats_server])
     js = nc.jetstream()
     try:
-        if delete:
-            await delete_streams(js)
+        await delete_streams(js)
     finally:
         await nc.close()
+
+
+async def _main():
+    if args.delete:
+        asyncio.run(delete(nats_server=args.nats_server))
+    else:
+        cfg = StreamConfig(memory_bytes=args.memory_bytes, disk_bytes=args.disk_bytes)
+        asyncio.run(start(nats_server=args.nats_server,
+                          num_streams=args.num_streams, cfg=cfg))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -151,9 +159,4 @@ if __name__ == "__main__":
                         help="The size of the disk stream in bytes")
 
     args = parser.parse_args()
-    if args.delete:
-        asyncio.run(delete(nats_server=args.nats_server))
-    else:
-        cfg = StreamConfig(memory_bytes=args.memory_bytes, disk_bytes=args.disk_bytes)
-        asyncio.run(start(nats_server=args.nats_server,
-                          num_streams=args.num_streams, cfg=cfg))
+    asyncio.run(_main(args))

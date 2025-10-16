@@ -5,6 +5,7 @@ FROM ${image_url}:${image_tag} AS pocs-base
 
 ARG pocs_tag="v0.7.8"
 ARG pocs_url="https://github.com/panoptes/POCS.git@${pocs_tag}#egg=panoptes-pocs"
+ARG nats_server_version="v2.11.6"
 ARG pip_install_name="."
 ARG pip_install_extras=""
 
@@ -51,6 +52,11 @@ RUN micromamba update -y --verbose --debug -n base -f environment.yaml && \
     micromamba clean -fay
 
 USER root
+# RUN curl -fsSL "https://binaries.nats.dev/nats-io/nats-server/v2@${nats_server_version}" | sh
+RUN wget -qO- "https://binaries.nats.dev/nats-io/nats-server/v2@${nats_server_version}" | sh && \
+    mv nats-server /usr/bin/nats-server
+
+
 RUN apt-get autoremove --purge --yes gcc pkg-config && \
     apt-get autoclean --yes && \
     apt-get --yes clean && \

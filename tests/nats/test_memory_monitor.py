@@ -1,5 +1,4 @@
 import json
-import tempfile
 from pathlib import Path
 from huntsman.pocs.nats.memory_monitor import monitor_memory
 
