@@ -300,40 +300,39 @@ class Consumer():
         if len(msg.data) == 0:
             return None
 
-        try:
-            # Get dimensions from headers
-            width = height = None
-            if hasattr(msg, "headers"):
-                if "width" in msg.headers:
-                    width = int(msg.headers["width"])
-                if "height" in msg.headers:
-                    height = int(msg.headers["height"])
+        # Get dimensions from headers
+        width = height = None
+        if hasattr(msg, "headers"):
+            if "width" in msg.headers:
+                width = int(msg.headers["width"])
+            if "height" in msg.headers:
+                height = int(msg.headers["height"])
 
-            # Convert binary data back to numpy array
-            # Assume uint16 data type (same as in zwo.py)
-            frame_data = np.frombuffer(msg.data, dtype=np.uint16)
+        # Convert binary data back to numpy array
+        # Assume uint16 data type (same as in zwo.py)
+        frame_data = np.frombuffer(msg.data, dtype=np.uint16)
 
-            # Reshape to original dimensions if we have them
-            if width is not None and height is not None:
-                try:
-                    frame_data = frame_data.reshape((height, width))
-                except ValueError as e:
-                    print(f"Error reshaping data: {e}")
-                    # If reshape fails, try to guess a square shape
-                    size = int(np.sqrt(len(frame_data)))
-                    if size * size == len(frame_data):
-                        frame_data = frame_data.reshape((size, size))
-            else:
-                # Try to guess a square shape
+        # Reshape to original dimensions if we have them
+        if width is not None and height is not None:
+            try:
+                frame_data = frame_data.reshape((height, width))
+            except ValueError as e:
+                print(f"Error reshaping data: {e}")
+                # If reshape fails, try to guess a square shape
                 size = int(np.sqrt(len(frame_data)))
                 if size * size == len(frame_data):
                     frame_data = frame_data.reshape((size, size))
+                else:
+                    raise ValueError("Cannot reshape data to given dimensions or square")
+        else:
+            # Try to guess a square shape
+            size = int(np.sqrt(len(frame_data)))
+            if size * size == len(frame_data):
+                frame_data = frame_data.reshape((size, size))
+            else:
+                raise ValueError("Cannot reshape data to a square")
 
-            return frame_data
-        except Exception as e:
-            print(
-                f"Consumer {self.consumer_id}: Error - Could not process message from consumer: {e}")
-            return None
+        return frame_data
 
     async def get_stream_type_from_sub(self, sub: JetStreamContext.PullSubscription) -> Optional[str]:
         """Tries to determine the stream type from a subscription object
@@ -374,7 +373,7 @@ class Consumer():
 
                     # Process the frame data
                     frame_data = self.process_frame_data(msg)
-                    if frame_data:
+                    if frame_data is not None:
                         is_chunked = self.is_chunked_data(msg)
                         if is_chunked:
                             header = self.create_fits_header_chunked(msg)
@@ -512,5 +511,7 @@ class Consumer():
                 self.file_write_queue.join()
             except BaseException:
                 pass
+
+            self.running = False
 
             print(f"Consumer {self.consumer_id}: Shutdown complete")

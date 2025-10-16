@@ -5,7 +5,7 @@ import time
 from contextlib import suppress
 
 import pytest
-from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
+from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver, locate_ns
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
 from panoptes.utils.config.client import get_config, set_config
@@ -96,6 +96,26 @@ def pytest_configure(config):
     pyro_proc_01.daemon = True
     pyro_proc_01.start()
     logger.success(f'Pyro service created: {pyro_proc_01!r}')
+
+    start = time.time()
+    timeout = 10
+    waited_time = 0
+    while waited_time < timeout:
+        try:
+            # Attempt to locate one of the services
+            ns = locate_ns(host=nameserver_config['host'], port=nameserver_config['port'])
+
+            # Check for both services
+            ns.lookup('dslr.00')
+            ns.lookup('dslr.01')
+            print("Found Pyro servers!")
+            break
+        except Exception as e:
+            print(f"Searching for Pyro servers: {e}")
+            time.sleep(1)
+            waited_time = time.time() - start
+    else:
+        raise RuntimeError(f"Could not find Pyro servers. Waited {timeout} seconds.")
 
 
 def pytest_addoption(parser):
