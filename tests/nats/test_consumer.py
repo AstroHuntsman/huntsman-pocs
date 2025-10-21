@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 import queue
 from unittest.mock import AsyncMock, MagicMock
 from tempfile import TemporaryDirectory
@@ -87,8 +86,6 @@ def test_consumer_init_no_file_writing():
         # Check that directories are not created
         assert consumer.memory_dir is None
         assert consumer.disk_dir is None
-        assert not os.path.exists(consumer.memory_dir)
-        assert not os.path.exists(consumer.disk_dir)
 
 
 @pytest.mark.asyncio
@@ -216,13 +213,13 @@ async def test_process_frame_data(empty_consumer: Consumer):
 
     # Test with empty data
     msg_empty = create_mock_msg(data=b"")
-    assert consumer.process_frame_data(msg_empty) is None
+    assert empty_consumer.process_frame_data(msg_empty) is None
 
     # Test with data that cannot be reshaped
     data_bad_shape = np.arange(101, dtype=np.uint16).tobytes()
     msg_bad_shape = create_mock_msg(headers={"width": "10", "height": "10"}, data=data_bad_shape)
     with pytest.raises(ValueError):
-        consumer.process_frame_data(msg_bad_shape)
+        empty_consumer.process_frame_data(msg_bad_shape)
 
 
 @pytest.mark.asyncio
