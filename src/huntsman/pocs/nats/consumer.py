@@ -53,14 +53,18 @@ class Consumer():
         self.running = True
         self.file_write_queue = queue.Queue()
         self.stats = ConsumerStats()
+        self.memory_dir = None
+        self.disk_dir = None
 
         # Print settings information
         if not self.cfg.disable_file_writing:
             # Ensure output directories exist for both memory and disk streams
-            memory_dir = os.path.join(self.cfg.consumer_output_dir, str(self.consumer_id), "memory")
-            disk_dir = os.path.join(self.cfg.consumer_output_dir, str(self.consumer_id), "disk")
-            os.makedirs(memory_dir, exist_ok=True)
-            os.makedirs(disk_dir, exist_ok=True)
+            self.memory_dir = os.path.join(
+                self.cfg.consumer_output_dir, str(self.consumer_id), "memory")
+            self.disk_dir = os.path.join(self.cfg.consumer_output_dir,
+                                         str(self.consumer_id), "disk")
+            os.makedirs(self.memory_dir, exist_ok=True)
+            os.makedirs(self.disk_dir, exist_ok=True)
 
             print(f"Consumer {self.consumer_id}: Saving frames to {self.cfg.consumer_output_dir}")
             print(f"Consumer {self.consumer_id}: Using compression: {self.cfg.compression_method}")

@@ -1,34 +1,9 @@
 import threading
 import os
 import numpy as np
-from typing import Tuple, List, Union, Dict, Any, Optional
+from typing import Union, Dict, Any, Optional
 
 from astropy.io import fits
-from nats.js import JetStreamContext
-
-
-async def list_streams(js: JetStreamContext, mem_pattern: str = "CAMERA_MEMORY_", disk_pattern: str = "CAMERA_DISK_") -> Tuple[List[str], List[str]]:
-    """List all streams matching our naming pattern.
-
-    Args:
-
-    """
-    streams = await js.streams_info()
-    memory_streams = []
-    disk_streams = []
-
-    for stream in streams:
-        name = stream.config.name
-        if name.startswith(mem_pattern):
-            memory_streams.append(name)
-        elif name.startswith(disk_pattern):
-            disk_streams.append(name)
-
-    # Sort streams by their index to match them correctly
-    memory_streams.sort(key=lambda x: int(x.split("_")[-1]))
-    disk_streams.sort(key=lambda x: int(x.split("_")[-1]))
-
-    return memory_streams, disk_streams
 
 
 def write_fits(data: np.ndarray, header: Union[Dict[str, Any], fits.Header], filename: str, exposure_event: Optional[threading.Event] = None, **kwargs):
