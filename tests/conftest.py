@@ -303,14 +303,6 @@ def nats_addr():
     return NATS_ADDR
 
 
-@pytest_asyncio.fixture
-async def js(nats_addr):
-    """Fixture to connect to NATS and return JetStream context."""
-    nc = await nats.connect(nats_addr)
-    yield nc.jetstream()
-    await nc.close()
-
-
 @pytest.fixture
 def temp_file(tmp_path):
     d = tmp_path

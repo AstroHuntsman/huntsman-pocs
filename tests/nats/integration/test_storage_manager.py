@@ -5,24 +5,11 @@ from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 
 from nats.js import JetStreamContext
-from nats.js.api import ConsumerConfig, StreamConfig
+from nats.js.api import ConsumerConfig
 
 from huntsman.pocs.nats.storage_manager import StorageManager, StorageManagerConfig, move_messages_to_new_subject
 from huntsman.pocs.nats.utils import subject_from_stream_name
-
-
-async def setup_streams(js: JetStreamContext):
-    """Create memory and disk streams for testing."""
-    await js.add_stream(StreamConfig(name="memory_0", subjects=["memory_0.>"], retention="workqueue"))
-    await js.add_stream(StreamConfig(name="disk_0", subjects=["disk_0.>"], retention="workqueue"))
-    return ("memory_0", "disk_0")
-
-
-async def publish_messages(js: JetStreamContext, stream_name: str, n: int):
-    subject = f"{stream_name}.frame"
-    for i in range(n):
-        await js.publish(subject, f"msg-{i}".encode())
-        print(f"Published to subject: {subject}")
+from tests.nats.conftest import setup_streams, publish_messages
 
 
 @pytest_asyncio.fixture
