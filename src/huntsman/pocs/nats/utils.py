@@ -1,9 +1,89 @@
+import asyncio
 import threading
 import os
 import numpy as np
-from typing import Union, Dict, Any, Optional
+from typing import Union, Dict, Any, Optional, Tuple, List
+import json
+
+from nats.js import JetStreamContext
 
 from astropy.io import fits
+
+_memory_usage_lock = asyncio.Lock()
+
+
+async def get_memory_usage(memory_status_file: str) -> int:
+    """Retrives the memory usage from the memory status file.
+    If it does not exist, returns 0"""
+    if not os.path.exists(memory_status_file):
+        print(f"Error: memory status file does not exist: {memory_status_file}")
+        return 0
+    async with _memory_usage_lock:
+        with open(memory_status_file, "r") as f:
+            data = json.load(f)
+            return int(data.get("memory_usage", 0))
+
+
+async def update_memory_usage(memory_status_file: str, memory_usage: float) -> None:
+    """Updates the memory usage file with a new value. Will create the file and
+    add the new update if it does not already exist
+
+    Args:
+        memory_status_file: The pathname of the memory status file
+        mamory_usage: The value to update the memory status file with
+    """
+
+    try:
+        os.makedirs(os.path.dirname(memory_status_file), exist_ok=True)
+        async with _memory_usage_lock:
+            with open(memory_status_file, "w") as f:
+                json.dump({"memory_usage": memory_usage}, f)
+    except Exception as e:
+        print(f"Error writing to memory status file: {e}")
+
+
+def subject_from_stream_name(stream_name: str) -> str:
+    """Given the name of a stream, generates the subjects it should publish to
+
+    Args:
+        stream_name: The name of the stream for which to get the associated subject
+    Return:
+        The name of the subject associated with this stream"""
+    subs = stream_name.lower()
+    if "memory" not in subs and "disk" not in subs:
+        raise ValueError(f"Expected one of 'memory' or 'disk' in stream name, got: {subs}")
+    subs.replace("_", ".")
+    subs += ".>"  # greedy wildcard
+    return subs
+
+
+async def list_streams(js: JetStreamContext, mem_contains: str = "memory", disk_contains: str = "disk") -> Tuple[List[str], List[str]]:
+    """List all streams matching our naming pattern.
+
+    Args:
+        js: The jetstream context to list the streams for
+        mem_contains: The string that memory streams are expected to contain. Not case sensitive
+        disk_pattern: The string that disk streams are expected to contain. Not case sensitive
+    Return:
+        memory_streams, disk_streams: The memory and disk streams found in the jetstream context
+
+    """
+    streams = await js.streams_info()
+    memory_streams = []
+    disk_streams = []
+
+    for stream in streams:
+        name = stream.config.name
+        if mem_contains in name.lower():
+            memory_streams.append(name)
+        elif disk_contains in name.lower():
+            disk_streams.append(name)
+
+    # Sort streams by their index to match them correctly
+    memory_streams.sort(key=lambda x: int(x.split("_")[-1]))
+    disk_streams.sort(key=lambda x: int(x.split("_")[-1]))
+
+    return memory_streams, disk_streams
 
 
 def write_fits(data: np.ndarray, header: Union[Dict[str, Any], fits.Header], filename: str, exposure_event: Optional[threading.Event] = None, **kwargs):

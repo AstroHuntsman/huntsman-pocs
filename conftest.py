@@ -7,6 +7,7 @@ from contextlib import suppress
 import asyncio
 
 import pytest
+import pytest_asyncio
 import nats
 from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver, locate_ns
 from panoptes.pocs import hardware
@@ -300,6 +301,14 @@ def config_path(base_dir):
 @pytest.fixture(scope="session")
 def nats_addr():
     return NATS_ADDR
+
+
+@pytest_asyncio.fixture
+async def js(nats_addr):
+    """Fixture to connect to NATS and return JetStream context."""
+    nc = await nats.connect(nats_addr)
+    yield nc.jetstream()
+    await nc.close()
 
 
 @pytest.fixture
