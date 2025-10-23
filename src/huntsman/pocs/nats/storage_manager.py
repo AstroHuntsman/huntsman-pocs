@@ -6,7 +6,6 @@ from nats.js import JetStreamContext,  api
 from nats import errors
 
 from huntsman.pocs.nats.utils import list_streams, subject_from_stream_name, update_memory_usage, get_memory_usage
-from huntsman.pocs.nats.stats import JsTracker  # TODO: fix this
 
 
 @dataclass
@@ -16,7 +15,6 @@ class StorageManagerConfig:
     memory_threshold: float = 31.0
     memory_status_file: str = f"images/memory_status.json"
     check_interval: float = 10.0
-    nats_stats_file: str = "/tmp/stream_stats.json"
 
 
 class StorageManager:
@@ -61,7 +59,7 @@ class StorageManager:
         self.running = False
 
     async def _messages_need_moving(self):
-        memory_usage = await get_memory_usage(self.cfg.memory_status_file)
+        memory_usage, _ = await get_memory_usage(self.cfg.memory_status_file)
         print(f"Current memory usage: {memory_usage:.2f}%")
         # If memory usage is below threshold, no need to move messages
         if memory_usage < self.cfg.memory_threshold:

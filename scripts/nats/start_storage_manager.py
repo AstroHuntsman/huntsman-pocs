@@ -38,8 +38,6 @@ if __name__ == "__main__":
                         default=cfg.memory_status_file, help="The file holding the memory usage status.")
     parser.add_argument("-i", "--check-interval", type=float,
                         default=cfg.check_interval, help="How frequently to check the memory usage (in seconds).")
-    parser.add_argument("-n", "--nats-stats-file", type=str,
-                        default=cfg.nats_stats_file, help="The file path to dump nats statistics to.")
     args = parser.parse_args()
     cfg = StorageManagerConfig(**vars(args))
     asyncio.run(main(cfg))

@@ -3,39 +3,39 @@ from typing import Optional, List, Tuple
 
 from nats.js import JetStreamContext, api
 
-from huntsman.pocs.nats.utils import subject_from_stream_name
+from huntsman.pocs.nats.utils import subject_from_stream_name, list_streams
 
 
 @dataclass
-class MemoryStreamConfig(api.StreamConfig):
+class MemoryStreamConfig():
     """Stream Configuration for memory stream. Gives sensible defaults for the official StreamConfig object"""
     name: str = field(default="", init=False)
     subjects: List[str] = field(default_factory=list, init=False)
     max_bytes: int = 1_000_000_000
-    retention: str = "workqueue",
-    storage: str = "memory",
-    max_age: Optional[float] = 60,
-    max_msgs: Optional[int] = 10000,
-    discard: str = "new",
-    no_ack: bool = False,
-    duplicate_window: float = 60,
+    retention: str = "workqueue"
+    storage: str = "memory"
+    max_age: Optional[float] = 60
+    max_msgs: Optional[int] = 10000
+    discard: str = "new"
+    no_ack: bool = False
+    duplicate_window: float = 60
 
 
 @dataclass
-class DiskStreamConfig(api.StreamConfig):
+class DiskStreamConfig():
     """Stream Configuration for disk stream. Gives sensible defaults for the official StreamConfig object"""
     name: str = field(default="", init=False)
     subjects: List[str] = field(default_factory=list, init=False)
     max_bytes: int = 10_000_000_000
-    retention: str = "interest",
-    storage: str = "file",
-    max_age: Optional[float] = 120,
-    max_msgs: Optional[int] = 10000,
-    discard: str = "old",
-    no_ack: bool = False,
+    retention: str = "interest"
+    storage: str = "file"
+    max_age: Optional[float] = 120
+    max_msgs: Optional[int] = 10000
+    discard: str = "old"
+    no_ack: bool = False
 
 
-async def start_streams(js: JetStreamContext, num_streams: int, disk_cfg: DiskStreamConfig = DiskStreamConfig(), mem_cfg: MemoryStreamConfig = MemoryStreamConfig()) -> None:
+async def start_streams(js: JetStreamContext, num_streams: int, disk_cfg: DiskStreamConfig = DiskStreamConfig(), mem_cfg: MemoryStreamConfig = MemoryStreamConfig()) -> Tuple[List[api.StreamInfo], List[api.StreamInfo]]:
     """Sets up all data streams.
 
     Args:
@@ -43,27 +43,34 @@ async def start_streams(js: JetStreamContext, num_streams: int, disk_cfg: DiskSt
         num_streams: The number os streams(memory and disk) to create
         disk_cfg: The DiskStreamConfig object used for the disk stream configuration
         mem_cfg: The MemoryStreamConfig object used for the memory stream configuration
+    Return:
+        Tuple[List[api.StreamInfo], List[api.StreamInfo]]: The memory and disk streams created
     """
-    print(f"Creating {num_streams} memory streams and {num_streams} disk streams...")
 
     # Create memory streams
+    mem_streams = []
     for i in range(num_streams):
         try:
             stream_no = i+1
             mem_cfg.name = f"CAMERA_MEMORY_{stream_no}"
             mem_cfg.subjects = [subject_from_stream_name(mem_cfg.name)]
-            await js.add_stream(**asdict(mem_cfg))
+            stream_cfg = api.StreamConfig(**asdict(mem_cfg))
+            stream = await js.add_stream(stream_cfg)
+            mem_streams.append(stream)
             print(f"Created CAMERA_MEMORY_{stream_no} stream")
         except Exception as e:
             print(f"Error creating CAMERA_MEMORY_{stream_no} stream: {e}")
 
     # Create  disk streams
+    disk_streams = []
     for i in range(num_streams):
         try:
             stream_no = i+1
             disk_cfg.name = f"CAMERA_DISK_{stream_no}"
             disk_cfg.subjects = [subject_from_stream_name(disk_cfg.name)]
-            await js.add_stream(**asdict(disk_cfg))
+            stream_cfg = api.StreamConfig(**asdict(disk_cfg))
+            stream = await js.add_stream(stream_cfg)
+            disk_streams.append(stream)
             print(f"Created CAMERA_DISK_{stream_no} stream")
         except Exception as e:
             print(f"Error creating CAMERA_DISK_{stream_no} stream: {e}")
@@ -80,7 +87,7 @@ async def start_streams(js: JetStreamContext, num_streams: int, disk_cfg: DiskSt
         print(f"  Max Bytes: {stream.config.max_bytes} bytes")
         print()
 
-    print("Stream creation complete")
+    return mem_streams, disk_streams
 
 
 async def delete_streams(js: JetStreamContext) -> None:

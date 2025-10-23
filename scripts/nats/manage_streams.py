@@ -1,11 +1,9 @@
-
 import argparse
 import asyncio
 
 import nats
 
 from huntsman.pocs.nats.streams import StreamConfig, start_streams, delete_streams
-from huntsman.pocs.nats.consumer import StreamConfig, start_streams, delete_streams
 
 
 async def start(nats_server: str, num_streams: int, cfg: StreamConfig = StreamConfig()) -> None:

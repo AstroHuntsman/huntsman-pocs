@@ -1,4 +1,5 @@
 import asyncio
+import time
 import threading
 import os
 import numpy as np
@@ -12,34 +13,53 @@ from astropy.io import fits
 _memory_usage_lock = asyncio.Lock()
 
 
-async def get_memory_usage(memory_status_file: str) -> int:
+async def get_memory_usage(memory_status_file: str) -> Tuple[float, float]:
     """Retrives the memory usage from the memory status file.
-    If it does not exist, returns 0"""
+    If it does not exist, returns 0
+
+    Args:
+        memory_status_file: The filepath of the memory status file
+    Return:
+        tuple(float, float): A tuple containing the memory usage and the timestamp that the usage was recorded.
+    Raises:
+        FileNotFoundError: Raised if the specified file does not exist
+    """
     if not os.path.exists(memory_status_file):
-        print(f"Error: memory status file does not exist: {memory_status_file}")
-        return 0
+        raise FileNotFoundError(f"Error: memory status file does not exist: {memory_status_file}")
     async with _memory_usage_lock:
         with open(memory_status_file, "r") as f:
             data = json.load(f)
-            return int(data.get("memory_usage", 0))
+            return (data["memory_usage"], data["timestamp"])
 
 
-async def update_memory_usage(memory_status_file: str, memory_usage: float) -> None:
+async def update_memory_usage(memory_status_file: str, memory_usage: float, timestamp: Optional[float] = None) -> None:
     """Updates the memory usage file with a new value. Will create the file and
     add the new update if it does not already exist
 
     Args:
         memory_status_file: The pathname of the memory status file
-        mamory_usage: The value to update the memory status file with
+        memory_usage: The value to update the memory status file with
+        timestamp: The time the memory usage was recorded. If None, will use runtime timestamp.
     """
-
+    if not timestamp:
+        timestamp = time.time()
     try:
+        _, existing_timestamp = await get_memory_usage(memory_status_file)
+    except FileNotFoundError:
         os.makedirs(os.path.dirname(memory_status_file), exist_ok=True)
-        async with _memory_usage_lock:
-            with open(memory_status_file, "w") as f:
-                json.dump({"memory_usage": memory_usage}, f)
-    except Exception as e:
-        print(f"Error writing to memory status file: {e}")
+        existing_timestamp = 0
+    except json.JSONDecodeError:  # File exists, but is empty, that's fine
+        existing_timestamp = 0
+
+    if existing_timestamp > timestamp:  # Don't update if we have stale data
+        print(f"Warning: Attempted to write stale data to memory usage file. Will not update.")
+        return
+
+    async with _memory_usage_lock:
+        with open(memory_status_file, "w") as f:
+            status = {"timestamp": time.time(
+            ), "memory_usage": memory_usage}
+            json.dump(status, f)
 
 
 def subject_from_stream_name(stream_name: str) -> str:
