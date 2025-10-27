@@ -14,7 +14,7 @@ from nats.js import JetStreamContext
 from nats.js import api as jsapi
 from nats.aio.msg import Msg
 
-from huntsman.pocs.nats.utils import write_fits
+from huntsman.pocs.nats.utils import write_fits, subject_from_stream_name
 
 
 class ConsumerStats():
@@ -430,7 +430,8 @@ class Consumer():
         """
         # Define streams and subjects based on consumer ID
         memory_stream = f"CAMERA_MEMORY_{self.consumer_id}"
-        memory_subject = f"camera.memory.{self.consumer_id}.>"
+        memory_subject = subject_from_stream_name(memory_stream)
+        print(memory_subject)
         memory_consumer_name = f"memory_consumer_{self.consumer_id}"
 
         try:
@@ -458,7 +459,7 @@ class Consumer():
         """
         # Define streams and subjects based on consumer ID
         disk_stream = f"CAMERA_DISK_{self.consumer_id}"
-        disk_subject = f"camera.archive.{self.consumer_id}.>"
+        disk_subject = subject_from_stream_name(disk_stream)
         disk_consumer_name = f"disk_consumer_{self.consumer_id}"
 
         try:

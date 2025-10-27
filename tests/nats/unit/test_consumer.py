@@ -1,7 +1,7 @@
 import asyncio
 import json
 import queue
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from tempfile import TemporaryDirectory
 
 import numpy as np
@@ -351,7 +351,9 @@ async def test_report_stats(empty_consumer: Consumer, mocker):
 async def test_setup_consumers(empty_consumer: Consumer, mocker):
     """Test setting up memory and disk consumers."""
     # Test memory consumer setup
-    await empty_consumer.setup_memory_consumer()
+    with patch("huntsman.pocs.nats.consumer.subject_from_stream_name") as sfsn:
+        sfsn.return_value = "camera.memory.test_consumer.>"
+        await empty_consumer.setup_memory_consumer()
     empty_consumer.js.add_consumer.assert_called_with(
         "CAMERA_MEMORY_test_consumer",
         mocker.ANY  # Don't care about the exact config object
@@ -363,13 +365,15 @@ async def test_setup_consumers(empty_consumer: Consumer, mocker):
     )
 
     # Test disk consumer setup
-    await empty_consumer.setup_disk_consumer()
+    with patch("huntsman.pocs.nats.consumer.subject_from_stream_name") as sfsn:
+        sfsn.return_value = "camera.disk.test_consumer.>"
+        await empty_consumer.setup_disk_consumer()
     empty_consumer.js.add_consumer.assert_called_with(
         "CAMERA_DISK_test_consumer",
         mocker.ANY
     )
     empty_consumer.js.pull_subscribe.assert_called_with(
-        "camera.archive.test_consumer.>",
+        "camera.disk.test_consumer.>",
         "disk_consumer_test_consumer",
         stream="CAMERA_DISK_test_consumer"
     )

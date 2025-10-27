@@ -63,18 +63,20 @@ async def update_memory_usage(memory_status_file: str, memory_usage: float, time
 
 
 def subject_from_stream_name(stream_name: str) -> str:
-    """Given the name of a stream, generates the subjects it should publish to
+    """Given the name of a stream, generates the subjects it should publish to.
+    Expects the stream format "camera_[type]_[name]"
+    Where [type] is either 'memory' or 'disk'
 
     Args:
         stream_name: The name of the stream for which to get the associated subject
     Return:
         The name of the subject associated with this stream"""
-    subs = stream_name.lower()
-    if "memory" not in subs and "disk" not in subs:
-        raise ValueError(f"Expected one of 'memory' or 'disk' in stream name, got: {subs}")
-    subs.replace("_", ".")
-    subs += ".>"  # greedy wildcard
-    return subs
+    sub = stream_name.lower()
+    if "memory" not in sub and "disk" not in sub:
+        raise ValueError(f"Expected one of 'memory' or 'disk' in stream name, got: {sub}")
+    sub = sub.replace("_", ".", 2)
+    sub += ".>"  # greedy wildcard
+    return sub
 
 
 async def list_streams(js: JetStreamContext, mem_contains: str = "memory", disk_contains: str = "disk") -> Tuple[List[str], List[str]]:
