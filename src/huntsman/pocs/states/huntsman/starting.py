@@ -1,3 +1,4 @@
+from huntsman.pocs.core import HuntsmanPOCS
 import time
 
 
@@ -5,7 +6,7 @@ def on_enter(event_data):
     """ State logic for starting up.
     This state should only be entered from either the sleeping or taking darks states.
     """
-    pocs = event_data.model
+    pocs: HuntsmanPOCS = event_data.model
     pocs.next_state = 'parking'
 
     # Prepare the cameras

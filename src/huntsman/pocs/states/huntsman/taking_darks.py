@@ -1,9 +1,10 @@
+from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.error import NoDarksDuringTwilightError
 
 
 def on_enter(event_data):
 
-    pocs = event_data.model
+    pocs: HuntsmanPOCS = event_data.model
     pocs.next_state = 'starting'
 
     # Take bias frames

@@ -1,10 +1,11 @@
+from huntsman.pocs.core import HuntsmanPOCS
+
 
 def on_enter(event_data):
     """ Determine what to schedule next. """
     # breakpoint()
-    
 
-    pocs = event_data.model
+    pocs: HuntsmanPOCS = event_data.model
     pocs.next_state = 'parking'
 
     # First wait for all the cameras to be ready (in case an exposure was interrupted)

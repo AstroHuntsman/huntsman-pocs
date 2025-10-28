@@ -1,5 +1,4 @@
-# fmt: off
-
+from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.utils.flats import altaz_to_radec
 from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.utils.time import CountdownTimer, current_time
@@ -11,8 +10,8 @@ def on_enter(event_data):
     Will do a coarse focus for each camera and move to the scheduling state.
     """
     # breakpoint()
-    
-    pocs = event_data.model
+
+    pocs: HuntsmanPOCS = event_data.model
     pocs.next_state = 'parking'
 
     # Setup information about earth location.

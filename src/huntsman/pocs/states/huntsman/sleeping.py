@@ -1,10 +1,11 @@
+from huntsman.pocs.core import HuntsmanPOCS
 from panoptes.utils.error import TheSkyXTimeout
 import time
 
 
 def on_enter(event_data):
     """ """
-    pocs = event_data.model
+    pocs: HuntsmanPOCS = event_data.model
     pocs.next_state = 'starting'
 
     # Reset the observing run

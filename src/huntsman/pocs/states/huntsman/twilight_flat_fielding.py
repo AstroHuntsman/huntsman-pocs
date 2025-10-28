@@ -1,12 +1,13 @@
 """ Twilight flat fielding state """
 
+from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.error import NotTwilightError, NotSafeError
 
 
 def on_enter(event_data):
     """ State logic for twilight flat fielding.
     """
-    pocs = event_data.model
+    pocs: HuntsmanPOCS = event_data.model
     pocs.next_state = 'scheduling'
 
     try:
