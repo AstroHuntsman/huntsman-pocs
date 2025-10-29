@@ -348,9 +348,9 @@ class Consumer():
             Optional[str]: The name of the stream type. None if neither "memory" or "disk" was found.
         """
         consumer_info = await sub.consumer_info()
-        if "memory" in consumer_info.stream.lower():
+        if "memory" in consumer_info.stream_name.lower():
             return "memory"
-        elif "disk" in consumer_info.stream.lower():
+        elif "disk" in consumer_info.stream_name.lower():
             return "disk"
         return None
 
