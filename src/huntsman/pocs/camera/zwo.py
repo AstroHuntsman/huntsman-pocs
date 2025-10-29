@@ -1,13 +1,10 @@
-# fmt: off
-
 import asyncio
 import json
 import os
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from queue import Empty, Queue
+from queue import Empty
 
 import nats
 import numpy as np
@@ -16,16 +13,12 @@ from astropy.time import Time
 from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 from huntsman.pocs.camera.libasi import HuntsmanASIDriver
 from huntsman.pocs.utils.config import get_own_ip
-from panoptes.pocs.camera.libasi import ASIDriver
+from huntsman.pocs.nats.utils import get_memory_usage
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
 from usb.core import find as finddev
-
-# from minio import Minio
-# from minio.threadpool import ThreadPool
-# from huntsman.pocs.camera.utils import write_minio_fits
 
 
 class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
@@ -77,12 +70,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.memory_usage = 0.0
         self.MEMORY_THRESHOLD = 50.0
         self.last_memory_check = time.time()
-        self.MEMORY_STATUS_FILE = os.environ.get("MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
-        if os.path.exists(self.MEMORY_STATUS_FILE):
-            with open(self.MEMORY_STATUS_FILE, 'r') as f:
-                memory_data = json.load(f)
-                self.memory_usage = memory_data.get('memory_used_percent', 0.0)
-                self.MEMORY_THRESHOLD = memory_data.get('threshold', 50.0)
+        self.MEMORY_STATUS_FILE = os.environ.get(
+            "MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
 
         print(f"Memory usage: {self.memory_usage}%")
         print(f"MEMORY_THRESHOLD: {self.MEMORY_THRESHOLD}%")
@@ -112,7 +101,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         with suppress(AttributeError):
             if self.chunking_enabled:
                 self.shutdown_chunk_publisher()
-            else :
+            else:
                 self.shutdown_single_publisher()
 
             camera_ID = self._handle
@@ -195,10 +184,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             return self.memory_usage
 
         try:
-            if os.path.exists(self.MEMORY_STATUS_FILE):
-                with open(self.MEMORY_STATUS_FILE, 'r') as f:
-                    memory_data = json.load(f)
-                    self.memory_usage = memory_data.get('memory_used_percent', 0)
+            self.memory_usage = asyncio.run(get_memory_usage(self.MEMORY_STATUS_FILE))[0]
         except Exception as e:
             print(f"Error reading memory status: {e}")
 
@@ -217,7 +203,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         except Exception as e:
             self.logger.error(f"Failed to connect to NATS: {e}")
             return None
-
 
     async def _publish_to_nats_async(self, subject, data, headers):
         """Publish data to NATS subject with acknowledgment"""
@@ -306,7 +291,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         return 0
 
-
     def connect(self):
         """
         Connect to ZWO ASI camera.
@@ -372,8 +356,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         return super().take_exposure(*args, **kwargs)
 
-
-
     def take_video(self, *args, **kwargs):
         """ Overrride class method to add defocusing offset.
         Note that the focus offset is checked at the exposure level so that we don't end up
@@ -416,8 +398,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         video_obj = self.start_video(seconds, filename_root, max_frames, frame_rate, duration)
 
         return video_obj
-
-
 
     def start_video(self, seconds, filename_root, max_frames, frame_rate, duration, image_type=None):
 
@@ -463,7 +443,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         # if self.chunking_enabled:
         #     if hasattr(self, 'chunk_workers') and self.chunk_workers:
         #         self.shutdown_chunk_publisher()
-        if self.chunking_enabled==False:
+        if self.chunking_enabled == False:
             # Clean up single publisher system
             self.shutdown_single_publisher()
 
@@ -516,10 +496,10 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 break
             # This call will block for up to timeout milliseconds waiting for a frame
             video_data = Camera._driver.get_video_data(self._handle,
-                                                      width,
-                                                      height,
-                                                      image_type,
-                                                      timeout)
+                                                       width,
+                                                       height,
+                                                       image_type,
+                                                       timeout)
             if video_data is not None:
                 now = Time.now()
                 header.set('DATE-OBS', now.fits, 'End of exposure + readout')
@@ -557,12 +537,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                     # Wait for all chunks to be processed before moving to next frame
                     self.chunk_queue.join()
                     self.logger.info(f"Frame {frame_number}: All {len(chunks)} chunks processed")
-                else :
+                else:
                     base_headers = {
                         'frame_number': str(frame_number),
-                        'width':str(width),
-                        'height':str(height),
-                        'header': json.dumps(header_dict)  # This serializes the dictionary to a JSON string
+                        'width': str(width),
+                        'height': str(height),
+                        # This serializes the dictionary to a JSON string
+                        'header': json.dumps(header_dict)
                     }
 
                     frame0 = video_data.tobytes()
@@ -575,9 +556,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
             elapsed_time = (time.monotonic() - start_time) * u.second
 
-            n=1
+            n = 1
             FRAME_SIZE_MB = 40.0
-            mbps = (good_frames * FRAME_SIZE_MB/n) /(time.monotonic() - start_time)
+            mbps = (good_frames * FRAME_SIZE_MB/n) / (time.monotonic() - start_time)
             fps = get_quantity_value(good_frames / elapsed_time)
 
             self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost, Throughput: {:.2f} MB/s".format(
@@ -848,7 +829,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
             # Connect to NATS
             self.thread_local.loop = loop
-            self.thread_local.nats_nc = loop.run_until_complete(nats.connect(servers=[self.NATS_SERVER]))
+            self.thread_local.nats_nc = loop.run_until_complete(
+                nats.connect(servers=[self.NATS_SERVER]))
             self.thread_local.nats_js = self.thread_local.nats_nc.jetstream()
 
             self.logger.info(f"Thread {threading.current_thread().name} connected to NATS")
@@ -904,13 +886,14 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
                 # Create headers for this chunk
                 chunk_headers = self.create_chunk_headers(
-                    base_headers, 
-                    chunk_coords, 
+                    base_headers,
+                    chunk_coords,
                     chunk_indices
                 )
 
                 # Publish the chunk using thread-local connection
-                success = self._publish_frame_to_nats_thread_local(chunk_data.tobytes(), headers=chunk_headers)
+                success = self._publish_frame_to_nats_thread_local(
+                    chunk_data.tobytes(), headers=chunk_headers)
 
                 # Mark task as done
                 self.chunk_queue.task_done()
