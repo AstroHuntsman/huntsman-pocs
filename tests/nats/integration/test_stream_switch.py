@@ -4,38 +4,16 @@
 # threshold.
 import os
 import pytest
-import pytest_asyncio
 from unittest.mock import patch
 from tempfile import NamedTemporaryFile
 from typing import Tuple
 
-from nats.js.errors import NotFoundError
 from nats.js import JetStreamContext
-from nats.js.api import StreamConfig
 
-from huntsman.pocs.camera.zwo import Camera
 from huntsman.pocs.nats.storage_manager import StorageManager, StorageManagerConfig
 from huntsman.pocs.nats.streams import MemoryStreamConfig, DiskStreamConfig, start_streams, delete_streams
 from huntsman.pocs.nats.monitor import HuntsmanMonitor
 from huntsman.pocs.nats.utils import subject_from_stream_name
-
-
-@pytest_asyncio.fixture
-async def setup_streams(js: JetStreamContext):
-    """Fixture that creates memory/disk streams and cleans them up."""
-    await js.add_stream(StreamConfig(name="memory_0", subjects=["memory_0.>"], retention="workqueue"))
-    await js.add_stream(StreamConfig(name="disk_0", subjects=["disk_0.>"], retention="workqueue"))
-
-    yield ("memory_0", "disk_0")
-
-    try:
-        await js.delete_stream("memory_0")
-    except NotFoundError:
-        pass
-    try:
-        await js.delete_stream("disk_0")
-    except NotFoundError:
-        pass
 
 
 async def publish_messages(js: JetStreamContext, subject: str, n: int):
