@@ -8,6 +8,7 @@ import os
 import shutil
 import time
 import pytest
+import numpy as np
 
 import astropy.units as u
 from astropy.io import fits
@@ -15,8 +16,9 @@ from astropy.io import fits
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 
-from huntsman.pocs.scheduler.field import Field
+from huntsman.pocs.scheduler.field import Field, DitheredField
 from huntsman.pocs.scheduler.observation.base import Observation
+from huntsman.pocs.scheduler.observation.movie import DitheredMovieObservation
 from huntsman.pocs.utils.pyro.nameserver import get_running_nameserver
 from huntsman.pocs.camera.pyro.client import Camera
 
@@ -44,6 +46,14 @@ def camera(camera_00_service_name):
     camera_client._exposure_error = None
 
     return camera_client
+
+
+def create_dummy_fits(filename, field_name="Test Observation", shape=(100, 100)):
+    """Create a minimal FITS file with some dummy data and a FIELD header."""
+    data = np.zeros(shape, dtype=np.uint16)  # 16-bit image
+    hdu = fits.PrimaryHDU(data)
+    hdu.header['FIELD'] = field_name
+    hdu.writeto(filename, overwrite=True)
 
 
 def test_tune_exptime(camera):
@@ -404,6 +414,65 @@ def test_autofocus_coarse_with_plots(camera, patterns):
         assert len(glob.glob(patterns['coarse_plot'])) == 1
     finally:
         shutil.rmtree(patterns['base'])
+
+
+def test_movie_mode(camera, tmpdir):
+    """ Tests basic take_video functionality """
+    max_frames = 5
+    files_dir = str(tmpdir.join('test_movie_mode'))
+    os.makedirs(files_dir, exist_ok=True)
+
+    if camera.is_cooled_camera and camera.cooling_enabled is False:
+        camera.cooling_enabled = True
+        time.sleep(5)  # Give camera time to cool
+
+    assert camera.is_ready
+    assert not camera.is_exposing
+    assert not camera._proxy.get("is_exposing")
+    assert not os.path.exists(files_dir + '/0.fits')
+
+    # A one second normal exposure
+    readout_future = camera.take_video(seconds=1, files_dir=files_dir, max_frames=max_frames)
+    assert readout_future.running()
+    assert camera.is_exposing
+    assert not camera.is_ready
+
+    # By default take_exposure is non-blocking, need to give it some time to complete.
+    readout_future.result(30)  # 30 second timeout
+
+    # Output file should exist, Event should be set and camera should say it's not exposing.
+    assert len(os.listdir(files_dir)) == max_frames
+    assert not camera.is_exposing
+    assert camera.is_ready
+    # If can retrieve some header data there's a good chance it's a valid FITS file
+    header = fits_utils.getheader(os.path.join(files_dir, '0.fits'))
+    assert header['EXPTIME'] == 1.0
+    assert header['IMAGETYP'] == 'Light Frame'
+
+
+def test_process_video_files(camera: Camera, tmpdir):
+    """ Tests processing of video files """
+    files_dir = str(tmpdir.join('test_process_video_files'))
+    os.makedirs(files_dir, exist_ok=True)
+    # Create some fake fits files to test with
+    for i in range(5):
+        create_dummy_fits(os.path.join(files_dir, f"{i}.fits"))
+
+    camera.take_video(seconds=1, files_dir=files_dir, max_frames=5, blocking=True)
+
+    field = DitheredField('Test Observation', '20h00m43.7135s +22d42m39.0645s')
+    observation = DitheredMovieObservation(field, exptime=1.5 * u.second, filter_name='deux')
+    observation.seq_time = '19991231T235959'
+
+    # Process the files
+    metadata = camera._setup_observation(observation, None, None)[3]
+    camera.process_video_files(metadata, camera._exposure_event)
+    files = sorted(glob.glob(metadata["files_dir"] + '/*.fits'))
+
+    # Check that the files have been processed
+    for i in range(5):
+        header = fits_utils.getheader(os.path.join(files_dir, f'{i}.fits'))
+        assert header['FIELD'] == 'Test Observation'
 
 
 @pytest.mark.skip("Defocusing logic has not been built into testing cameras!")

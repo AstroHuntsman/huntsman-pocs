@@ -1,12 +1,62 @@
 import os
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 import threading
+import json
 
 import numpy as np
 import pytest
 from astropy.io import fits
 
-from huntsman.pocs.nats.utils import write_fits, list_streams
+from huntsman.pocs.nats.utils import write_fits, list_streams, get_memory_usage, update_memory_usage
+
+
+@pytest.mark.asyncio
+async def test_get_memory_usage_reads_file(tmp_path):
+    """Reads a valid JSON file and returns correct memory usage and timestamp."""
+    file = tmp_path / "status.json"
+    file.write_text(json.dumps({"memory_usage": 42.5, "timestamp": 1234.0}))
+    usage, ts = await get_memory_usage(str(file))
+    assert usage == 42.5
+    assert ts == 1234.0
+
+
+@pytest.mark.asyncio
+async def test_get_memory_usage_missing_file():
+    """Raises FileNotFoundError when the memory status file is missing."""
+    with pytest.raises(FileNotFoundError):
+        await get_memory_usage("/does/not/exist.json")
+
+
+@pytest.mark.asyncio
+async def test_update_memory_usage_creates_new_file(tmp_path):
+    """Creates a new memory status file with usage and timestamp if none exists."""
+    file = tmp_path / "status.json"
+    await update_memory_usage(str(file), 67.2)
+    data = json.loads(file.read_text())
+    assert data["memory_usage"] == 67.2
+    assert "timestamp" in data
+
+
+@pytest.mark.asyncio
+async def test_update_memory_usage_overwrites_if_newer(tmp_path):
+    """Overwrites file when provided timestamp is newer than existing one."""
+    file = tmp_path / "status.json"
+    file.write_text(json.dumps({"memory_usage": 11.0, "timestamp": 100.0}))
+    with patch("huntsman.pocs.nats.utils.get_memory_usage", return_value=(11.0, 100.0)), \
+            patch("time.time", return_value=200.0):
+        await update_memory_usage(str(file), 99.9, timestamp=150.0)
+    data = json.loads(file.read_text())
+    assert data == {"timestamp": 200.0, "memory_usage": 99.9}
+
+
+@pytest.mark.asyncio
+async def test_update_memory_usage_ignores_stale_data(tmp_path, capsys):
+    """Skips writing and prints a warning when attempting to write stale data."""
+    file = tmp_path / "status.json"
+    with patch("huntsman.pocs.nats.utils.get_memory_usage", return_value=(80.0, 500.0)):
+        await update_memory_usage(str(file), 90.0, timestamp=100.0)
+    assert "stale" in capsys.readouterr().out
+    assert not file.exists()
 
 
 @pytest.mark.asyncio
