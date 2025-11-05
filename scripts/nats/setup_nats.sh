@@ -163,7 +163,8 @@ pre_script_checks(){
 }
 
 
-# Setup the monitoring window. Runs on the (local) control server
+
+# Setup the monitoring window. Runs on the (local) control server. Monitors memory usage and manages it.
 monitoring_setup(){
     echo "Creating NATS streams..."
     # Run create_streams.py and wait for it to complete
@@ -240,6 +241,7 @@ camera_setup(){
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "source ~/.bash_profile && sleep 10" Enter
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker ps -q --filter 'name=camera' | grep -q . && docker stop camera" # Stop any camera service if it's running
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker system prune -f --volumes" Enter # Delete old volumes
+    # TODO: Check if mounting network volume is necessary for moviemode
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "mkdir -p ${PANDIR}/images && sudo unmount ${PANDIR}/images && sudo mounts -t nfs ${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images ${PANDIR}/images" Enter # Mount the network volume
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "${run}" Enter # Run the service setup script
     byobu send-keys -t "$BYOBU_SESSION":"$idx.1" "echo 'Sleeping 30 seconds...' && sleep 30 && tail -F -n 10000 /var/huntsman/logs/huntsman.log" Enter
@@ -276,7 +278,8 @@ if [ $SKIP_CONFIRMATION == "false" ]; then
 fi
 
 
-## Set up the SSH tunnel ##
+# TODO: Check for the required services from the config docker compose
+
 pkill -f "ssh -.*R.*4222" # Kill any exisitng tunnel
 ssh -f -N -R 4222:localhost:4222 "$HUNTSMAN_REMOTE_HOST"
 # Check if SSH tunnel is active

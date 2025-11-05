@@ -1,26 +1,28 @@
-
 # Huntsman NATS Movie Mode Setup
 
 This repository contains the configuration and scripts for running the Huntsman telescope system in movie mode with NATS message streaming and monitoring.
 
 ## Overview
+
 The system comprosises of three main components:
+
 - **Huntsman Cameras:** Up to 10 cameras that record the data and publish it to the control server.
 - **Huntsman Control:** The Control server, where data is recieved from the cameras and published to the remote server.
 - **Huntsman Remote:** The Remote server, where data is recieved from the control server and stored.
 
 The movie mode setup includes the following components
+
 - **Control**
-    - **POCS Control System**: Core telescope control and configuration
-    - **[NATS JetStream Server](https://docs.nats.io/nats-concepts/jetstream)**: High-performance message streaming for camera data using a [Pub/Sub model](##Pub-Sub).
-        - **[JetStream Streams](https://docs.nats.io/nats-concepts/jetstream/streams):** The data streams that make publishes messages (images) available to consumers.
-    - **Memory Monitoring**: Real-time system memory usage tracking
-    - **Storage Management**: Tiered storage system (memory → disk)
-    - **SSH Tunneling**: To open ports between the Control and Remote servers for data transfer via NATS Jetstream
+  - **POCS Control System**: Core telescope control and configuration
+  - **[NATS JetStream Server](https://docs.nats.io/nats-concepts/jetstream)**: High-performance message streaming for camera data using a [Pub/Sub model](##Pub-Sub).
+    - **[JetStream Streams](https://docs.nats.io/nats-concepts/jetstream/streams):** The data streams that make publishes messages (images) available to consumers.
+  - **Memory Monitoring**: Real-time system memory usage tracking
+  - **Storage Management**: Tiered storage system (memory → disk)
+  - **SSH Tunneling**: To open ports between the Control and Remote servers for data transfer via NATS Jetstream
 - **Cameras**
-    - **[Pyro](https://github.com/irmen/pyro5)**: Python Remote Objects. Allows Python objects to communicate over networks
+  - **[Pyro](https://github.com/irmen/pyro5)**: Python Remote Objects. Allows Python objects to communicate over networks
 - **Remote**
-    - **[Jetstream Consumers](https://docs.nats.io/nats-concepts/jetstream/consumers):** Subscribes to messages from streams. Used to recieve image data.
+  - **[Jetstream Consumers](https://docs.nats.io/nats-concepts/jetstream/consumers):** Subscribes to messages from streams. Used to recieve image data.
 
 ## Prerequisites
 
@@ -41,7 +43,9 @@ byobu --version
 ```
 
 ## First Time Setup
+
 ### Environment Variables
+
 To run movie mode for the first time, you'll need to configure your environment variables. There is an [example .env file](../example.huntsman.env) for this purpose. Copy it with
 
 ```bash
@@ -58,7 +62,7 @@ Most of the variables will not need changing, but it's good to give a quick once
 - **HUNTSMAN_DRP:** The path to the huntsman-drp repository repo on the Control server
 - **HUNTSMAN_REMOTE_HOST:** Then hostname for the Remote server. See [SSH Configuration](###SSH-Configuration) for more information.
 - **HUNTSMAN_CONTROL_HOST:** Then hostname for the Control server. See [SSH Configuration](###SSH-Configuration) for more information.
-- **HUNTSMAN_CAMERAS:** A JSON-structured list of Camera hostnames (`hostname`), numbers (`num`) and whether to use this camera (`use`).  See [SSH Configuration](###SSH-Configuration) for more information.
+- **HUNTSMAN_CAMERAS:** A JSON-structured list of Camera hostnames (`hostname`), numbers (`num`) and whether to use this camera (`use`). See [SSH Configuration](###SSH-Configuration) for more information.
 - **PANOPTES_CONFIG_HOST:** The host running the config container
 - **PANOPTES_CONFIG_PORT:** The exposed config cotnainer port
 - **NATS_SERVER:** The hostname and port of the NATS server, running on the Control server
@@ -74,11 +78,12 @@ Most of the variables will not need changing, but it's good to give a quick once
 - **DOCKER_TAG:** The tag to use for huntsman (not panoptes) docker images. Used for both image creation and pulling. e.g. `${DOCKER_USER}/huntsman-pocs:${DOCKER_TAG}`
 - **DOCKER_PAT:** The Docker Personal Access Token. Used to push images to Docker hub. See [the official docs](https://docs.docker.com/security/access-tokens/) for further information.
 
-
 ### Python
+
 You'll need to set up your Python environment on the control server. The officially supported version is 3.9. If this is not already installed, it'll need to be. There are numerous online tutorials on how to install a specific version of Python.
 
 As for the environment, the dependencies for this project aren't pinned, so you'll need to use a dependency solver. There are a few options for these:
+
 - [Anaconda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/)
 - [Mamba](https://github.com/mamba-org/mamba)
 - [UV](https://github.com/astral-sh/uv)
@@ -86,18 +91,21 @@ As for the environment, the dependencies for this project aren't pinned, so you'
 Choose your favourite then install the project with your manager's install command.
 
 ### SSH Configuration
-This is a distributed setup that is primarily managed via SSH. To assist with ease-of-use, `~/.ssh/config` use is employed. 
 
-We need to set up the following *host aliases* for the following **hosts**:
+This is a distributed setup that is primarily managed via SSH. To assist with ease-of-use, `~/.ssh/config` use is employed.
+
+We need to set up the following _host aliases_ for the following **hosts**:
+
 - **Control**
-    - *Remote server*
-    - *Cameras 1->10*
+  - _Remote server_
+  - _Cameras 1->10_
 - **Camera**
-    - *Control server*
+  - _Control server_
 - **Remote**
-    - *Control server*
+  - _Control server_
 
 Each SSH alias looks like this in the `~/.ssh/config` file of the host:
+
 ```bash
 Host hostname1
     HostName xxx.xxx.xxx.xxx
@@ -114,14 +122,17 @@ This setup has the enormous advantage of seemless connectivity between each of o
 ### Environment Setup
 
 Source your `huntsman.env` file to load the correct environment variables
+
 ```bash
 source huntsman.env
 ```
 
 ### Build Docker Images
+
 There are four docker images that need to be built. Two from the base Panoptes and two Huntsman images that build from it.
 
 You can quickly build these with the build script
+
 ```bash
 $HUNTSMAN_POCS/scripts/build_push_images.sh
 
@@ -143,6 +154,7 @@ docker compose ps
 ```
 
 ### Run the NATS Startup Script
+
 Start the rest of the services including the memory monitor (control), the streams (control), the consumers (remote) and the pyro server (camera).
 
 ```bash
