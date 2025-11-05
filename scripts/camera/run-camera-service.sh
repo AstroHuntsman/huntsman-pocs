@@ -54,6 +54,7 @@ if [ -f ${DC_FILE} ] ; then
     rm ${DC_FILE}
 fi
 echo "Downloading latest docker-compose file from ${DC_FILE_URL} to ${DC_FILE}"
+# TODO: Don't pull from remote repository
 wget ${DC_FILE_URL} -O ${DC_FILE}
 
 # Prune docker

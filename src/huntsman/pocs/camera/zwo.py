@@ -31,7 +31,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                  name='ZWO ASI Camera',
                  gain=None,
                  image_type=None,
-                 *args, **kwargs):
+                 memory_threshold: float = 50,
+                 * args, **kwargs):
         """
         ZWO ASI Camera class
         Args:
@@ -63,22 +64,25 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         self.memory_subject = f"camera.memory.{producer_id}.frame"
         self.disk_subject = f"camera.archive.{producer_id}.frame"
-        self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
+        self.nats_server = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
         self.chunking_enabled = False
 
         # last memory check and memory usage
+        if memory_threshold > 100 or memory_threshold < 0:
+            print("Invalid memory threshold set. Defaulting to 50%")
+            memory_threshold = 50
+        self.memory_threshold = memory_threshold
         self.memory_usage = 0.0
-        self.MEMORY_THRESHOLD = 50.0
         self.last_memory_check = time.time()
-        self.MEMORY_STATUS_FILE = os.environ.get(
+        self.memory_status_file = os.environ.get(
             "MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
 
         print(f"Memory usage: {self.memory_usage}%")
-        print(f"MEMORY_THRESHOLD: {self.MEMORY_THRESHOLD}%")
+        print(f"memory_threshold: {self.memory_threshold}%")
 
-        self.nats_client = None
-
-        # self.nats_client = self._setup_nats()
+        # self.nc, self.js = asyncio.run(self._setup_nats())
+        self.nc = None
+        self.js = None
 
         if image_type:
             self._image_type = image_type
@@ -184,37 +188,38 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             return self.memory_usage
 
         try:
-            self.memory_usage = asyncio.run(get_memory_usage(self.MEMORY_STATUS_FILE))[0]
+            self.memory_usage = asyncio.run(get_memory_usage(self.memory_status_file))[0]
         except Exception as e:
             print(f"Error reading memory status: {e}")
 
         self.last_memory_check = current_time
 
     # Methods
-    async def _setup_nats_async(self):
-        """Set up the NATS connection asynchronously - exactly like in producer_nopub.py"""
+    async def _setup_nats(self):
+        """Set up the NATS connection"""
         try:
             # Connect to NATS
-            nc = await nats.connect(servers=[self.NATS_SERVER])
+            nc = await nats.connect(servers=[self.nats_server])
             js = nc.jetstream()
 
-            self.logger.info(f"Connected to NATS server at {self.NATS_SERVER}")
+            self.logger.info(f"Connected to NATS server at {self.nats_server}")
             return (nc, js)
         except Exception as e:
             self.logger.error(f"Failed to connect to NATS: {e}")
             return None
 
-    async def _publish_to_nats_async(self, subject, data, headers):
+    async def _publish_to_nats(self, subject, data, headers):
         """Publish data to NATS subject with acknowledgment"""
         try:
-            if self.nats_client is None:
+            # TODO: check if this is necessary
+            if self.js is None:
                 connection = await self._setup_nats_async()
                 if connection is None:
                     return False
-                self.nc, self.nats_client = connection
+                self.nc, self.js = connection
 
             # Wait for acknowledgment from JetStream
-            ack = await self.nats_client.publish(subject, data, headers=headers)
+            ack = await self.js.publish(subject, data, headers=headers)
 
             # Verify the message was stored
             if ack and ack.seq:
@@ -226,7 +231,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         except Exception as e:
             self.logger.error(f"Error publishing to NATS: {e}")
-            self.nats_client = None
+            self.js = None
             return False
 
     def _publish_frame_to_nats(self, frame_data, headers):
@@ -238,19 +243,18 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         asyncio.set_event_loop(loop)
 
         # Reset any existing connections since we're using a new loop
-        self.nats_client = None
-        if hasattr(self, 'nc'):
-            self.nc = None
+        self.js = None
+        self.nc = None
 
         try:
             self.check_memory_usage()
-            if self.memory_usage < self.MEMORY_THRESHOLD:
+            if self.memory_usage < self.memory_threshold:
                 success = loop.run_until_complete(
-                    self._publish_to_nats_async(self.memory_subject, frame_data, headers)
+                    self._publish_to_nats(self.memory_subject, frame_data, headers)
                 )
             else:
                 success = loop.run_until_complete(
-                    self._publish_to_nats_async(self.disk_subject, frame_data, headers)
+                    self._publish_to_nats(self.disk_subject, frame_data, headers)
                 )
             return success
         except Exception as e:
@@ -266,7 +270,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             finally:
                 # Always close the loop and reset state
                 loop.close()
-                self.nats_client = None
+                self.js = None
                 if hasattr(self, 'nc'):
                     self.nc = None
 
@@ -384,23 +388,16 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             # Update the current focus offset
             self._current_focus_offset = actual_offset
 
-        # video_obj = super().take_exposure(*args, **kwargs)
-
-        # breakpoint()
-
-        filename_root = kwargs['files_dir']
         max_frames = kwargs['max_frames']
         frame_rate = kwargs['frame_rate']
         duration = kwargs['duration']
         seconds = kwargs['seconds']
         self.chunking_enabled = kwargs.get('chunking_enabled', False)
 
-        video_obj = self.start_video(seconds, filename_root, max_frames, frame_rate, duration)
+        return self.start_video(seconds, max_frames, frame_rate, duration)
 
-        return video_obj
-
-    def start_video(self, seconds, filename_root, max_frames, frame_rate, duration, image_type=None):
-
+    def start_video(self, seconds, max_frames, frame_rate, duration, image_type=None) -> threading.Thread:
+        """Starts the video recording"""
         if not isinstance(seconds, u.Quantity):
             seconds = seconds * u.second
         self._control_setter('EXPOSURE', seconds)
@@ -418,8 +415,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                       height,
                       image_type,
                       timeout,
-                      filename_root,
-                      self.file_extension,
                       int(max_frames),
                       frame_rate,
                       duration,
@@ -463,8 +458,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                        height,
                        image_type,
                        timeout,
-                       filename_root,
-                       file_extension,
                        max_frames,
                        frame_rate,
                        duration,
@@ -503,7 +496,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             if video_data is not None:
                 now = Time.now()
                 header.set('DATE-OBS', now.fits, 'End of exposure + readout')
-                filename = "{}_{:06d}.{}".format(filename_root, frame_number, file_extension)
                 # Fix 'raw' data scaling by changing from zero padding of LSBs
                 # to zero padding of MSBs.
                 video_data = np.right_shift(video_data, pad_bits)
@@ -542,7 +534,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                         'frame_number': str(frame_number),
                         'width': str(width),
                         'height': str(height),
-                        # This serializes the dictionary to a JSON string
                         'header': json.dumps(header_dict)
                     }
 
@@ -830,7 +821,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             # Connect to NATS
             self.thread_local.loop = loop
             self.thread_local.nats_nc = loop.run_until_complete(
-                nats.connect(servers=[self.NATS_SERVER]))
+                nats.connect(servers=[self.nats_server]))
             self.thread_local.nats_js = self.thread_local.nats_nc.jetstream()
 
             self.logger.info(f"Thread {threading.current_thread().name} connected to NATS")
@@ -846,7 +837,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             # Create coroutine to publish the data
             async def publish():
                 self.check_memory_usage()
-                if self.memory_usage < self.MEMORY_THRESHOLD:
+                if self.memory_usage < self.memory_threshold:
                     ack = await js.publish(self.memory_subject, data, headers=headers)
                 else:
                     ack = await js.publish(self.disk_subject, data, headers=headers)
@@ -946,7 +937,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             # Just reset the NATS client reference - don't try to close across different loops
             if hasattr(self, 'nats_client'):
                 self.logger.debug("Resetting NATS JetStream client")
-                self.nats_client = None
+                self.js = None
 
             if hasattr(self, 'nc'):
                 self.logger.debug("Resetting NATS connection")

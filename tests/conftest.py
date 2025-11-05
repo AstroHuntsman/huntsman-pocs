@@ -82,6 +82,7 @@ def setup_pyro_servers():
     else:
         raise RuntimeError(f"Could not find Pyro nameservers. Waited {timeout} seconds.")
 
+    # Get the configuration as defined in testing.yaml
     nameserver_config = get_config(key='pyro.nameserver', host=config_host, port=config_port)
     service_config = get_config(key=f'pyro.{service_class}', host=config_host, port=config_port)
 

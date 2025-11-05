@@ -1,6 +1,5 @@
 from huntsman.pocs.core import HuntsmanPOCS
 from huntsman.pocs.utils.flats import altaz_to_radec
-from panoptes.pocs.utils.location import create_location_from_config
 from panoptes.utils.time import CountdownTimer, current_time
 
 

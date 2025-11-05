@@ -1,4 +1,4 @@
-
+from copy import deepcopy
 from collections import OrderedDict
 from contextlib import suppress
 
@@ -45,24 +45,13 @@ def create_cameras_from_config(config=None, **kwargs):
         return cameras
 
     # Get a config specific to the local cameras
-    config_local = camera_config.copy()
+    config_local = deepcopy(camera_config)
     n_local = 0
     with suppress(KeyError):
         del config_local["devices"]
-        config_local["devices"] = [c for c in camera_config["devices"] if not c.get(
-                                   "is_distributed", False)]
-        n_local = len(config_local['devices'])
+    config_local["devices"] = [c for c in camera_config["devices"] if not c["is_distributed"]]
+    n_local = len(config_local['devices'])
     logger.debug(f"Found {n_local} local cameras in config.")
-
-    # Get a config specific to the distibuted cameras
-    config_distributed = camera_config.copy()
-    n_dist = 0
-    with suppress(KeyError):
-        del config_distributed["devices"]
-        config_distributed["devices"] = [c for c in camera_config["devices"] if c.get(
-                                         "is_distributed", False)]
-        n_dist = len(config_distributed['devices'])
-    logger.debug(f"Found {n_dist} distributed cameras in config.")
 
     # Create local cameras
     if n_local > 0:
@@ -71,6 +60,15 @@ def create_cameras_from_config(config=None, **kwargs):
             cameras.update(cameras_local)
         except Exception as err:
             logger.error(f"Error encountered while creating local cameras: {err}")
+
+    # Get a config specific to the distibuted cameras
+    config_distributed = deepcopy(camera_config)
+    n_dist = 0
+    with suppress(KeyError):
+        del config_distributed["devices"]
+    config_distributed["devices"] = [c for c in camera_config["devices"] if c["is_distributed"]]
+    n_dist = len(config_distributed['devices'])
+    logger.debug(f"Found {n_dist} distributed cameras in config.")
 
     # Create distributed cameras
     if n_dist > 0:

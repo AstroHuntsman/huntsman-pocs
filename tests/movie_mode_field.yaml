@@ -1,0 +1,11 @@
+- field:
+    name: Movie Mode Test
+    position: 02h26m51.0582s +37d33m01.733s
+  observation:
+    type: huntsman.pocs.scheduler.observation.movie.DitheredMovieObservation
+    priority: 100
+    exptime: 0.01
+    frame_rate: 10
+    duration: 5 # seconds
+    min_nexp: 50
+    exp_set_size: 50

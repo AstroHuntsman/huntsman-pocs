@@ -15,9 +15,10 @@ services:
       - ${HUNTSMAN_POCS}/tests/huntsman.test.env
     user: root # Need to use root user - appaerntly an issue with mamba. https://github.com/mamba-org/micromamba-docker/issues/407#issuecomment-2088523507
     volumes:
-      - "${HUNTSMAN_POCS}/logs:/huntsman/logs:rw"
-      - "${HUNTSMAN_POCS}/build:/huntsman/build:rw"
-      - "${HUNTSMAN_POCS}/src:/huntsman/src:ro"
-      - "${HUNTSMAN_POCS}/tests:/huntsman/tests:ro"
+      - ../src:/huntsman/src
+      - ../tests:/huntsman/tests
+      - ../logs:/huntsman/logs
+      - ../build:/huntsman/build
+      - /var/run/docker.sock:/var/run/docker.sock
     command: -v -s tests
     entrypoint: pytest
