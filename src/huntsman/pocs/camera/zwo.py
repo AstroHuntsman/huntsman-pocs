@@ -361,14 +361,15 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         return super().take_exposure(*args, **kwargs)
 
     def take_video(self, *args, **kwargs):
-        """ Overrride class method to add defocusing offset.
-        Note that the focus offset is checked at the exposure level so that we don't end up
-        moving the focuser back and forth unnecessarily.
-        TODO: Move to AbstractCamera.
-        Args:
-            defocused (bool, optional): If True, apply the defocusing offset before the exposure.
-                Default: False.
-            *args, **kwargs: Parsed to super().take_exposure.
+        """Takes a video.
+        Mostly just runs some setup and calls _start_video
+
+        Expects the following kwargs:
+            max_frames (int): The maximum number of frames to take before stopping the video
+            frame_rate (float): The target capture rate in frames per second
+            duration (float): The maximum length of time to run the video for in seconds
+            seconds (float): The exposure time in seconds of each frame
+            chunking_enabled (bool): Whether to enable chunking or not. (Optional - default False)
         Returns:
             threading.Thread: The readout thread, which joins when readout has finished.
         """
@@ -394,10 +395,19 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         seconds = kwargs['seconds']
         self.chunking_enabled = kwargs.get('chunking_enabled', False)
 
-        return self.start_video(seconds, max_frames, frame_rate, duration)
+        return self._start_video(seconds, max_frames, frame_rate, duration)
 
-    def start_video(self, seconds, max_frames, frame_rate, duration, image_type=None) -> threading.Thread:
-        """Starts the video recording"""
+    def _start_video(self, seconds, max_frames, frame_rate, duration, image_type=None) -> threading.Thread:
+        """Starts the video recording
+
+        Args:
+            seconds (float): The exposure time in seconds of each frame
+            max_frames (int): The maximum number of frames to take before stopping the video
+            frame_rate (float): The target capture rate in frames per second
+            duration (float): The maximum length of time to run the video for in seconds
+        Returns:
+            threading.Thread: The readout thread.
+        """
         if not isinstance(seconds, u.Quantity):
             seconds = seconds * u.second
         self._control_setter('EXPOSURE', seconds)
@@ -430,7 +440,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         return video_thread
 
-    def stop_video(self):
+    def _stop_video(self):
         self._video_event.set()
         Camera._driver.stop_video_capture(self._handle)
 
@@ -493,7 +503,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                                                        height,
                                                        image_type,
                                                        timeout)
-            if video_data is not None:
+            if video_data is None:
+                bad_frames += 1
+            else:
                 now = Time.now()
                 header.set('DATE-OBS', now.fits, 'End of exposure + readout')
                 # Fix 'raw' data scaling by changing from zero padding of LSBs
@@ -542,9 +554,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
                 good_frames += 1
 
-            else:
-                bad_frames += 1
-
             elapsed_time = (time.monotonic() - start_time) * u.second
 
             n = 1
@@ -584,7 +593,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         # if frame_number == max_frames - 1:
         if time_taken > duration_seconds:
             # No one called stop_video() before max_frames so have to call it here
-            self.stop_video()
+            self._stop_video()
 
         elapsed_time = (time.monotonic() - start_time) * u.second
         self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost".format(
