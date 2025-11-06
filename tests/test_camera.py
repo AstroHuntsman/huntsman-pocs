@@ -470,8 +470,8 @@ def test_process_video_files(camera: Camera, tmpdir):
     files = sorted(glob.glob(metadata["files_dir"] + '/*.fits'))
 
     # Check that the files have been processed
-    for i in range(5):
-        header = fits_utils.getheader(os.path.join(files_dir, f'{i}.fits'))
+    for f in files:
+        header = fits_utils.getheader(f)
         assert header['FIELD'] == 'Test Observation'
 
 

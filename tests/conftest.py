@@ -1,14 +1,18 @@
+import asyncio
 import logging
 import os
 import atexit
 import subprocess
 import time
 from contextlib import suppress
-import asyncio
+from typing import Any, AsyncGenerator
 
 import pytest
 import pytest_asyncio
 import nats
+from nats.aio.client import Client as NATS
+from nats.js import JetStreamContext
+
 from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver, locate_ns
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
@@ -46,7 +50,7 @@ logger.log('testing', '*' * 25 + startup_message + '*' * 25)
 
 NATS_HOST = "127.0.0.1"
 NATS_PORT = "4222"
-NATS_ADDR = f"{NATS_HOST}:{NATS_PORT}"
+NATS_ADDR = f"nats://{NATS_HOST}:{NATS_PORT}"
 
 
 def setup_pyro_servers():
@@ -302,6 +306,26 @@ def config_path(base_dir):
 @pytest.fixture(scope="session")
 def nats_addr():
     return NATS_ADDR
+
+
+@pytest_asyncio.fixture(scope="function")
+async def nats_env(nats_addr):
+    nc = NATS()
+    await nc.connect(servers=[nats_addr])
+    js = nc.jetstream()
+    try:
+        yield nc, js
+    finally:
+        # delete all streams after test
+        for info in await js.streams_info():
+            await js.delete_stream(info.config.name)
+        await nc.close()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def js(nats_env) -> AsyncGenerator[Any, JetStreamContext]:
+    """Fixture to connect to NATS and return JetStream context."""
+    yield nats_env[1]
 
 
 @pytest.fixture

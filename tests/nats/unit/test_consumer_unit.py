@@ -274,6 +274,7 @@ async def test_process_stream(empty_consumer: Consumer, mocker):
     except asyncio.TimeoutError:
         pass  # Expected timeout as it's an infinite loop
 
+    # Assertions
     mock_sub.fetch.assert_called()
     msg1.ack.assert_called_once()
     mock_put.assert_called_once()
@@ -339,6 +340,7 @@ async def test_report_stats(empty_consumer: Consumer, mocker):
     empty_consumer.running = False
     await task
 
+    # Assertions
     mock_print.assert_called_with(
         "Consumer test_consumer: Processed 10 frames (6 memory, 4 disk), 2.00 FPS, Queue size: 1"
     )

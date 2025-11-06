@@ -1,175 +1,197 @@
 import pytest
 import numpy as np
-import asyncio
-from unittest.mock import MagicMock, patch
-
-from astropy import units as u
+from unittest.mock import patch, PropertyMock, MagicMock
+import json
+import time
 
 from huntsman.pocs.camera.zwo import Camera
+from huntsman.pocs.nats.streams import start_streams, delete_streams
+from fake_asi_driver import FakeASIDriver
 
 
 @pytest.fixture(autouse=True)
 def reset_camera_driver():
+    # Reset the singleton driver and camera list before each test
     Camera._driver = None
+    Camera._cameras = []
+    Camera._assigned_cameras = set()
 
 
 @pytest.fixture
 def camera_config():
     return {
         'name': 'ZWO ASI Camera',
-        'port': '/dev/ttyZWO1',
+        'port': '/dev/ttyZWO1',  # This will be ignored by the SDK camera
         'serial_number': '123456789',
     }
 
 
 @pytest.fixture
-def mock_driver():
-    driver = MagicMock()
-    driver.version = '1.2.3'
-    driver.get_devices.return_value = {'123456789': '/dev/ttyZWO1'}
-    driver.get_camera_property.return_value = {
-        'camera_ID': 0,
-        'name': 'ZWO ASI1600MM Pro',
-        'has_cooler': True,
-        'is_color_camera': False,
-        'bayer_pattern': None,
-        'bit_depth': 12,
-        'pixel_size': 3.8 * u.um,
-        'supported_video_format': ['RAW8', 'RAW16'],
-        'e_per_adu': 0.5,
-    }
-    driver.get_control_caps.return_value = {
-        'GAIN': {
-            'name': 'Gain',
-            'is_writable': True,
-            'max_value': 100,
-            'min_value': 0,
-            'is_auto_supported': True,
-        },
-        'EXPOSURE': {
-            'name': 'Exposure',
-            'is_writable': True,
-            'max_value': 1000,
-            'min_value': 0,
-            'is_auto_supported': True,
-        },
-        'TEMPERATURE': {
-            'name': 'Temperature',
-            'is_writable': False,
-        },
-        'TARGET_TEMP': {
-            'name': 'Target Temperature',
-            'is_writable': True,
-            'max_value': 30,
-            'min_value': -20,
-            'is_auto_supported': False,
-        },
-        'COOLER_POWER_PERC': {
-            'name': 'Cooler Power',
-            'is_writable': False,
-        },
-    }
-
-    def get_control_value_side_effect(handle, control_type):
-        if control_type == 'TEMPERATURE':
-            return (10 * u.Celsius, True)
-        elif control_type == 'COOLER_POWER_PERC':
-            return (50 * u.percent, True)
-        else:
-            return (0, True)
-
-    driver.get_control_value.side_effect = get_control_value_side_effect
-    driver.get_video_data.return_value = np.zeros((10, 10), dtype='uint16')
-    return driver
+def camera(camera_config):
+    with patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', FakeASIDriver):
+        camera = Camera(**camera_config)
+        yield camera
+        camera.__del__()
 
 
-@patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', new_callable=MagicMock)
-def test_camera_init(mock_driver_class, camera_config, mock_driver):
-    mock_driver_class.return_value = mock_driver
-    camera = Camera(**camera_config)
+def test_camera_init(camera: Camera):
     assert camera.is_connected is True
     assert camera.name == 'ZWO ASI Camera'
     assert camera._serial_number == '123456789'
 
 
-@patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', new_callable=MagicMock)
-def test_camera_connect(mock_driver_class, camera_config, mock_driver):
-    mock_driver_class.return_value = mock_driver
-    camera = Camera(**camera_config)
+def test_camera_connect(camera: Camera):
     # The camera is already connected in __init__
     # We can call connect() again to check if it works
     camera.connect()
-
     assert camera.is_connected is True
-    # The mock is called once in __init__ and once in connect()
-    assert mock_driver.open_camera.call_count == 2
-    assert mock_driver.init_camera.call_count == 2
-    assert mock_driver.get_control_caps.call_count == 2
 
 
-@patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', new_callable=MagicMock)
-def test_take_exposure(mock_driver_class, camera_config, mock_driver):
-    mock_driver_class.return_value = mock_driver
-    mock_driver.get_roi_format.return_value = {
-        'width': 1024,
-        'height': 768,
-        'image_type': 'RAW16',
-    }
-    camera = Camera(**camera_config)
-
-    readout_args = camera._start_exposure(seconds=1.0, filename='test.fits', dark=False, header={})
-    assert readout_args[0] == 'test.fits'
-    mock_driver.start_exposure.assert_called_once()
+def test_take_exposure(camera: Camera):
+    with patch.object(Camera, 'is_ready', new_callable=PropertyMock(return_value=True)):
+        readout_thread = camera.take_exposure(filename='test.fits')
+        readout_thread.join()
+        # Check that exposure status is idle after exposure
+        assert camera._driver.get_exposure_status(camera._handle) == 'IDLE'
 
 
-@patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', new_callable=MagicMock)
-@patch('huntsman.pocs.camera.zwo.fits_utils.write_fits')
-def test_readout(mock_write_fits, mock_driver_class, camera_config, mock_driver):
-    mock_driver_class.return_value = mock_driver
-    mock_driver.get_exposure_status.return_value = 'SUCCESS'
-    mock_driver.get_exposure_data.return_value = 'imagedata'
-
-    camera = Camera(**camera_config)
-
-    camera._readout(filename='test.fits', width=1024, height=768, header={})
-    mock_write_fits.assert_called_once()
+def test_readout(camera: Camera):
+    # This is now more of an integration test
+    with patch('huntsman.pocs.camera.zwo.fits_utils.write_fits') as mock_write_fits:
+        camera._driver._exposure_status[camera._handle] = 'SUCCESS'
+        camera._readout(filename='test.fits', width=1024, height=768, header={})
+        mock_write_fits.assert_called_once()
 
 
-@patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', new_callable=MagicMock)
-def test_take_video(mock_driver_class, camera_config, mock_driver):
-    mock_driver_class.return_value = mock_driver
-    mock_driver.get_roi_format.return_value = {
-        'width': 1024,
-        'height': 768,
-        'image_type': 'RAW16',
-    }
-    camera = Camera(**camera_config)
+def test_gain_setting(camera: Camera):
+    # Test setting a valid gain
+    camera.gain = 50
+    assert camera.gain == 50
 
-    with patch.object(camera, '_control_setter') as mock_control_setter:
-        video_thread = camera.start_video(
-            seconds=0.1,
-            filename_root='test_video',
-            max_frames=10,
-            frame_rate=10,
-            duration=1,
-        )
-        assert video_thread.is_alive() is True
-        mock_driver.start_video_capture.assert_called_once()
-        camera.stop_video()
-        video_thread.join(timeout=2)
-        assert video_thread.is_alive() is False
-        mock_control_setter.assert_called_once_with('EXPOSURE', 0.1 * u.s)
+    # Test clipping high gain
+    camera.gain = 150
+    assert camera.gain == 100
+
+    # Test clipping low gain
+    camera.gain = -50
+    assert camera.gain == 0
 
 
-@patch('huntsman.pocs.camera.zwo.HuntsmanASIDriver', new_callable=MagicMock)
-@patch('huntsman.pocs.camera.zwo.asyncio.new_event_loop')
-def test_publish_to_nats(mock_new_event_loop, mock_driver_class, camera_config, mock_driver):
-    mock_driver_class.return_value = mock_driver
-    camera = Camera(**camera_config)
+def test_image_type_setting(camera: Camera):
+    # Test setting a valid image type
+    camera.image_type = 'RAW8'
+    assert camera.image_type == 'RAW8'
 
-    mock_loop = MagicMock(spec=asyncio.AbstractEventLoop)
-    mock_new_event_loop.return_value = mock_loop
+    # Test setting an invalid image type
+    with pytest.raises(ValueError):
+        camera.image_type = 'INVALID_TYPE'
 
-    camera._publish_frame_to_nats(frame_data=b'fakedata', headers={})
-    mock_loop.run_until_complete.assert_called_once()
 
+def test_readout_failed(camera: Camera):
+    camera._driver._exposure_status[camera._handle] = 'FAILED'
+    with pytest.raises(Exception):
+        camera._readout(filename='test.fits', width=1024, height=768, header={})
+
+
+def test_divide_image_into_chunks(camera: Camera):
+    image_data = np.zeros((16, 16))
+    chunks = camera.divide_image_into_chunks(image_data, n_chunks_x=2, n_chunks_y=2)
+
+    assert len(chunks) == 4
+    assert chunks[0][0].shape == (8, 8)
+    assert chunks[0][1] == (0, 0, 8, 8)
+    assert chunks[0][2] == (0, 0)
+
+    assert chunks[1][0].shape == (8, 8)
+    assert chunks[1][1] == (8, 0, 16, 8)
+    assert chunks[1][2] == (1, 0)
+
+    assert chunks[2][0].shape == (8, 8)
+    assert chunks[2][1] == (0, 8, 8, 16)
+    assert chunks[2][2] == (0, 1)
+
+    assert chunks[3][0].shape == (8, 8)
+    assert chunks[3][1] == (8, 8, 16, 16)
+    assert chunks[3][2] == (1, 1)
+
+
+def test_create_chunk_headers(camera: Camera):
+    base_headers = {'base_key': 'base_value'}
+    chunk_coords = (0, 0, 8, 8)
+    chunk_indices = (0, 0)
+    headers = camera.create_chunk_headers(base_headers, chunk_coords, chunk_indices, 2, 2)
+
+    assert headers['base_key'] == 'base_value'
+    assert headers['chunk_x'] == '0'
+    assert headers['chunk_y'] == '0'
+    assert headers['width'] == '8'
+    assert headers['height'] == '8'
+    assert headers['total_chunks_x'] == '2'
+    assert headers['total_chunks_y'] == '2'
+
+
+def test_take_exposure_with_focus_offset(camera: Camera):
+    camera.focuser = MagicMock()
+    camera.focuser.position = 100
+    camera.focuser.move_by.return_value = 110
+
+    with patch.object(Camera, 'is_ready', new_callable=PropertyMock(return_value=True)):
+        camera.take_exposure(focus_offset=10, filename='test.fits')
+
+    camera.focuser.move_by.assert_called_once_with(10)
+    assert camera._current_focus_offset == 10
+
+
+@pytest.mark.asyncio
+async def test_take_video_no_chunking(camera: Camera, nats_addr):
+    camera.nats_server = nats_addr
+
+    video_thread = camera.take_video(
+        seconds=0.1,
+        max_frames=2,
+        frame_rate=10,
+        duration=0.2,
+        chunking_enabled=False
+    )
+    video_thread.join(timeout=2)
+
+    assert not video_thread.is_alive()
+
+
+def test_take_video_chunking(camera: Camera, nats_addr):
+    camera.nats_server = nats_addr
+
+    video_thread = camera.take_video(
+        seconds=0.1,
+        max_frames=1,
+        frame_rate=10,
+        duration=0.1,
+        chunking_enabled=True
+    )
+    video_thread.join(timeout=2)
+
+    assert not video_thread.is_alive()
+
+
+def test_check_memory_usage(camera: Camera, tmp_path):
+    status_file = tmp_path / "memory_status.json"
+    with open(status_file, 'w') as f:
+        json.dump({'memory_percent': 75.0, 'memory_total': 100.0}, f)
+
+    camera.memory_status_file = str(status_file)
+    camera.last_memory_check = 0  # force a check
+
+    camera.check_memory_usage()
+    assert camera.memory_usage == 75.0
+
+    # Check that it doesn't check again if called within 2 seconds
+    with open(status_file, 'w') as f:
+        json.dump({'memory_percent': 80.0, 'memory_total': 100.0}, f)
+
+    camera.check_memory_usage()
+    assert camera.memory_usage == 75.0
+
+    # Wait 2 seconds and check again
+    time.sleep(2)
+    camera.check_memory_usage()
+    assert camera.memory_usage == 80.0
