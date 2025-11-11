@@ -35,6 +35,8 @@ There are two streams per camera - a memory and a disk stream. By default, messa
 
 ## Setup
 
+- See [SSH Configuration setup guide](Distributed-System-Architecture#ssh-access-&-configuration)
+
 ### Environment Variables
 
 To run movie mode for the first time, you'll need to configure your environment variables. This is described in more detail in the [Environment and Configuration](Environment-and-Configuration#environment-variables) section.
@@ -68,33 +70,6 @@ $HUNTSMAN_POCS/scripts/build_push_images.sh --no-pan-utils --no-pan-pocs
 ```
 
 Note that this will employ the tags and username that is defined in the sourced [environment](#environment-variables).
-
-### SSH Configuration
-
-This is a distributed setup that is primarily managed via SSH. To assist with ease-of-use, `~/.ssh/config` use is employed.
-
-We need to set up the following _host aliases_ for the following **hosts**:
-
-- **Control**
-  - _Remote server_
-  - _Cameras 1 to 10_
-- **Camera**
-  - _Control server_
-- **Remote**
-  - _Control server_
-
-Each SSH alias looks like this in the `~/.ssh/config` file of the host:
-
-```bash
-Host hostname1
-    HostName xxx.xxx.xxx.xxx
-    User Username
-    IdentityFile ~/.ssh/hostname1_key
-```
-
-Note the use of an IdentityFile. We will similarly employ the use of SSH keys between each of the hosts. There are numerous guides available online detailing how to set up SSH keys between hosts so this will not be repeated here.
-
-This setup has the enormous advantage of seemless connectivity between each of our distributed components.
 
 ### Services
 
