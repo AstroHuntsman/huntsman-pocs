@@ -488,20 +488,27 @@ class Consumer():
         """
         self.start_writer_threads()
         try:
-            # Create pull consumers for memory stream
+            # Create pull consumers for memory stream and launch async tasks
+            tasks = []
             if not memory_sub:
-                memory_sub = await self.setup_memory_consumer()
+                try:
+                    memory_sub = await self.setup_memory_consumer()
+                except Exception as e:
+                    print(f"Consumer {self.consumer_id}: Error setting up memory stream: {e}")
             if not disk_sub:
-                disk_sub = await self.setup_disk_consumer()
+                try:
+                    disk_sub = await self.setup_disk_consumer()
+                except Exception as e:
+                    print(f"Consumer {self.consumer_id}: Error setting up disk stream: {e}")
 
-            # Launch concurrent tasks
-            memory_task = asyncio.create_task(self.process_stream(memory_sub))
-            disk_task = asyncio.create_task(self.process_stream(disk_sub))
-            stats_task = asyncio.create_task(self.report_stats())
+            # Launch stats task
+            tasks.append(asyncio.create_task(self.process_stream(memory_sub)))
+            tasks.append(asyncio.create_task(self.process_stream(disk_sub)))
+            tasks.append(asyncio.create_task(self.report_stats()))
 
             # Wait for all tasks to complete
             try:
-                await asyncio.gather(memory_task, disk_task, stats_task)
+                await asyncio.gather(*tasks)
             except Exception as e:
                 print(f"Consumer {self.consumer_id}: Error in parallel processing: {e}")
 

@@ -51,7 +51,7 @@ async def test_consumer_process_messages(js: JetStreamContext):
 
     # Publish a test message
     stream_name = f"CAMERA_MEMORY_{consumer_id}"
-    subject = f"{subject_from_stream_name(stream_name)}.test"
+    subject = subject_from_stream_name(stream_name)
     data = np.arange(100, dtype=np.uint16).tobytes()
     headers = {"width": "10", "height": "10"}
     await js.publish(subject, data, headers=headers)
