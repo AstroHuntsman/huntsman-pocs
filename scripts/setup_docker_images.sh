@@ -66,22 +66,22 @@ pre_script_checks(){
     CHECK_PASS=0
     # Environment variables
     if [ -z "$DOCKER_USER" ]; then
-        echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See wiki/Environment-and-Configuration for details"
         CHECK_PASS=1
     fi
     if [ -z "$DOCKER_TAG" ]; then
-        echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See wiki/Environment-and-Configuration for details"
         CHECK_PASS=1
     fi
     if [ -z "$HUNTSMAN_POCS" ]; then
-        echo "ERROR: HUNTSMAN_POCS not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: HUNTSMAN_POCS not set. Please source huntsman.env. See wiki/Environment-and-Configuration for details"
         CHECK_PASS=1
     fi
 
     # DOCKER PAT if pushing
     if [ "$PUSH" == "true" ]; then
         if [ -z "$DOCKER_PAT" ]; then
-            echo "ERROR: DOCKER_PAT not set. Please source huntsman.env. See nats/README.md for details"
+            echo "ERROR: DOCKER_PAT not set. Please source huntsman.env. See wiki/Environment-and-Configuration for details"
             CHECK_PASS=1
         fi
     fi

@@ -153,7 +153,7 @@ pre_script_checks(){
     done
 
     # Check if Python scripts exist
-    for script in create_streams.py memory_monitor.py storage_manager.py consumer.py; do
+    for script in manage_streams.py monitor.py start_storage_manager.py start_consumers.py; do
         if [ ! -f "$HUNTSMAN_POCS/nats/$script" ]; then
             echo "Error: $script not found in $HUNTSMAN_POCS/nats"
             CHECK_PASS=1
@@ -227,7 +227,7 @@ camera_setup(){
         -e PANDIR=/var/huntsman \
         -e PANOPTES_CONFIG_HOST= \
         -e PANOPTES_CONFIG_PORT=6563 \
-        -e TZ="Australia/Sydney" \
+        -e TZ=\"Australia/Sydney\" \
         -v '${PANDIR}/images:/huntsman/images' \
         -v '${PANDIR}/logs:/huntsman/logs' \
         -v /dev/bus/usb:/dev/bus/usb \

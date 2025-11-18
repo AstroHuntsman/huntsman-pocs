@@ -211,7 +211,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     async def _publish_to_nats(self, subject, data, headers):
         """Publish data to NATS subject with acknowledgment"""
         try:
-            # TODO: check if this is necessary
             if self.js is None:
                 connection = await self._setup_nats_async()
                 if connection is None:
