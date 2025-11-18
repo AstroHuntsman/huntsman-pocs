@@ -1,6 +1,12 @@
-# Huntsman-POCS tests
+# Testing
 
-This directory contains all tests for Huntsman-POCS as well as the Docker setup to run them.
+Huntsman uses the [Pytest](https://docs.pytest.org/en/stable/) framework for unit and integration testing.
+
+## Testing Environment
+
+The pre-execution phase (in `tests/conftest.py`) sets up a number of resources, such as the Pyro and NATS servers as well as some useful fixtures. These resources are necessary for proper integration testing.
+
+To simplify test setup and ensure test portability, the tests have their own Docker image that they expect to run in. This image uses the same Dockerfile as the Huntsman-POCS image, with only small build modifications. Keeping the same Dockerfile for running and testing ensures that the testing environment is as close to the run environment as possible.
 
 ## Setup and Run tests
 

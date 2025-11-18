@@ -13,15 +13,13 @@ The movie mode setup includes the following components
 - **Control**
   - **POCS Control System**: Core telescope control and configuration
   - **[NATS JetStream Server](https://docs.nats.io/nats-concepts/jetstream)**: High-performance message streaming for camera data using a [Pub/Sub model](##Pub-Sub).
-    - **[JetStream Streams](https://docs.nats.io/nats-concepts/jetstream/streams):** The data streams that make publishes messages (images) available to consumers.
-  - **Memory Monitoring**: Real-time system memory usage tracking
+    - **[JetStream Streams](https://docs.nats.io/nats-concepts/jetstream/streams):** The data streams that make publishes messages (images) to **subjects**. Makes the images available to **consumers**.
+  - **Monitoring**: Real-time system memory usage tracking
   - **Storage Management**: Tiered storage system (memory → disk)
-  - **SSH Tunneling**: To open ports between the Control and Remote servers for data transfer via NATS Jetstream
-  <!-- TODO: Check if tunneling still required -->
 - **Cameras**
   - **[Pyro](https://github.com/irmen/pyro5)**: Python Remote Objects. Allows Python objects to communicate over networks
 - **Remote**
-  - **[Jetstream Consumers](https://docs.nats.io/nats-concepts/jetstream/consumers):** Subscribes to messages from streams. Used to recieve image data.
+  - **[Jetstream Consumers](https://docs.nats.io/nats-concepts/jetstream/consumers):** Subscribes to subjects. Used to recieve image data.
 
 ### Pub/Sub
 
@@ -33,9 +31,45 @@ In the case of Huntsman, each camera hosts two publishers which each write to th
 
 There are two streams per camera - a memory and a disk stream. By default, messages are published to the memory stream. This is imperative for throughput. However, should the memory usage surpass a predefined threshold, messages will be published to the disk until memory usage is back to acceptable levels.
 
+## System Architecture
+
+The Movie-Mode setup heaviliy utilises NATS JetStream messaging capabilities:
+
+![nats-setup](images/nats-setup.png)
+
+### Streams
+
+For each active camera, two JetStream streams are created:
+
+- Memory stream – used for in-memory streaming.
+- Disk stream – used for on-disk streaming for when memory usage is too high.
+
+A stream is a named, durable log that stores messages matching the subjects it is configured to receive, according to its retention and storage policies.
+
+### Subjects
+
+Each stream is associated with a single subject. Huntsman uses one subject per stream, resulting in one memory subject and one disk subject for each camera. Subjects do not require explicit creation; they become active when messages are published or when streams/consumers reference them.
+
+### Monitor
+
+A monitor process is started on the Control Server. It performs two functions:
+
+- Memory usage reporting – The monitor periodically writes the server’s memory usage to a file, which the camera process reads before choosing where to publish images.
+- Message migration – If memory usage exceeds a defined threshold, the monitor republishes all messages currently stored in memory streams to their corresponding disk subjects to prevent data loss.
+
+### Image Publishing
+
+When a camera captures a new image, it publishes the message to either the memory or disk subject, depending on the Control Server’s current memory usage.
+
+### Consumers
+
+On the Remote Server, each camera has one consumer that subscribes to both the memory and disk subjects for that camera. When a message is received, the consumer processes and acknowledges it, ensuring it is not redelivered. Messages remain in the underlying stream until removed by the stream’s retention policy.
+
 ## Setup
 
-- See [SSH Configuration setup guide](Distributed-System-Architecture#ssh-access-&-configuration)
+### SSH
+
+See [SSH Configuration setup guide](Distributed-System-Architecture.md#ssh-access-&-configuration)
 
 ### Environment Variables
 
@@ -57,19 +91,7 @@ The NATS setup relies on Docker containers for the majority of its runtime appli
 
 There are four docker images that need to be built. Two from the base Panoptes and two Huntsman images that build from it.
 
-You can quickly build these with the build script
-
-```bash
-$HUNTSMAN_POCS/scripts/build_push_images.sh
-
-# Optionally, don't push the images to Docker Hub. By default, images will be pushed to the DOCKER_USER's repository
-$HUNTSMAN_POCS/scripts/build_push_images.sh --no-push
-
-# If you've already build the panoptes images and don't want to have to rebuild (their tags are static)
-$HUNTSMAN_POCS/scripts/build_push_images.sh --no-pan-utils --no-pan-pocs
-```
-
-Note that this will employ the tags and username that is defined in the sourced [environment](#environment-variables).
+Information on Docker usage and how to build these images is detailed in [Using Docker](Using-Docker.md)
 
 ### Services
 
@@ -143,8 +165,11 @@ This script attempts to do this following things:
 
 - Set up the SHH tunnel with the remote server
 - Creates a new byobu session
-- Sets up steams, monitoring and storage management
-- Starts the consumers on the remote server
+- Sets Control server services (using python scripts in `nats/scripts`)
+  - Starts streams with `start_streams.py`
+  - Starts the monitor with `monitor.py`
+  - Manages memory/disk writing with `start_storage_manager.py`
+- Starts the consumers on the remote server (using the `start_consumers.py` script)
 - Sets up camera service on each camera
 
 This script will check all required environment variables, the SSH tunnel and SSH connectivity before setting up the rest of the system.
