@@ -1,21 +1,11 @@
-
-import os
 import pytest
+
+from panoptes.pocs.scheduler import create_scheduler_from_config
+from panoptes.pocs.utils.location import create_location_from_config
+from huntsman.pocs.camera.utils import create_cameras_from_config
+from huntsman.pocs.mount import create_mount_simulator
 from huntsman.pocs.core import HuntsmanPOCS
-from huntsman.pocs.observatory import HuntsmanObservatory
-
-
-- field:
-    name: Movie Mode Test
-    position: 02h26m51.0582s + 37d33m01.733s
-  observation:
-    type: huntsman.pocs.scheduler.observation.movie.DitheredMovieObservation
-    priority: 100
-    exptime: 0.01
-    frame_rate: 10
-    duration: 5 # seconds
-    min_nexp: 50
-    exp_set_size: 50
+from huntsman.pocs.observatory import HuntsmanObservatory as Observatory
 
 
 @pytest.fixture(scope='function')

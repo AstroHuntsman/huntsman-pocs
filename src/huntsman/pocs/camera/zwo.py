@@ -490,6 +490,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         # for frame_number in range(max_frames):
         frame_number = 0
+        frame_start_time = time.monotonic()
         while True:
             if time.monotonic() - start_time > duration_seconds:
                 break

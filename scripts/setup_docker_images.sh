@@ -125,7 +125,7 @@ HUNTSMAN_CAMERA_NAME=${DOCKER_USER}/huntsman-pocs-camera
 if  [ "${PANOPTES_UTILS}" == "true" ]; then
     echo "Building PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-utils"
-    docker build "${NOCACHE}" --tag "${PANOPTES_UTILS_NAME}:v0.2.35" .
+    docker build ${NOCACHE} --tag "${PANOPTES_UTILS_NAME}:v0.2.35" .
     if [ "${PUSH}" == "true" ]; then
         echo "Pushing PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
         docker push "${PANOPTES_UTILS_NAME}:v0.2.35"
@@ -135,7 +135,7 @@ fi
 if  [ "${PANOPTES_POCS}" == "true" ]; then
     echo "Building PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-pocs"
-    docker build "${NOCACHE}" --tag "${PANOPTES_POCS_NAME}:v0.7.8" .
+    docker build ${NOCACHE} --tag "${PANOPTES_POCS_NAME}:v0.7.8" .
     if [ "${PUSH}" == "true" ]; then
         echo "Pushing PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
         docker push "${PANOPTES_POCS_NAME}:v0.7.8"
@@ -145,7 +145,7 @@ fi
 if  [ "${HUNTSMAN_POCS_IMAGE}" == "true" ]; then
     echo "Building HUNTSMN-POCS image: ${HUNTSMAN_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/huntsman-pocs"
-    docker build "${NOCACHE}" --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" \
+    docker build ${NOCACHE} --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" \
         -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}"
     if [ "${PUSH}" == "true" ]; then
         echo "Pushing HUNTSMAN-POCS image: ${HUNTSMAN_POCS_NAME}"
@@ -156,7 +156,7 @@ fi
 if  [ "${HUNTSMAN_CAMERA}" == "true" ]; then
     echo "Building HUNTSMAN-CAMERA image: ${HUNTSMAN_CAMERA_NAME}"
     cd "${HUNTSMAN_POCS}/docker/camera"
-    docker build "${NOCACHE}" --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" \
+    docker build ${NOCACHE} --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" \
         --build-arg image_url="${HUNTSMAN_POCS_NAME}" \
         --build-arg image_tag="${DOCKER_TAG}" \
         -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" "${HUNTSMAN_POCS}"
