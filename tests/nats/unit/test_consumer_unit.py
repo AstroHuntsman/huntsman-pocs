@@ -100,7 +100,8 @@ async def test_is_chunked_data(empty_consumer: Consumer):
     """Test the is_chunked_data method."""
     assert empty_consumer.is_chunked_data(create_mock_msg(headers={"chunk_x": "1"})) is True
     assert empty_consumer.is_chunked_data(create_mock_msg(headers={"chunk_number": "1"})) is True
-    assert empty_consumer.is_chunked_data(create_mock_msg(headers={"not_a_chunk_header": "1"})) is False
+    assert empty_consumer.is_chunked_data(create_mock_msg(
+        headers={"not_a_chunk_header": "1"})) is False
     assert empty_consumer.is_chunked_data(create_mock_msg(headers={})) is False
 
 
@@ -176,7 +177,8 @@ async def test_create_frame_fname(empty_consumer: Consumer):
     assert fname.endswith(".fits")
 
     msg_chunked = create_mock_msg(headers={"frame_number": "43", "chunk_x": "1", "chunk_y": "2"})
-    fname_chunked = empty_consumer.create_frame_fname(msg_chunked, is_chunked=True, stream_type="disk")
+    fname_chunked = empty_consumer.create_frame_fname(
+        msg_chunked, is_chunked=True, stream_type="disk")
     assert "frame_test_consumer_43_chunk_1_2" in fname_chunked
     assert "disk" in fname_chunked
     assert fname_chunked.endswith(".fits")
@@ -379,8 +381,10 @@ async def test_run_consumer(empty_consumer: Consumer, mocker):
     """Test the main run_consumer method."""
     # Mock methods that are called by run_consumer
     mock_start_writers = mocker.patch.object(empty_consumer, "start_writer_threads")
-    mock_setup_mem = mocker.patch.object(empty_consumer, "setup_memory_consumer", new_callable=AsyncMock)
-    mock_setup_disk = mocker.patch.object(empty_consumer, "setup_disk_consumer", new_callable=AsyncMock)
+    mock_setup_mem = mocker.patch.object(
+        empty_consumer, "setup_memory_consumer", new_callable=AsyncMock)
+    mock_setup_disk = mocker.patch.object(
+        empty_consumer, "setup_disk_consumer", new_callable=AsyncMock)
     mock_process = mocker.patch.object(empty_consumer, "process_stream", new_callable=AsyncMock)
     mock_report = mocker.patch.object(empty_consumer, "report_stats", new_callable=AsyncMock)
     mock_join = mocker.patch.object(empty_consumer.file_write_queue, "join")

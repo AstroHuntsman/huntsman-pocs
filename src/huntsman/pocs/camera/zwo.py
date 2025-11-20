@@ -180,11 +180,17 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         """ True if an exposure is currently under way, otherwise False """
         return Camera._driver.get_exposure_status(self._handle) == "WORKING"
 
-    def check_memory_usage(self):
+    def check_memory_usage(self, minimum_check_interval: float = 2.0):
+        """Checks the memory usage of the control server
+
+        Args:
+            minimum_check_interval: Number of seconds passed required to re-read the memory
+                status file. If it's been fewer than this, self.memory_usage won't be updated 
+        """
         current_time = time.time()
 
         # Only check every 2 seconds
-        if current_time - self.last_memory_check < 2.0:
+        if current_time - self.last_memory_check < minimum_check_interval:
             return self.memory_usage
 
         try:

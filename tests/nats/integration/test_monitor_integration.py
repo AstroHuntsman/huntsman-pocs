@@ -104,3 +104,5 @@ async def test_monitor_rates(monitor: HuntsmanMonitor, stream_configs):
     assert monitor.streams[memory_stream].consumed_rate > 0
     assert monitor.streams[disk_stream].produced_rate <= 0
     assert monitor.streams[disk_stream].consumed_rate > 0
+    await mem_subscription.unsubscribe()
+    await disk_subscription.unsubscribe()

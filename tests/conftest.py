@@ -319,6 +319,7 @@ async def nats_env(nats_addr):
         # delete all streams after test
         for info in await js.streams_info():
             await js.delete_stream(info.config.name)
+        await nc.drain()
         await nc.close()
 
 

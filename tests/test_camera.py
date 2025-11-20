@@ -45,7 +45,8 @@ def camera(camera_00_service_name):
     # TODO: Remove
     camera_client._exposure_error = None
 
-    return camera_client
+    yield camera_client
+    camera_client.is_exposing = False
 
 
 def create_dummy_fits(filename, field_name="Test Observation", shape=(100, 100)):
@@ -466,7 +467,11 @@ def test_process_video_files(camera: Camera, tmpdir):
 
     # Process the files
     metadata = camera._setup_observation(observation, None, None)[3]
-    camera.process_video_files(metadata, camera._exposure_event)
+    event = camera._exposure_event
+    event.clear()
+    camera.process_video_files(metadata, event)
+    assert event.wait(timeout=30)
+
     files = sorted(glob.glob(metadata["files_dir"] + '/*.fits'))
 
     # Check that the files have been processed

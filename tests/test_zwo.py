@@ -328,7 +328,7 @@ def test_take_video_chunking(camera: Camera, nats_addr):
 def test_check_memory_usage(camera: Camera, tmp_path):
     status_file = tmp_path / "memory_status.json"
     with open(status_file, 'w') as f:
-        json.dump({'memory_percent': 75.0, 'memory_total': 100.0}, f)
+        json.dump({'memory_usage': 75.0, 'timestamp': 100}, f)
 
     camera.memory_status_file = str(status_file)
     camera.last_memory_check = 0  # force a check
@@ -338,12 +338,11 @@ def test_check_memory_usage(camera: Camera, tmp_path):
 
     # Check that it doesn't check again if called within 2 seconds
     with open(status_file, 'w') as f:
-        json.dump({'memory_percent': 80.0, 'memory_total': 100.0}, f)
+        json.dump({'memory_usage': 80.0, 'timestamp': 101}, f)
 
-    camera.check_memory_usage()
+    camera.check_memory_usage(minimum_check_interval=float('inf'))
     assert camera.memory_usage == 75.0
 
-    # Wait 2 seconds and check again
-    time.sleep(2)
-    camera.check_memory_usage()
+    # Check again with no minimum check interval
+    camera.check_memory_usage(minimum_check_interval=0.0)
     assert camera.memory_usage == 80.0

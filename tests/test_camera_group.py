@@ -38,11 +38,11 @@ def patterns(cameras, images_dir):
 
 
 @pytest.fixture(scope='function')
-def camera_group(cameras):
+def camera_group(cameras) -> CameraGroup:
     return CameraGroup(cameras)
 
 
-def test_cg_move_filterwheel(camera_group):
+def test_cg_move_filterwheel(camera_group: CameraGroup):
 
     camera_group.filterwheel_move_to(1)
     assert all([camera.filterwheel.position == 1 for camera in camera_group.cameras.values()])
