@@ -1,12 +1,14 @@
 import pytest
 from unittest.mock import patch
+from typing import Tuple
 
 from nats.js import JetStreamContext
 
+from huntsman.pocs.nats.streams import MemoryStreamConfig, DiskStreamConfig
 from huntsman.pocs.nats.storage_manager import StorageManager, move_messages_to_new_subject
 from huntsman.pocs.nats.monitor import HuntsmanMonitor
 from huntsman.pocs.nats.streams import start_streams
-from huntsman.pocs.nats.utils import subject_from_stream_name
+from huntsman.pocs.nats.utils import subject_from_stream_name 
 
 
 async def publish_messages(js: JetStreamContext, subject: str, n: int):
@@ -66,11 +68,13 @@ async def test_storage_manager_no_messages_to_move(storage_manager: StorageManag
 
 
 @pytest.mark.asyncio
-async def test_storage_manager_unequal_streams(storage_manager: StorageManager, stream_configs):
+async def test_storage_manager_unequal_streams(storage_manager: StorageManager, stream_configs:Tuple[MemoryStreamConfig, DiskStreamConfig]):
     """Test that the storage manager raises an error with unequal numbers of streams."""
-    mem_cfg, _ = stream_configs
-    # Only one memory stream
-    await start_streams(storage_manager.js, num_streams=1, mem_cfg=mem_cfg)
+    mem_cfg, disk_cfg = stream_configs
+
+    await start_streams(storage_manager.js, num_streams=1, mem_cfg=mem_cfg, disk_cfg=disk_cfg)
+    await storage_manager.js.delete_stream(disk_cfg.name)
+
 
     with pytest.raises(RuntimeError):
         await storage_manager.run()

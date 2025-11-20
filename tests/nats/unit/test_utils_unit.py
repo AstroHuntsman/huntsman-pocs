@@ -11,6 +11,7 @@ from huntsman.pocs.nats.utils import write_fits, list_streams, get_memory_usage,
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_memory_usage_reads_file(tmp_path):
     """Reads a valid JSON file and returns correct memory usage and timestamp."""
     file = tmp_path / "status.json"
@@ -21,6 +22,7 @@ async def test_get_memory_usage_reads_file(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_memory_usage_missing_file():
     """Raises FileNotFoundError when the memory status file is missing."""
     with pytest.raises(FileNotFoundError):
@@ -28,6 +30,7 @@ async def test_get_memory_usage_missing_file():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_update_memory_usage_creates_new_file(tmp_path):
     """Creates a new memory status file with usage and timestamp if none exists."""
     file = tmp_path / "status.json"
@@ -38,6 +41,7 @@ async def test_update_memory_usage_creates_new_file(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_update_memory_usage_overwrites_if_newer(tmp_path):
     """Overwrites file when provided timestamp is newer than existing one."""
     file = tmp_path / "status.json"
@@ -50,6 +54,7 @@ async def test_update_memory_usage_overwrites_if_newer(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_update_memory_usage_ignores_stale_data(tmp_path, capsys):
     """Skips writing and prints a warning when attempting to write stale data."""
     file = tmp_path / "status.json"

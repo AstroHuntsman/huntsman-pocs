@@ -1,8 +1,10 @@
 from dataclasses import asdict
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from huntsman.pocs.nats.streams import start_streams, delete_streams, MemoryStreamConfig, DiskStreamConfig
 
+from nats.js import  api
 
 @pytest.mark.asyncio
 @pytest.mark.unit
@@ -10,6 +12,8 @@ async def test_start_streams_creates_streams():
     """Typical usage of start streams. Test that it starts the expected streams"""
     js = MagicMock()
     js.add_stream = AsyncMock()
+
+    # This is just to make sure stuff prints
     js.streams_info = AsyncMock(return_value=[
         MagicMock(config=MagicMock(
             name="CAMERA_MEMORY_1",
@@ -29,33 +33,37 @@ async def test_start_streams_creates_streams():
         )),
     ])
 
-    disk_cfg = DiskStreamConfig()
+    # Set up the expected stream configs
     mem_cfg = MemoryStreamConfig()
+    mem_cfg.name ="CAMERA_MEMORY_1" 
+    mem_cfg.subjects =["camera.memory.1.>"]
+    disk_cfg = DiskStreamConfig()
+    disk_cfg.name ="CAMERA_DISK_1" 
+    disk_cfg.subjects =["camera.disk.1.>"]
     await start_streams(js, num_streams=1, disk_cfg=disk_cfg, mem_cfg=mem_cfg)
 
     # Check that add_stream was called for both memory and disk
     assert js.add_stream.call_count == 2
     mem_cfg.name = "CAMERA_MEMORY_1"
-    mem_cfg.subjects = ["camera.memory.1.>"]
-    js.add_stream.assert_any_call(**asdict(mem_cfg))
-    disk_cfg.name = "CAMERA_DISK_1",
-    disk_cfg.subjects = ["camera.archive.1.>"],
-    js.add_stream.assert_any_call(**asdict(disk_cfg))
+    mem_cfg.subjects = ["camera.memory.1.>" ]
+    js.add_stream.assert_any_call(api.StreamConfig(**asdict(mem_cfg)))
+    disk_cfg.name = "CAMERA_DISK_1"
+    disk_cfg.subjects = ["camera.disk.1.>"]
+    js.add_stream.assert_any_call(api.StreamConfig(**asdict(disk_cfg)))
 
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_delete_streams_calls_delete_stream(mocker):
+async def test_delete_streams_calls_delete_stream():
+    """Test that the streams are deleted after delete_streams() is called"""
     # Mock list_streams to return fake streams
     memory_streams = ["CAMERA_MEMORY_1"]
     disk_streams = ["CAMERA_DISK_1"]
-    mocker.patch("huntsman.pocs.nats.utils.list_streams", new=AsyncMock(
-        return_value=(memory_streams, disk_streams)))
-
     js = AsyncMock()
     js.delete_stream = AsyncMock()
-
-    await delete_streams(js)
+    with patch("huntsman.pocs.nats.streams.list_streams", new=AsyncMock(
+        return_value=(memory_streams, disk_streams))):
+        await delete_streams(js)
 
     # delete_stream should be called for each memory and disk stream
     js.delete_stream.assert_any_call("CAMERA_MEMORY_1")

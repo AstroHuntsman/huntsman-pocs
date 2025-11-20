@@ -14,12 +14,13 @@ def cfg(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_messages_need_moving_above_threshold(mocker, cfg):
     js = AsyncMock()
     mock_get_usage = mocker.patch(
         "huntsman.pocs.nats.storage_manager.get_memory_usage", new_callable=AsyncMock
     )
-    mock_get_usage.return_value = 75.0
+    mock_get_usage.return_value = (75.0, 0) # 75% usage, timestamp is '0'
 
     sm = StorageManager(cfg, js)
     result = await sm._messages_need_moving()
@@ -29,12 +30,13 @@ async def test_messages_need_moving_above_threshold(mocker, cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_messages_need_moving_below_threshold(mocker, cfg):
     js = AsyncMock()
     mock_get_usage = mocker.patch(
         "huntsman.pocs.nats.storage_manager.get_memory_usage", new_callable=AsyncMock
     )
-    mock_get_usage.return_value = 10.0
+    mock_get_usage.return_value = (10.0, 0) # 10% usage, timestamp is '0'
 
     sm = StorageManager(cfg, js)
     result = await sm._messages_need_moving()
@@ -43,6 +45,7 @@ async def test_messages_need_moving_below_threshold(mocker, cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_shutdown_sets_running_false(cfg):
     js = AsyncMock()
     sm = StorageManager(cfg, js)
@@ -52,6 +55,7 @@ async def test_shutdown_sets_running_false(cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_shutdown_twice_no_error(cfg):
     js = AsyncMock()
     sm = StorageManager(cfg, js)
@@ -60,6 +64,7 @@ async def test_shutdown_twice_no_error(cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_flush_stream_to_disk_no_messages(cfg):
     js = AsyncMock()
     js.stream_info = AsyncMock()
@@ -82,6 +87,7 @@ async def test_flush_stream_to_disk_stream_info_error(cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_flush_stream_to_disk_success(mocker, cfg):
     js = AsyncMock()
     mock_subject = mocker.patch(
@@ -111,6 +117,7 @@ async def test_flush_stream_to_disk_success(mocker, cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_run_main_loop_triggers_flush(mocker, cfg):
     js = AsyncMock()
     mock_list = mocker.patch(
@@ -122,7 +129,7 @@ async def test_run_main_loop_triggers_flush(mocker, cfg):
     )
 
     mock_list.return_value = (["memory_0"], ["disk_0"])
-    mock_get_usage.return_value = 100.0  # trigger flush
+    mock_get_usage.return_value = (100.0, 0)  # trigger flush
 
     sm = StorageManager(cfg, js)
     sm._flush_stream_to_disk = AsyncMock()
@@ -139,6 +146,7 @@ async def test_run_main_loop_triggers_flush(mocker, cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_run_raises_if_unequal_streams(mocker, cfg):
     js = AsyncMock()
     mock_list = mocker.patch(
@@ -152,6 +160,7 @@ async def test_run_raises_if_unequal_streams(mocker, cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_run_raises_if_no_streams(mocker, cfg):
     js = AsyncMock()
     mock_list = mocker.patch(
@@ -165,6 +174,7 @@ async def test_run_raises_if_no_streams(mocker, cfg):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_move_messages_to_new_subject_moves_all_messages():
     js = AsyncMock()
     msg1, msg2 = AsyncMock(), AsyncMock()
@@ -183,6 +193,7 @@ async def test_move_messages_to_new_subject_moves_all_messages():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_move_messages_to_new_subject_handles_timeout():
     js = AsyncMock()
     subscription = AsyncMock()

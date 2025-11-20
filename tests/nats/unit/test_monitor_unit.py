@@ -5,7 +5,7 @@ from huntsman.pocs.nats.monitor import (
     HuntsmanMonitor,
     HuntsmanStreamStats,
 )
-from nats.js.api import StreamInfo, StreamState, StreamConfig, ConsumerInfo, ConsumerConfig
+from nats.js.api import StreamInfo, StreamState, StreamConfig, ConsumerInfo, ConsumerConfig, SequenceInfo
 
 
 def create_fake_stream_info(name: str):
@@ -22,8 +22,9 @@ def fake_stream_info():
 
 @pytest.fixture
 def fake_consumer_info():
-    return [ConsumerInfo(name="consumer_1", stream_name="memory_stream_1", config=ConsumerConfig(), delivered=50, ack_floor=0, num_pending=0, num_ack_pending=0),
-            ConsumerInfo(name="consumer_2", stream_name="memory_stream_1", config=ConsumerConfig(), delivered=50, ack_floor=0, num_pending=0, num_ack_pending=0)]
+    
+    return [ConsumerInfo(name="consumer_1", stream_name="memory_stream_1", config=ConsumerConfig(), delivered=SequenceInfo(consumer_seq=10, stream_seq=50), ack_floor=0, num_pending=0, num_ack_pending=0),
+            ConsumerInfo(name="consumer_2", stream_name="memory_stream_1", config=ConsumerConfig(), delivered=SequenceInfo(consumer_seq=10, stream_seq=50), ack_floor=0, num_pending=0, num_ack_pending=0)]
 
 
 @pytest.fixture
@@ -82,7 +83,7 @@ async def test_add_stream(monkeypatch, monitor: HuntsmanMonitor, fake_stream_inf
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_deactivate_stream(monkeypatch, monitor, fake_stream_info, fake_consumer_info):
+async def test_deactivate_stream(monkeypatch, monitor: HuntsmanMonitor, fake_stream_info, fake_consumer_info):
     # Simulate a previously tracked stream
     monitor.streams[fake_stream_info.config.name] = HuntsmanStreamStats(
         fake_stream_info, fake_consumer_info, "memory")
@@ -94,11 +95,11 @@ async def test_deactivate_stream(monkeypatch, monitor, fake_stream_info, fake_co
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_refresh_stats(monkeypatch, monitor, fake_stream_info: StreamInfo):
+async def test_refresh_stats(monkeypatch, monitor: HuntsmanMonitor, fake_stream_info: StreamInfo):
     monkeypatch.setattr("huntsman.pocs.nats.monitor.list_streams",
                         AsyncMock(return_value=([fake_stream_info.config.name], [])))
     monkeypatch.setattr("huntsman.pocs.nats.monitor.get_memory_usage",
-                        AsyncMock(side_effect=[42, 10]))
+                        AsyncMock(side_effect=[(42, 0), (10, 1)]))
     monkeypatch.setattr("huntsman.pocs.nats.monitor.update_memory_usage", AsyncMock())
 
     await monitor.refresh_stats()
@@ -116,7 +117,7 @@ async def test_refresh_stats(monkeypatch, monitor, fake_stream_info: StreamInfo)
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_get_active_streams(monitor, fake_stream_info: StreamInfo, fake_consumer_info):
+async def test_get_active_streams(monitor: HuntsmanMonitor, fake_stream_info: StreamInfo, fake_consumer_info):
     monitor.streams[fake_stream_info.config.name] = HuntsmanStreamStats(
         fake_stream_info, fake_consumer_info, "memory")
 
@@ -135,7 +136,7 @@ async def test_get_active_streams(monitor, fake_stream_info: StreamInfo, fake_co
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_update_streams_only_active(monitor, fake_stream_info, fake_consumer_info):
+async def test_update_streams_only_active(monitor: HuntsmanMonitor, fake_stream_info, fake_consumer_info):
     # Add two streams, one inactive
     s1 = HuntsmanStreamStats(fake_stream_info, fake_consumer_info, "memory")
     s2 = HuntsmanStreamStats(fake_stream_info, fake_consumer_info, "disk")
@@ -155,7 +156,7 @@ async def test_update_streams_only_active(monitor, fake_stream_info, fake_consum
 
 
 @pytest.mark.unit
-def test_save_stats_to_file(tmp_path, monitor):
+def test_save_stats_to_file(tmp_path, monitor: HuntsmanMonitor):
     monitor.output_file = tmp_path / "out.json"
     monitor.stats.total_messages = 123
     monitor.save_stats_to_file()
@@ -166,7 +167,7 @@ def test_save_stats_to_file(tmp_path, monitor):
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_print_stats(monkeypatch, monitor, fake_stream_info, fake_consumer_info):
+async def test_print_stats(monkeypatch, monitor: HuntsmanMonitor, fake_stream_info, fake_consumer_info):
     # Add a stream
     s = HuntsmanStreamStats(fake_stream_info, fake_consumer_info, "memory")
     monitor.streams[fake_stream_info.config.name] = s

@@ -14,11 +14,7 @@ from huntsman.pocs.nats.consumer import Consumer, ConsumerConfig, ConsumerStats
 @pytest.fixture
 def consumer_config(tmp_path):
     """Fixture for ConsumerConfig."""
-    return ConsumerConfig(
-        consumer_output_dir=str(tmp_path),
-        disable_file_writing=False,
-        num_writer_threads=1
-    )
+    return ConsumerConfig(consumer_output_dir=str(tmp_path), disable_file_writing=False, num_writer_threads=1)
 
 
 @pytest.fixture
@@ -46,6 +42,7 @@ def create_mock_msg(headers=None, data=None):
     return msg
 
 
+@pytest.mark.unit
 def test_consumer_stats(capsys):
     """Test the ConsumerStats class."""
     stats = ConsumerStats()
@@ -77,10 +74,7 @@ async def test_consumer_init(empty_consumer: Consumer, consumer_config):
 def test_consumer_init_no_file_writing():
     """Test Consumer initialization with file writing disabled."""
     with TemporaryDirectory() as tmp_dir:
-        config = ConsumerConfig(
-            consumer_output_dir=str(tmp_dir),
-            disable_file_writing=True
-        )
+        config = ConsumerConfig(consumer_output_dir=str(tmp_dir), disable_file_writing=True)
         consumer = Consumer(cfg=config, js=mock_js, consumer_id="test_consumer_ini_no_file_writing")
         assert consumer.cfg.disable_file_writing is True
         # Check that directories are not created
@@ -106,8 +100,7 @@ async def test_is_chunked_data(empty_consumer: Consumer):
     """Test the is_chunked_data method."""
     assert empty_consumer.is_chunked_data(create_mock_msg(headers={"chunk_x": "1"})) is True
     assert empty_consumer.is_chunked_data(create_mock_msg(headers={"chunk_number": "1"})) is True
-    assert empty_consumer.is_chunked_data(create_mock_msg(
-        headers={"not_a_chunk_header": "1"})) is False
+    assert empty_consumer.is_chunked_data(create_mock_msg(headers={"not_a_chunk_header": "1"})) is False
     assert empty_consumer.is_chunked_data(create_mock_msg(headers={})) is False
 
 
@@ -120,7 +113,7 @@ def test_create_fits_header_chunked(empty_consumer: Consumer):
         "frame_number": "1",
         "chunk_x": "0",
         "chunk_y": "0",
-        "header": json.dumps({"EXPTIME": 1.0})
+        "header": json.dumps({"EXPTIME": 1.0}),
     }
     msg = create_mock_msg(headers=headers)
     fits_header = empty_consumer.create_fits_header_chunked(msg)
@@ -183,8 +176,7 @@ async def test_create_frame_fname(empty_consumer: Consumer):
     assert fname.endswith(".fits")
 
     msg_chunked = create_mock_msg(headers={"frame_number": "43", "chunk_x": "1", "chunk_y": "2"})
-    fname_chunked = empty_consumer.create_frame_fname(
-        msg_chunked, is_chunked=True, stream_type="disk")
+    fname_chunked = empty_consumer.create_frame_fname(msg_chunked, is_chunked=True, stream_type="disk")
     assert "frame_test_consumer_43_chunk_1_2" in fname_chunked
     assert "disk" in fname_chunked
     assert fname_chunked.endswith(".fits")
@@ -355,27 +347,19 @@ async def test_setup_consumers(empty_consumer: Consumer, mocker):
         sfsn.return_value = "camera.memory.test_consumer.>"
         await empty_consumer.setup_memory_consumer()
     empty_consumer.js.add_consumer.assert_called_with(
-        "CAMERA_MEMORY_test_consumer",
-        mocker.ANY  # Don't care about the exact config object
+        "CAMERA_MEMORY_test_consumer", mocker.ANY  # Don't care about the exact config object
     )
     empty_consumer.js.pull_subscribe.assert_called_with(
-        "camera.memory.test_consumer.>",
-        "memory_consumer_test_consumer",
-        stream="CAMERA_MEMORY_test_consumer"
+        "camera.memory.test_consumer.>", "memory_consumer_test_consumer", stream="CAMERA_MEMORY_test_consumer"
     )
 
     # Test disk consumer setup
     with patch("huntsman.pocs.nats.consumer.subject_from_stream_name") as sfsn:
         sfsn.return_value = "camera.disk.test_consumer.>"
         await empty_consumer.setup_disk_consumer()
-    empty_consumer.js.add_consumer.assert_called_with(
-        "CAMERA_DISK_test_consumer",
-        mocker.ANY
-    )
+    empty_consumer.js.add_consumer.assert_called_with("CAMERA_DISK_test_consumer", mocker.ANY)
     empty_consumer.js.pull_subscribe.assert_called_with(
-        "camera.disk.test_consumer.>",
-        "disk_consumer_test_consumer",
-        stream="CAMERA_DISK_test_consumer"
+        "camera.disk.test_consumer.>", "disk_consumer_test_consumer", stream="CAMERA_DISK_test_consumer"
     )
 
 
@@ -395,10 +379,8 @@ async def test_run_consumer(empty_consumer: Consumer, mocker):
     """Test the main run_consumer method."""
     # Mock methods that are called by run_consumer
     mock_start_writers = mocker.patch.object(empty_consumer, "start_writer_threads")
-    mock_setup_mem = mocker.patch.object(
-        empty_consumer, "setup_memory_consumer", new_callable=AsyncMock)
-    mock_setup_disk = mocker.patch.object(
-        empty_consumer, "setup_disk_consumer", new_callable=AsyncMock)
+    mock_setup_mem = mocker.patch.object(empty_consumer, "setup_memory_consumer", new_callable=AsyncMock)
+    mock_setup_disk = mocker.patch.object(empty_consumer, "setup_disk_consumer", new_callable=AsyncMock)
     mock_process = mocker.patch.object(empty_consumer, "process_stream", new_callable=AsyncMock)
     mock_report = mocker.patch.object(empty_consumer, "report_stats", new_callable=AsyncMock)
     mock_join = mocker.patch.object(empty_consumer.file_write_queue, "join")
