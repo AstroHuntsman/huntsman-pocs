@@ -51,3 +51,13 @@ $HUNTSMAN_POCS/scripts/build_push_images.sh --no-push
 # If you've already build the panoptes images and don't want to have to rebuild (their tags are static)
 $HUNTSMAN_POCS/scripts/build_push_images.sh --no-pan-utils --no-pan-pocs
 ```
+
+## How Is Docker Used?
+
+Once the two Huntsman images are built and pushed to the registry, they are available globally - as in from anywhere in the globe.
+
+This makes is trivial to run the Huntsman software - provided whatever you want to run it on has a Docker runtime environment.
+
+Since the docker images were likely built on the Control server (although this isn't strictly necessary), it needn't pull them as they're available locally.
+
+However, the Camera and Remote servers will automatically pull them from Docker Hub when invoked (for example, with `docker run huntsmanarry/huntsman-pocs:latest`).

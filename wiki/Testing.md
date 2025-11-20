@@ -4,13 +4,24 @@ Huntsman uses the [Pytest](https://docs.pytest.org/en/stable/) framework for uni
 
 ## Testing Environment
 
-The pre-execution phase (in `tests/conftest.py`) sets up a number of resources, such as the Pyro and NATS servers as well as some useful fixtures. These resources are necessary for proper integration testing.
+The pre-execution phase (in `tests/conftest.py`) sets up the following resources:
 
-To simplify test setup and ensure test portability, the tests have their own Docker image that they expect to run in. This image uses the same Dockerfile as the Huntsman-POCS image, with only small build modifications. Keeping the same Dockerfile for running and testing ensures that the testing environment is as close to the run environment as possible.
+- Config Server
+- Pyro Nameserver
+- Pyro Camera Servers
+- NATS Server
+
+These resources are necessary for proper integration testing.
+
+There are also some useful fixtures that may be useful for any future development.
+
+Most of the server configuration is set by the `tests/testing.yaml` file. The required evironemnt variables (used at runtime) as stored in `tests/huntsman.test.env`.
 
 ## Setup and Run tests
 
-Before doing anything, make sure to source the environment variables. If you're unsre about this, see the [example env file](../example.huntsman.env).
+To simplify test setup and ensure portability, the tests have their own Docker image that they expect to run in. This image uses the same Dockerfile as the Huntsman-POCS image, with only small build modifications. Keeping the same Dockerfile for running and testing ensures that the testing environment is as close to the run environment as possible.
+
+Before doing anything, make sure to source the environment variables. If you're unsure about this, see the [example env file](../example.huntsman.env).
 
 ```bash
 # Source environment variables
@@ -30,7 +41,7 @@ _Run tests:_
 docker compose run --rm python_tests
 ```
 
-The container can take any pytests arguments.
+The container can take any pytests arguments. E.g.
 
 ```bash
 docker compose run --rm python_tests -s tests/test_camera.py
