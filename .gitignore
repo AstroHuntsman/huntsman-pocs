@@ -59,3 +59,4 @@ huntsman.env
 logs/*
 conf_files/*_local*
 .nvim.lua
+.buildx-cache

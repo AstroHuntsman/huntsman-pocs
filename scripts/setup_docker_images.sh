@@ -6,7 +6,7 @@ PANOPTES_POCS=true
 HUNTSMAN_POCS_IMAGE=true
 HUNTSMAN_CAMERA=true
 PUSH=true
-NOCACHE=""
+USECACHE=true
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --no-cache)
-            NOCACHE="--no-cache"
+            USECACHE=false
             shift
             ;;
         -h|--help)
@@ -45,7 +45,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --no-hun-pocs: Don't build or push the huntsman-pocs image"
             echo "  --no-hun-cam: Don't build or push the huntsman-camera image"
             echo "  --no-push: Build but don't push any of the images created"
-            echo "  --no-cache: Use the --no-cache option when building images"
+            echo "  --no-cache: Use the cache when building images. Speeds up build time after the first build."
             echo "  -h, --help              Show this help message"
             exit 0
             ;;
@@ -95,6 +95,24 @@ pre_script_checks(){
 
 }
 
+setup_builder(){
+    BUILDER=fastbuilder
+
+    # Create builder if missing
+    docker buildx inspect "$BUILDER" >/dev/null 2>&1 || \
+        docker buildx create --driver docker-container --name "$BUILDER"
+
+    # Recreate if wrong driver
+    [ "$(docker buildx inspect "$BUILDER" --format '{{.Driver}}')" = "docker-container" ] || {
+        docker buildx rm "$BUILDER"
+        docker buildx create --driver docker-container --name "$BUILDER"
+    }
+
+    # Bootstrap + select builder
+    docker buildx inspect "$BUILDER" --bootstrap >/dev/null
+    docker buildx use "$BUILDER"
+}
+
 pre_script_checks
 if [ "$CHECK_PASS" -eq 1 ]; then
     echo "Checks failed with error(s). Exiting..."
@@ -113,7 +131,7 @@ echo "  Build PANOPTES-POCS:    ${PANOPTES_POCS}"
 echo "  Build HUNTSMAN-POCS:    ${HUNTSMAN_POCS_IMAGE}"
 echo "  Build HUNTSMAN-CAMERA:  ${HUNTSMAN_CAMERA}"
 echo "  Push images to remote:  ${PUSH}"
-echo "  Cache:  ${NOCACHE}"
+echo "  Cache:  ${USECACHE}"
 echo ""
 
 PANOPTES_UTILS_NAME=${DOCKER_USER}/panoptes-utils
@@ -121,49 +139,43 @@ PANOPTES_POCS_NAME=${DOCKER_USER}/panoptes-pocs
 HUNTSMAN_POCS_NAME=${DOCKER_USER}/huntsman-pocs
 HUNTSMAN_CAMERA_NAME=${DOCKER_USER}/huntsman-pocs-camera
 
+docker buildx create --use
+
+cache_from=""
+cache_to="--cache-to=type=local,dest=.buildx-cache,mode=max"
+if  [ "${USECACHE}" == "true" ]; then
+    cache_from="--cache-from=type=local,src=.buildx-cache "
+fi
+
+setup_builder
+
 # Builds
 if  [ "${PANOPTES_UTILS}" == "true" ]; then
     echo "Building PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-utils"
-    docker build ${NOCACHE} --tag "${PANOPTES_UTILS_NAME}:v0.2.35" .
-    if [ "${PUSH}" == "true" ]; then
-        echo "Pushing PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
-        docker push "${PANOPTES_UTILS_NAME}:v0.2.35"
-    fi
+    docker buildx build --platform linux/arm64,linux/amd64  --builder fastbuilder ${cache_to} ${cache_from} --tag "${PANOPTES_UTILS_NAME}:v0.2.35" --push .
     cd -
 fi
 if  [ "${PANOPTES_POCS}" == "true" ]; then
     echo "Building PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-pocs"
-    docker build ${NOCACHE} --tag "${PANOPTES_POCS_NAME}:v0.7.8" .
-    if [ "${PUSH}" == "true" ]; then
-        echo "Pushing PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
-        docker push "${PANOPTES_POCS_NAME}:v0.7.8"
-    fi
+    docker buildx build --platform linux/arm64,linux/amd64 --builder fastbuilder ${cache_to} ${cache_from} --tag "${PANOPTES_POCS_NAME}:v0.7.8" --push .
     cd -
 fi
 if  [ "${HUNTSMAN_POCS_IMAGE}" == "true" ]; then
     echo "Building HUNTSMN-POCS image: ${HUNTSMAN_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/huntsman-pocs"
-    docker build ${NOCACHE} --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" \
+    docker buildx build --platform linux/arm64,linux/amd64  --builder fastbuilder ${cache_to} ${cache_from} --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" --push \
         -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}"
-    if [ "${PUSH}" == "true" ]; then
-        echo "Pushing HUNTSMAN-POCS image: ${HUNTSMAN_POCS_NAME}"
-        docker push "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}"
-    fi
     cd -
 fi
 if  [ "${HUNTSMAN_CAMERA}" == "true" ]; then
     echo "Building HUNTSMAN-CAMERA image: ${HUNTSMAN_CAMERA_NAME}"
     cd "${HUNTSMAN_POCS}/docker/camera"
-    docker build ${NOCACHE} --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" \
+    docker buildx build --platform linux/arm64 --builder fastbuilder ${cache_to} ${cache_from} --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" --push \
         --build-arg image_url="${HUNTSMAN_POCS_NAME}" \
         --build-arg image_tag="${DOCKER_TAG}" \
         -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" "${HUNTSMAN_POCS}"
-    if [ "${PUSH}" == "true" ]; then
-        echo "Pushing HUNTSMAN-CAMERA image: ${HUNTSMAN_CAMERA_NAME}"
-        docker push "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}"
-    fi
     cd -
 fi
 

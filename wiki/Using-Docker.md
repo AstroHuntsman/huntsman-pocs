@@ -45,12 +45,15 @@ General usage is as follows:
 # Build and push all images to docker registry
 $HUNTSMAN_POCS/scripts/build_push_images.sh
 
-# Optionally, don't push the images to Docker Hub. By default, images will be pushed to the DOCKER_USER's repository
-$HUNTSMAN_POCS/scripts/build_push_images.sh --no-push
-
 # If you've already build the panoptes images and don't want to have to rebuild (their tags are static)
 $HUNTSMAN_POCS/scripts/build_push_images.sh --no-pan-utils --no-pan-pocs
 ```
+
+### Multi-architecture build
+
+Since the control and remote servers use typical AMD64 CPU architecture, but the camera (jetson) servers use ARM, all of the images need to be built for both architectures (using `buildx`). For this reason, there is no option to run the docker setup script without pushing, as pushing to the registry is required when building for multiple platforms.
+
+Unfortunately, building for a non-native architecture requires emulation, which means that the build process takes noticeably longer. To help with this, the build will utilise a local cache, which should speed up subsequent builds. This option can be turned off with `--no-cache`. This option will turn of reading from the cache, but will not turn off cache writing.
 
 ## How Is Docker Used?
 
