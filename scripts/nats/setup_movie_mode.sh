@@ -86,45 +86,50 @@ pre_script_checks(){
     # Environment variables
     CHECK_PASS=0
     if [ -z "${HUNTSMAN_POCS}" ]; then
-        echo "ERROR: HUNTSMAN_POCS not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: HUNTSMAN_POCS not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${HUNTSMAN_REMOTE_HOST}" ]; then
-        echo "ERROR: HUNTSMAN_REMOTE_HOST not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: HUNTSMAN_REMOTE_HOST not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${HUNTSMAN_CONTROL_HOST}" ]; then
-        echo "ERROR: HUNTSMAN_CONTROL_HOST not set. Please source huntsman.env. See nats/README.md for details"
-        CHECK_PASS=1
-    fi
-    if [ -z "${NATS_REMOTE_SCRIPT_DIR}" ]; then
-        echo "ERROR: NATS_REMOTE_SCRIPT_DIR not set. Please source huntsman.env. See nats/README.md for details"
-        CHECK_PASS=1
-    fi
-    if [ -z "${NATS_REMOTE_PYTHON_EXECUTABLE}" ]; then
-        echo "ERROR: NATS_REMOTE_PYTHON_EXECUTABLE not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: HUNTSMAN_CONTROL_HOST not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${BYOBU_SESSION}" ]; then
-        echo "ERROR: BYOBU_SESSION not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: BYOBU_SESSION not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${DOCKER_USER}" ]; then
-        echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${DOCKER_TAG}" ]; then
-        echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: DOCKER_TAG not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${MEMORY_THRESHOLD}" ]; then
-        echo "ERROR: MEMORY_THRESHOLD not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: MEMORY_THRESHOLD not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
     if [ -z "${MEMORY_STATUS_FILE}" ]; then
-        echo "ERROR: MEMORY_STATUS_FILE not set. Please source huntsman.env. See nats/README.md for details"
+        echo "ERROR: MEMORY_STATUS_FILE not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
+    if [ -z "${NATS_NUM_STREAMS}" ]; then
+        echo "ERROR: NATS_NUM_STREAMS not set. Please source huntsman.env. See wiki for details"
+        CHECK_PASS=1
+    fi
+    if [ -z "${NATS_NUM_WRITER_THREADS}" ]; then
+        echo "ERROR: NATS_NUM_WRITER_THREADS not set. Please source huntsman.env. See wiki for details"
+        CHECK_PASS=1
+    fi
+    if [ -z "${NATS_NUM_CONSUMERS}" ]; then
+        echo "ERROR: NATS_NUM_CONSUMERS not set. Please source huntsman.env. See wiki for details"
+        CHECK_PASS=1
+    fi
+
     # Check dependencies
     if ! command_exists byobu; then
         echo "Error: byobu is not installed. Please install it first:"
@@ -133,7 +138,7 @@ pre_script_checks(){
     fi
 
     if ! command_exists python; then
-        echo "Error: python is not available"
+        echo "Error: python is not available. You may need to source your python environment."
         CHECK_PASS=1
     fi
 
@@ -142,20 +147,13 @@ pre_script_checks(){
         echo "ERROR: SSH authentication to remote host failed: '${HUNTSMAN_REMOTE_HOST}'. Please investigate."
         CHECK_PASS=1
     fi
+
     # Test connectivity of selected cameras
     for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do
         local hostname=$(echo "$row" | jq -r '.hostname')
         local use=$(echo "$row" | jq -r '.use')
         if [ "$use" == "true" ] && ! test_ssh_connectivity "${hostname}"; then
             echo "ERROR: SSH authentication to camera host failed: '${hostname}'. Please investigate."
-            CHECK_PASS=1
-        fi
-    done
-
-    # Check if Python scripts exist
-    for script in manage_streams.py monitor.py start_storage_manager.py start_consumers.py; do
-        if [ ! -f "$HUNTSMAN_POCS/nats/$script" ]; then
-            echo "Error: $script not found in $HUNTSMAN_POCS/nats"
             CHECK_PASS=1
         fi
     done
@@ -170,43 +168,41 @@ monitoring_setup(){
     # Run create_streams.py and wait for it to complete
     # byobu send-keys -t "$BYOBU_SESSION" "echo 'Creating NATS streams...' && python create_streams.py && echo 'Streams created successfully!'" Enter
     # byobu send-keys -t "$BYOBU_SESSION" "echo 'Pulling Huntsaman-POCS container' && docker pull ${POCS_IMAGE}" Enter
-    byobu send-keys -t "$BYOBU_SESSION" "echo 'Creating NATS streams...' && docker run --pull=always ${POCS_IMAGE} 'python nats/create_streams.py'" Enter
-    echo "Waiting for streams to be created..."
-    sleep 8
 
     # Start the window
     byobu rename-window -t "$BYOBU_SESSION":0 "Monitor"
     local idx=$(get_window_idx "Monitor") || exit 1 # Sanity check - should be 0
 
+    docker_args="--network host --pull=always -it --rm"
+    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "echo 'Creating NATS streams...' &&  docker run ${docker_args} ${POCS_IMAGE} 'python scripts/nats/manage_streams.py -n ${NATS_NUM_STREAMS}'" Enter
+    sleep 20 # Quite long - may need to pull the Docker image
     byobu split-window -h -t "$BYOBU_SESSION":"$idx" # Split the window into two columns (vertical split)
+    echo "Waiting for streams to be created..."
+
     echo "Starting memory monitor in left pane..."
-    byobu send-keys -t "$BYOBU_SESSION":"${idx}.0" "echo 'Starting Memory Monitor...' && docker run --pull=always ${POCS_IMAGE} 'python nats/memory_monitor.py -m ${MEMORY_THRESHOLD}' -f ${MEMORY_STATUS_FILE}" Enter
+    bind_mounts="-v '${PANDIR}/images:/huntsman/images'"
+    chmod 777 -R ${PANDIR}/images # Change permissions to allow RW for everyone
+    bind_mounts="-v '${PANDIR}/images:/huntsman/images'"
+    byobu send-keys -t "$BYOBU_SESSION":"${idx}.0" "echo 'Starting Memory Monitor...' &&  docker run ${docker_args} ${bind_mounts} ${POCS_IMAGE} 'python scripts/nats/start_monitor.py -f /huntsman/images/memory_status.json -o /huntsman/images/monitor_stats.json'" Enter
     echo "Starting storage manager in right pane..."
-    byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "echo 'Starting Storage Manager...' && docker run --pull=always ${POCS_IMAGE} 'python nats/storage_manager.py'" Enter
+    byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "echo 'Starting Storage Manager...' &&  docker run ${docker_args} ${bind_mounts} ${POCS_IMAGE} 'python scripts/nats/start_storage_manager.py' -f /huntsman/images/memory_status.json -m ${MEMORY_THRESHOLD} -i 10" Enter
 }
 
 # Setup the consumers window. Runs on the remote server
 remote_host_setup(){
-    # echo "Copying scripts from local HUNTSMAN_POCS/nats to remote NATS_REMOTE_SCRIPT_DIR:"
-    # scp $HUNTSMAN_POCS/nats/* huntsman@$HUNTSMAN_REMOTE_HOST:$NATS_REMOTE_SCRIPT_DIR
-
     echo "Running consumers on remote server..."
     byobu new-window -t "$BYOBU_SESSION" -n "Remote Consumers"
     local idx=$(get_window_idx "Remote Consumers") || exit 1
 
     byobu send-keys -t "$BYOBU_SESSION":"$idx" "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$HUNTSMAN_REMOTE_HOST" Enter
-    # TODO: Test with docker container to make sure the below python setup can be removed
-    # byobu send-keys -t "$BYOBU_SESSION":$idx "export NATS_REMOTE_SCRIPT_DIR=$NATS_REMOTE_SCRIPT_DIR" Enter
-    # byobu send-keys -t "$BYOBU_SESSION":$idx "export NATS_REMOTE_PYTHON_EXECUTABLE=$NATS_REMOTE_PYTHON_EXECUTABLE" Enter
-    # byobu send-keys -t "$BYOBU_SESSION":$idx "echo 'Starting consumers..' && $NATS_REMOTE_PYTHON_EXECUTABLE $NATS_REMOTE_SCRIPT_DIR/start_consumers.py" Enter
-    byobu send-keys -t "$BYOBU_SESSION":"$idx" "echo 'Starting consumers..' && docker run --pull=always ${POCS_IMAGE} 'python nats/start_consumers.py'" Enter
+    byobu send-keys -t "$BYOBU_SESSION":"$idx" "echo 'Starting consumers..' &&  docker run --network host --pull=always -it --rm ${POCS_IMAGE} 'python scripts/nats/start_consumers.py -w ${NATS_NUM_WRITER_THREADS} -n ${NATS_NUM_CONSUMERS}'" Enter
 }
 
 
 # Setup the cameras windows. Runs on each camera server.
 camera_setup(){
-    local hostname
-    local cam_num
+    local hostname="$1"
+    local cam_num="$2"
     # echo "Copying scripts from local HUNTSMAN_POCS/camera/scripts to remote camera /var/huntsman/scripts"
     # scp $HUNTSMAN_POCS/camera/scripts/* $hostname:/var/huntsman/scripts
 
@@ -218,14 +214,15 @@ camera_setup(){
     byobu send-keys -t "$BYOBU_SESSION":"$idx.1" "ssh -o ConnectTimeout=10 -o BatchMode=yes ${hostname}" Enter
 
     # The docker run command to run the contianer
+    chmod 777 -R ${PANDIR}/images # Change permissions to allow RW for everyone
     local run="docker run \
-        --pull=always \
         --name camera \
         -it --rm \
         --privileged \
         --network host \
+        --pull=always \
         -e PANDIR=/var/huntsman \
-        -e PANOPTES_CONFIG_HOST= \
+        -e PANOPTES_CONFIG_HOST=${CONFIG_HOST_IP} \
         -e PANOPTES_CONFIG_PORT=6563 \
         -e TZ=\"Australia/Sydney\" \
         -v '${PANDIR}/images:/huntsman/images' \
@@ -236,12 +233,10 @@ camera_setup(){
         --group-add plugdev \
         --group-add users \
         ${CAMERA_IMAGE} \
-        huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService"
-    # byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "/bin/bash /var/huntsman/scripts/run-camera-service.sh" Enter # Run the service setup script
+        'huntsman-pyro --verbose service --service-class huntsman.pocs.camera.pyro.service.CameraService'"
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "source ~/.bash_profile && sleep 10" Enter
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker ps -q --filter 'name=camera' | grep -q . && docker stop camera" # Stop any camera service if it's running
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker system prune -f --volumes" Enter # Delete old volumes
-    # TODO: Check if mounting network volume is necessary for moviemode
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "mkdir -p ${PANDIR}/images && sudo unmount ${PANDIR}/images && sudo mounts -t nfs ${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images ${PANDIR}/images" Enter # Mount the network volume
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "${run}" Enter # Run the service setup script
     byobu send-keys -t "$BYOBU_SESSION":"$idx.1" "echo 'Sleeping 30 seconds...' && sleep 30 && tail -F -n 10000 /var/huntsman/logs/huntsman.log" Enter
@@ -262,14 +257,12 @@ set -u
 echo "----------- Configuration -----------"
 echo "  BYOBU_SESSION:                  ${BYOBU_SESSION}"
 echo "  HUNTSMAN_POCS:                  ${HUNTSMAN_POCS}"
-echo "  NATS_REMOTE_SCRIPT_DIR:         ${NATS_REMOTE_SCRIPT_DIR}"
-echo "  NATS_REMOTE_PYTHON_EXECUTABLE:  ${NATS_REMOTE_PYTHON_EXECUTABLE}"
 echo "  HUNTSMAN_REMOTE_HOST:           ${HUNTSMAN_REMOTE_HOST}"
 echo "  POCS_IMAGE_NAME:                ${POCS_IMAGE}"
 echo "  CAMERA_IMAGE_NAME:              ${CAMERA_IMAGE}"
 
 if [ $SKIP_CONFIRMATION == "false" ]; then
-    if ! user_confirm "Continue with this configuration? [y/n]"; then
+    if ! user_confirm "Continue with this configuration?"; then
         echo "Exiting..."
         exit 1
     else
@@ -298,9 +291,9 @@ remote_host_setup
 for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do # All cameras as defined in huntsman.env
     hostname=$(echo "$row" | jq -r '.hostname')
     use=$(echo "$row" | jq -r '.use')
-    cam_num=$(echo "$row" | jq -r '.cam_num')
+    cam_num=$(echo "$row" | jq -r '.num')
     if [ "$use" == "true" ]; then
-        camera_setup hostname cam_num
+        camera_setup $hostname $cam_num
     else
         echo "Skipping camera setup: Camera ${cam_num}"
     fi

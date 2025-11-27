@@ -39,7 +39,7 @@ class StorageManager:
         # Write initial memory status file if it doesn't exist
         os.makedirs(os.path.dirname(self.cfg.memory_status_file), exist_ok=True)
         if not os.path.exists(self.cfg.memory_status_file):
-            update_memory_usage(self.cfg.memory_status_file, 0)
+            await update_memory_usage(self.cfg.memory_status_file, 0)
 
         # Main loop
         while self.running:

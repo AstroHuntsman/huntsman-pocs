@@ -244,14 +244,4 @@ class HuntsmanMonitor:
             f"Consumption Rate: {self.stats.total_consumed_rate:.2f} msgs/sec")
         print(
             f"Total Data: {self.stats.total_bytes / (1024*1024):.2f} MB ({self.stats.total_memory_bytes / (1024*1024):.2f} MB in memory, {self.stats.total_disk_bytes / (1024*1024):.2f} MB on disk)")
-
-        # Print individual stream summary
-        print("\nIndividual Stream Statistics:")
-        for stream_name in sorted(self._get_active_streams()):
-            stream = self.streams[stream_name]
-            print(f"\t-- {stream_name} --")
-            print(f"\tMessages: {stream.info.state.messages} messages")
-            print(f"\tData: {stream.info.state.bytes/(1024*1024): .2f} MB")
-            print(f"\tProduction Rate: {stream.produced_rate:.2f} msgs/sec produced")
-            print(f"\tConsumption Rate: {stream.consumed_rate:.2f} msgs/sec consumed")
         print("\n-----------------------------------------------")

@@ -431,7 +431,6 @@ class Consumer():
         # Define streams and subjects based on consumer ID
         memory_stream = f"CAMERA_MEMORY_{self.consumer_id}"
         memory_subject = subject_from_stream_name(memory_stream)
-        print(memory_subject)
         memory_consumer_name = f"memory_consumer_{self.consumer_id}"
 
         try:
@@ -478,6 +477,7 @@ class Consumer():
         print(f"Consumer {self.consumer_id}: Subscribed to disk stream {disk_stream}")
         return disk_sub
 
+    
     async def run_consumer(self, memory_sub: Optional[JetStreamContext.PullSubscription] = None, disk_sub: Optional[JetStreamContext.PullSubscription] = None) -> None:
         """Initialize and run a tiered memory/disk consumer for NATS JetStream.
 
@@ -489,7 +489,6 @@ class Consumer():
         self.start_writer_threads()
         try:
             # Create pull consumers for memory stream and launch async tasks
-            tasks = []
             if not memory_sub:
                 try:
                     memory_sub = await self.setup_memory_consumer()
@@ -502,6 +501,7 @@ class Consumer():
                     print(f"Consumer {self.consumer_id}: Error setting up disk stream: {e}")
 
             # Launch stats task
+            tasks = []
             tasks.append(asyncio.create_task(self.process_stream(memory_sub)))
             tasks.append(asyncio.create_task(self.process_stream(disk_sub)))
             tasks.append(asyncio.create_task(self.report_stats()))

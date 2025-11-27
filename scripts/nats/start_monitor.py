@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import asyncio
 import argparse
+import traceback
 
 import nats
 
 from huntsman.pocs.nats.monitor import HuntsmanMonitor
 
 
-async def monitor(nats_server: str = "nats://localhost:4222", check_interval: float = 5, memory_status_file: str = "/var/huntsman/images/memory_status.json", output_file: str = "/var/huntsman/monitor_stats.json") -> None:
+async def monitor(nats_server: str = "nats://localhost:4222", check_interval: float = 5, memory_status_file: str = "/huntsman/images/memory_status.json", output_file: str = "/huntsman/images/monitor_stats.json") -> None:
     """Monitor system memory and write status to a JSON file.
 
     This function periodically checks the system memory usage and writes a status
@@ -31,12 +32,13 @@ async def monitor(nats_server: str = "nats://localhost:4222", check_interval: fl
     while True:
         try:
             await monitor.refresh_stats()
-            monitor.print_stats()
+            await monitor.print_stats()
             monitor.save_stats_to_file()
-            asyncio.sleep(check_interval)
+            await asyncio.sleep(check_interval)
         except Exception as e:
             print(f"Error monitoring memory: {e}")
-            asyncio.sleep(check_interval)
+            traceback.print_exc()
+            await asyncio.sleep(check_interval)
 
 
 if __name__ == "__main__":
@@ -45,10 +47,10 @@ if __name__ == "__main__":
                         help="The nats server host and port.")
     parser.add_argument("-c", "--check_interval", type=float, default=5,
                         help="How frequently (in seconds) to sample nats stats")
-    parser.add_argument("-f", "--memory_status_file", type=str, default="/var/huntsman/images/memory_status.json",
+    parser.add_argument("-f", "--memory_status_file", type=str, default="/huntsman/images/memory_status.json",
                         help="The filepath to the memory status file - where memory usage information is stored")
     parser.add_argument("-o", "--stats_output_file", type=str,
-                        default="/var/huntsman/monitor_stats.json")
+                        default="/huntsman/images/monitor_stats.json")
     args = parser.parse_args()
     asyncio.run(monitor(nats_server=args.nats_server, check_interval=args.check_interval,
                 memory_status_file=args.memory_status_file, output_file=args.stats_output_file))

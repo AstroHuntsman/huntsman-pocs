@@ -39,5 +39,6 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--check-interval", type=float,
                         default=cfg.check_interval, help="How frequently to check the memory usage (in seconds).")
     args = parser.parse_args()
-    cfg = StorageManagerConfig(**vars(args))
-    asyncio.run(main(cfg))
+    cfg = StorageManagerConfig(memory_threshold=args.memory_threshold,
+                               memory_status_file=args.memory_status_file, check_interval=args.check_interval)
+    asyncio.run(main(nats_server=args.nats_server, cfg=cfg))
