@@ -137,10 +137,10 @@ pre_script_checks(){
         CHECK_PASS=1
     fi
 
-    if ! command_exists python; then
-        echo "Error: python is not available. You may need to source your python environment."
-        CHECK_PASS=1
-    fi
+    # if ! command_exists python; then
+    #     echo "Error: python is not available. You may need to source your python environment."
+    #     CHECK_PASS=1
+    # fi
 
     # Test remote connectivity
     if ! test_ssh_connectivity "${HUNTSMAN_REMOTE_HOST}"; then
@@ -174,9 +174,9 @@ monitoring_setup(){
     local idx=$(get_window_idx "Monitor") || exit 1 # Sanity check - should be 0
 
     docker_args="--network host --pull=always -it --rm"
+    byobu split-window -h -t "$BYOBU_SESSION":"$idx" # Split the window into two columns (vertical split)
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "echo 'Creating NATS streams...' &&  docker run ${docker_args} ${POCS_IMAGE} 'python scripts/nats/manage_streams.py -n ${NATS_NUM_STREAMS}'" Enter
     sleep 20 # Quite long - may need to pull the Docker image
-    byobu split-window -h -t "$BYOBU_SESSION":"$idx" # Split the window into two columns (vertical split)
     echo "Waiting for streams to be created..."
 
     echo "Starting memory monitor in left pane..."
@@ -184,6 +184,7 @@ monitoring_setup(){
     chmod 777 -R ${PANDIR}/images # Change permissions to allow RW for everyone
     bind_mounts="-v '${PANDIR}/images:/huntsman/images'"
     byobu send-keys -t "$BYOBU_SESSION":"${idx}.0" "echo 'Starting Memory Monitor...' &&  docker run ${docker_args} ${bind_mounts} ${POCS_IMAGE} 'python scripts/nats/start_monitor.py -f /huntsman/images/memory_status.json -o /huntsman/images/monitor_stats.json'" Enter
+
     echo "Starting storage manager in right pane..."
     byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "echo 'Starting Storage Manager...' &&  docker run ${docker_args} ${bind_mounts} ${POCS_IMAGE} 'python scripts/nats/start_storage_manager.py' -f /huntsman/images/memory_status.json -m ${MEMORY_THRESHOLD} -i 10" Enter
 }
@@ -225,9 +226,9 @@ camera_setup(){
         -e PANOPTES_CONFIG_HOST=${CONFIG_HOST_IP} \
         -e PANOPTES_CONFIG_PORT=6563 \
         -e TZ=\"Australia/Sydney\" \
-        -v '${PANDIR}/images:/huntsman/images' \
-        -v '${PANDIR}/logs:/huntsman/logs' \
-        -v /dev/bus/usb:/dev/bus/usb \
+        -v '/var/huntsman/images:/huntsman/images' \
+        -v '/var/huntsman/logs:/huntsman/logs' \
+        -v /dev:/dev \
         --group-add dialout \
         --group-add sudo \
         --group-add plugdev \
@@ -237,7 +238,8 @@ camera_setup(){
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "source ~/.bash_profile && sleep 10" Enter
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker ps -q --filter 'name=camera' | grep -q . && docker stop camera" # Stop any camera service if it's running
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker system prune -f --volumes" Enter # Delete old volumes
-    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "mkdir -p ${PANDIR}/images && sudo unmount ${PANDIR}/images && sudo mounts -t nfs ${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images ${PANDIR}/images" Enter # Mount the network volume
+    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "sudo chmod 777 -R /var/huntsman/logs" Enter # Allow log writing
+    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "mkdir -p /var/huntsman/images && sudo umount /var/huntsman/images && sudo mounts -t nfs ${HUNTSMAN_CONTROL_HOST}:${PANDIR}/images /var/huntsman/images" Enter # Mount the network volume
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "${run}" Enter # Run the service setup script
     byobu send-keys -t "$BYOBU_SESSION":"$idx.1" "echo 'Sleeping 30 seconds...' && sleep 30 && tail -F -n 10000 /var/huntsman/logs/huntsman.log" Enter
 }

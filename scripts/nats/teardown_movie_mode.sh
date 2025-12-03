@@ -154,6 +154,8 @@ EOF
 
 }
 
+pre_script_checks
+
 # Set undefined variable error ONLY. If something errors, we don't want to stop the whole system from proceeding.
 set -u
 

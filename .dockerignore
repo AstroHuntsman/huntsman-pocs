@@ -28,6 +28,7 @@ coverage.xml
 build/*
 dist/*
 sdist/*
+.buildx-cache
 
 # env files
 *huntsman.env

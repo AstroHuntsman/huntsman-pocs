@@ -33,36 +33,50 @@ RUN mkdir -p ${HUNTSMAN_POCS}/{images,build,logs,archive,json_store} && \
 # Install libraries
 RUN echo "Building from ${image_url}:${image_tag}" && \
     apt-get update && \
-    apt-get install -y --no-install-recommends gcc git udev nano vim-nox
+    apt-get install -y --no-install-recommends gcc git udev nano
 
 WORKDIR $HUNTSMAN_POCS
 
 # Copy files and ensure ownership
 COPY --chown="${PANUSER}:${PANUSER}" . .
 
-USER $PANUSER
-
-COPY docker/huntsman-pocs/environment.yaml .
-RUN micromamba update -y --verbose --debug -n base -f environment.yaml && \
-    micromamba run -n base pip uninstall -y panoptes-pocs && \
-    micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
-    micromamba run -n base pip install -e "${pip_install_name}[testing]" && \
-    # Cleanup
-    micromamba run -n base pip cache purge && \
-    micromamba clean -fay
-
 USER root
-# RUN curl -fsSL "https://binaries.nats.dev/nats-io/nats-server/v2@${nats_server_version}" | sh
 RUN wget -qO- "https://binaries.nats.dev/nats-io/nats-server/v2@${nats_server_version}" | sh && \
     mv nats-server /usr/bin/nats-server
 
-
-RUN apt-get autoremove --purge --yes gcc pkg-config && \
-    apt-get autoclean --yes && \
-    apt-get --yes clean && \
-    rm -rf /var/lib/apt/lists/*
-
 USER $PANUSER
+
+COPY docker/huntsman-pocs/environment.yaml .
+RUN micromamba update -n base -f environment.yaml && \
+    # Make sure we are using the intended version of POCS
+    micromamba run -n base pip uninstall -y panoptes-pocs && \
+    micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
+    micromamba run -n base pip install -e "${pip_install_name}${pip_install_extras}" && \
+    # Cleanup
+    micromamba run -n base pip cache purge && \
+    micromamba clean -fay && \
+    sudo apt-get autoremove --purge --yes \
+    gcc pkg-config && \
+    sudo apt-get autoclean --yes && \
+    sudo apt-get --yes clean && \
+    sudo rm -rf /var/lib/apt/lists/*
+
+# RUN micromamba update -y --verbose --debug -n base -f environment.yaml && \
+#     micromamba run -n base pip uninstall -y panoptes-pocs && \
+#     micromamba run -n base pip install "git+${pocs_url}[focuser]" && \
+#     micromamba run -n base pip install -e "${pip_install_name}[testing]" && \
+#     # Cleanup
+#     micromamba run -n base pip cache purge && \
+#     micromamba clean -fay
+#
+
+
+# RUN apt-get autoremove --purge --yes && \
+#     apt-get autoclean --yes && \
+#     apt-get --yes clean && \
+#     rm -rf /var/lib/apt/lists/*
+#
+# USER $PANUSER
 
 ENV PATH=/opt/conda/bin:$PATH
 # ENTRYPOINT [ "/usr/bin/env", "bash", "-ic" ]

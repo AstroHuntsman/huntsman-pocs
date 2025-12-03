@@ -31,10 +31,6 @@ while [[ $# -gt 0 ]]; do
             PUSH=false
             shift
             ;;
-        --no-cache)
-            USECACHE=false
-            shift
-            ;;
         -h|--help)
             echo "Utility for building and pushing Huntsman essential Docker images"
             echo ""
@@ -45,7 +41,6 @@ while [[ $# -gt 0 ]]; do
             echo "  --no-hun-pocs: Don't build or push the huntsman-pocs image"
             echo "  --no-hun-cam: Don't build or push the huntsman-camera image"
             echo "  --no-push: Build but don't push any of the images created"
-            echo "  --no-cache: Use the cache when building images. Speeds up build time after the first build."
             echo "  -h, --help              Show this help message"
             exit 0
             ;;
@@ -102,12 +97,6 @@ setup_builder(){
     docker buildx inspect "$BUILDER" >/dev/null 2>&1 || \
         docker buildx create --driver docker-container --name "$BUILDER"
 
-    # Recreate if wrong driver
-    [ "$(docker buildx inspect "$BUILDER" --format '{{.Driver}}')" = "docker-container" ] || {
-        docker buildx rm "$BUILDER"
-        docker buildx create --driver docker-container --name "$BUILDER"
-    }
-
     # Bootstrap + select builder
     docker buildx inspect "$BUILDER" --bootstrap >/dev/null
     docker buildx use "$BUILDER"
@@ -141,11 +130,6 @@ HUNTSMAN_CAMERA_NAME=${DOCKER_USER}/huntsman-pocs-camera
 
 docker buildx create --use
 
-cache_from=""
-cache_to="--cache-to=type=local,dest=.buildx-cache,mode=max"
-if  [ "${USECACHE}" == "true" ]; then
-    cache_from="--cache-from=type=local,src=.buildx-cache "
-fi
 
 setup_builder
 
@@ -153,26 +137,29 @@ setup_builder
 if  [ "${PANOPTES_UTILS}" == "true" ]; then
     echo "Building PANOPTES-UTILS image: ${PANOPTES_UTILS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-utils"
-    docker buildx build --platform linux/arm64,linux/amd64  --builder fastbuilder ${cache_to} ${cache_from} --tag "${PANOPTES_UTILS_NAME}:v0.2.35" --push .
+    docker buildx build --platform linux/arm64,linux/amd64   --builder fastbuilder  --tag "${PANOPTES_UTILS_NAME}:v0.2.35" --push .
     cd -
 fi
 if  [ "${PANOPTES_POCS}" == "true" ]; then
     echo "Building PANOPTES-POCS image: ${PANOPTES_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/panoptes-pocs"
-    docker buildx build --platform linux/arm64,linux/amd64 --builder fastbuilder ${cache_to} ${cache_from} --tag "${PANOPTES_POCS_NAME}:v0.7.8" --push .
+    docker buildx build --platform linux/arm64,linux/amd64  --builder fastbuilder  --tag "${PANOPTES_POCS_NAME}:v0.7.8" --push .
     cd -
 fi
 if  [ "${HUNTSMAN_POCS_IMAGE}" == "true" ]; then
     echo "Building HUNTSMN-POCS image: ${HUNTSMAN_POCS_NAME}"
     cd "${HUNTSMAN_POCS}/docker/huntsman-pocs"
-    docker buildx build --platform linux/arm64,linux/amd64  --builder fastbuilder ${cache_to} ${cache_from} --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" --push \
-        -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}"
+    docker buildx build --platform linux/arm64,linux/amd64   --builder fastbuilder  --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" --push \
+        -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}" \
+        # --build-arg image_url="${PANOPTES_POCS_NAME}" \
+        # --build-arg image_tag="v0.7.8"
+    # TODO: Fix panoptes Dockerfiles
     cd -
 fi
 if  [ "${HUNTSMAN_CAMERA}" == "true" ]; then
     echo "Building HUNTSMAN-CAMERA image: ${HUNTSMAN_CAMERA_NAME}"
     cd "${HUNTSMAN_POCS}/docker/camera"
-    docker buildx build --platform linux/arm64 --builder fastbuilder ${cache_to} ${cache_from} --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" --push \
+    docker buildx build --platform linux/arm64  --builder fastbuilder --tag "${HUNTSMAN_CAMERA_NAME}:${DOCKER_TAG}" --push \
         --build-arg image_url="${HUNTSMAN_POCS_NAME}" \
         --build-arg image_tag="${DOCKER_TAG}" \
         -f "${HUNTSMAN_POCS}/docker/camera/Dockerfile" "${HUNTSMAN_POCS}"

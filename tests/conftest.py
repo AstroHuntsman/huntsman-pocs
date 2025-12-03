@@ -81,7 +81,7 @@ def setup_pyro_servers():
             time.sleep(1)
             waited_time = time.time() - start
         else:
-            print("Started Pyro nameserver")
+            logger.info("Started Pyro nameserver")
             break
     else:
         raise RuntimeError(f"Could not find Pyro nameservers. Waited {timeout} seconds.")
@@ -130,7 +130,7 @@ def setup_pyro_servers():
             # Check for both services
             ns.lookup('dslr.00')
             ns.lookup('dslr.01')
-            print("Found Pyro camera servers!")
+            logger.info("Found Pyro camera servers!")
             break
         except Exception:
             time.sleep(0.5)
@@ -161,7 +161,7 @@ def setup_nats_server():
                 await js.account_info()  # Jetstream check
                 await nc.close()
             asyncio.run(check_nats())
-            print("NATS server is up!")
+            logger.info("NATS server is up!")
             break
         except Exception:
             time.sleep(0.5)

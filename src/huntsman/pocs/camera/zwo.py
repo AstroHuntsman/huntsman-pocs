@@ -77,9 +77,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.memory_status_file = os.environ.get(
             "MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
 
-        print(f"Memory usage: {self.memory_usage}%")
-        print(f"memory_threshold: {self.memory_threshold}%")
-
         # self.nc, self.js = asyncio.run(self._setup_nats())
         self.nc = None
         self.js = None
@@ -91,6 +88,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self._image_type = 'RAW16'
 
         super().__init__(name, HuntsmanASIDriver, *args, **kwargs)
+
+        self.logger.info(f"Memory usage: {self.memory_usage}%")
+        self.logger.info(f"memory_threshold: {self.memory_threshold}%")
 
         # Increase default temperature_tolerance for ZWO cameras because the
         # default value is too low for their temperature resolution.

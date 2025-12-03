@@ -5,7 +5,8 @@ services:
       context: ${HUNTSMAN_POCS}
       dockerfile: ${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile
       args:
-        - image_url=${DOCKER_USER}/panoptes-pocs
+        # - image_url=${DOCKER_USER}/panoptes-pocs
+        # TODO: Fix panoptes Dockerfiles
         - image_tag=v0.7.8
         - pip_install_extras=[testing]
     stdin_open: true
@@ -15,10 +16,10 @@ services:
       - ${HUNTSMAN_POCS}/tests/huntsman.test.env
     user: root # Need to use root user - appaerntly an issue with mamba. https://github.com/mamba-org/micromamba-docker/issues/407#issuecomment-2088523507
     volumes:
-      - ../src:/huntsman/src
-      - ../tests:/huntsman/tests
-      - ../logs:/huntsman/logs
-      - ../build:/huntsman/build
+      - ${HUNTSMAN_POCS}/src:/huntsman/src
+      - ${HUNTSMAN_POCS}/tests:/huntsman/tests
+      - ${HUNTSMAN_POCS}/logs:/huntsman/logs
+      - ${HUNTSMAN_POCS}/build:/huntsman/build
       - /var/run/docker.sock:/var/run/docker.sock
     command: -v -s tests
     entrypoint: pytest

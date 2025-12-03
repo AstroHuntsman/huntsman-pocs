@@ -1,4 +1,5 @@
 import socket
+import traceback
 
 import click
 from huntsman.pocs.utils.logger import logger
@@ -84,6 +85,7 @@ def service(context, service_name, service_class=None):
         logger.info(f'Pyro service {service_name} interrupted, shutting down.')
     except Exception as e:  # noqa
         logger.error(f'Pyro {service_name} shutdown unexpectedly {e!r}')
+        logger.error(traceback.format_exc())
     finally:
         logger.info(f'Pyro {service_name} shut down.')
 

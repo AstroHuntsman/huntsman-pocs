@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eu
+set -euo pipefail
 
 BUILD_DIR="${1:-./ASIBuild}"
 
@@ -46,12 +46,17 @@ function install_zwo() {
     INSTALL_FILE="EFW_SDK"
     wget --output-document "${INSTALL_FILE}.zip" "${EFW_SDK_URI}"
     unzip "${INSTALL_FILE}.zip"
-    tar xvjf ${INSTALL_FILE}/EFW_Linux_macOS_SDK_V*.tar.bz2 && cd EFW_linux_mac_SDK_V*/lib
+    tar xvjf ${INSTALL_FILE}/EFW_Linux_macOS_SDK_V*.tar.bz2
+    # cd EFW_linux_mac_SDK_V*/lib
     # Move the library file.
     echo "Installing ZWO EFW libraries"
-    cp "${ARCH}/libEFWFilter.so" /usr/local/lib/
+    libname=$(find -name "libEFWFilter.so" | grep ${ARCH})
+    # cp "ASIBuild/zwo/ASI_linux_mac_SDK_V*/lib/ASIBuild/zwo-filterwheel/efw/lib/${ARCH}/libEFW"
+    cp $libname /usr/local/lib
+    # cp "${ARCH}/libEFWFilter.so" /usr/local/lib/
     chmod a+rx /usr/local/lib/libEFWFilter.so
-    install efw.rules /etc/udev/rules.d
+    rules=$(find -name "efw.rules")
+    install $rules /etc/udev/rules.d
 }
 
 # Make the build dir.
