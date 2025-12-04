@@ -55,6 +55,8 @@ RUN micromamba update -n base -f environment.yaml && \
     # Cleanup
     micromamba run -n base pip cache purge && \
     micromamba clean -fay && \
+    # Link the C libraries. Don't know why conda doesn't do this. Might be fine to remove in future
+    ln -sf $(find /opt/conda/lib -maxdepth 1 -name "libstdc++.so.6.*" ! -name "libstdc++.so.6" | head -n1) /opt/conda/lib/libstdc++.so.6 && \
     sudo apt-get autoremove --purge --yes \
     gcc pkg-config && \
     sudo apt-get autoclean --yes && \

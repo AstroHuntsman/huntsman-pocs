@@ -5,8 +5,7 @@ services:
       context: ${HUNTSMAN_POCS}
       dockerfile: ${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile
       args:
-        # - image_url=${DOCKER_USER}/panoptes-pocs
-        # TODO: Fix panoptes Dockerfiles
+        - image_url=${DOCKER_USER}/panoptes-pocs
         - image_tag=v0.7.8
         - pip_install_extras=[testing]
     stdin_open: true

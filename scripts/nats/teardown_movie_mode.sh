@@ -203,6 +203,8 @@ for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do # All cameras as defi
         echo "Removing images and containers for ${hostname}"
         ssh ${hostname} bash -c "$(cleanup_containers_command ${DOCKER_USER}/huntsman-pocs-camera:${DOCKER_TAG})"
         ssh ${hostname} bash -c "$(cleanup_images_command ${DOCKER_USER}/huntsman-pocs-camera:${DOCKER_TAG})"
+        echo "Cleaning up Docker artifacts"
+        ssh ${hostname} bash -c \"docker system prune --all -f\"
     else
         echo "Skipping camera teardown: Camera ${cam_num}"
     fi

@@ -257,7 +257,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         return exptime, file_path, image_id, metadata
 
-    def take_recording(self, observation: MovieObservation, headers=None, filename=None, blocking=False, **kwargs):
+    def take_recording(self, observation: MovieObservation, headers=None, blocking=False, **kwargs):
         """Take an observation. Override of `panoptes.pocs.camera.camera.take_observation()` to
         allow multifilter observations and dynamic exposure time tuning.
 
@@ -270,8 +270,6 @@ class AbstractHuntsmanCamera(AbstractCamera):
             observation (~panoptes.pocs.scheduler.observation.Observation): Object
                 describing the observation
             headers (dict, optional): Header data to be saved along with the file.
-            filename (str, optional): pass a filename for the output FITS file to
-                override the default file naming system.
             blocking (bool): If method should wait for observation event to be complete
                 before returning, default False.
             **kwargs (dict): Optional keyword arguments (`exptime`, dark)
@@ -283,7 +281,6 @@ class AbstractHuntsmanCamera(AbstractCamera):
         # Setup the observation
         exptime, files_dir, image_id, metadata = self._setup_recording(observation,
                                                                        headers,
-                                                                       filename,
                                                                        **kwargs)
 
         # pop exptime from kwarg as its now in exptime
@@ -340,7 +337,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         return observation_event
 
-    def _setup_recording(self, observation: MovieObservation, headers: Optional = None, **kwargs):
+    def _setup_recording(self, observation: MovieObservation, headers: Optional[dict] = None, **kwargs):
         """Override of `panoptes.pocs.camera.camera._setup_observation()`  to use the
         `observation.get_filter_name()` method to set observation `filter_name`, rather than
         checking the `observation.filter_name` attribute directly. This enables multi

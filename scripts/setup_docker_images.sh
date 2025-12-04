@@ -151,9 +151,8 @@ if  [ "${HUNTSMAN_POCS_IMAGE}" == "true" ]; then
     cd "${HUNTSMAN_POCS}/docker/huntsman-pocs"
     docker buildx build --platform linux/arm64,linux/amd64   --builder fastbuilder  --tag "${HUNTSMAN_POCS_NAME}:${DOCKER_TAG}" --push \
         -f "${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile" "${HUNTSMAN_POCS}" \
-        # --build-arg image_url="${PANOPTES_POCS_NAME}" \
-        # --build-arg image_tag="v0.7.8"
-    # TODO: Fix panoptes Dockerfiles
+        --build-arg image_url="${PANOPTES_POCS_NAME}" \
+        --build-arg image_tag="v0.7.8"
     cd -
 fi
 if  [ "${HUNTSMAN_CAMERA}" == "true" ]; then

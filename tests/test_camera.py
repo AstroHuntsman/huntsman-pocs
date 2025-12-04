@@ -417,7 +417,7 @@ def test_autofocus_coarse_with_plots(camera, patterns):
         shutil.rmtree(patterns['base'])
 
 
-def test_movie_mode(camera, tmpdir):
+def test_movie_mode(camera: Camera, tmpdir):
     """ Tests basic take_video functionality """
     max_frames = 5
     files_dir = str(tmpdir.join('test_movie_mode'))
@@ -433,13 +433,13 @@ def test_movie_mode(camera, tmpdir):
     assert not os.path.exists(files_dir + '/0.fits')
 
     # A one second normal exposure
-    readout_future = camera.take_video(seconds=1, files_dir=files_dir, max_frames=max_frames)
+    readout_future = camera.take_video(seconds=5, files_dir=files_dir, max_frames=max_frames)
     assert readout_future.running()
     assert camera.is_exposing
     assert not camera.is_ready
 
     # By default take_exposure is non-blocking, need to give it some time to complete.
-    readout_future.result(30)  # 30 second timeout
+    readout_future.result(120)  # 120 second timeout
 
     # Output file should exist, Event should be set and camera should say it's not exposing.
     assert len(os.listdir(files_dir)) == max_frames
@@ -447,7 +447,7 @@ def test_movie_mode(camera, tmpdir):
     assert camera.is_ready
     # If can retrieve some header data there's a good chance it's a valid FITS file
     header = fits_utils.getheader(os.path.join(files_dir, '0.fits'))
-    assert header['EXPTIME'] == 1.0
+    assert header['EXPTIME'] == 5.0
     assert header['IMAGETYP'] == 'Light Frame'
 
 

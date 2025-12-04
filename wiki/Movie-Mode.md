@@ -200,10 +200,12 @@ Once set, run the huntsman movie mode services with
 
 ```bash
 # Start all containerised services on the Control server
-docker compose -f $HUNTSMAN_CONFIG/conf_files/pocs/docker-compose-movie.yaml up -d
+docker compose -f $HUNTSMAN_CONFIG/conf_files/pocs/docker-compose-movie.yaml up -d --pull "always"
 
 # Check status
 docker compose ps
+
+# You may want to check the logs of the images with docker logs [CONTAINER NAME]
 ```
 
 ## Run

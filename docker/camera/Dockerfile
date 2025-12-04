@@ -17,8 +17,6 @@ COPY scripts/camera/install-camera-libs.sh /huntsman/scripts/camera/
 
 # ZWO camera & EFW libraries
 RUN sudo /huntsman/scripts/camera/install-camera-libs.sh && \
-    # Link the C libraries. Don't know why conda doesn't do this. Might be find to remove in future
-    ln -s $(find /opt/conda/lib/libstdc++.so.6.*) /opt/conda/lib/libstdc++.so.6 && \
     # Cleanup.
     sudo apt-get autoremove --purge --yes && \
     sudo apt-get autoclean --yes && \

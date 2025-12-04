@@ -218,7 +218,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         """Publish data to NATS subject with acknowledgment"""
         try:
             if self.js is None:
-                connection = await self._setup_nats_async()
+                connection = await self._setup_nats()
                 if connection is None:
                     return False
                 self.nc, self.js = connection
