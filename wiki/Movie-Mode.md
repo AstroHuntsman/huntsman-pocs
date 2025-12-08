@@ -100,6 +100,7 @@ Most of the variables will not need changing, but it's good to give a quick once
 | **HUNTSMAN_DRP**          | The path to the huntsman-drp repository repo on the Control server                                                                                                                   |
 | **HUNTSMAN_REMOTE_HOST**  | The hostname for the Remote server. See [SSH Configuration](###SSH-Configuration) for more information.                                                                              |
 | **HUNTSMAN_CONTROL_HOST** | The hostname for the Control server. See [SSH Configuration](###SSH-Configuration) for more information.                                                                             |
+| **HUNTSMAN_CONTROL_IP** | The IP for the Control server. See [SSH Configuration](###SSH-Configuration) for more information.                                                                             |
 | **HUNTSMAN_CAMERAS**      | A JSON-structured list of Camera hostnames (`hostname`), numbers (`num`) and whether to use this camera (`use`). See [SSH Configuration](###SSH-Configuration) for more information. |
 | **PANOPTES_CONFIG_HOST**  | The host running the config container                                                                                                                                                |
 | **PANOPTES_CONFIG_PORT**  | The exposed config container port                                                                                                                                                    |
