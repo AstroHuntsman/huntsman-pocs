@@ -82,10 +82,6 @@ pre_script_checks(){
         echo "ERROR: HUNTSMAN_REMOTE_HOST not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
-    if [ -z "${HUNTSMAN_CONTROL_HOST_HOST}" ]; then
-        echo "ERROR: HUNTSMAN_CONTROL_HOST_HOST not set. Please source huntsman.env. See wiki for details"
-        CHECK_PASS=1
-    fi
     if [ -z "${BYOBU_SESSION}" ]; then
         echo "ERROR: BYOBU_SESSION not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
