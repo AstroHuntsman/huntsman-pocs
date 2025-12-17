@@ -1,6 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import functools
 import time
 import os
 import json
@@ -53,19 +54,8 @@ class Consumer():
         self.running = True
         self.file_write_queue = queue.Queue()
         self.stats = ConsumerStats()
-        self.memory_dir = None
-        self.disk_dir = None
 
-        # Print settings information
         if not self.cfg.disable_file_writing:
-            # Ensure output directories exist for both memory and disk streams
-            self.memory_dir = os.path.join(
-                self.cfg.consumer_output_dir, str(self.consumer_id), "memory")
-            self.disk_dir = os.path.join(self.cfg.consumer_output_dir,
-                                         str(self.consumer_id), "disk")
-            os.makedirs(self.memory_dir, exist_ok=True)
-            os.makedirs(self.disk_dir, exist_ok=True)
-
             print(f"Consumer {self.consumer_id}: Saving frames to {self.cfg.consumer_output_dir}")
             print(f"Consumer {self.consumer_id}: Using compression: {self.cfg.compression_method}")
             print(f"Consumer {self.consumer_id}: Using {self.cfg.num_writer_threads} writer threads")
@@ -266,18 +256,14 @@ class Consumer():
 
         return header
 
-    def create_frame_fname(self, msg: Msg, is_chunked: bool, stream_type: Literal["disk", "memory"]) -> str:
+    def create_frame_fname(self, msg: Msg, is_chunked: bool) -> str:
         """Create filename with timestamp and chunk info if available
 
         Args:
             msg: The Nats Jetstream message
             is_chunked: Whether the data is chunked or not
-            stream_type: Whether this is from a 'disk' or 'memory' stream
             timestamp: The timestamp to use for the filename. If not supplied, will use system time at runtime.
         """
-        if stream_type not in ("disk", "memory"):
-            print(f"Error {self.consumer_id}: Got unextpected stream type: {stream_type}")
-
         frame_number = msg.headers.get("frame_number", "0") if hasattr(msg, "headers") else "0"
         chunk_info = ""
         if is_chunked and hasattr(msg, "headers"):
@@ -288,15 +274,13 @@ class Consumer():
 
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         filename = f"frame_{self.consumer_id}_{frame_number}{chunk_info}_{timestamp_str}.fits"
-        return os.path.join(self.cfg.consumer_output_dir, str(
-            self.consumer_id), stream_type, filename)
+        return filename
 
     def process_frame_data(self, msg: Msg) -> Optional[np.ndarray]:
         """Process frame data from a NATS message, handling both chunked and non-chunked data.
 
         Args:
             msg: NATS message containing frame data
-            stream_type: "memory" or "disk" to indicate the stream type
 
         Returns:
             np.ndarray: processed frame data or None if processing failed
@@ -354,20 +338,24 @@ class Consumer():
             return "disk"
         return None
 
-    async def process_stream(self,  memory_sub: JetStreamContext.PullSubscription) -> None:
-        """Consume and process messages from a JetStream memory stream.
+    async def process_stream(self, sub: JetStreamContext.PullSubscription) -> None:
+        """Consume and process messages from a JetStream stream.
 
-        Continuously fetches messages from the given pull subscription (`memory_sub`),
+        Continuously fetches messages from the given pull subscription 
         processes each frame of data into a FITS file format, and queues it for writing to disk.
         Also updates a shared statistics dictionary with counts of processed frames.
 
         Args:
-            memory_sub: The pull subscription object for the memory stream.
+            sub: The pull subscription object for the stream.
         """
+
+        output_directory = os.path.join(self.cfg.consumer_output_dir,
+                                        "movie", f"consumer_{self.consumer_id}")
+        os.makedirs(output_directory, exist_ok=True)
+        stream_type = await self.get_stream_type_from_sub(sub)
         while self.running:
             try:
-                msgs = await memory_sub.fetch(batch=100, timeout=0.5)
-                stream_type = await self.get_stream_type_from_sub(memory_sub)
+                msgs = await sub.fetch(batch=100, timeout=5)
                 for msg in msgs:
                     # Display headers if available
                     if hasattr(msg, "headers") and msg.headers:
@@ -376,26 +364,29 @@ class Consumer():
                             f"Consumer {self.consumer_id}: Received frame with headers: {header_info}")
 
                     # Process the frame data
-                    frame_data = self.process_frame_data(msg)
+                    frame_data = await asyncio.to_thread(functools.partial(self.process_frame_data, msg=msg))
                     if frame_data is not None:
                         is_chunked = self.is_chunked_data(msg)
                         if is_chunked:
-                            header = self.create_fits_header_chunked(msg)
+                            header = await asyncio.to_thread(functools.partial(self.create_fits_header_chunked, msg=msg))
                         else:
-                            header = self.create_fits_header_nochunk(msg)
-                        filepath = self.create_frame_fname(msg, is_chunked, "memory")
+                            header = await asyncio.to_thread(functools.partial(self.create_fits_header_nochunk, msg=msg))
+                        filepath = os.path.join(
+                            output_directory, self.create_frame_fname(msg, is_chunked))
 
                         # Add to write queue
                         self.file_write_queue.put((frame_data, header, filepath))
                         print(
-                            f"Added memory frame to write queue, queue size: {self.file_write_queue.qsize()}")
+                            f"Added frame to write queue, queue size: {self.file_write_queue.qsize()}")
 
                     await msg.ack()
                     self.stats.increment(stream_type)
+
+                if msgs:
+                    await asyncio.sleep(0)  # Yield control
             except Exception as e:
                 if "timeout" not in str(e).lower():
-                    print(f"Consumer {self.consumer_id}: Memory stream error: {e}")
-            await asyncio.sleep(0.01)
+                    print(f"Consumer {self.consumer_id}: Stream error: {e}")
 
     async def report_stats(self) -> None:
         """Periodically report processing statistics for a consumer.
@@ -443,6 +434,7 @@ class Consumer():
             print(f"Consumer {self.consumer_id}: Created memory consumer {memory_consumer_name}")
         except Exception as e:
             print(f"Consumer {self.consumer_id} ERROR: Memory consumer setup note: {e}")
+            raise e
 
         # Subscribe to memory stream
         memory_sub = await self.js.pull_subscribe(memory_subject, memory_consumer_name, stream=memory_stream)
@@ -471,13 +463,13 @@ class Consumer():
             print(f"Consumer {self.consumer_id}: Created disk consumer {disk_consumer_name}")
         except Exception as e:
             print(f"Consumer {self.consumer_id} ERROR: Disk consumer setup note: {e}")
+            raise e
 
         # Subscribe to disk stream
         disk_sub = await self.js.pull_subscribe(disk_subject, disk_consumer_name, stream=disk_stream)
         print(f"Consumer {self.consumer_id}: Subscribed to disk stream {disk_stream}")
         return disk_sub
 
-    
     async def run_consumer(self, memory_sub: Optional[JetStreamContext.PullSubscription] = None, disk_sub: Optional[JetStreamContext.PullSubscription] = None) -> None:
         """Initialize and run a tiered memory/disk consumer for NATS JetStream.
 
@@ -490,15 +482,9 @@ class Consumer():
         try:
             # Create pull consumers for memory stream and launch async tasks
             if not memory_sub:
-                try:
-                    memory_sub = await self.setup_memory_consumer()
-                except Exception as e:
-                    print(f"Consumer {self.consumer_id}: Error setting up memory stream: {e}")
+                memory_sub = await self.setup_memory_consumer()
             if not disk_sub:
-                try:
-                    disk_sub = await self.setup_disk_consumer()
-                except Exception as e:
-                    print(f"Consumer {self.consumer_id}: Error setting up disk stream: {e}")
+                disk_sub = await self.setup_disk_consumer()
 
             # Launch stats task
             tasks = []

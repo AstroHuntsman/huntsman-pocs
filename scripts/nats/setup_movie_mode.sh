@@ -105,6 +105,10 @@ pre_script_checks(){
         echo "ERROR: BYOBU_SESSION not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
     fi
+    if [ -z "${IMAGES_SHARE_DIR}" ]; then
+        echo "ERROR: IMAGES_SHARE_DIR not set. Please source huntsman.env. See wiki for details"
+        CHECK_PASS=1
+    fi
     if [ -z "${DOCKER_USER}" ]; then
         echo "ERROR: DOCKER_USER not set. Please source huntsman.env. See wiki for details"
         CHECK_PASS=1
@@ -163,9 +167,9 @@ check_containers_running(){
     # Names of required containers
     # These can be changed when their names don't make sense anymore
     containers=(
-        "dev-pyro-name-server-mm"
-        "dev-pocs-control-mm"
-        "dev-pocs-config-server-mm"
+        "pyro-name-server-mm"
+        "pocs-control-mm"
+        "pocs-config-server-mm"
         "nats-jetstream-mm"
     )
     echo "Checking required containers..."
@@ -192,39 +196,58 @@ check_containers_running(){
 
 # Setup the monitoring window. Runs on the (local) control server. Monitors memory usage and manages it.
 monitoring_setup(){
+    local monitor_output="/huntsman/images" # Location inside the docker contianer to write to
     echo "Creating NATS streams..."
 
     # Start the window
     byobu rename-window -t "$BYOBU_SESSION":0 "Monitor"
     local idx=$(get_window_idx "Monitor") || exit 1 # Sanity check - should be 0
-    bind_mounts="-v '/var/huntsman/images:/huntsman/images'"
-    docker_args="--network host --pull=always -it --rm"
+    local bind_mounts="-v '${IMAGES_SHARE_DIR}:${monitor_output}'"
+    local docker_args="--network host --pull=always -it --rm"
 
     byobu split-window -h -t "$BYOBU_SESSION":"$idx" # Split the window into two columns (vertical split)
-    create_streams="echo 'Creating NATS streams...' &&  docker run ${docker_args} ${POCS_IMAGE} 'python scripts/nats/manage_streams.py -n ${NATS_NUM_STREAMS}' -m 10_000_000_000"
-    memory_monitor="echo 'Starting Memory Monitor...' &&  docker run ${docker_args} ${bind_mounts} ${POCS_IMAGE} 'python scripts/nats/start_monitor.py -f /huntsman/images/memory_status.json -o /huntsman/images/monitor_stats.json'"
+    create_streams="echo 'Creating NATS streams...' &&  docker run ${docker_args} --name streams-mm ${POCS_IMAGE} 'python scripts/nats/manage_streams.py -n ${NATS_NUM_STREAMS}' -m 10_000_000_000"
+    memory_monitor="echo 'Starting Memory Monitor...' &&  docker run ${docker_args} ${bind_mounts} --name monitor-mm ${POCS_IMAGE} 'python scripts/nats/start_monitor.py -f ${monitor_output}/memory_status.json -o ${monitor_output}/monitor_stats.json'"
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "${create_streams} && ${memory_monitor}" Enter
     sleep 8
     echo "Waiting for streams to be created..."
     echo "Starting memory monitor in left pane..."
 
     echo "Starting storage manager in right pane..."
-    byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "echo 'Starting Storage Manager...' &&  docker run ${docker_args} ${bind_mounts} ${POCS_IMAGE} 'python scripts/nats/start_storage_manager.py' -f /var/huntsman/images/memory_status.json -m ${MEMORY_THRESHOLD} -i 10" Enter
+    byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "sleep 10" Enter # Sleep to wait for stream setup
+    byobu send-keys -t "$BYOBU_SESSION":"${idx}.1" "echo 'Starting Storage Manager...' &&  docker run ${docker_args} ${bind_mounts} --name storage-manager-mm ${POCS_IMAGE} 'python scripts/nats/start_storage_manager.py' -f ${monitor_output}/memory_status.json -m ${MEMORY_THRESHOLD} -i 10" Enter
 }
 
 # Setup the consumers window. Runs on the remote server
 remote_host_setup(){
+    local consumer_output="/huntsman/Projects/huntsman/images" # Location inside the docker contianer to write to
+    local remote_images="/var/huntsman/images" # Location on the remote server to write to
     echo "Running consumers on remote server..."
+
     byobu new-window -t "$BYOBU_SESSION" -n "Remote Consumers"
     local idx=$(get_window_idx "Remote Consumers") || exit 1
 
+    local run="docker run \
+        --network host \
+        --pull=always  \
+        -it --rm  \
+        --name consumers-mm \
+        -v '${remote_images}:${consumer_output}' \
+        ${POCS_IMAGE} \
+        'python scripts/nats/start_consumers.py -w ${NATS_NUM_WRITER_THREADS} -n ${NATS_NUM_CONSUMERS}' -o ${consumer_output}"
     byobu send-keys -t "$BYOBU_SESSION":"$idx" "ssh -o ConnectTimeout=10 -o BatchMode=yes huntsman@$HUNTSMAN_REMOTE_HOST" Enter
-    byobu send-keys -t "$BYOBU_SESSION":"$idx" "echo 'Starting consumers..' &&  docker run --network host --pull=always -it --rm ${POCS_IMAGE} 'python scripts/nats/start_consumers.py -w ${NATS_NUM_WRITER_THREADS} -n ${NATS_NUM_CONSUMERS}'" Enter
+    byobu send-keys -t "$BYOBU_SESSION":"$idx" "sudo mount -t nfs ${HUNTSMAN_CONTROL_IP}:${IMAGES_SHARE_DIR} ${remote_images}" Enter # Mount the network volume
+    byobu send-keys -t "$BYOBU_SESSION":"$idx" "sleep 10" Enter # Sleep to make sure the streams have been initialised
+    byobu send-keys -t "$BYOBU_SESSION":"$idx" "echo 'Starting consumers..' && ${run}" Enter
 }
 
 
 # Setup the cameras windows. Runs on each camera server.
 camera_setup(){
+    # Where images are written to inside the container
+    local container_images="/huntsman/images"
+    # Where images are written to on the camera server. Image writing isn't done here when using movie mode, but this is needed for access to the memory status.
+    local camera_images="/var/huntsman/images"
     local hostname="$1"
     local cam_num="$2"
 
@@ -243,11 +266,11 @@ camera_setup(){
         --network host \
         --pull=always \
         -e PANDIR=/var/huntsman \
-        -e MEMORY_STATUS_FILE=/huntsman/images/memory_status.json \
+        -e MEMORY_STATUS_FILE=${container_images}/memory_status.json \
         -e PANOPTES_CONFIG_HOST=${HUNTSMAN_CONTROL_IP} \
         -e PANOPTES_CONFIG_PORT=6563 \
         -e TZ=\"Australia/Sydney\" \
-        -v '/var/huntsman/images:/huntsman/images' \
+        -v '${camera_images}:${container_images}' \
         -v '/var/huntsman/logs:/huntsman/logs' \
         -v /dev:/dev \
         --group-add dialout \
@@ -260,8 +283,8 @@ camera_setup(){
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker ps -q --filter 'name=camera' | grep -q . && docker stop camera" # Stop any camera service if it's running
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "docker system prune -f --volumes" Enter # Delete old volumes
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "sudo chmod 777 -R /var/huntsman/logs" Enter # Allow log writing
-    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "mkdir -p /var/huntsman/images && sudo umount /var/huntsman/images" Enter
-    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "sudo mount -t nfs ${HUNTSMAN_CONTROL_IP}:/var/huntsman/images /var/huntsman/images" Enter # Mount the network volume
+    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "mkdir -p ${camera_images} && sudo umount ${camera_images}" Enter # Ensure the mount directory exists. Unmount anything on there.
+    byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "sudo mount -t nfs ${HUNTSMAN_CONTROL_IP}:${IMAGES_SHARE_DIR} ${camera_images}" Enter # Mount the network volume
     byobu send-keys -t "$BYOBU_SESSION":"$idx.0" "${run}" Enter # Run the service setup script
     byobu send-keys -t "$BYOBU_SESSION":"$idx.1" "echo 'Sleeping 30 seconds...' && sleep 30 && tail -F -n 10000 /var/huntsman/logs/panoptes.log" Enter
 }
@@ -315,6 +338,8 @@ byobu kill-session -t "$BYOBU_SESSION" 2>/dev/null || true
 byobu new-session -d -s "$BYOBU_SESSION" -c "$HUNTSMAN_POCS/nats"
 monitoring_setup
 remote_host_setup
+
+# Set up all cameras that are enabled (set to 'true' in the huntsman.env)
 for row in $(echo "${HUNTSMAN_CAMERAS}" | jq -c '.[]'); do # All cameras as defined in huntsman.env
     hostname=$(echo "$row" | jq -r '.hostname')
     use=$(echo "$row" | jq -r '.use')

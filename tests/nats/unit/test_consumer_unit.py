@@ -77,9 +77,6 @@ def test_consumer_init_no_file_writing():
         config = ConsumerConfig(consumer_output_dir=str(tmp_dir), disable_file_writing=True)
         consumer = Consumer(cfg=config, js=mock_js, consumer_id="test_consumer_ini_no_file_writing")
         assert consumer.cfg.disable_file_writing is True
-        # Check that directories are not created
-        assert consumer.memory_dir is None
-        assert consumer.disk_dir is None
 
 
 @pytest.mark.asyncio
@@ -171,16 +168,14 @@ async def test_create_fits_header_nochunk_invalid_json(empty_consumer: Consumer,
 async def test_create_frame_fname(empty_consumer: Consumer):
     """Test create_frame_fname method."""
     msg = create_mock_msg(headers={"frame_number": "42"})
-    fname = empty_consumer.create_frame_fname(msg, is_chunked=False, stream_type="memory")
+    fname = empty_consumer.create_frame_fname(msg, is_chunked=False)
     assert "frame_test_consumer_42" in fname
-    assert "memory" in fname
     assert fname.endswith(".fits")
 
     msg_chunked = create_mock_msg(headers={"frame_number": "43", "chunk_x": "1", "chunk_y": "2"})
     fname_chunked = empty_consumer.create_frame_fname(
-        msg_chunked, is_chunked=True, stream_type="disk")
+        msg_chunked, is_chunked=True)
     assert "frame_test_consumer_43_chunk_1_2" in fname_chunked
-    assert "disk" in fname_chunked
     assert fname_chunked.endswith(".fits")
 
 
@@ -189,7 +184,7 @@ async def test_create_frame_fname(empty_consumer: Consumer):
 async def test_create_frame_fname_chunk_number(empty_consumer: Consumer):
     """Test create_frame_fname with chunk_number."""
     msg = create_mock_msg(headers={"frame_number": "44", "chunk_number": "3"})
-    fname = empty_consumer.create_frame_fname(msg, is_chunked=True, stream_type="memory")
+    fname = empty_consumer.create_frame_fname(msg, is_chunked=True)
     assert "frame_test_consumer_44_chunk_3" in fname
 
 
@@ -247,33 +242,42 @@ async def test_get_stream_type_from_sub(empty_consumer: Consumer):
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_process_stream(empty_consumer: Consumer, mocker):
-    """Test the main process_stream loop."""
-    # Mock the subscription and messages
-    mock_sub = AsyncMock()
+    """
+    Test the main process_stream loop by using a mock side effect
+    to trigger self-termination after one message is processed.
+    """
     data = np.ones((5, 5), dtype=np.uint16).tobytes()
     msg1 = create_mock_msg(headers={"width": "5", "height": "5"}, data=data)
-    mock_sub.fetch.side_effect = [[msg1], []]
-    mock_sub.consumer_info.return_value = MagicMock(stream_name="camera_memory_test")
-
-    # Mock dependencies
     mocker.patch.object(empty_consumer, "process_frame_data", return_value=np.ones((5, 5)))
     mocker.patch.object(empty_consumer, "create_fits_header_nochunk", return_value=fits.Header())
     mocker.patch.object(empty_consumer, "create_frame_fname", return_value="test.fits")
+
     mock_put = mocker.patch.object(empty_consumer.file_write_queue, "put")
+    mock_sub = AsyncMock()
+    mock_sub.consumer_info.return_value = MagicMock(stream_name="camera_memory_test")
 
-    # Run the stream processing for a short time
+    fetch_calls = 0
+
+    async def terminating_fetch(batch, timeout):
+        nonlocal fetch_calls
+        fetch_calls += 1
+        if fetch_calls == 1:
+            return [msg1]
+        # Second call onward: Stop the consumer loop and return empty list
+        empty_consumer.running = False
+        return []
+
+    mock_sub.fetch.side_effect = terminating_fetch
+
     empty_consumer.running = True
-    try:
-        await asyncio.wait_for(empty_consumer.process_stream(mock_sub), timeout=1.0)
-    except asyncio.TimeoutError:
-        pass  # Expected timeout as it's an infinite loop
+    await empty_consumer.process_stream(mock_sub)
 
-    # Assertions
-    mock_sub.fetch.assert_called()
-    msg1.ack.assert_called_once()
-    mock_put.assert_called_once()
     assert empty_consumer.stats.total_count == 1
     assert empty_consumer.stats.memory_count == 1
+    msg1.ack.assert_called_once()
+    mock_put.assert_called_once()
+    assert empty_consumer.running is False
+    assert mock_sub.fetch.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -370,7 +374,8 @@ async def test_setup_consumers(empty_consumer: Consumer, mocker):
 async def test_setup_memory_consumer_exception(empty_consumer: Consumer, capsys):
     """Test setup_memory_consumer with an exception."""
     empty_consumer.js.add_consumer.side_effect = Exception("NATS error")
-    await empty_consumer.setup_memory_consumer()
+    with pytest.raises(Exception, match="NATS error"):
+        await empty_consumer.setup_memory_consumer()
     captured = capsys.readouterr()
     assert "ERROR: Memory consumer setup note: NATS error" in captured.out
 

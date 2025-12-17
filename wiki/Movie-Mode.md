@@ -104,6 +104,7 @@ Most of the variables will not need changing, but it's good to give a quick once
 | **HUNTSMAN_CAMERAS**      | A JSON-structured list of Camera hostnames (`hostname`), numbers (`num`) and whether to use this camera (`use`). See [SSH Configuration](###SSH-Configuration) for more information. |
 | **PANOPTES_CONFIG_HOST**  | The host running the config container                                                                                                                                                |
 | **PANOPTES_CONFIG_PORT**  | The exposed config container port                                                                                                                                                    |
+| **IMAGES_SHARE_DIR**  |  The directory of the NFS share on the Control server |
 
 **Docker Configuration**
 | Variable | Description |
@@ -116,7 +117,6 @@ Most of the variables will not need changing, but it's good to give a quick once
 | Variable | Description |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | **NATS_SERVER** | The hostname and port of the NATS server, running on the Control server |
-| **NATS_CONSUMER_OUTPUT_DIR** | The image output directory on the Remote server |
 | **NATS_STATS_FILE** | Where to save the NATS statistics on the Control server |
 | **NATS_NUM_STREAMS** | The number of JetStream streams to create |
 | **NATS_NUM_CONSUMERS** | The number of JetStream consumers to create |
@@ -214,7 +214,7 @@ docker compose ps
 After completing the setup process, start the rest of the services including the memory monitor (control), the streams (control), the consumers (remote) and the pyro server (camera) with the NATS startup script.
 
 ```bash
-$HUNTSMAN_POCS/scripts/setup_movie_mode.sh
+$HUNTSMAN_POCS/scripts/nats/setup_movie_mode.sh
 ```
 
 This script attempts to do this following things:
@@ -240,7 +240,7 @@ It is possible that the script runs without apparent error, but not all componen
 There is a teardown script that removes the Byobu session, then stops and removes the movie-mode containers and images on each of the servers.
 
 ```bash
-$HUNTSMAN_POCS/scripts/teardown_movie_mode.sh
+$HUNTSMAN_POCS/scripts/nats/teardown_movie_mode.sh
 ```
 
 This script has the slight caveat of also removing all of the huntsman-based config containers created in the [#Services] step.

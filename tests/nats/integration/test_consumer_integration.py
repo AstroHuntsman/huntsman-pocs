@@ -43,32 +43,36 @@ async def test_consumer_process_messages(js: JetStreamContext):
     Test that the consumer can process messages and write files to disk.
     """
 
+    await start_streams(js, 1)
     tmpdir = tempfile.TemporaryDirectory().name
     config = ConsumerConfig(consumer_output_dir=tmpdir)
     consumer_id = "1"
-    await start_streams(js, 1)
     consumer = Consumer(config, js, consumer_id)
 
+    # Start the consumer
+    task = asyncio.create_task(consumer.run_consumer())
+    await asyncio.sleep(1)
+
     # Publish a test message
-    stream_name = f"CAMERA_MEMORY_{consumer_id}"
-    subject = subject_from_stream_name(stream_name)
+    subject = subject_from_stream_name(f"CAMERA_MEMORY_{consumer_id}")
     data = np.arange(100, dtype=np.uint16).tobytes()
     headers = {"width": "10", "height": "10"}
     await js.publish(subject, data, headers=headers)
+    subject = subject_from_stream_name(f"CAMERA_DISK_{consumer_id}")
+    await js.publish(subject, data, headers=headers)
 
     # Run the consumer for a short time
-    task = asyncio.create_task(consumer.run_consumer())
     await asyncio.sleep(2)
     await consumer.shutdown()
     await asyncio.wait_for(task, timeout=5)
 
-    # Check that a file has been created
-    output_dir = os.path.join(tmpdir, consumer_id, "memory")
+    # Check that 2 files have been created - one from memory and one from disk stream
+    output_dir = os.path.join(tmpdir, "movie", f"consumer_{consumer_id}")
     files = os.listdir(output_dir)
-    assert len(files) == 1
+    assert len(files) == 2
 
     # Check the content of the file
-    filepath = os.path.join(output_dir, files[0])
-    with fits.open(filepath) as hdul:
-        assert hdul[0].data.shape == (10, 10)
-        assert np.array_equal(hdul[0].data, np.arange(100).reshape(10, 10))
+    for file in files:
+        with fits.open(os.path.join(output_dir, file)) as hdul:
+            assert hdul[0].data.shape == (10, 10)
+            assert np.array_equal(hdul[0].data, np.arange(100).reshape(10, 10))
