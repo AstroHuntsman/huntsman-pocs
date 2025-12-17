@@ -9,6 +9,7 @@ from huntsman.pocs.camera.group import CameraGroup, dispatch_parallel
 from huntsman.pocs.error import (NoDarksDuringTwilightError, NotSafeError,
                                  NotTwilightError)
 from huntsman.pocs.guide.bisque import Guide
+from huntsman.pocs.scheduler.observation.base import Observation
 from huntsman.pocs.scheduler.observation.bias import BiasObservation
 from huntsman.pocs.scheduler.observation.dark import DarkObservation
 from huntsman.pocs.utils.flats import (get_cameras_with_filter,
@@ -300,7 +301,7 @@ class HuntsmanObservatory(Observatory):
                 self.logger.debug(f'Removing {cam_name} from {self} for not being ready.')
                 self.remove_camera(cam_name)
 
-    def take_observation_block(self, observation, cameras=None, timeout=60 * u.second,
+    def take_observation_block(self, observation: Observation, cameras=None, timeout=60 * u.second,
                                remove_on_error=False, do_focus=True, safety_kwargs=None,
                                do_slew=True):
         """ Macro function to take an observation block.
@@ -360,7 +361,7 @@ class HuntsmanObservatory(Observatory):
 
             # NB: get headers here so header info is accurate per exposure for CompoundObservations
             headers = self.get_standard_headers(observation=observation)
-            
+
             # Set a common start time for this batch of exposures
             headers['start_time'] = current_time(flatten=True)
 
@@ -748,7 +749,7 @@ class HuntsmanObservatory(Observatory):
 
 
 
-    def take_recording_block(self, observation, cameras=None, timeout=60 * u.second,
+    def take_recording_block(self, observation: Observation, cameras=None, timeout=60 * u.second,
                                remove_on_error=False, do_focus=True, safety_kwargs=None,
                                do_slew=True):
         """ Macro function to take an observation block.
@@ -770,7 +771,7 @@ class HuntsmanObservatory(Observatory):
         Raises:
             NotSafeError: If safety check fails.
         """
-        
+
         if cameras is None:
             cameras = self.cameras
 
@@ -805,7 +806,7 @@ class HuntsmanObservatory(Observatory):
             focus_required = self.fine_focus_required or observation.current_exp_num == 0
             # TODO: Remove this once we dont need fine focus
             focus_required = False
-            
+
             if do_focus and focus_required:
                 with self.safety_checking(**safety_kwargs):
                     self.autofocus_cameras(blocking=True, filter_name=observation.filter_name)

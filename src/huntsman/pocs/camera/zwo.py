@@ -1,13 +1,10 @@
-# fmt: off
-
 import asyncio
 import json
 import os
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from queue import Empty, Queue
+from queue import Empty
 
 import nats
 import numpy as np
@@ -16,16 +13,12 @@ from astropy.time import Time
 from huntsman.pocs.camera.camera import AbstractHuntsmanCamera
 from huntsman.pocs.camera.libasi import HuntsmanASIDriver
 from huntsman.pocs.utils.config import get_own_ip
-from panoptes.pocs.camera.libasi import ASIDriver
+from huntsman.pocs.nats.utils import get_memory_usage
 from panoptes.pocs.camera.sdk import AbstractSDKCamera
 from panoptes.utils import error
 from panoptes.utils.images import fits as fits_utils
 from panoptes.utils.utils import get_quantity_value
 from usb.core import find as finddev
-
-# from minio import Minio
-# from minio.threadpool import ThreadPool
-# from huntsman.pocs.camera.utils import write_minio_fits
 
 
 class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
@@ -38,7 +31,8 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                  name='ZWO ASI Camera',
                  gain=None,
                  image_type=None,
-                 *args, **kwargs):
+                 memory_threshold: float = 50,
+                 * args, **kwargs):
         """
         ZWO ASI Camera class
         Args:
@@ -64,32 +58,28 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self._video_event = threading.Event()
 
         self._gain = gain
-        
+
         # Define subjects based on producer ID
         producer_id = self._get_producer_id()
-        
+
         self.memory_subject = f"camera.memory.{producer_id}.frame"
         self.disk_subject = f"camera.archive.{producer_id}.frame"
-        self.NATS_SERVER = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
+        self.nats_server = os.environ.get("NATS_SERVER", "nats://192.168.80.100:4222")
         self.chunking_enabled = False
-        
+
         # last memory check and memory usage
+        if memory_threshold > 100 or memory_threshold < 0:
+            print("Invalid memory threshold set. Defaulting to 50%")
+            memory_threshold = 50
+        self.memory_threshold = memory_threshold
         self.memory_usage = 0.0
-        self.MEMORY_THRESHOLD = 50.0
         self.last_memory_check = time.time()
-        self.MEMORY_STATUS_FILE = os.environ.get("MEMORY_STATUS_FILE", "/huntsman/images/memory_status.json")
-        if os.path.exists(self.MEMORY_STATUS_FILE):
-            with open(self.MEMORY_STATUS_FILE, 'r') as f:
-                memory_data = json.load(f)
-                self.memory_usage = memory_data.get('memory_used_percent', 0.0)
-                self.MEMORY_THRESHOLD = memory_data.get('threshold', 50.0)
-                
-        print(f"Memory usage: {self.memory_usage}%")
-        print(f"MEMORY_THRESHOLD: {self.MEMORY_THRESHOLD}%")
-        
-        self.nats_client = None
-    
-        # self.nats_client = self._setup_nats()
+        self.memory_status_file = os.environ.get(
+            "MEMORY_STATUS_FILE", "/var/huntsman/images/memory_status.json")
+
+        # self.nc, self.js = asyncio.run(self._setup_nats())
+        self.nc = None
+        self.js = None
 
         if image_type:
             self._image_type = image_type
@@ -98,6 +88,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self._image_type = 'RAW16'
 
         super().__init__(name, HuntsmanASIDriver, *args, **kwargs)
+
+        self.logger.info(f"Memory usage: {self.memory_usage}%")
+        self.logger.info(f"memory_threshold: {self.memory_threshold}%")
 
         # Increase default temperature_tolerance for ZWO cameras because the
         # default value is too low for their temperature resolution.
@@ -112,9 +105,9 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         with suppress(AttributeError):
             if self.chunking_enabled:
                 self.shutdown_chunk_publisher()
-            else :
+            else:
                 self.shutdown_single_publisher()
-                
+
             camera_ID = self._handle
             Camera._driver.close_camera(camera_ID)
             self.logger.debug("Closed ZWO camera {}".format(camera_ID))
@@ -186,51 +179,53 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     def is_exposing(self):
         """ True if an exposure is currently under way, otherwise False """
         return Camera._driver.get_exposure_status(self._handle) == "WORKING"
-    
-    def check_memory_usage(self):
+
+    def check_memory_usage(self, minimum_check_interval: float = 2.0):
+        """Checks the memory usage of the control server
+
+        Args:
+            minimum_check_interval: Number of seconds passed required to re-read the memory
+                status file. If it's been fewer than this, self.memory_usage won't be updated 
+        """
         current_time = time.time()
 
         # Only check every 2 seconds
-        if current_time - self.last_memory_check < 2.0:
+        if current_time - self.last_memory_check < minimum_check_interval:
             return self.memory_usage
 
         try:
-            if os.path.exists(self.MEMORY_STATUS_FILE):
-                with open(self.MEMORY_STATUS_FILE, 'r') as f:
-                    memory_data = json.load(f)
-                    self.memory_usage = memory_data.get('memory_used_percent', 0)
+            self.memory_usage = asyncio.run(get_memory_usage(self.memory_status_file))[0]
         except Exception as e:
             print(f"Error reading memory status: {e}")
 
         self.last_memory_check = current_time
 
     # Methods
-    async def _setup_nats_async(self):
-        """Set up the NATS connection asynchronously - exactly like in producer_nopub.py"""
+    async def _setup_nats(self):
+        """Set up the NATS connection"""
         try:
             # Connect to NATS
-            nc = await nats.connect(servers=[self.NATS_SERVER])
+            nc = await nats.connect(servers=[self.nats_server])
             js = nc.jetstream()
-            
-            self.logger.info(f"Connected to NATS server at {self.NATS_SERVER}")
+
+            self.logger.info(f"Connected to NATS server at {self.nats_server}")
             return (nc, js)
         except Exception as e:
             self.logger.error(f"Failed to connect to NATS: {e}")
             return None
 
-        
-    async def _publish_to_nats_async(self, subject, data, headers):
+    async def _publish_to_nats(self, subject, data, headers):
         """Publish data to NATS subject with acknowledgment"""
         try:
-            if self.nats_client is None:
-                connection = await self._setup_nats_async()
+            if self.js is None:
+                connection = await self._setup_nats()
                 if connection is None:
                     return False
-                self.nc, self.nats_client = connection
+                self.nc, self.js = connection
 
             # Wait for acknowledgment from JetStream
-            ack = await self.nats_client.publish(subject, data, headers=headers)
-            
+            ack = await self.js.publish(subject, data, headers=headers)
+
             # Verify the message was stored
             if ack and ack.seq:
                 self.logger.debug(f"Message stored with sequence: {ack.seq}")
@@ -238,10 +233,10 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             else:
                 self.logger.error("No acknowledgment received from JetStream")
                 return False
-            
+
         except Exception as e:
             self.logger.error(f"Error publishing to NATS: {e}")
-            self.nats_client = None
+            self.js = None
             return False
 
     def _publish_frame_to_nats(self, frame_data, headers):
@@ -251,21 +246,20 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         # Always create a fresh event loop for each publish operation
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        
+
         # Reset any existing connections since we're using a new loop
-        self.nats_client = None
-        if hasattr(self, 'nc'):
-            self.nc = None
-    
+        self.js = None
+        self.nc = None
+
         try:
             self.check_memory_usage()
-            if self.memory_usage < self.MEMORY_THRESHOLD:
+            if self.memory_usage < self.memory_threshold:
                 success = loop.run_until_complete(
-                    self._publish_to_nats_async(self.memory_subject, frame_data, headers)
+                    self._publish_to_nats(self.memory_subject, frame_data, headers)
                 )
             else:
                 success = loop.run_until_complete(
-                    self._publish_to_nats_async(self.disk_subject, frame_data, headers)
+                    self._publish_to_nats(self.disk_subject, frame_data, headers)
                 )
             return success
         except Exception as e:
@@ -281,13 +275,13 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             finally:
                 # Always close the loop and reset state
                 loop.close()
-                self.nats_client = None
+                self.js = None
                 if hasattr(self, 'nc'):
                     self.nc = None
-            
+
     def _get_producer_id(self):
         """Get producer ID from camera ID or IP address last digit.
-        
+
         Returns:
             int: Producer ID (0-9) for NATS subjects
         """
@@ -295,18 +289,17 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             # Fall back to extracting from IP address
             ip_address = get_own_ip()
             last_digit = int(ip_address.split('.')[-1]) % 10
-            
+
             print(f"Using camera_ID {last_digit} as producer_id on server: {ip_address}")
             return last_digit
-            
+
         except Exception as e:
             print(f"Could not determine producer_id from IP: {e}")
-        
+
         # Final fallback to default
-        
+
         return 0
-  
-   
+
     def connect(self):
         """
         Connect to ZWO ASI camera.
@@ -371,18 +364,17 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             self._current_focus_offset = actual_offset
 
         return super().take_exposure(*args, **kwargs)
-    
-    
 
     def take_video(self, *args, **kwargs):
-        """ Overrride class method to add defocusing offset.
-        Note that the focus offset is checked at the exposure level so that we don't end up
-        moving the focuser back and forth unnecessarily.
-        TODO: Move to AbstractCamera.
-        Args:
-            defocused (bool, optional): If True, apply the defocusing offset before the exposure.
-                Default: False.
-            *args, **kwargs: Parsed to super().take_exposure.
+        """Takes a video.
+        Mostly just runs some setup and calls _start_video
+
+        Expects the following kwargs:
+            max_frames (int): The maximum number of frames to take before stopping the video
+            frame_rate (float): The target capture rate in frames per second
+            duration (float): The maximum length of time to run the video for in seconds
+            seconds (float): The exposure time in seconds of each frame
+            chunking_enabled (bool): Whether to enable chunking or not. (Optional - default False)
         Returns:
             threading.Thread: The readout thread, which joins when readout has finished.
         """
@@ -401,26 +393,26 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
             # Update the current focus offset
             self._current_focus_offset = actual_offset
-        
-        # video_obj = super().take_exposure(*args, **kwargs)
-        
-        # breakpoint()
-        
-        filename_root = kwargs['files_dir']
+
         max_frames = kwargs['max_frames']
         frame_rate = kwargs['frame_rate']
         duration = kwargs['duration']
         seconds = kwargs['seconds']
         self.chunking_enabled = kwargs.get('chunking_enabled', False)
-        
-        video_obj = self.start_video(seconds, filename_root, max_frames, frame_rate, duration)
 
-        return video_obj
+        return self._start_video(seconds, max_frames, frame_rate, duration)
 
+    def _start_video(self, seconds, max_frames, frame_rate, duration, image_type=None) -> threading.Thread:
+        """Starts the video recording
 
-
-    def start_video(self, seconds, filename_root, max_frames, frame_rate, duration, image_type=None):
-    
+        Args:
+            seconds (float): The exposure time in seconds of each frame
+            max_frames (int): The maximum number of frames to take before stopping the video
+            frame_rate (float): The target capture rate in frames per second
+            duration (float): The maximum length of time to run the video for in seconds
+        Returns:
+            threading.Thread: The readout thread.
+        """
         if not isinstance(seconds, u.Quantity):
             seconds = seconds * u.second
         self._control_setter('EXPOSURE', seconds)
@@ -438,8 +430,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                       height,
                       image_type,
                       timeout,
-                      filename_root,
-                      self.file_extension,
                       int(max_frames),
                       frame_rate,
                       duration,
@@ -452,21 +442,21 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self._video_event.clear()
         video_thread.start()
         self.logger.debug("Video capture started on {}".format(self))
-        
+
         return video_thread
 
-    def stop_video(self):
+    def _stop_video(self):
         self._video_event.set()
         Camera._driver.stop_video_capture(self._handle)
-        
+
         # Clean up based on chunking mode
         # if self.chunking_enabled:
         #     if hasattr(self, 'chunk_workers') and self.chunk_workers:
         #         self.shutdown_chunk_publisher()
-        if self.chunking_enabled==False:
+        if self.chunking_enabled == False:
             # Clean up single publisher system
             self.shutdown_single_publisher()
-        
+
         self.logger.debug("Video capture stopped on {}".format(self))
 
     # Private methods
@@ -483,8 +473,6 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                        height,
                        image_type,
                        timeout,
-                       filename_root,
-                       file_extension,
                        max_frames,
                        frame_rate,
                        duration,
@@ -508,43 +496,45 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
 
         # for frame_number in range(max_frames):
         frame_number = 0
+        frame_start_time = time.monotonic()
         while True:
             if time.monotonic() - start_time > duration_seconds:
                 break
-            
+
             if self._video_event.is_set():
                 break
             # This call will block for up to timeout milliseconds waiting for a frame
             video_data = Camera._driver.get_video_data(self._handle,
-                                                      width,
-                                                      height,
-                                                      image_type,
-                                                      timeout)
-            if video_data is not None:
+                                                       width,
+                                                       height,
+                                                       image_type,
+                                                       timeout)
+            if video_data is None:
+                bad_frames += 1
+            else:
                 now = Time.now()
                 header.set('DATE-OBS', now.fits, 'End of exposure + readout')
-                filename = "{}_{:06d}.{}".format(filename_root, frame_number, file_extension)
                 # Fix 'raw' data scaling by changing from zero padding of LSBs
                 # to zero padding of MSBs.
                 video_data = np.right_shift(video_data, pad_bits)
-                
+
                 self.logger.info(f"Processing frame {frame_number}, shape: {video_data.shape}")
-                
+
                 # Prepare base headers
                 header_dict = dict(header)
-            
+
                 if self.chunking_enabled:
                     # Divide frame into chunks
-                    
+
                     base_headers = {
                         'frame_number': str(frame_number),
                         'original_width': str(width),
                         'original_height': str(height),
                         'header': json.dumps(header_dict)
                     }
-                    
+
                     chunks = self.divide_image_into_chunks(video_data)
-                    
+
                     # Add all chunks to queue
                     for chunk_data, chunk_coords, chunk_indices in chunks:
                         self.chunk_queue.put((
@@ -553,33 +543,30 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                             chunk_coords,
                             chunk_indices
                         ))
-                    
+
                     # Wait for all chunks to be processed before moving to next frame
                     self.chunk_queue.join()
                     self.logger.info(f"Frame {frame_number}: All {len(chunks)} chunks processed")
-                else :
+                else:
                     base_headers = {
                         'frame_number': str(frame_number),
-                        'width':str(width),
-                        'height':str(height),
-                        'header': json.dumps(header_dict)  # This serializes the dictionary to a JSON string
+                        'width': str(width),
+                        'height': str(height),
+                        'header': json.dumps(header_dict)
                     }
-                    
+
                     frame0 = video_data.tobytes()
                     self._publish_frame_to_nats(frame0, headers=base_headers)
-                
+
                 good_frames += 1
-                
-            else:
-                bad_frames += 1
-                
+
             elapsed_time = (time.monotonic() - start_time) * u.second
-            
-            n=1
+
+            n = 1
             FRAME_SIZE_MB = 40.0
-            mbps = (good_frames * FRAME_SIZE_MB/n) /(time.monotonic() - start_time)
+            mbps = (good_frames * FRAME_SIZE_MB/n) / (time.monotonic() - start_time)
             fps = get_quantity_value(good_frames / elapsed_time)
-            
+
             self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost, Throughput: {:.2f} MB/s".format(
                 good_frames,
                 max_frames,
@@ -587,32 +574,32 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 fps,
                 bad_frames,
                 mbps))
-            
+
             # Sleep to maintain the desired frame rate
             TARGET_FPS = frame_rate
             TARGET_PERIOD = 1.0 / TARGET_FPS
-            
+
             # Calculate instantaneous fps (not cumulative)
             if frame_number > 0:
                 frame_time = time.monotonic() - frame_start_time
                 instantaneous_fps = 1.0 / frame_time if frame_time > 0 else 0
-                
+
                 if instantaneous_fps > TARGET_FPS:
                     sleep_time = TARGET_PERIOD - frame_time
                     if sleep_time > 0:
                         print(f"Frame {frame_number}: Sleeping for {sleep_time:.3f} seconds")
                         time.sleep(sleep_time)
-                
+
             frame_start_time = time.monotonic()
             frame_number += 1
 
         time_taken = time.monotonic() - start_time
         print(f"Time taken: {time_taken} and duration: {duration}")
-        
+
         # if frame_number == max_frames - 1:
         if time_taken > duration_seconds:
             # No one called stop_video() before max_frames so have to call it here
-            self.stop_video()
+            self._stop_video()
 
         elapsed_time = (time.monotonic() - start_time) * u.second
         self.logger.info("Captured {} of {} frames in {:.2f} ({:.2f} fps), {} frames lost".format(
@@ -621,7 +608,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             elapsed_time,
             get_quantity_value(good_frames / elapsed_time),
             bad_frames))
-        
+
     def _start_exposure(self, seconds, filename, dark, header, *args, **kwargs):
         self._control_setter('EXPOSURE', seconds)
         roi_format = Camera._driver.get_roi_format(self._handle)
@@ -728,12 +715,12 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
     def divide_image_into_chunks(self, image_data, n_chunks_x=8, n_chunks_y=8):
         """
         Divides an image into a grid of chunks.
-        
+
         Args:
             image_data (numpy.ndarray): 2D image array to divide
             n_chunks_x (int): Number of chunks in x direction (width)
             n_chunks_y (int): Number of chunks in y direction (height)
-            
+
         Returns:
             list: List of tuples, each containing:
                 - chunk data (numpy.ndarray)
@@ -741,62 +728,62 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                 - chunk indices (chunk_x, chunk_y)
         """
         height, width = image_data.shape
-        
+
         # Calculate chunk dimensions
         chunk_width = width // n_chunks_x
         chunk_height = height // n_chunks_y
-        
+
         chunks = []
-        
+
         for y in range(n_chunks_y):
             for x in range(n_chunks_x):
                 # Calculate chunk boundaries
                 x_start = x * chunk_width
                 y_start = y * chunk_height
-                
+
                 # Adjust width/height for edge chunks
                 if x == n_chunks_x - 1:
                     x_end = width
                 else:
                     x_end = x_start + chunk_width
-                    
+
                 if y == n_chunks_y - 1:
                     y_end = height
                 else:
                     y_end = y_start + chunk_height
-                
+
                 # Extract the chunk
                 chunk = image_data[y_start:y_end, x_start:x_end]
-                
+
                 # Store chunk with its coordinates and indices
                 chunks.append((
                     chunk,
                     (x_start, y_start, x_end, y_end),
                     (x, y)
                 ))
-        
+
         return chunks
 
     def create_chunk_headers(self, base_headers, chunk_coords, chunk_indices, n_chunks_x=8, n_chunks_y=8):
         """
         Create headers for a specific chunk based on the original frame headers.
-        
+
         Args:
             base_headers (dict): Original headers from the full frame
             chunk_coords (tuple): Coordinates (x_start, y_start, x_end, y_end)
             chunk_indices (tuple): Grid position (x, y)
             n_chunks_x (int): Number of chunks in x direction
             n_chunks_y (int): Number of chunks in y direction
-            
+
         Returns:
             dict: Headers for the chunk
         """
         x, y = chunk_indices
         x_start, y_start, x_end, y_end = chunk_coords
-        
+
         # Create a copy of base headers
         chunk_headers = base_headers.copy()
-        
+
         # Add chunk-specific information
         chunk_headers.update({
             'chunk_x': str(x),
@@ -811,7 +798,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             'total_chunks_y': str(n_chunks_y),
             'chunk_number': str(y * n_chunks_x + x)
         })
-        
+
         return chunk_headers
 
     def setup_chunk_publisher(self):
@@ -823,10 +810,10 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         self.chunk_queue = queue.Queue(maxsize=64)
         self.chunk_stop_event = threading.Event()
         self.chunk_workers = []
-        
+
         # Thread-local storage for NATS connections
         self.thread_local = threading.local()
-        
+
         # Create 8 worker threads
         for i in range(8):
             worker = threading.Thread(
@@ -836,7 +823,7 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             )
             worker.start()
             self.chunk_workers.append(worker)
-        
+
         self.logger.info("Started 8 chunk publisher threads")
 
     def _ensure_nats_connection(self):
@@ -845,14 +832,15 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             # Create a new event loop for this thread
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
+
             # Connect to NATS
             self.thread_local.loop = loop
-            self.thread_local.nats_nc = loop.run_until_complete(nats.connect(servers=[self.NATS_SERVER]))
+            self.thread_local.nats_nc = loop.run_until_complete(
+                nats.connect(servers=[self.nats_server]))
             self.thread_local.nats_js = self.thread_local.nats_nc.jetstream()
-            
+
             self.logger.info(f"Thread {threading.current_thread().name} connected to NATS")
-        
+
         return self.thread_local.nats_nc, self.thread_local.nats_js, self.thread_local.loop
 
     def _publish_frame_to_nats_thread_local(self, data, headers):
@@ -860,26 +848,26 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         try:
             # Ensure we have a connection for this thread
             nc, js, loop = self._ensure_nats_connection()
-            
+
             # Create coroutine to publish the data
             async def publish():
                 self.check_memory_usage()
-                if self.memory_usage < self.MEMORY_THRESHOLD:
+                if self.memory_usage < self.memory_threshold:
                     ack = await js.publish(self.memory_subject, data, headers=headers)
                 else:
                     ack = await js.publish(self.disk_subject, data, headers=headers)
-                
+
                 # Verify acknowledgment
                 if ack and ack.seq:
                     return True
                 else:
                     raise Exception("No acknowledgment received")
-            
+
             # Run the publish coroutine
             success = loop.run_until_complete(publish())
             if success:
                 return True
-            
+
         except Exception as e:
             self.logger.error(f"Error publishing to NATS: {e}")
             # For timeout errors, try to reset connection
@@ -898,23 +886,24 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                     # None is signal to exit
                     self.chunk_queue.task_done()
                     break
-                
+
                 # Unpack chunk data
                 chunk_data, base_headers, chunk_coords, chunk_indices = chunk_item
-                
+
                 # Create headers for this chunk
                 chunk_headers = self.create_chunk_headers(
-                    base_headers, 
-                    chunk_coords, 
+                    base_headers,
+                    chunk_coords,
                     chunk_indices
                 )
-                
+
                 # Publish the chunk using thread-local connection
-                success = self._publish_frame_to_nats_thread_local(chunk_data.tobytes(), headers=chunk_headers)
-                
+                success = self._publish_frame_to_nats_thread_local(
+                    chunk_data.tobytes(), headers=chunk_headers)
+
                 # Mark task as done
                 self.chunk_queue.task_done()
-                
+
             except Empty:  # Make sure this is imported: from queue import Empty
                 # Queue timeout, continue checking
                 continue
@@ -930,18 +919,18 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
         """Safely shut down chunk publisher system."""
         if hasattr(self, 'chunk_stop_event'):
             self.chunk_stop_event.set()
-            
+
             # Send None to each worker to signal exit
             for _ in range(len(self.chunk_workers)):
                 try:
                     self.chunk_queue.put(None, timeout=0.5)
                 except:
                     pass
-                
+
             # Wait for workers to exit
             for worker in self.chunk_workers:
                 worker.join(timeout=2)
-            
+
             # Close NATS connections for each thread if possible
             for thread in self.chunk_workers:
                 try:
@@ -952,25 +941,25 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
                             loop.run_until_complete(nc.close())
                 except Exception as e:
                     self.logger.error(f"Error closing thread NATS connection: {e}")
-            
+
             self.logger.info("Chunk publisher system shut down")
-    
+
     def shutdown_single_publisher(self):
         """Safely shut down single-threaded publisher system with proper cleanup."""
         self.logger.info("Shutting down single publisher system...")
-        
+
         try:
             # Just reset the NATS client reference - don't try to close across different loops
             if hasattr(self, 'nats_client'):
                 self.logger.debug("Resetting NATS JetStream client")
-                self.nats_client = None
-            
+                self.js = None
+
             if hasattr(self, 'nc'):
                 self.logger.debug("Resetting NATS connection")
                 # Don't try to close connection across different event loops
                 # Just reset the reference and let garbage collection handle it
                 self.nc = None
-            
+
             # Get current event loop and close it if it exists and is not running
             try:
                 current_loop = asyncio.get_event_loop()
@@ -980,14 +969,14 @@ class Camera(AbstractSDKCamera, AbstractHuntsmanCamera):
             except RuntimeError:
                 # No event loop exists, which is fine
                 pass
-            
+
             # Clear any event loop from the thread
             try:
                 asyncio.set_event_loop(None)
             except Exception as e:
                 self.logger.debug(f"Error clearing event loop: {e}")
-            
+
             self.logger.info("Single publisher system shut down complete")
-            
+
         except Exception as e:
             self.logger.error(f"Error during single publisher shutdown: {e}")

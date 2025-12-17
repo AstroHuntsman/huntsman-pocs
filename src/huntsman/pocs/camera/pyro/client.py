@@ -69,7 +69,7 @@ class Camera(AbstractHuntsmanCamera):
 
     # Properties
     @property
-    def _proxy(self):
+    def _proxy(self) -> Proxy:
         return Proxy(self._uri)
 
     @property
@@ -311,11 +311,10 @@ class Camera(AbstractHuntsmanCamera):
         written before starting processing. """
         self._exposure_future.result()
         return super().process_exposure(*args, **kwargs)
-     
+
     def process_video_files(self,
                          metadata,
                          observation_event,
-                         max_frames,
                          compress_fits=None,
                          record_observations=None,
                          make_pretty_images=None):
@@ -369,11 +368,6 @@ class Camera(AbstractHuntsmanCamera):
 
         # Get list of files and limit to max_frames
         files = sorted(glob.glob(files_dir + '/*.fits'))
-        num_files = len(files)
-        
-        # Define number of worker threads
-        num_workers = 5  # Using 5 threads as specified
-        
         for file_path in files:
             # Make sure image exists.
             if not os.path.exists(file_path):
@@ -383,9 +377,9 @@ class Camera(AbstractHuntsmanCamera):
                     "cannot be accessed, cannot process.")
 
             self.logger.debug(f'Starting FITS processing for {file_path}')
-            
+
             file_path = super()._process_fits(file_path, metadata)
-            
+
             self.logger.debug(f'Finished FITS processing for {file_path}')
 
             # TODO make this async and take it out of camera.
@@ -404,12 +398,12 @@ class Camera(AbstractHuntsmanCamera):
                                                 link_path=link_path)
                 except Exception as e:  # pragma: no cover
                     self.logger.warning(f'Problem with extracting pretty image: {e!r}')
-                    
+
             if compress_fits:
                 self.logger.debug(f'Compressing file_path={file_path!r}')
                 compressed_file_path = fits_utils.fpack(file_path)
                 self.logger.debug(f'Compressed {compressed_file_path}')
-            
+
 
         metadata['exptime'] = get_quantity_value(metadata['exptime'], unit='second')
 
@@ -426,7 +420,7 @@ class Camera(AbstractHuntsmanCamera):
         """Process video files using multiple threads.
         Each thread processes a distinct subset of files.
         """
-        
+
         # Wait for exposure to complete
         while self.is_exposing:
             time.sleep(1)
@@ -439,32 +433,32 @@ class Camera(AbstractHuntsmanCamera):
             make_pretty_images = self.get_config('observations.make_pretty_images', default=False)
 
         files_dir = metadata['files_dir']
-        
+
         # Get list of files and limit to max_frames
         files = sorted(glob.glob(files_dir + '/*.fits'))[:max_frames]
         num_files = len(files)
-        
+
         self.logger.info(f"Found {num_files} files to process in {files_dir}")
-        
+
         # Define number of worker threads
         num_workers = 5
-        
+
         # Calculate files per thread
         files_per_thread = int(np.ceil(num_files / num_workers))
         self.logger.info(f"Using {num_workers} threads, {files_per_thread} files per thread")
-        
+
         def process_file_chunk(chunk_id, file_list):
             """Process a chunk of files assigned to a single thread"""
             self.logger.info(f"Thread {chunk_id}: Starting processing of {len(file_list)} files")
             processed_files = []
-            
+
             # import pdb
             # pdb.set_trace()
-            
+
             for i, file_path in enumerate(file_list):
                 try:
                     self.logger.info(f"Thread {chunk_id}: Processing file {i+1}/{len(file_list)}: {file_path}")
-                    
+
                     if not os.path.exists(file_path):
                         raise FileNotFoundError(
                             f"Expected image at {file_path=!r} does not exist or cannot be accessed")
@@ -490,21 +484,21 @@ class Camera(AbstractHuntsmanCamera):
                         self.logger.debug(f"Thread {chunk_id}: Compressing {processed_path}")
                         compressed_path = fits_utils.fpack(processed_path)
                         self.logger.debug(f"Thread {chunk_id}: Compressed to {compressed_path}")
-                    
+
                     processed_files.append(processed_path)
-                    
+
                 except Exception as e:
                     self.logger.error(f"Thread {chunk_id}: Error processing file {file_path}: {e}")
-                    
+
             self.logger.info(f"Thread {chunk_id}: Completed processing all files")
             return processed_files
 
         # Split files into chunks for each thread
         file_chunks = [files[i:i + files_per_thread] 
                       for i in range(0, len(files), files_per_thread)]
-        
+
         self.logger.info(f"Divided files into {len(file_chunks)} chunks")
-        
+
         # Process chunks in parallel using ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             try:
@@ -512,11 +506,11 @@ class Camera(AbstractHuntsmanCamera):
                 self.logger.info("Submitting chunks to thread pool")
                 futures = [executor.submit(process_file_chunk, i, chunk) 
                           for i, chunk in enumerate(file_chunks)]
-                
+
                 # Wait for all tasks to complete and collect results
                 all_processed_files = []
                 self.logger.info("Waiting for all threads to complete")
-                
+
                 for i, future in enumerate(futures):
                     try:
                         processed_files = future.result()
@@ -527,7 +521,7 @@ class Camera(AbstractHuntsmanCamera):
 
             except Exception as e:
                 self.logger.error(f"Error in parallel processing: {e}")
-        
+
         self.logger.info(f"All threads completed. Total processed files: {len(all_processed_files)}")
 
         metadata['exptime'] = get_quantity_value(metadata['exptime'], unit='second')
@@ -592,7 +586,7 @@ class Camera(AbstractHuntsmanCamera):
 
             # Make sure the file exists and we can read it
             if not proxy.is_reading_out and os.path.exists(foldername):
-            
+
                 try:
                     files = glob.glob(foldername + '/*.fits')
                     if len(files) == max_frames:
@@ -627,7 +621,7 @@ class Camera(AbstractHuntsmanCamera):
                 try:
                     files = glob.glob(foldername + '/*.fits')
                     num_files = len(files)
-                    
+
                     if num_files == max_frames:
                         # Verify first and last file are readable
                         fits.open(files[0], output_verify='exception')
@@ -640,7 +634,7 @@ class Camera(AbstractHuntsmanCamera):
                                             f"files found.")
                     else:
                         self.logger.warning(f"Found {num_files} files, expected {max_frames}")
-                        
+
                 except Exception as e:
                     self.logger.error(f'Problem verifying files: {e!r}')
 
@@ -693,12 +687,12 @@ class Camera(AbstractHuntsmanCamera):
         Returns:
             concurrent.futures.Future: The Future object for the exposure.
         """
-        
+
         # Start the exposure
         self.logger.debug(f'Taking {seconds} second exposure on {self}: {files_dir}')
 
         # breakpoint()
-        
+
         # Remote method call to start the exposure
         self._proxy.take_video(seconds=seconds, 
             max_frames=max_frames, 
@@ -708,7 +702,7 @@ class Camera(AbstractHuntsmanCamera):
             files_dir=files_dir, 
             chunking_enabled=chunking_enabled, 
             *args, **kwargs)
-    
+
         # breakpoint()
 
         # Start the readout thread
@@ -721,23 +715,21 @@ class Camera(AbstractHuntsmanCamera):
         # reading out file
         # self._exposure_future = self._exposure_executor.submit(self._wait_for_video_files, files_dir,
         #                                                        timeout, max_frames)
-        
+
         self._exposure_future = self._exposure_executor.submit(self._wait_for_concurrent_video_files, files_dir,
                                                                timeout, max_frames)
 
-        
+
         if blocking:
             self._exposure_future.result()
 
         return self._exposure_future
 
-    def process_nats_video_files(self, metadata, observation_event, max_frames,
-                                     compress_fits=None, record_observations=None,
-                                     make_pretty_images=None):
+    def process_nats_video_files(self, metadata, observation_event, record_observations=None):
         """Process video files using multiple threads.
         Each thread processes a distinct subset of files.
         """
-        
+
         # Wait for exposure to complete
         while self.is_exposing:
             time.sleep(1)

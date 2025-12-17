@@ -5,7 +5,7 @@ from string import Template
 
 from astropy.io import fits
 from astropy.stats import sigma_clipped_stats
-from photutils import DAOStarFinder
+from photutils.detection import DAOStarFinder
 from panoptes.pocs.base import PanBase
 from panoptes.utils import error
 from panoptes.pocs.utils.theskyx import TheSkyX

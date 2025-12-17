@@ -7,30 +7,45 @@
 # - Starting the docker camera service
 set -eu
 
-REMOTE_HOST=${HUNTSMAN_REMOTE_HOST:-${PANOPTES_CONFIG_HOST}}
-REMOTE_IMAGES_DIR=${REMOTE_HOST}:${PANDIR}/images
-LOCAL_IMAGES_DIR=${PANDIR}/images
+CHECK_PASS=0
+if [ -z "${HUNTSMAN_CONTROL_HOST}" ]; then
+    echo "ERROR: HUNTSMAN_CONTROL_HOST not set. Please source huntsman.env. See nats/README.md for details"
+    CHECK_PASS=1
+fi
+if [ -z "${CONTROL_IMAGES_DIR}" ]; then
+    echo "ERROR: CONTROL_IMAGES_DIR not set. Please source huntsman.env. See nats/README.md for details"
+    CHECK_PASS=1
+fi
+if [ -z "${PANDIR}" ]; then
+    echo "ERROR: PANDIR not set. Please source huntsman.env. See nats/README.md for details"
+    CHECK_PASS=1
+fi
+if [ "$CHECK_PASS" -eq 1 ]; then
+    echo "Checks failed with error(s). Exiting..."
+    exit 1
+fi
 
+LOCAL_IMAGES_DIR=${PANDIR}/images
 DC_FILE_URL=https://raw.githubusercontent.com/oldyoungcoders/huntsman-pocs/adding-movie-mode/docker/camera/docker-compose.yaml
 
 # First, check if the camera docker service is already running. If so, exit 0.
 cd ${PANDIR}
 if [ -z `docker-compose ps -q camera` ] || [ -z `docker ps -q --no-trunc | grep $(docker-compose ps -q camera)` ]; then
-  echo "No running docker camera service found. Starting a new one."
+    echo "No running docker camera service found. Starting a new one."
 else
-  echo "A docker camera service is already running."
-  exit 0
+    echo "A docker camera service is already running."
+    exit 0
 fi
 
 clear
 echo "############### Huntsman Camera Service ###############"
-echo "Control computer hostname: ${REMOTE_HOST}"
+echo "Control computer hostname: ${CONTROL_HOST}"
 
 # Mount the NFS images directory
-echo "Mounting remote images directory ${REMOTE_IMAGES_DIR} to ${LOCAL_IMAGES_DIR}"
+echo "Mounting remote images directory ${CONTROL_IMAGES_DIR} to ${LOCAL_IMAGES_DIR}"
 mkdir -p ${LOCAL_IMAGES_DIR}
 sudo umount ${LOCAL_IMAGES_DIR} || true
-sudo mount -t nfs ${REMOTE_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
+sudo mount -t nfs ${CONTROL_IMAGES_DIR} ${LOCAL_IMAGES_DIR}
 
 # Get the docker-compose file
 DC_FILE="${PANDIR}/docker-compose.yaml"
@@ -39,6 +54,7 @@ if [ -f ${DC_FILE} ] ; then
     rm ${DC_FILE}
 fi
 echo "Downloading latest docker-compose file from ${DC_FILE_URL} to ${DC_FILE}"
+# TODO: Don't pull from remote repository
 wget ${DC_FILE_URL} -O ${DC_FILE}
 
 # Prune docker

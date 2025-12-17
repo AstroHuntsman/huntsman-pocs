@@ -1,21 +1,24 @@
-version: '3.7'
 services:
   python_tests:
-    image: huntsmanarray/huntsman-pocs:testing
+    image: ${DOCKER_USER}/huntsman-pocs-test:${DOCKER_TAG}
     build:
-      context: ../
-      dockerfile: tests/Dockerfile
+      context: ${HUNTSMAN_POCS}
+      dockerfile: ${HUNTSMAN_POCS}/docker/huntsman-pocs/Dockerfile
       args:
+        - image_url=${DOCKER_USER}/panoptes-pocs
+        - image_tag=v0.7.8
         - pip_install_extras=[testing]
     stdin_open: true
     init: true
     tty: true
-    environment:
-      - PANDIR=/huntsman
-      - HUNTSMAN_POCS=/huntsman
+    env_file:
+      - ${HUNTSMAN_POCS}/tests/huntsman.test.env
+    user: root # Need to use root user - appaerntly an issue with mamba. https://github.com/mamba-org/micromamba-docker/issues/407#issuecomment-2088523507
     volumes:
-      - "$PWD/logs:/huntsman/logs"
-      - "$PWD/build:/huntsman/build"
-      - "$PWD/src:/huntsman/src"
-      - "$PWD/tests:/huntsman/tests"
-    command: [ "pytest", "-v", "-s" ]
+      - ${HUNTSMAN_POCS}/src:/huntsman/src
+      - ${HUNTSMAN_POCS}/tests:/huntsman/tests
+      - ${HUNTSMAN_POCS}/logs:/huntsman/logs
+      - ${HUNTSMAN_POCS}/build:/huntsman/build
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -v -s tests
+    entrypoint: pytest

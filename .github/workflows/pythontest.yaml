@@ -1,6 +1,6 @@
-name: Python Tests
+name: Linting and Python Tests
 
-on: [ push, pull_request ]
+on: [push, pull_request]
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -9,11 +9,13 @@ jobs:
         python-version: [3.9]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
       - name: Lint with flake8
         run: |
           pip install flake8
@@ -21,34 +23,58 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
+
   test:
     needs: lint
-    env:
-      HUNTSMAN_POCS: ${{ github.workspace }}/huntsman-pocs
     runs-on: ubuntu-latest
+
+    env:
+      HUNTSMAN_POCS: ${{ github.workspace }}
+      DOCKER_USER: github_actions
+      DOCKER_TAG: testing
+
     strategy:
       matrix:
         python-version: [3.9]
+
     steps:
-      - name: Checkout huntsman-pocs
-        uses: actions/checkout@v2
-      - name: Build huntsman-pocs docker image
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Build docker images used for tests
+      - name: Build test Docker images
         run: |
-          docker-compose -f tests/docker-compose.yml build
-          mkdir -p logs && chmod -R 777 logs
-          mkdir -p build && chmod -R 777 build
-      - name: Test with pytest in huntsman-pocs container
-        run: docker-compose -f tests/docker-compose.yml run --rm python_tests
-      - name: Upload coverage report to codecov.io
-        uses: codecov/codecov-action@v1
+          docker compose -f tests/docker-compose.yml build
+          mkdir -p logs build
+          chmod 777 logs build   # Safe and preserves directory traversal
+
+      # Run tests inside the container
+      - name: Debug compose config
+        run: |
+          docker compose -f tests/docker-compose.yml config
+
+      - name: Run pytest inside test container
+        run: |
+          docker run --rm --entrypoint python github_actions/huntsman-pocs-test:testing -c "import sys; print(sys.path)"
+          docker run --rm --entrypoint bash github_actions/huntsman-pocs-test:testing -c "pwd; ls -l /huntsman/src"
+          echo $HUNTSMAN_POCS
+          docker compose -f tests/docker-compose.yml run --rm python_tests -s -v
+
+      # Upload coverage report
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         if: success()
         with:
-          name: codecov-upload
-          file: build/coverage.xml
-          fail_ci_if_error: true
-      - name: Create log file artifact
-        uses: actions/upload-artifact@v1
+          files: build/coverage.xml
+          fail_ci_if_error: false # Prevents CI from failing if coverage file missing
+
+      # Upload logs even if the tests fail
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: log-files
-          path: logs/huntsman-testing.log
+          name: huntsman-test-logs
+          path: |
+            logs/
+            build/
+          if-no-files-found: warn

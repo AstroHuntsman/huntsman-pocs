@@ -74,7 +74,7 @@ WORKDIR "${APP_DIR}"
 COPY --chown="${PANUSER}:${MAMBA_USER}" . .
 
 RUN echo "Installing panoptes-utils module with ${pip_install_extras}" && \
-    python3 -m pip install "git+https://github.com/panoptes/panoptes-utils.git@v0.2.35${pip_install_extras}" && \
+    python3 -m pip install --use-pep517 "git+https://github.com/panoptes/panoptes-utils.git@v0.2.35${pip_install_extras}" && \
     # Cleanup.
     python3 -m pip cache purge && \
     sudo apt purge -y git

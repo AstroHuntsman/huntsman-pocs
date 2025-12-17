@@ -1,21 +1,22 @@
-# fmt: off
-
 import os
 import tempfile
 import threading
 import time
+from typing import Optional
 from contextlib import suppress
 
 import numpy as np
 from astropy import units as u
 from panoptes.pocs.camera.camera import AbstractCamera
+from panoptes.pocs.scheduler.observation.base import Observation as PanObservation
+from huntsman.pocs.scheduler.observation.movie import MovieObservation
 from panoptes.utils.time import current_time
 from panoptes.utils.utils import get_quantity_value
 
 
 class AbstractHuntsmanCamera(AbstractCamera):
 
-    def take_observation(self, observation, headers=None, filename=None, blocking=False, **kwargs):
+    def take_observation(self, observation: PanObservation, headers=None, filename=None, blocking=False, **kwargs):
         """Take an observation. Override of `panoptes.pocs.camera.camera.take_observation()` to
         allow multifilter observations and dynamic exposure time tuning.
 
@@ -83,9 +84,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
     def tune_exposure_time(self, target, initial_exptime, min_exptime=0, max_exptime=None,
                            max_steps=5, tolerance=0.1, cutout_size=256, bias=None, **kwargs):
-        """ Tune the exposure time to within certain tolerance of the desired counts.
-        TODO: Add as camera method.
-        """
+        """ Tune the exposure time to within certain tolerance of the desired counts. """
         self.logger.info(f"Tuning exposure time for {self}.")
 
         images_dir = self.get_config("directories.images", None)
@@ -113,7 +112,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
             exptime = initial_exptime
 
-            for step in range(max_steps):
+            for _ in range(max_steps):
 
                 # Check if exposure time is within valid range
                 if (exptime == max_exptime) or (exptime == min_exptime):
@@ -147,7 +146,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         return exptime
 
-    def _setup_observation(self, observation, headers, filename, **kwargs):
+    def _setup_observation(self, observation: PanObservation, headers, filename, **kwargs):
         """Override of `panoptes.pocs.camera.camera._setup_observation()`  to use the
         `observation.get_filter_name()` method to set observation `filter_name`, rather than
         checking the `observation.filter_name` attribute directly. This enables multi
@@ -238,6 +237,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
             'field_name': observation.field.field_name,
             'file_path': file_path,
             'filter': self.filter_type,
+            'files_dir': image_dir,
             'image_id': image_id,
             'is_primary': self.is_primary,
             'sequence_id': sequence_id,
@@ -257,9 +257,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         return exptime, file_path, image_id, metadata
 
-
-
-    def take_recording(self, observation, headers=None, filename=None, blocking=False, **kwargs):
+    def take_recording(self, observation: MovieObservation, headers=None, blocking=False, **kwargs):
         """Take an observation. Override of `panoptes.pocs.camera.camera.take_observation()` to
         allow multifilter observations and dynamic exposure time tuning.
 
@@ -272,21 +270,18 @@ class AbstractHuntsmanCamera(AbstractCamera):
             observation (~panoptes.pocs.scheduler.observation.Observation): Object
                 describing the observation
             headers (dict, optional): Header data to be saved along with the file.
-            filename (str, optional): pass a filename for the output FITS file to
-                override the default file naming system.
             blocking (bool): If method should wait for observation event to be complete
                 before returning, default False.
             **kwargs (dict): Optional keyword arguments (`exptime`, dark)
         Returns:
             threading.Event: An event to be set when the image is done processing
         """
-        
+
         observation_event = threading.Event()
         # Setup the observation
         exptime, files_dir, image_id, metadata = self._setup_recording(observation,
-                                                                         headers,
-                                                                         filename,
-                                                                         **kwargs)
+                                                                       headers,
+                                                                       **kwargs)
 
         # pop exptime from kwarg as its now in exptime
         exptime = kwargs.pop('exptime', observation.exptime.value)
@@ -299,7 +294,6 @@ class AbstractHuntsmanCamera(AbstractCamera):
                                                   initial_exptime=observation.exptime,
                                                   **observation.tune_exptime_kwargs)
 
-    
         # start the exposure
         self.take_video(seconds=exptime, max_frames=observation.max_frames,
                         frame_rate=observation.frame_rate,
@@ -308,7 +302,6 @@ class AbstractHuntsmanCamera(AbstractCamera):
                         files_dir=files_dir, blocking=blocking,
                         dark=observation.dark, **kwargs)
 
-        
         # Add most recent exposure to list
         if self.is_primary:
             if 'POINTING' in metadata:
@@ -318,7 +311,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         # Process the exposure once readout is complete
         # To be used for marking when exposure is complete (see `process_exposure`)
-        
+
         # Option 1
         # t = threading.Thread(
         #     name=f'Thread-{image_id}',
@@ -327,12 +320,13 @@ class AbstractHuntsmanCamera(AbstractCamera):
         #     daemon=True)
         # t.start()
         # self.process_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
-        
+
         # Option 2
         # self.process_concurrent_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
-        
+
         # Option 3
-        self.process_nats_video_files(metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
+        self.process_nats_video_files(
+            metadata=metadata, observation_event=observation_event, max_frames=observation.max_frames)
 
         # breakpoint()
 
@@ -343,8 +337,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
 
         return observation_event
 
-
-    def _setup_recording(self, observation, headers, filenames, **kwargs):
+    def _setup_recording(self, observation: MovieObservation, headers: Optional[dict] = None, **kwargs):
         """Override of `panoptes.pocs.camera.camera._setup_observation()`  to use the
         `observation.get_filter_name()` method to set observation `filter_name`, rather than
         checking the `observation.filter_name` attribute directly. This enables multi
@@ -354,17 +347,11 @@ class AbstractHuntsmanCamera(AbstractCamera):
             observation (~panoptes.pocs.scheduler.observation.Observation): Object
                 describing the observation
             headers (dict, optional): Header data to be saved along with the file.
-            filename (str, optional): pass a filename for the output FITS file to
-                override the default file naming system.
-
         """
-        headers = headers or None
-
         # Get filtername for observation
         filter_name = observation.get_filter_name(self.name)
 
-        # Move the filterwheel if necessaryc
-        
+        # Move the filterwheel if necessary
         if self.has_filterwheel:
             if filter_name is not None:
                 try:
@@ -400,7 +387,7 @@ class AbstractHuntsmanCamera(AbstractCamera):
             self.uid,
             observation.seq_time
         )
-        
+
         # Get full file path
         # if filenames is None:
         #     file_path = os.path.join(image_dir, f'{start_time}.{self.file_extension}')
@@ -444,19 +431,19 @@ class AbstractHuntsmanCamera(AbstractCamera):
         }
         if filter_name is not None:
             metadata['filter_request'] = filter_name
-            
+
         if hasattr(observation, 'max_frames'):
             metadata['max_frames'] = observation.max_frames
-        
+
         if hasattr(observation, 'chunking_enabled'):
             metadata['chunking_enabled'] = observation.chunking_enabled
-            
+
         if hasattr(observation, 'frame_rate'):
             metadata['frame_rate'] = observation.frame_rate
-        
+
         if hasattr(observation, 'duration'):
             metadata['duration'] = observation.duration
-            
+
         if headers is not None:
             self.logger.trace(f'Updating {image_dir} metadata with provided headers')
             metadata.update(headers)

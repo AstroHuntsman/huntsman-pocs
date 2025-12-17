@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#HUNTSMAN_REMOTE_HOST/usr/bin/env bash
 set -u
 
 source ~/.bash_profile
@@ -17,6 +17,6 @@ if byobu new-session -d -s huntsman -n camera-service; then
     byobu select-window -t camera-logs
     byobu send-keys 'sleep 30 && /bin/bash'
     byobu send-keys Enter
-    byobu send-keys 'tail -F -n 10000 ${PANLOG}/huntsman.log'
+    byobu send-keys 'tail -F -n 10000 /var/huntsman/logs/huntsman.log'
     byobu send-keys Enter
 fi

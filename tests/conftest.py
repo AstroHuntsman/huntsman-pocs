@@ -1,18 +1,25 @@
+import asyncio
 import logging
 import os
-import stat
+import atexit
+import subprocess
 import time
 from contextlib import suppress
+from typing import Any, AsyncGenerator
 
 import pytest
-from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver
+import pytest_asyncio
+import nats
+from nats.aio.client import Client as NATS
+from nats.js import JetStreamContext
+
+from huntsman.pocs.utils.pyro.nameserver import pyro_nameserver, locate_ns
 from panoptes.pocs import hardware
 from panoptes.utils.database import PanDB
 from panoptes.utils.config.client import get_config, set_config
 from panoptes.utils.config.server import config_server
 from huntsman.pocs.utils.logger import logger
 from huntsman.pocs.utils.pyro.service import pyro_service_process
-import huntsman.pocs.utils.pyro.serializers  # noqa
 
 _all_databases = ['file', 'memory']
 
@@ -41,9 +48,12 @@ logger.add(log_file_path,
            level='TRACE')
 logger.log('testing', '*' * 25 + startup_message + '*' * 25)
 
+NATS_HOST = "127.0.0.1"
+NATS_PORT = "4222"
+NATS_ADDR = f"nats://{NATS_HOST}:{NATS_PORT}"
 
-def pytest_configure(config):
-    """Set up the testing."""
+
+def setup_pyro_servers():
     logger.info('Setting up the config server.')
     config_file = 'tests/testing.yaml'
 
@@ -62,10 +72,21 @@ def pytest_configure(config):
                                 save_local=False)
     logger.success(f'Config server set up: {config_proc!r}')
 
-    while get_config(key='pyro.nameserver', host=config_host, port=config_port) is None:
-        logger.info(f'Waiting for config server')
-        time.sleep(1)
+    start = time.time()
+    timeout = 10
+    waited_time = 0
+    while waited_time < timeout:
+        if get_config(key='pyro.nameserver', host=config_host, port=config_port) is None:
+            logger.info(f'Waiting for config server')
+            time.sleep(1)
+            waited_time = time.time() - start
+        else:
+            logger.info("Started Pyro nameserver")
+            break
+    else:
+        raise RuntimeError(f"Could not find Pyro nameservers. Waited {timeout} seconds.")
 
+    # Get the configuration as defined in testing.yaml
     nameserver_config = get_config(key='pyro.nameserver', host=config_host, port=config_port)
     service_config = get_config(key=f'pyro.{service_class}', host=config_host, port=config_port)
 
@@ -97,6 +118,61 @@ def pytest_configure(config):
     pyro_proc_01.daemon = True
     pyro_proc_01.start()
     logger.success(f'Pyro service created: {pyro_proc_01!r}')
+
+    start = time.time()
+    timeout = 10
+    waited_time = 0
+    while waited_time < timeout:
+        try:
+            # Attempt to locate one of the services
+            ns = locate_ns(host=nameserver_config['host'], port=nameserver_config['port'])
+
+            # Check for both services
+            ns.lookup('dslr.00')
+            ns.lookup('dslr.01')
+            logger.info("Found Pyro camera servers!")
+            break
+        except Exception:
+            time.sleep(0.5)
+            waited_time = time.time() - start
+    else:
+        raise RuntimeError(f"Could not find Pyro camera. Waited {timeout} seconds.")
+
+
+def setup_nats_server():
+    logger.info("Starting NATS server for testing")
+    nats_proc = subprocess.Popen(
+        ["nats-server", "-p", NATS_PORT, "--jetstream"],  # default NATS port
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    # Ensure the NATS server is terminated when pytest exits
+    atexit.register(lambda: nats_proc.terminate())
+
+    # Wait a bit to ensure server is up
+    timeout = 10
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            async def check_nats():
+                nc = await nats.connect(NATS_ADDR)
+                js = nc.jetstream()
+                await js.account_info()  # Jetstream check
+                await nc.close()
+            asyncio.run(check_nats())
+            logger.info("NATS server is up!")
+            break
+        except Exception:
+            time.sleep(0.5)
+    else:
+        raise RuntimeError("Could not start NATS server for testing.")
+
+
+def pytest_configure(config):
+    """Set up the testing."""
+    setup_pyro_servers()
+    setup_nats_server()
 
 
 def pytest_addoption(parser):
@@ -225,6 +301,32 @@ def db_name():
 @pytest.fixture(scope='session')
 def config_path(base_dir):
     return os.path.expandvars(f'{base_dir}/testing/testing.yaml')
+
+
+@pytest.fixture(scope="session")
+def nats_addr():
+    return NATS_ADDR
+
+
+@pytest_asyncio.fixture(scope="function")
+async def nats_env(nats_addr):
+    nc = NATS()
+    await nc.connect(servers=[nats_addr])
+    js = nc.jetstream()
+    try:
+        yield nc, js
+    finally:
+        # delete all streams after test
+        for info in await js.streams_info():
+            await js.delete_stream(info.config.name)
+        await nc.drain()
+        await nc.close()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def js(nats_env) -> AsyncGenerator[Any, JetStreamContext]:
+    """Fixture to connect to NATS and return JetStream context."""
+    yield nats_env[1]
 
 
 @pytest.fixture

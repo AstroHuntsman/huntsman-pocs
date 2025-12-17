@@ -1,7 +1,10 @@
+from huntsman.pocs.core import HuntsmanPOCS
+
+
 def on_enter(event_data):
     # breakpoint()
 
-    pocs = event_data.model
+    pocs: HuntsmanPOCS = event_data.model
     pocs.say("I'm exploring the universe!")
     pocs.next_state = 'scheduling'
 

@@ -1,5 +1,6 @@
 import os
 import random
+import threading
 from threading import Timer
 
 import numpy as np
@@ -25,6 +26,7 @@ class Camera(AbstractHuntsmanCamera):
         kwargs['timeout'] = kwargs.get('timeout', 1.5 * u.second)
         kwargs['readout_time'] = kwargs.get('readout_time', 1.0 * u.second)
         super().__init__(name=name, *args, **kwargs)
+        self._exposure_event = threading.Event()
         self.connect()
         self.logger.info(f"{self} initialised")
 
@@ -100,6 +102,23 @@ class Camera(AbstractHuntsmanCamera):
 
         self.logger.debug("Headers updated for simulated image.")
         return file_path
+
+    def take_video(self, seconds, max_frames, files_dir, *args, **kwargs) -> threading.Thread:
+        """ Take a video (a series of exposures). """
+        self.logger.debug(f'Taking video for {seconds}s * {max_frames} frames')
+
+        def take_frames():
+            for i in range(max_frames):
+                filename = os.path.join(files_dir, f'{i}.fits')
+                self.take_exposure(seconds=seconds, filename=filename,
+                                   blocking=True, *args, **kwargs)
+            self._exposure_event.set()
+
+        self._exposure_event.clear()
+        video_thread = threading.Thread(target=take_frames)
+        video_thread.start()
+
+        return video_thread
 
     def _set_target_temperature(self, target):
         raise False
