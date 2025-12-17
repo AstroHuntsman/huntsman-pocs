@@ -2,13 +2,13 @@ channels:
   - https://conda.anaconda.org/conda-forge
 dependencies:
   - astroplan
-  - fastapi==0.116.*
+  - fastapi
   - matplotlib-base
-  - numpy==1.26.*
-  - pandas==2.3.*
+  - numpy
+  - pandas
   - photutils
   - pip
-  - scipy==1.13.*
+  - scipy
   - streamz
   - uvicorn[standard]
   - pip:
